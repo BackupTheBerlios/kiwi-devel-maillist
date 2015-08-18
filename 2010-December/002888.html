@@ -1,0 +1,166 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] XML processing - patch two
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20XML%20processing%20-%20patch%20two&In-Reply-To=%3C20101206153619.GA27974%40D7.ddts.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002885.html">
+   <LINK REL="Next"  HREF="002890.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] XML processing - patch two</H1>
+    <B>Marcus Sch&#228;fer</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20XML%20processing%20-%20patch%20two&In-Reply-To=%3C20101206153619.GA27974%40D7.ddts.net%3E"
+       TITLE="[Kiwi-devel] XML processing - patch two">ms at novell.com
+       </A><BR>
+    <I>Mon Dec  6 16:36:19 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002885.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+        <LI>Next message: <A HREF="002890.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2888">[ date ]</a>
+              <a href="thread.html#2888">[ thread ]</a>
+              <a href="subject.html#2888">[ subject ]</a>
+              <a href="author.html#2888">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi,
+
+&gt;<i> &gt; I understand your goal thanks for explaining it more detailed. I read
+</I>&gt;<i> &gt; through the code with what you've said in mind and found that there are
+</I>&gt;<i> &gt; several places in kiwi which needs a real cleanup first before we can
+</I>&gt;<i> &gt; proceed to turn the XML object into a simple data container. 
+</I>&gt;<i> 
+</I>&gt;<i> OK, how can I help with that?
+</I>
+I will do that per todays git push. You will find the following
+XML instances in the code after it:
+
+* kiwi.pl
+
+  - for cache mode, requires state
+  - for prepare mode, requires state
+  - for create mode, requires state
+  - for testsuite mode, required state
+  - for upgrade mode, requires state
+  - for list-xml info, requires state
+  - for list-images, stateless
+
+* KIWIImage.pm::checkAndSetupPrebuiltBootImage()
+
+  - for setting up the boot image, requires state
+
+* KIWIBoot.pm::KIWIBoot
+
+  - reading the image description from root tree,
+    image file or disk file. requires state
+
+So if we change the XML all of these places has to be adapted.
+I suggest the following way:
+
+   my $xml = new KIWIXML ( ... );
+   $xml -&gt; ...
+
+   change to:
+
+   my $xmldata = new KIWIXML ( ... );
+   my $xml = new KIWIXMLManager ( ..., $xmldata );
+
+   $xml -&gt; ...
+
+The KIWIXMLManager instance should provide all functions formerly
+accessed by the KIWIXML object in order to keep the patch small and
+the system still running. There are plenty of $xml -&gt; function()
+calls which all have to be handled by the stateful object
+
+&gt;<i> Yes, I absolutely agree. In the end there should probably be only two
+</I>&gt;<i> instantiations of the XML object. One for the system, i.e. the user
+</I>&gt;<i> config.xml and one for the boot image. Both of these instantiations
+</I>&gt;<i> should be in the build manager I have been advocating.
+</I>
+Well there are a few more because kiwi has several more modes
+than just prepare and create. I want these modes to stay independent
+which means it must be possible to call them without a previosly
+created XML instance. So they need to be able to create their own
+XML object. If the change we discuss here is done we might come
+back to this one 
+
+&gt;<i> Sounds like we are on the same page now. I like BuildMgr better as this
+</I>&gt;<i> indicates it manages a process rather than a single task, but I am OK
+</I>&gt;<i> with Build.
+</I>
+Well I don't like the abbreviation &quot;mgr&quot; for manager and we also have
+KIWIManager in place. So if ok with you use &quot;KIWIXMLManager.pm&quot;
+
+&gt;<i> My previous patches were basically an attempt to get us to this type of
+</I>&gt;<i> implementation. As we have to get there gradually. A rip and replace
+</I>&gt;<i> approach will IMHO not work as we'd have to do a deep dive for a month
+</I>&gt;<i> or so where we'd get nothing out the door. I don't think that would be a
+</I>&gt;<i> good approach.
+</I>
+I agree and that's also my biggest concern here. I can't afford an
+entire rewrite which it is if we follow all suggestions :-) I will
+prepare the KIWIXML code in a way that it contains all XML data which
+it currently doesn't due to the possible pre-selection done by profile(s).
+If I finsihed that work you can start to write the new KIWIXMLManager
+(or whatever name we agree on) code. I will drop you a note when I'm
+done
+
+Testing can be done in one mode for example the prepare mode.
+That should just be a replacement of a few lines and if we are there
+we switch in one step.
+
+I need to review the validator patch and I'm on business travel
+next week. So I'm rather busy but I want to be finished with all
+the preparations in order to give you a good start for the
+KIWIXML / KIWIXMLManager change
+
+Would that be ok for you ?
+
+Regards,
+Marcus
+-- 
+ Public Key available
+ gpg --keyserver gpg-keyserver.de --recv-keys 0xCCE3C6A2
+ -------------------------------------------------------
+ Marcus Sch&#228;fer (Res. &amp; Dev.)   SUSE LINUX Products GmbH
+ Tel: 0911-740 53 0             Maxfeldstrasse 5
+ FAX: 0911-740 53 479           D-90409 N&#252;rnberg
+ GF: Markus Rex                 HRB: 16746 (AG N&#252;rnberg)
+ <A HREF="http://www.suse.de">http://www.suse.de</A>             Germany
+ -------------------------------------------------------
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002885.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+	<LI>Next message: <A HREF="002890.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2888">[ date ]</a>
+              <a href="thread.html#2888">[ thread ]</a>
+              <a href="subject.html#2888">[ subject ]</a>
+              <a href="author.html#2888">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

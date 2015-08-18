@@ -1,0 +1,199 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1597 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1597%20-%20kiwi-head/modules&In-Reply-To=%3C200810011345.m91Dj4DS022320%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000695.html">
+   <LINK REL="Next"  HREF="000697.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1597 - kiwi-head/modules</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1597%20-%20kiwi-head/modules&In-Reply-To=%3C200810011345.m91Dj4DS022320%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1597 - kiwi-head/modules">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Oct  1 15:45:04 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000695.html">[Kiwi-devel] r1596 - in kiwi-head: modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000697.html">[Kiwi-devel] r1598 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#696">[ date ]</a>
+              <a href="thread.html#696">[ thread ]</a>
+              <a href="subject.html#696">[ subject ]</a>
+              <a href="author.html#696">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-01 15:45:00 +0200 (Wed, 01 Oct 2008)
+New Revision: 1597
+
+Modified:
+   kiwi-head/modules/KIWIImage.pm
+   kiwi-head/modules/KIWIIsoLinux.pm
+   kiwi-head/modules/KIWIXML.pm
+Log:
+
+- better log messages in KIWIIsoLinux.pm
+
+
+
+Modified: kiwi-head/modules/KIWIImage.pm
+===================================================================
+--- kiwi-head/modules/KIWIImage.pm	2008-10-01 13:17:05 UTC (rev 1596)
++++ kiwi-head/modules/KIWIImage.pm	2008-10-01 13:45:00 UTC (rev 1597)
+@@ -1713,9 +1713,7 @@
+ 	my $isoerror = 1;
+ 	my $name = $imageDest.&quot;/&quot;.$namerw.&quot;.iso&quot;;
+ 	my $isolinux = new KIWIIsoLinux (
+-		$kiwi,$main::RootTree.&quot;/CD&quot;,$name,
+-		$main::Publisher,$main::Preparer,
+-		&quot;-R -J -pad -joliet-long&quot;
++		$kiwi,$main::RootTree.&quot;/CD&quot;,$name
+ 	);
+ 	if (defined $isolinux) {
+ 		$isoerror = 0;
+
+Modified: kiwi-head/modules/KIWIIsoLinux.pm
+===================================================================
+--- kiwi-head/modules/KIWIIsoLinux.pm	2008-10-01 13:17:05 UTC (rev 1596)
++++ kiwi-head/modules/KIWIIsoLinux.pm	2008-10-01 13:45:00 UTC (rev 1597)
+@@ -57,19 +57,23 @@
+ 	# create log object if not done
+ 	#------------------------------------------
+ 	if (! defined $kiwi) {
+-		$kiwi = new KIWILog(&quot;tiny&quot;);
++		$kiwi = new KIWILog (&quot;tiny&quot;);
+ 	}
+-	if (! defined $source) {
++	if (! -d $source) {
++		$kiwi -&gt; error  (&quot;No such file or directory: $source&quot;);
++		$kiwi -&gt; failed (); 
+ 		return undef;
+ 	}
+ 	if (! defined $dest) {
++		$kiwi -&gt; error  (&quot;No destination file specified&quot;);
++		$kiwi -&gt; failed ();
+ 		return undef;
+ 	}
+ 	if (! defined $preparer) {
+-		$preparer = 'KIWI-Team - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>';
++		$preparer = $main::Preparer;
+ 	}
+ 	if (! defined $publisher) {
+-		$publisher = 'SUSE LINUX Products GmbH, <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">suse at novell.com</A>'
++		$publisher = $main::Publisher;
+ 	}
+ 	if (! defined $params) {
+ 		$params = '-R -J -pad -joliet-long';
+@@ -90,6 +94,8 @@
+ 	} elsif (-d &quot;$source/$bootbase/ia64&quot;) {
+ 		$bootbase  = $bootbase.&quot;/ia64&quot;;
+ 	} else {
++		$kiwi -&gt; error  (&quot;No $source/$bootbase/&lt;arch&gt;/ layout found&quot;);
++		$kiwi -&gt; failed ();
+ 		return undef;
+ 	}
+ 	$bootimage    = $bootbase.&quot;/image&quot;;
+
+Modified: kiwi-head/modules/KIWIXML.pm
+===================================================================
+--- kiwi-head/modules/KIWIXML.pm	2008-10-01 13:17:05 UTC (rev 1596)
++++ kiwi-head/modules/KIWIXML.pm	2008-10-01 13:45:00 UTC (rev 1597)
+@@ -88,12 +88,10 @@
+ 		my @globsearch = glob ($imageDesc.&quot;/*.kiwi&quot;);
+ 		my $globitems  = @globsearch;
+ 		if ($globitems == 0) {
+-			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error (&quot;Cannot open control file: $controlFile&quot;);
+ 			$kiwi -&gt; failed ();
+ 			return undef;
+ 		} elsif ($globitems &gt; 1) {
+-			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error (&quot;Found multiple *.kiwi control files&quot;);
+ 			$kiwi -&gt; failed ();
+ 			return undef;
+@@ -112,7 +110,6 @@
+ 		if (($code == 0) &amp;&amp; (-f &quot;$controlFile-next&quot;)) {
+ 			qxx (&quot;mv $controlFile-next $controlFile&quot;);
+ 		} elsif ($code &gt; 10) {
+-			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error (&quot;XSL: $data&quot;);
+ 			$kiwi -&gt; failed ();
+ 			return undef;
+@@ -128,7 +125,6 @@
+ 		my $code = $? &gt;&gt; 8;
+ 		if ($code != 0) {
+ 			chomp $data;
+-			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error (&quot;Integrity check for $imageDesc failed:\n$data&quot;);
+ 			$kiwi -&gt; failed ();
+ 			return undef;
+@@ -178,7 +174,6 @@
+ 		$profilesNodeList = $systemTree -&gt; getElementsByTagName (&quot;profiles&quot;);
+ 	};
+ 	if ($@) {
+-		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;Problem reading control file&quot;);
+ 		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;$@\n&quot;);
+@@ -191,7 +186,6 @@
+ 		$systemRNG -&gt;validate ( $systemTree );
+ 	};
+ 	if ($@) {
+-		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;Scheme validation failed&quot;);
+ 		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;$@\n&quot;);
+@@ -311,7 +305,6 @@
+ 	#------------------------------------------
+ 	my $version = $this -&gt; getImageVersion();
+ 	if ($version !~ /^\d+\.\d+\.\d+$/) {
+-		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;Invalid version format: $version&quot;);
+ 		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;Expected 'Major.Minor.Release'&quot;);
+@@ -330,7 +323,6 @@
+ 		return $this;
+ 	}
+ 	if (! $this -&gt; getImageTypeAndAttributes()) {
+-		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;Boot type: $imageWhat not specified in xml&quot;);
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000695.html">[Kiwi-devel] r1596 - in kiwi-head: modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000697.html">[Kiwi-devel] r1598 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#696">[ date ]</a>
+              <a href="thread.html#696">[ thread ]</a>
+              <a href="subject.html#696">[ subject ]</a>
+              <a href="author.html#696">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

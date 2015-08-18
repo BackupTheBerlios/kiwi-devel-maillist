@@ -1,0 +1,259 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4a370ab6fb69ca6431efc02519de46b1da305ba3
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204a370ab6fb69ca6431efc02519de46b1da305ba3&In-Reply-To=%3C200910201318.n9KDIllJ002374%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001533.html">
+   <LINK REL="Next"  HREF="001535.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4a370ab6fb69ca6431efc02519de46b1da305ba3</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204a370ab6fb69ca6431efc02519de46b1da305ba3&In-Reply-To=%3C200910201318.n9KDIllJ002374%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4a370ab6fb69ca6431efc02519de46b1da305ba3">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Oct 20 15:18:47 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001533.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 74b3089176f8dc2face084a662dbac7dc6354d0e
+</A></li>
+        <LI>Next message: <A HREF="001535.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3914993755e6df298e53b46abf6fb54513190ba4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1534">[ date ]</a>
+              <a href="thread.html#1534">[ thread ]</a>
+              <a href="subject.html#1534">[ subject ]</a>
+              <a href="author.html#1534">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  4a370ab6fb69ca6431efc02519de46b1da305ba3 (commit)
+      from  74b3089176f8dc2face084a662dbac7dc6354d0e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 4a370ab6fb69ca6431efc02519de46b1da305ba3
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Oct 20 15:18:35 2009 +0200
+
+    - added support for lang and keytable in cmdline. Support is
+      only available with the gfxboot code from &gt;= 11.2 (bnc #547915)
+    - changed fbiterm return code evaluation. Echo the return code
+      from the last instead of relying to the exit code of the
+      fbiterm terminal (bnc #547864)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 5bccdc9..502c924 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -1049,12 +1049,37 @@ function suseGFXBoot {
+ 		# check for new source layout
+ 		local newlayout=
+ 		[ -f themes/$theme/config ] &amp;&amp; newlayout=1
+-		if [ &quot;$newlayout&quot; ] &amp;&amp; [ ! -z &quot;$kiwi_language&quot; ];then
+-			for l in `echo $kiwi_language | tr &quot;,&quot; &quot; &quot;`;do
+-				echo &quot;Adding language: $l&quot;
+-				echo $l &gt;&gt; themes/$theme/data-boot/languages
+-			done
++		# update configuration for new layout only
++		if [ &quot;$newlayout&quot; ];then
++			if [ $loader = &quot;isolinux&quot; ];then
++				local gfxcfg=themes/$theme/data-install/gfxboot.cfg
++				# tell the bootloader about live CD setup
++				gfxboot --config-file $gfxcfg \
++					--change-config install::livecd=1
++				# tell the bootloader to hand over keytable to cmdline 
++				gfxboot --config-file $gfxcfg \
++					--change-config live::addopt.keytable=1
++				# tell the bootloader to hand over lang to cmdline
++				gfxboot --config-file $gfxcfg \
++					--change-config live::addopt.lang=1
++			else
++				local gfxcfg=themes/$theme/data-boot/gfxboot.cfg
++				# tell the bootloader to hand over keytable to cmdline 
++				gfxboot --config-file $gfxcfg \
++					--change-config boot::addopt.keytable=1
++				# tell the bootloader to hand over lang to cmdline
++				gfxboot --config-file $gfxcfg \
++					--change-config boot::addopt.lang=1
++				# add selected languages to the bootloader menu
++				if [ ! -z &quot;$kiwi_language&quot; ];then
++					for l in `echo $kiwi_language | tr &quot;,&quot; &quot; &quot;`;do
++						echo &quot;Adding language: $l&quot;
++						echo $l &gt;&gt; themes/$theme/data-boot/languages
++					done
++				fi
++			fi
+ 		fi
++		# create the archive	
+ 		[ &quot;$newlayout&quot; ] || make -C themes/$theme prep
+ 		make -C themes/$theme
+ 		mkdir /image/loader
+@@ -1108,15 +1133,31 @@ function suseGFXBoot {
+ 		if [ $loader = &quot;isolinux&quot; ];then
+ 			# isolinux boot data...
+ 			mv /etc/bootsplash/themes/$theme/cdrom/* /image/loader
++			local gfxcfg=/image/loader/gfxboot.cfg
++			# tell the bootloader about live CD setup
++			gfxboot --config-file $gfxcfg \
++				--change-config install::livecd=1
++			# tell the bootloader to hand over keytable to cmdline 
++			gfxboot --config-file $gfxcfg \
++				--change-config live::addopt.keytable=1
++			# tell the bootloader to hand over lang to cmdline
++			gfxboot --config-file $gfxcfg \
++				--change-config live::addopt.lang=1
+ 		else
+ 			# boot loader graphics image file...
+-			bootimage=/etc/bootsplash/themes/$theme/bootloader/message
++			mv /etc/bootsplash/themes/$theme/bootloader/message /image/loader
++			local archive=/image/loader/message
++			# tell the bootloader to hand over keytable to cmdline 
++			gfxboot --archive $archive \
++				--change-config boot::addopt.keytable=1
++			# tell the bootloader to hand over lang to cmdline
++			gfxboot --archive $archive \
++				--change-config boot::addopt.lang=1
++			# add selected languages to the bootloader menu
+ 			if [ ! -z &quot;$kiwi_language&quot; ];then
+-				# following works for 11.1+...
+-				gfxboot --archive $bootimage --add-language \
++				gfxboot --archive $archive --add-language \
+ 					$(echo $kiwi_language | tr &quot;,&quot; &quot; &quot;) --default-language en_US
+ 			fi
+-			mv $bootimage /image/loader
+ 		fi
+ 	else
+ 		#======================================
+@@ -1147,17 +1188,6 @@ function suseGFXBoot {
+ 		:
+ 	fi
+ 	#======================================
+-	# update isolinux config if live CD
+-	#--------------------------------------
+-	if [ $loader = &quot;isolinux&quot; ];then
+-		if [ -x /usr/sbin/gfxboot ] ; then
+-			gfxboot --config-file /image/loader/gfxboot.cfg \
+-					--change-config install::livecd=1
+-		else
+-			echo &quot;livecd=1&quot; &gt;&gt; /image/loader/gfxboot.cfg
+-		fi
+-	fi
+-	#======================================
+ 	# create splash screen
+ 	#--------------------------------------
+ 	if [ ! -f /sbin/splash ];then
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index a5ed441..369fd7c 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -52,14 +52,17 @@ ldconfig
+ # Dialog
+ #--------------------------------------
+ function Dialog {
++	local code=1
++	export DIALOG_CANCEL=1
+ 	if [ -e /dev/fb0 ];then
+-		fbiterm -m $UFONT -- dialog \
++		code=$(fbiterm -m $UFONT -- dialog \
+ 			--ok-label &quot;$(getText &quot;OK&quot;)&quot; \
+ 			--cancel-label &quot;$(getText &quot;Cancel&quot;)&quot; \
+ 			--yes-label &quot;$(getText &quot;Yes&quot;)&quot; \
+ 			--no-label &quot;$(getText &quot;No&quot;)&quot; \
+ 			--exit-label &quot;$(getText &quot;Exit&quot;)&quot; \
+-			&quot;$@&quot;
++			&quot;$@&quot;;echo $?)
++		code=$(echo $code | cut -c5-)
+ 	else
+ 		dialog \
+ 			--ok-label &quot;$(getText &quot;OK&quot;)&quot; \
+@@ -68,7 +71,9 @@ function Dialog {
+ 			--no-label &quot;$(getText &quot;No&quot;)&quot; \
+ 			--exit-label &quot;$(getText &quot;Exit&quot;)&quot; \
+ 			&quot;$@&quot;
++		code=$?
+ 	fi
++	return $code
+ }
+ #======================================
+ # Debug
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 1a2263a..31d9a0c 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,13 @@
+ -------------------------------------------------------------------
++Tue Oct 20 11:44:54 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- added support for lang and keytable in cmdline. Support is
++  only available with the gfxboot code from &gt;= 11.2 (bnc #547915)
++- changed fbiterm return code evaluation. Echo the return code
++  from the last instead of relying to the exit code of the
++  fbiterm terminal (bnc #547864)
++
++-------------------------------------------------------------------
+ Sun Oct 18 20:44:23 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - search .backup files in home and etc only (bnc #546057)
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index 90e6a12..864b285 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -345,8 +345,7 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 	if [ ! -z &quot;$RESTORE&quot; ];then
+ 		text=&quot;Do you want to start the System-Restore ?&quot;
+ 	fi
+-	Dialog --defaultno --yesno &quot;$(getText &quot;$text&quot;)&quot; 5 50
+-	if [ ! $? = 0 ];then
++	if ! Dialog --defaultno --yesno &quot;$(getText &quot;$text&quot;)&quot; 5 50;then
+ 		systemException &quot;System-Recovery not started&quot; &quot;reboot&quot;
+ 	fi
+ 	clear
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001533.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 74b3089176f8dc2face084a662dbac7dc6354d0e
+</A></li>
+	<LI>Next message: <A HREF="001535.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3914993755e6df298e53b46abf6fb54513190ba4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1534">[ date ]</a>
+              <a href="thread.html#1534">[ thread ]</a>
+              <a href="subject.html#1534">[ subject ]</a>
+              <a href="author.html#1534">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

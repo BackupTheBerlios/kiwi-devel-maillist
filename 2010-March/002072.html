@@ -1,0 +1,135 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8f64ba616d2b5ac0de866c0fa5f0c703305ab77c
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%208f64ba616d2b5ac0de866c0fa5f0c703305ab77c&In-Reply-To=%3C201003261346.o2QDkUWV002652%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002071.html">
+   <LINK REL="Next"  HREF="002073.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8f64ba616d2b5ac0de866c0fa5f0c703305ab77c</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%208f64ba616d2b5ac0de866c0fa5f0c703305ab77c&In-Reply-To=%3C201003261346.o2QDkUWV002652%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8f64ba616d2b5ac0de866c0fa5f0c703305ab77c">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Mar 26 14:46:30 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002071.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8c2ac9fa9398c0cedc24537ea2763eb363eea235
+</A></li>
+        <LI>Next message: <A HREF="002073.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 31ad47b3ed046a6e1bcd04909e6af5869f8eef4d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2072">[ date ]</a>
+              <a href="thread.html#2072">[ thread ]</a>
+              <a href="subject.html#2072">[ subject ]</a>
+              <a href="author.html#2072">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  8f64ba616d2b5ac0de866c0fa5f0c703305ab77c (commit)
+      from  8c2ac9fa9398c0cedc24537ea2763eb363eea235 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 8f64ba616d2b5ac0de866c0fa5f0c703305ab77c
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Mar 26 14:46:15 2010 +0100
+
+    - leave /mnt directory before calling umountSystem
+    - fixed bc division by zero
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 3cd3a1d..845e9d8 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -4,10 +4,12 @@ Tue Mar 23 16:02:19 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ - v4.26
+ - use bootnext 'boot from hard disk' for ISO's too (bnc #583212)
+ - added uncompressed tar size information for OEM recovery
++- leave /mnt directory before calling umountSystem
+ - leave libnss_dns inside the boot images for name resolution
+ - switched to parted as default partition tool
+ - added autoyast cloning code to migration step
+   Implementation by Uwe Gansert (bnc #580184)
++- fixed bc division by zero
+ 
+ -------------------------------------------------------------------
+ Mon Mar 22 11:16:53 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index a80434e..72794f2 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -419,12 +419,12 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 		if [ -z &quot;$RESTORE&quot; ];then
+ 			for i in passwd shadow group;do
+ 				if ! cp etc/$i tmp/$i;then
+-					umountSystem; rm -f tmp/passwd tmp/shadow tmp/group
++					cd / ; umountSystem; rm -f tmp/passwd tmp/shadow tmp/group
+ 					systemException &quot;Failed to store $i&quot; &quot;reboot&quot;
+ 				fi
+ 			done
+ 			if ! cp -a var/lib/rpm tmp/;then
+-				rm -rf tmp/rpm; umountSystem
++				rm -rf tmp/rpm; cd / ; umountSystem
+ 				systemException &quot;Failed to store RPM database&quot; &quot;reboot&quot;
+ 			fi
+ 		fi
+@@ -451,6 +451,9 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 		rPID=$!
+ 		while kill -0 $rPID &amp;&gt;/dev/null;do
+ 			rReady=$(cat /tmp/rFiles | wc -l)
++			if [ $rReady -eq 0 ];then
++				continue
++			fi
+ 			#Echo -e -n &quot;$rReady files from $rFiles restored...\r&quot;
+ 			rFDone=$(echo &quot;scale=4; $rFiles / $rReady&quot; | bc)
+ 			rFDone=$(echo &quot;scale=0; 100 / $rFDone&quot; | bc)
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002071.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8c2ac9fa9398c0cedc24537ea2763eb363eea235
+</A></li>
+	<LI>Next message: <A HREF="002073.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 31ad47b3ed046a6e1bcd04909e6af5869f8eef4d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2072">[ date ]</a>
+              <a href="thread.html#2072">[ thread ]</a>
+              <a href="subject.html#2072">[ subject ]</a>
+              <a href="author.html#2072">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

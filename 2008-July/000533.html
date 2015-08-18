@@ -1,0 +1,191 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1448 - in kiwi-head: . modules rpm system/boot/oemboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1448%20-%20in%20kiwi-head%3A%20.%20modules%20rpm%20system/boot/oemboot&In-Reply-To=%3C200807101450.m6AEoQv1025864%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000532.html">
+   <LINK REL="Next"  HREF="000534.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1448 - in kiwi-head: . modules rpm system/boot/oemboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1448%20-%20in%20kiwi-head%3A%20.%20modules%20rpm%20system/boot/oemboot&In-Reply-To=%3C200807101450.m6AEoQv1025864%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1448 - in kiwi-head: . modules rpm system/boot/oemboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jul 10 16:50:26 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000532.html">[Kiwi-devel] r1447 - in kiwi-head: . modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000534.html">[Kiwi-devel] r1449 - in kiwi-head: modules rpm system/boot/oemboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#533">[ date ]</a>
+              <a href="thread.html#533">[ thread ]</a>
+              <a href="subject.html#533">[ subject ]</a>
+              <a href="author.html#533">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-07-10 16:50:20 +0200 (Thu, 10 Jul 2008)
+New Revision: 1448
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIConfigure.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+   kiwi-head/system/boot/oemboot/suse-linuxrc
+Log:
+
+- moved from bzip2 to gzip for the recovery archive (bnc #401749)
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-07-10 10:10:58 UTC (rev 1447)
++++ kiwi-head/kiwi.pl	2008-07-10 14:50:20 UTC (rev 1448)
+@@ -43,7 +43,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;2.56&quot;;
++our $Version       = &quot;2.57&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+ our $ConfigFile    = &quot;$ENV{'HOME'}/.kiwirc&quot;;
+ our $ConfigName    = &quot;config.xml&quot;;
+@@ -454,8 +454,8 @@
+ 		if (-f &quot;$Create/rootfs.tar&quot;) {
+ 			qxx (&quot;rm -f $Create/rootfs.tar&quot;);
+ 		}
+-		if (-f &quot;$Create/recovery.tar.bz2&quot;) {
+-			qxx (&quot;rm -f $Create/recovery.tar.bz2&quot;);
++		if (-f &quot;$Create/recovery.tar.gz&quot;) {
++			qxx (&quot;rm -f $Create/recovery.tar.gz&quot;);
+ 		}
+ 		#==========================================
+ 		# Check for overlay requirements
+
+Modified: kiwi-head/modules/KIWIConfigure.pm
+===================================================================
+--- kiwi-head/modules/KIWIConfigure.pm	2008-07-10 10:10:58 UTC (rev 1447)
++++ kiwi-head/modules/KIWIConfigure.pm	2008-07-10 14:50:20 UTC (rev 1448)
+@@ -88,8 +88,8 @@
+ 	}
+ 	$kiwi -&gt; info (&quot;Creating recovery archive...&quot;);
+ 	my $status = qxx (
+-		&quot;cd $root &amp;&amp; tar -cjf $root.recovery.tar.bz2 . 2&gt;&amp;1 &amp;&amp;
+-		mv $root.recovery.tar.bz2 $root/recovery.tar.bz2&quot;
++		&quot;cd $root &amp;&amp; tar -czf $root.recovery.tar.gz . 2&gt;&amp;1 &amp;&amp;
++		mv $root.recovery.tar.gz $root/recovery.tar.gz&quot;
+ 	);
+ 	my $code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-07-10 10:10:58 UTC (rev 1447)
++++ kiwi-head/rpm/kiwi.changes	2008-07-10 14:50:20 UTC (rev 1448)
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Thu Jul 10 16:49:00 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v2.57
++- moved from bzip2 to gzip for the recovery archive (bnc #401749)
++
++-------------------------------------------------------------------
+ Thu Jul 10 11:51:45 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.56
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-07-10 10:10:58 UTC (rev 1447)
++++ kiwi-head/rpm/kiwi.spec	2008-07-10 14:50:20 UTC (rev 1448)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 2.56
++# spec file for package kiwi (Version 2.57
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -42,7 +42,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        2.56
++Version:        2.57
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+Modified: kiwi-head/system/boot/oemboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/oemboot/suse-linuxrc	2008-07-10 10:10:58 UTC (rev 1447)
++++ kiwi-head/system/boot/oemboot/suse-linuxrc	2008-07-10 14:50:20 UTC (rev 1448)
+@@ -389,10 +389,10 @@
+ 		if ! mount $deviceRoot /reco-root &gt;/dev/null;then
+ 			systemException &quot;Failed to mount root device&quot; &quot;reboot&quot;
+ 		fi
+-		if [ ! -f /reco-root/recovery.tar.bz2 ];then
++		if [ ! -f /reco-root/recovery.tar.gz ];then
+ 			systemException &quot;Can't find recovery archive&quot; &quot;reboot&quot;
+ 		fi
+-		recoBytes=`du --bytes /reco-root/recovery.tar.bz2 | cut -f1`
++		recoBytes=`du --bytes /reco-root/recovery.tar.gz | cut -f1`
+ 		recoMByte=`expr $recoBytes / 1048576`
+ 		recoMByte=`expr $recoMByte \* 15 / 10`
+ 		umount /reco-root &amp;&amp; rmdir /reco-root
+@@ -778,7 +778,7 @@
+ 				if ! mount $deviceRecovery /reco-save &gt;/dev/null;then
+ 					systemException &quot;Failed to mount recovery device&quot; &quot;reboot&quot;
+ 				fi
+-				if ! mv /reco-root/recovery.tar.bz2 /reco-save &gt;/dev/null;then
++				if ! mv /reco-root/recovery.tar.gz /reco-save &gt;/dev/null;then
+ 					systemException &quot;Failed to move recovery archive&quot; &quot;reboot&quot;
+ 				fi
+ 				mkdir /reco-save/boot
+@@ -947,7 +947,7 @@
+ 	#--------------------------------------
+ 	Echo &quot;Restoring base operating system...&quot;
+ 	cd /mnt
+-	if ! tar -xvf /reco-save/recovery.tar.bz2 1&gt;&amp;2;then
++	if ! tar -xvf /reco-save/recovery.tar.gz 1&gt;&amp;2;then
+ 		systemException &quot;Failed to restore recovery archive&quot; &quot;reboot&quot;
+ 	fi
+ 	#======================================
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000532.html">[Kiwi-devel] r1447 - in kiwi-head: . modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000534.html">[Kiwi-devel] r1449 - in kiwi-head: modules rpm system/boot/oemboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#533">[ date ]</a>
+              <a href="thread.html#533">[ thread ]</a>
+              <a href="subject.html#533">[ subject ]</a>
+              <a href="author.html#533">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

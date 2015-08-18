@@ -1,0 +1,1130 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1899 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel:	modules rpm system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ppc/netboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1899%20-%20in%20kiwi-branches/KIWI-301-SuSE-11-1-Devel%3A%0A%09modules%20rpm%20system/boot/ix86/netboot%20system/boot/ix86/oemboot%0A%09system/boot/ppc/netboot&In-Reply-To=%3C200902101405.n1AE5vMn001871%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001019.html">
+   <LINK REL="Next"  HREF="001021.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1899 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel:	modules rpm system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ppc/netboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1899%20-%20in%20kiwi-branches/KIWI-301-SuSE-11-1-Devel%3A%0A%09modules%20rpm%20system/boot/ix86/netboot%20system/boot/ix86/oemboot%0A%09system/boot/ppc/netboot&In-Reply-To=%3C200902101405.n1AE5vMn001871%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1899 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel:	modules rpm system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ppc/netboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Feb 10 15:05:57 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001019.html">[Kiwi-devel] r1898 - in kiwi-head: modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ppc/netboot
+</A></li>
+        <LI>Next message: <A HREF="001021.html">[Kiwi-devel] r1900 - in kiwi-head: . modules rpm	system/boot/ix86/netboot system/boot/ppc/netboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1020">[ date ]</a>
+              <a href="thread.html#1020">[ thread ]</a>
+              <a href="subject.html#1020">[ subject ]</a>
+              <a href="author.html#1020">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-02-10 15:05:51 +0100 (Tue, 10 Feb 2009)
+New Revision: 1899
+
+Modified:
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWILinuxRC.sh
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWIRoot.pm
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/rpm/kiwi.changes
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/netboot/suse-linuxrc
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/netboot/suse-preinit
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/oemboot/suse-linuxrc
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ppc/netboot/suse-linuxrc
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ppc/netboot/suse-preinit
+Log:
+
+- netboot: added patch when creating a filesystem on the root
+  partition. The validity is checked by fsck now instead of trying
+  to mount the device (bnc #473355)
+- netboot: implement address notification if DHCP setup has
+  changed according to the IP data stored in the ldap directory
+  for the client (bnc #473329)
+- fixed system hangup when moving data from shared memory
+  into boot partition. Fixed that by copying boot data before
+  overlayed mountSystem() is called, looks like a aufs bug
+- pass the -p option to fsck instead of -y to prevent
+  interaction with the splash screen
+
+
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWILinuxRC.sh	2009-02-10 13:56:41 UTC (rev 1898)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWILinuxRC.sh	2009-02-10 14:05:51 UTC (rev 1899)
+@@ -1873,7 +1873,7 @@
+ 		# create a filesystem on the root partition
+ 		# ----
+ 		if test $diskID -gt 2; then
+-			if ! mount $diskPartition /mnt; then
++			if ! fsck -f -p $diskPartition 1&gt;&amp;2; then
+ 				Echo &quot;Partition $diskPartition is not valid, formating...&quot;
+ 				mke2fs -j $diskPartition 1&gt;&amp;2
+ 				if test $? != 0; then
+@@ -1883,7 +1883,6 @@
+ 				fi
+ 			else
+ 				Echo &quot;Partition $diskPartition is valid, leave it untouched&quot;
+-				umount /mnt 1&gt;&amp;2
+ 			fi
+ 		fi
+ 	fi
+@@ -2596,6 +2595,57 @@
+ 	return 0
+ }
+ #======================================
++# setupReadWrite
++#--------------------------------------
++function setupReadWrite {
++	# /.../
++	# check/create read-write filesystem used for
++	# overlay data
++	# ----
++	local rwDir=/read-write
++	local rwDevice=`echo $UNIONFS_CONFIG | cut -d , -f 1`
++	mkdir -p $rwDir
++	if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ];then
++		if [ &quot;$RELOAD_IMAGE&quot; = &quot;yes&quot; ] || \
++			! mount $rwDevice $rwDir &gt;/dev/null
++		then
++			#======================================
++			# store old FSTYPE value
++			#--------------------------------------
++			if [ ! -z &quot;$FSTYPE&quot; ];then
++				FSTYPE_SAVE=$FSTYPE
++			fi
++			#======================================
++			# probe filesystem
++			#--------------------------------------
++			probeFileSystem $rwDevice
++			if [ ! &quot;$FSTYPE&quot; = &quot;unknown&quot; ];then
++				Echo &quot;Checking filesystem for RW data on $rwDevice...&quot;
++				e2fsck -f -p $rwDevice
++			fi
++			#======================================
++			# restore FSTYPE
++			#--------------------------------------
++			if [ ! -z &quot;$FSTYPE_SAVE&quot; ];then
++				FSTYPE=$FSTYPE_SAVE
++			fi
++			if [ &quot;$RELOAD_IMAGE&quot; = &quot;yes&quot; ] || \
++				! mount $rwDevice $rwDir &gt;/dev/null
++			then
++				Echo &quot;Creating filesystem for RW data on $rwDevice...&quot;
++				if ! mke2fs -j $rwDevice &gt;/dev/null;then
++					Echo &quot;Failed to create ext3 filesystem&quot;
++					return 1
++				fi
++				e2fsck -f -p $rwDevice &gt;/dev/null
++			fi
++		else
++			umount $rwDevice
++		fi
++	fi
++	return 0
++}
++#======================================
+ # mountSystemUnified
+ #--------------------------------------
+ function mountSystemUnified {
+@@ -2632,43 +2682,8 @@
+ 		# write part is not a ram disk, create ext3 filesystem on it
+ 		# check and mount the filesystem
+ 		# ----
+-		if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ];then
+-			if [ &quot;$RELOAD_IMAGE&quot; = &quot;yes&quot; ] || \
+-				! mount $rwDevice $rwDir &gt;/dev/null
+-			then
+-				#======================================
+-				# store old FSTYPE value
+-				#--------------------------------------
+-				if [ ! -z &quot;$FSTYPE&quot; ];then
+-					FSTYPE_SAVE=$FSTYPE
+-				fi
+-				#======================================
+-				# probe filesystem
+-				#--------------------------------------
+-				probeFileSystem $rwDevice
+-				if [ ! &quot;$FSTYPE&quot; = &quot;unknown&quot; ];then
+-					Echo &quot;Checking filesystem for RW data on $rwDevice...&quot;
+-					e2fsck -f $rwDevice -y
+-				fi
+-				#======================================
+-				# restore FSTYPE
+-				#--------------------------------------
+-				if [ ! -z &quot;$FSTYPE_SAVE&quot; ];then
+-					FSTYPE=$FSTYPE_SAVE
+-				fi
+-				if [ &quot;$RELOAD_IMAGE&quot; = &quot;yes&quot; ] || \
+-					! mount $rwDevice $rwDir &gt;/dev/null
+-				then
+-					Echo &quot;Creating filesystem for RW data on $rwDevice...&quot;
+-					if ! mke2fs -j $rwDevice &gt;/dev/null;then
+-						Echo &quot;Failed to create ext3 filesystem&quot;
+-						return 1
+-					fi
+-					e2fsck -f $rwDevice -y &gt;/dev/null
+-				fi
+-			else
+-				umount $rwDevice
+-			fi
++		if ! setupReadWrite; then
++			return 1
+ 		fi
+ 		if ! mount $rwDevice $rwDir &gt;/dev/null;then
+ 			Echo &quot;Failed to mount read/write filesystem&quot;
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWIRoot.pm
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWIRoot.pm	2009-02-10 13:56:41 UTC (rev 1898)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWIRoot.pm	2009-02-10 14:05:51 UTC (rev 1899)
+@@ -722,6 +722,9 @@
+ 		$kiwi -&gt; info (&quot;Copying user defined files to image tree&quot;);
+ 		mkdir $root.&quot;/tmproot&quot;;
+ 		my $copy = &quot;cp -dR --remove-destination&quot;;
++		if (-l &quot;$imageDesc/root/linuxrc&quot;) {
++			$copy = &quot;cp -LR --remove-destination&quot;;
++		}
+ 		my $data = qxx (&quot;$copy $imageDesc/root/* $root/tmproot 2&gt;&amp;1&quot;);
+ 		my $code = $? &gt;&gt; 8;
+ 		if ($code != 0) {
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/rpm/kiwi.changes
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/rpm/kiwi.changes	2009-02-10 13:56:41 UTC (rev 1898)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/rpm/kiwi.changes	2009-02-10 14:05:51 UTC (rev 1899)
+@@ -1,4 +1,19 @@
+ -------------------------------------------------------------------
++Tue Feb 10 15:01:19 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- netboot: added patch when creating a filesystem on the root
++  partition. The validity is checked by fsck now instead of trying
++  to mount the device (bnc #473355)
++- netboot: implement address notification if DHCP setup has
++  changed according to the IP data stored in the ldap directory
++  for the client (bnc #473329)
++- fixed system hangup when moving data from shared memory
++  into boot partition. Fixed that by copying boot data before
++  overlayed mountSystem() is called, looks like a aufs bug
++- pass the -p option to fsck instead of -y to prevent
++  interaction with the splash screen
++
++-------------------------------------------------------------------
+ Mon Feb  9 11:08:59 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - don't dereference symbolic links when copying the overlay
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/netboot/suse-linuxrc
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/netboot/suse-linuxrc	2009-02-10 13:56:41 UTC (rev 1898)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/netboot/suse-linuxrc	2009-02-10 14:05:51 UTC (rev 1899)
+@@ -62,6 +62,65 @@
+ . /include
+ 
+ #======================================
++# setupSystemAliasName
++#--------------------------------------
++function setupSystemAliasName {
++	# /.../
++	# Ask for an alias name if NAME from config.&lt;MAC&gt; 
++	# contains a number. If the number is -1 the system will
++	# ask for ever for this name otherwhise the number sets
++	# a timeout how long to wait for input of this data
++	# ----
++	if test $NAME -ne 0;then
++		if test $NAME -eq -1;then
++			Echo -n &quot;Enter Alias Name for this system: &quot; &amp;&amp; \
++			read SYSALIAS
++		else
++			Echo -n &quot;Enter Alias Name [timeout in $NAME sec]: &quot; &amp;&amp; \
++			read -t $NAME SYSALIAS
++		fi
++	fi
++}
++
++#======================================
++# setupSystemHWInfoFile
++#--------------------------------------
++function setupSystemHWInfoFile {
++	# /.../
++	# calls hwinfo and stores the information into a file
++	# suffixed by the hardware address of the network card
++	# ----
++	hwinfo --all --log=hwinfo.$DHCPCHADDR &gt;/dev/null
++}
++
++#======================================
++# setupSystemHWTypeFile
++#--------------------------------------
++function setupSystemHWTypeFile {
++	# /.../
++	# collects information about the alias name the
++	# architecture the BIOS version and more and stores
++	# that into a file suffixed by the hardware address of the
++	# network card. The information is uploaded to the pxe
++	# boot server and used to create a machine config.&lt;MAC&gt; 
++	# from the ldap directory
++	# ----
++	echo &quot;NCNAME=$SYSALIAS&quot;   &gt;&gt; hwtype.$DHCPCHADDR
++	echo &quot;CRNAME=$SYSALIAS&quot;   &gt;&gt; hwtype.$DHCPCHADDR
++	echo &quot;IPADDR=$IPADDR&quot;     &gt;&gt; hwtype.$DHCPCHADDR
++	echo &quot;ARCHITECTURE=$ARCH&quot; &gt;&gt; hwtype.$DHCPCHADDR
++	#========================================
++	# Try to get BIOS data if tools are there
++	#----------------------------------------
++	if [ -f /sbin/posbios ];then
++		HWBIOS=`/sbin/posbios -b`
++		echo &quot;HWBIOS=$HWBIOS&quot; &gt;&gt; hwtype.$DHCPCHADDR
++		HWTYPE=`/sbin/posbios -ms`
++		echo &quot;HWTYPE=$HWTYPE&quot; &gt;&gt; hwtype.$DHCPCHADDR
++	fi
++}
++
++#======================================
+ # Beautify Startup
+ #--------------------------------------
+ echo &quot;Loading KIWI Boot-System...&quot;
+@@ -181,46 +240,40 @@
+ 	if test ! -s $CONFIG;then
+ 		searchAlternativeConfig
+ 	fi
++	#========================================
++	# Compare current IP and IP from config 
++	#----------------------------------------
++	NEWIP=0
++	if [ -s $CONFIG ] &amp;&amp; [ ! -z &quot;$WORKSTATION_LDAP_IP&quot; ]; then
++		importFile &lt; $CONFIG
++		WSNR=`echo $WORKSTATION_LDAP_IP | sed -r -e 's/(^|\.)0*/\1/g'`
++		IPNR=`echo $IPADDR | sed -r -e 's/(^|\.)0*/\1/g'`
++		if [ &quot;$WSNR&quot; != &quot;$IPNR&quot; ];then 
++			NEWIP=1
++		fi
++	fi
+ 	#======================================
+ 	# No config found register new client
+ 	#--------------------------------------
+-	if test ! -s $CONFIG;then
++	if [ ! -s $CONFIG ];then
+ 		#======================================
+ 		# Register new network client
+ 		#--------------------------------------
+ 		Echo &quot;Registering new network client...&quot;
+-		if test $NAME -ne 0;then
+-		if test $NAME -eq -1;then
+-			Echo -n &quot;Enter Alias Name for this system: &quot; &amp;&amp; \
+-			read SYSALIAS
+-		else
+-			Echo -n &quot;Enter Alias Name [timeout in $NAME sec]: &quot; &amp;&amp; \
+-			read -t $NAME SYSALIAS
+-		fi
+-		fi
+-		hwinfo --all --log=hwinfo.$DHCPCHADDR &gt;/dev/null
+-		echo &quot;NCNAME=$SYSALIAS&quot;   &gt;&gt; hwtype.$DHCPCHADDR
+-		echo &quot;CRNAME=$SYSALIAS&quot;   &gt;&gt; hwtype.$DHCPCHADDR
+-		echo &quot;IPADDR=$IPADDR&quot;     &gt;&gt; hwtype.$DHCPCHADDR
+-		echo &quot;ARCHITECTURE=$ARCH&quot; &gt;&gt; hwtype.$DHCPCHADDR
+-		#========================================
+-		# Try to get BIOS data if tools are there
+-		#----------------------------------------
+-		if [ -f /sbin/posbios ];then
+-			HWBIOS=`/sbin/posbios -b`
+-			echo &quot;HWBIOS=$HWBIOS&quot; &gt;&gt; hwtype.$DHCPCHADDR
+-			HWTYPE=`/sbin/posbios -ms`
+-			echo &quot;HWTYPE=$HWTYPE&quot; &gt;&gt; hwtype.$DHCPCHADDR
+-		fi
++		setupSystemAliasName
++		setupSystemHWInfoFile
++		setupSystemHWTypeFile
++		#======================================
++		# Put files on the boot server
++		#--------------------------------------
+ 		putFile hwtype.$DHCPCHADDR upload/hwtype.$DHCPCHADDR
+ 		putFile hwinfo.$DHCPCHADDR upload/hwinfo.$DHCPCHADDR
+ 		echo
+ 		Echo &quot;Registered as: $DHCPCHADDR&quot;
+ 		Echo &quot;Waiting for configuration...&quot;
+ 		sleep 60
+-
+ 		#======================================
+-		# Try to get config again
++		# Wait for configuration (reload)
+ 		#--------------------------------------
+ 		while test ! -s $CONFIG;do
+ 			Echo &quot;Lookup network client config file again...&quot;
+@@ -237,6 +290,20 @@
+ 			}
+ 		done
+ 	fi
++	#======================================
++	# Config found but DHCP IP setup change
++	#--------------------------------------
++	if [ $NEWIP -eq '1' ];then
++		Echo &quot;Outdated IP address, notify new client setup...&quot;
++		setupSystemAliasName
++		setupSystemHWTypeFile
++		putFile hwtype.$DHCPCHADDR upload/hwtype.$DHCPCHADDR
++		echo
++		Echo &quot;Notified: $DHCPCHADDR&quot;
++	fi
++	#======================================
++	# import latest configuration
++	#--------------------------------------
+ 	importFile &lt; $CONFIG
+ fi
+ 
+@@ -442,14 +509,14 @@
+ 				Echo &quot;Resize EXT2 filesystem to full partition space...&quot;
+ 				resize2fs -f -F -p $imageDevice
+ 				Echo &quot;Checking EXT2 filesystem...&quot;
+-				e2fsck -f $imageDevice -y
++				e2fsck -f -p $imageDevice
+ 				INITRD_MODULES=&quot;$INITRD_MODULES ext2&quot;
+ 			fi
+ 			if test &quot;$FSTYPE&quot; = &quot;ext3&quot;;then
+ 				Echo &quot;Resize EXT3 filesystem to full partition space...&quot;
+ 				resize2fs -f -F -p $imageDevice
+ 				Echo &quot;Checking EXT3 filesystem...&quot;
+-				e2fsck -f $imageDevice -y
++				e2fsck -f -p $imageDevice
+ 				INITRD_MODULES=&quot;$INITRD_MODULES ext3&quot;
+ 			fi
+ 		fi
+@@ -591,8 +658,48 @@
+ fi
+ 
+ #======================================
+-# 14) Mount OS image to /mnt
++# 14) Make boot data available on union
+ #--------------------------------------
++if [ $LOCAL_BOOT = &quot;no&quot; ];then
++	if [ ! -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ];then
++		# /.../
++		# have to do this so that /boot gets copied to the
++		# ext3 partition, which is necessary for the bootloader to
++		# be able to find the data in there (it can't read squashfs
++		# or cromfs)
++		# ----
++		rwDir=/read-write
++		roDir=/read-only
++		for dir in $roDir $rwDir;do
++			mkdir -p $dir
++		done
++		rwDevice=`echo $UNIONFS_CONFIG | cut -d , -f 1`
++		roDevice=`echo $UNIONFS_CONFIG | cut -d , -f 2`
++		if ! setupReadWrite; then
++			systemException \
++				&quot;Failed to setup read-write filesystem&quot; \
++			&quot;reboot&quot;
++		fi
++		if ! mount $rwDevice $rwDir &gt;/dev/null;then
++			systemException \
++				&quot;Failed to mount read/write filesystem&quot; \
++			&quot;reboot&quot;
++		fi
++		if ! mount $roDevice $roDir &gt;/dev/null;then
++			systemException \
++				&quot;Failed to mount read/only filesystem&quot; \
++			&quot;reboot&quot;
++		fi
++		unset RELOAD_IMAGE
++		cp -a $roDir/boot $rwDir
++		umount $rwDir
++		umount $roDir
++	fi
++fi
++
++#======================================
++# 15) Mount OS image to /mnt
++#--------------------------------------
+ runHook premount
+ if ! mountSystem;then
+ 	systemException &quot;Failed to mount root filesystem&quot; &quot;reboot&quot;
+@@ -601,7 +708,7 @@
+ runHook postmount
+ 
+ #======================================
+-# 15) Import fixed configuration files
++# 16) Import fixed configuration files
+ #--------------------------------------
+ runHook preconfig
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+@@ -652,7 +759,7 @@
+ runHook postconfig
+ 
+ #======================================
+-# 16) check filesystem and kernels
++# 17) check filesystem and kernels
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+@@ -662,19 +769,11 @@
+ fi
+ 
+ #======================================
+-# 17) make initrd available on unionfs
++# 18) make initrd available on unionfs
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ -z &quot;$NFSROOT&quot; ] &amp;&amp; [ -z &quot;$NBDROOT&quot; ];then
+ 	if test ! -z &quot;$UNIONFS_CONFIG&quot; &amp;&amp; test $systemIntegrity = &quot;clean&quot;;then
+ 		# /.../
+-		# have to do this so that /boot gets copied to the
+-		# ext2 partition, which is necessary for the bootloader to
+-		# be able to find the data in there (it can't read squashfs
+-		# or cromfs)
+-		# ----
+-		cp -a /mnt/boot /dev/shm/boot2 &amp;&amp; rm -rf /mnt/boot
+-		mv /dev/shm/boot2 /mnt/boot
+-		# /.../
+ 		# we are using a special root setup with aufs. In this case
+ 		# we can't use the SuSE Linux initrd but must stick to the
+ 		# kiwi boot system.
+@@ -705,7 +804,7 @@
+ fi
+ 
+ #======================================
+-# 18) Create system dependant files
++# 19) Create system dependant files
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+@@ -729,7 +828,7 @@
+ fi
+ 
+ #======================================
+-# 19) If image is new, notify
++# 20) If image is new, notify
+ #--------------------------------------
+ runHook prenotify
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+@@ -759,14 +858,14 @@
+ runHook postnotify
+ 
+ #======================================
+-# 20) send DHCP_RELEASE, reset cache
++# 21) send DHCP_RELEASE, reset cache
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ -z &quot;$NFSROOT&quot; ] &amp;&amp; [ -z &quot;$NBDROOT&quot; ];then
+ 	dhcpcd -k
+ fi
+ 
+ #======================================
+-# 21) copy system dependant files
++# 22) copy system dependant files
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+@@ -775,41 +874,41 @@
+ fi
+ 
+ #======================================
+-# 22) update system dependant files
++# 23) update system dependant files
+ #--------------------------------------
+ setupInittab /mnt
+ 
+ echo 256 &gt; /proc/sys/kernel/real-root-dev
+ #======================================
+-# 23) umount system filesystems
++# 24) umount system filesystems
+ #--------------------------------------
+ umountSystemFilesystems
+ 
+ #======================================
+-# 24) copy initrd files to image
++# 25) copy initrd files to image
+ #--------------------------------------
+ importBranding
+ cp /preinit /mnt
+ cp /include /mnt
+ 
+ #======================================
+-# 25) check if reboot is required
++# 26) check if reboot is required
+ #--------------------------------------
+ kernelCheck /mnt
+ 
+ #======================================
+-# 26 kill boot shell
++# 27 kill boot shell
+ #--------------------------------------
+ killShell
+ killBlogD
+ 
+ #======================================
+-# 27 Activate new root
++# 28 Activate new root
+ #--------------------------------------
+ runHook preactivate
+ activateImage
+ 
+ #======================================
+-# 28) Unmount initrd / system init
++# 29) Unmount initrd / system init
+ #--------------------------------------
+ bootImage $@
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/netboot/suse-preinit
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/netboot/suse-preinit	2009-02-10 13:56:41 UTC (rev 1898)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/netboot/suse-preinit	2009-02-10 14:05:51 UTC (rev 1899)
+@@ -55,7 +55,7 @@
+ #======================================
+ # 6) create initrd on diskful
+ #--------------------------------------
+-if [ ! -z $DISK ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ]; then
++if [ ! -z &quot;$DISK&quot; ] &amp;&amp; [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ]; then
+ 	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+ 		#======================================
+ 		# use distro initrd via mkinitrd
+@@ -72,7 +72,7 @@
+ #======================================
+ # 7) Install boot loader on diskful
+ #--------------------------------------
+-if [ ! -z $DISK ] &amp;&amp; [ $bootLoaderOK = 1 ];then
++if [ ! -z &quot;$DISK&quot; ] &amp;&amp; [ &quot;$bootLoaderOK&quot; = 1 ];then
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+ 		installBootLoader
+ 	fi
+@@ -81,7 +81,7 @@
+ #======================================
+ # 8) create /etc/ImagePackages
+ #--------------------------------------
+-if test $systemIntegrity = &quot;clean&quot;;then
++if [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ];then
+ 	if [ -x /bin/rpm ];then
+ 		Echo &quot;Creating initial image package info file&quot;
+ 		rpm -qa --last &gt; /etc/ImagePackages
+@@ -91,7 +91,7 @@
+ #======================================
+ # 9) Reset systemIntegrity
+ #--------------------------------------
+-if test ! -z $DISK;then
++if [ ! -z &quot;$DISK&quot; ];then
+ 	if test ! -z $RELOAD_CONFIG;then
+ 		systemIntegrity=$systemIntegrity_save
+ 	fi
+@@ -100,7 +100,7 @@
+ #======================================
+ # 10) check for valid mount points 
+ #--------------------------------------
+-if test ! -z $DISK;then
++if [ ! -z &quot;$DISK&quot; ];then
+ 	IFS=&quot;:&quot; ; for i in $PART_MOUNT;do
+ 	if test ! -z &quot;$i&quot;;then
+ 	if test ! -f &quot;$i&quot;;then
+@@ -113,7 +113,7 @@
+ #======================================
+ # 11) Update /etc/ImageVersion files
+ #--------------------------------------
+-if test ! -z $DISK;then
++if [ ! -z &quot;$DISK&quot; ];then
+ 	count=0
+ 	IFS=&quot;,&quot; ; for i in $IMAGE;do
+ 		count=$(($count + 1))
+@@ -140,7 +140,7 @@
+ #======================================
+ # 12) setup network for nfs boot
+ #--------------------------------------
+-if test ! -z $NFSROOT;then
++if [ ! -z &quot;$NFSROOT&quot; ];then
+ 	mount -o nolock -t proc  proc    /proc
+ 	mount -o nolock -t sysfs sysfs   /sys
+ 	mount -o nolock -t devpts devpts /dev/pts
+@@ -150,7 +150,7 @@
+ #======================================
+ # 13) kill udev
+ #--------------------------------------
+-if [ ! -z $DISK ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ]; then
++if [ ! -z &quot;$DISK&quot; ] &amp;&amp; [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ]; then
+ 	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+ 		udevKill
+ 		umountSystemFilesystems
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/oemboot/suse-linuxrc
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/oemboot/suse-linuxrc	2009-02-10 13:56:41 UTC (rev 1898)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/oemboot/suse-linuxrc	2009-02-10 14:05:51 UTC (rev 1899)
+@@ -219,14 +219,14 @@
+ 				Echo &quot;Resize EXT2 filesystem to full partition space...&quot;
+ 				resize2fs -f -F -p $deviceResize
+ 				Echo &quot;Checking EXT2 filesystem...&quot;
+-				e2fsck -y -f $deviceResize
++				e2fsck -f -p $deviceResize
+ 				INITRD_MODULES=&quot;$INITRD_MODULES ext2&quot;
+ 			fi
+ 			if [ &quot;$FSTYPE&quot; = &quot;ext3&quot; ];then
+ 				Echo &quot;Resize EXT3 filesystem to full partition space...&quot;
+ 				resize2fs -f -F -p $deviceResize
+ 				Echo &quot;Checking EXT3 filesystem...&quot;
+-				e2fsck -y -f $deviceResize
++				e2fsck -f -p $deviceResize
+ 				INITRD_MODULES=&quot;$INITRD_MODULES ext3&quot;
+ 			fi
+ 		fi
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ppc/netboot/suse-linuxrc
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ppc/netboot/suse-linuxrc	2009-02-10 13:56:41 UTC (rev 1898)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ppc/netboot/suse-linuxrc	2009-02-10 14:05:51 UTC (rev 1899)
+@@ -62,6 +62,65 @@
+ . /include
+ 
+ #======================================
++# setupSystemAliasName
++#--------------------------------------
++function setupSystemAliasName {
++	# /.../
++	# Ask for an alias name if NAME from config.&lt;MAC&gt; 
++	# contains a number. If the number is -1 the system will
++	# ask for ever for this name otherwhise the number sets
++	# a timeout how long to wait for input of this data
++	# ----
++	if test $NAME -ne 0;then
++		if test $NAME -eq -1;then
++			Echo -n &quot;Enter Alias Name for this system: &quot; &amp;&amp; \
++			read SYSALIAS
++		else
++			Echo -n &quot;Enter Alias Name [timeout in $NAME sec]: &quot; &amp;&amp; \
++			read -t $NAME SYSALIAS
++		fi
++	fi
++}
++
++#======================================
++# setupSystemHWInfoFile
++#--------------------------------------
++function setupSystemHWInfoFile {
++	# /.../
++	# calls hwinfo and stores the information into a file
++	# suffixed by the hardware address of the network card
++	# ----
++	hwinfo --all --log=hwinfo.$DHCPCHADDR &gt;/dev/null
++}
++
++#======================================
++# setupSystemHWTypeFile
++#--------------------------------------
++function setupSystemHWTypeFile {
++	# /.../
++	# collects information about the alias name the
++	# architecture the BIOS version and more and stores
++	# that into a file suffixed by the hardware address of the
++	# network card. The information is uploaded to the pxe
++	# boot server and used to create a machine config.&lt;MAC&gt; 
++	# from the ldap directory
++	# ----
++	echo &quot;NCNAME=$SYSALIAS&quot;   &gt;&gt; hwtype.$DHCPCHADDR
++	echo &quot;CRNAME=$SYSALIAS&quot;   &gt;&gt; hwtype.$DHCPCHADDR
++	echo &quot;IPADDR=$IPADDR&quot;     &gt;&gt; hwtype.$DHCPCHADDR
++	echo &quot;ARCHITECTURE=$ARCH&quot; &gt;&gt; hwtype.$DHCPCHADDR
++	#========================================
++	# Try to get BIOS data if tools are there
++	#----------------------------------------
++	if [ -f /sbin/posbios ];then
++		HWBIOS=`/sbin/posbios -b`
++		echo &quot;HWBIOS=$HWBIOS&quot; &gt;&gt; hwtype.$DHCPCHADDR
++		HWTYPE=`/sbin/posbios -ms`
++		echo &quot;HWTYPE=$HWTYPE&quot; &gt;&gt; hwtype.$DHCPCHADDR
++	fi
++}
++
++#======================================
+ # Beautify Startup
+ #--------------------------------------
+ echo &quot;Loading KIWI Boot-System...&quot;
+@@ -181,46 +240,40 @@
+ 	if test ! -s $CONFIG;then
+ 		searchAlternativeConfig
+ 	fi
++	#========================================
++	# Compare current IP and IP from config 
++	#----------------------------------------
++	NEWIP=0
++	if [ -s $CONFIG ] &amp;&amp; [ ! -z &quot;$WORKSTATION_LDAP_IP&quot; ]; then
++		importFile &lt; $CONFIG
++		WSNR=`echo $WORKSTATION_LDAP_IP | sed -r -e 's/(^|\.)0*/\1/g'`
++		IPNR=`echo $IPADDR | sed -r -e 's/(^|\.)0*/\1/g'`
++		if [ &quot;$WSNR&quot; != &quot;$IPNR&quot; ];then 
++			NEWIP=1
++		fi
++	fi
+ 	#======================================
+ 	# No config found register new client
+ 	#--------------------------------------
+-	if test ! -s $CONFIG;then
++	if [ ! -s $CONFIG ];then
+ 		#======================================
+ 		# Register new network client
+ 		#--------------------------------------
+ 		Echo &quot;Registering new network client...&quot;
+-		if test $NAME -ne 0;then
+-		if test $NAME -eq -1;then
+-			Echo -n &quot;Enter Alias Name for this system: &quot; &amp;&amp; \
+-			read SYSALIAS
+-		else
+-			Echo -n &quot;Enter Alias Name [timeout in $NAME sec]: &quot; &amp;&amp; \
+-			read -t $NAME SYSALIAS
+-		fi
+-		fi
+-		hwinfo --all --log=hwinfo.$DHCPCHADDR &gt;/dev/null
+-		echo &quot;NCNAME=$SYSALIAS&quot;   &gt;&gt; hwtype.$DHCPCHADDR
+-		echo &quot;CRNAME=$SYSALIAS&quot;   &gt;&gt; hwtype.$DHCPCHADDR
+-		echo &quot;IPADDR=$IPADDR&quot;     &gt;&gt; hwtype.$DHCPCHADDR
+-		echo &quot;ARCHITECTURE=$ARCH&quot; &gt;&gt; hwtype.$DHCPCHADDR
+-		#========================================
+-		# Try to get BIOS data if tools are there
+-		#----------------------------------------
+-		if [ -f /sbin/posbios ];then
+-			HWBIOS=`/sbin/posbios -b`
+-			echo &quot;HWBIOS=$HWBIOS&quot; &gt;&gt; hwtype.$DHCPCHADDR
+-			HWTYPE=`/sbin/posbios -ms`
+-			echo &quot;HWTYPE=$HWTYPE&quot; &gt;&gt; hwtype.$DHCPCHADDR
+-		fi
++		setupSystemAliasName
++		setupSystemHWInfoFile
++		setupSystemHWTypeFile
++		#======================================
++		# Put files on the boot server
++		#--------------------------------------
+ 		putFile hwtype.$DHCPCHADDR upload/hwtype.$DHCPCHADDR
+ 		putFile hwinfo.$DHCPCHADDR upload/hwinfo.$DHCPCHADDR
+ 		echo
+ 		Echo &quot;Registered as: $DHCPCHADDR&quot;
+ 		Echo &quot;Waiting for configuration...&quot;
+ 		sleep 60
+-
+ 		#======================================
+-		# Try to get config again
++		# Wait for configuration (reload)
+ 		#--------------------------------------
+ 		while test ! -s $CONFIG;do
+ 			Echo &quot;Lookup network client config file again...&quot;
+@@ -237,6 +290,20 @@
+ 			}
+ 		done
+ 	fi
++	#======================================
++	# Config found but DHCP IP setup change
++	#--------------------------------------
++	if [ $NEWIP -eq '1' ];then
++		Echo &quot;Outdated IP address, notify new client setup...&quot;
++		setupSystemAliasName
++		setupSystemHWTypeFile
++		putFile hwtype.$DHCPCHADDR upload/hwtype.$DHCPCHADDR
++		echo
++		Echo &quot;Notified: $DHCPCHADDR&quot;
++	fi
++	#======================================
++	# import latest configuration
++	#--------------------------------------
+ 	importFile &lt; $CONFIG
+ fi
+ 
+@@ -442,14 +509,14 @@
+ 				Echo &quot;Resize EXT2 filesystem to full partition space...&quot;
+ 				resize2fs -f -F -p $imageDevice
+ 				Echo &quot;Checking EXT2 filesystem...&quot;
+-				e2fsck -f $imageDevice -y
++				e2fsck -f -p $imageDevice
+ 				INITRD_MODULES=&quot;$INITRD_MODULES ext2&quot;
+ 			fi
+ 			if test &quot;$FSTYPE&quot; = &quot;ext3&quot;;then
+ 				Echo &quot;Resize EXT3 filesystem to full partition space...&quot;
+ 				resize2fs -f -F -p $imageDevice
+ 				Echo &quot;Checking EXT3 filesystem...&quot;
+-				e2fsck -f $imageDevice -y
++				e2fsck -f -p $imageDevice
+ 				INITRD_MODULES=&quot;$INITRD_MODULES ext3&quot;
+ 			fi
+ 		fi
+@@ -591,8 +658,48 @@
+ fi
+ 
+ #======================================
+-# 14) Mount OS image to /mnt
++# 14) Make boot data available on union
+ #--------------------------------------
++if [ $LOCAL_BOOT = &quot;no&quot; ];then
++	if [ ! -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ];then
++		# /.../
++		# have to do this so that /boot gets copied to the
++		# ext3 partition, which is necessary for the bootloader to
++		# be able to find the data in there (it can't read squashfs
++		# or cromfs)
++		# ----
++		rwDir=/read-write
++		roDir=/read-only
++		for dir in $roDir $rwDir;do
++			mkdir -p $dir
++		done
++		rwDevice=`echo $UNIONFS_CONFIG | cut -d , -f 1`
++		roDevice=`echo $UNIONFS_CONFIG | cut -d , -f 2`
++		if ! setupReadWrite; then
++			systemException \
++				&quot;Failed to setup read-write filesystem&quot; \
++			&quot;reboot&quot;
++		fi
++		if ! mount $rwDevice $rwDir &gt;/dev/null;then
++			systemException \
++				&quot;Failed to mount read/write filesystem&quot; \
++			&quot;reboot&quot;
++		fi
++		if ! mount $roDevice $roDir &gt;/dev/null;then
++			systemException \
++				&quot;Failed to mount read/only filesystem&quot; \
++			&quot;reboot&quot;
++		fi
++		unset RELOAD_IMAGE
++		cp -a $roDir/boot $rwDir
++		umount $rwDir
++		umount $roDir
++	fi
++fi
++
++#======================================
++# 15) Mount OS image to /mnt
++#--------------------------------------
+ runHook premount
+ if ! mountSystem;then
+ 	systemException &quot;Failed to mount root filesystem&quot; &quot;reboot&quot;
+@@ -601,7 +708,7 @@
+ runHook postmount
+ 
+ #======================================
+-# 15) Import fixed configuration files
++# 16) Import fixed configuration files
+ #--------------------------------------
+ runHook preconfig
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+@@ -652,7 +759,7 @@
+ runHook postconfig
+ 
+ #======================================
+-# 16) check filesystem and kernels
++# 17) check filesystem and kernels
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+@@ -662,19 +769,11 @@
+ fi
+ 
+ #======================================
+-# 17) make initrd available on unionfs
++# 18) make initrd available on unionfs
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ -z &quot;$NFSROOT&quot; ] &amp;&amp; [ -z &quot;$NBDROOT&quot; ];then
+ 	if test ! -z &quot;$UNIONFS_CONFIG&quot; &amp;&amp; test $systemIntegrity = &quot;clean&quot;;then
+ 		# /.../
+-		# have to do this so that /boot gets copied to the
+-		# ext2 partition, which is necessary for the bootloader to
+-		# be able to find the data in there (it can't read squashfs
+-		# or cromfs)
+-		# ----
+-		cp -a /mnt/boot /dev/shm/boot2 &amp;&amp; rm -rf /mnt/boot
+-		mv /dev/shm/boot2 /mnt/boot
+-		# /.../
+ 		# we are using a special root setup with aufs. In this case
+ 		# we can't use the SuSE Linux initrd but must stick to the
+ 		# kiwi boot system.
+@@ -705,7 +804,7 @@
+ fi
+ 
+ #======================================
+-# 18) Create system dependant files
++# 19) Create system dependant files
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+@@ -729,7 +828,7 @@
+ fi
+ 
+ #======================================
+-# 19) If image is new, notify
++# 20) If image is new, notify
+ #--------------------------------------
+ runHook prenotify
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+@@ -759,14 +858,14 @@
+ runHook postnotify
+ 
+ #======================================
+-# 20) send DHCP_RELEASE, reset cache
++# 21) send DHCP_RELEASE, reset cache
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ -z &quot;$NFSROOT&quot; ] &amp;&amp; [ -z &quot;$NBDROOT&quot; ];then
+ 	dhcpcd -k
+ fi
+ 
+ #======================================
+-# 21) copy system dependant files
++# 22) copy system dependant files
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+@@ -775,41 +874,41 @@
+ fi
+ 
+ #======================================
+-# 22) update system dependant files
++# 23) update system dependant files
+ #--------------------------------------
+ setupInittab /mnt
+ 
+ echo 256 &gt; /proc/sys/kernel/real-root-dev
+ #======================================
+-# 23) umount system filesystems
++# 24) umount system filesystems
+ #--------------------------------------
+ umountSystemFilesystems
+ 
+ #======================================
+-# 24) copy initrd files to image
++# 25) copy initrd files to image
+ #--------------------------------------
+ importBranding
+ cp /preinit /mnt
+ cp /include /mnt
+ 
+ #======================================
+-# 25) check if reboot is required
++# 26) check if reboot is required
+ #--------------------------------------
+ kernelCheck /mnt
+ 
+ #======================================
+-# 26 kill boot shell
++# 27 kill boot shell
+ #--------------------------------------
+ killShell
+ killBlogD
+ 
+ #======================================
+-# 27 Activate new root
++# 28 Activate new root
+ #--------------------------------------
+ runHook preactivate
+ activateImage
+ 
+ #======================================
+-# 28) Unmount initrd / system init
++# 29) Unmount initrd / system init
+ #--------------------------------------
+ bootImage $@
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ppc/netboot/suse-preinit
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ppc/netboot/suse-preinit	2009-02-10 13:56:41 UTC (rev 1898)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ppc/netboot/suse-preinit	2009-02-10 14:05:51 UTC (rev 1899)
+@@ -55,7 +55,7 @@
+ #======================================
+ # 6) create initrd on diskful
+ #--------------------------------------
+-if [ ! -z $DISK ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ]; then
++if [ ! -z &quot;$DISK&quot; ] &amp;&amp; [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ]; then
+ 	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+ 		#======================================
+ 		# use distro initrd via mkinitrd
+@@ -72,7 +72,7 @@
+ #======================================
+ # 7) Install boot loader on diskful
+ #--------------------------------------
+-if [ ! -z $DISK ] &amp;&amp; [ $bootLoaderOK = 1 ];then
++if [ ! -z &quot;$DISK&quot; ] &amp;&amp; [ &quot;$bootLoaderOK&quot; = 1 ];then
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+ 		installBootLoader
+ 	fi
+@@ -81,7 +81,7 @@
+ #======================================
+ # 8) create /etc/ImagePackages
+ #--------------------------------------
+-if test $systemIntegrity = &quot;clean&quot;;then
++if [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ];then
+ 	if [ -x /bin/rpm ];then
+ 		Echo &quot;Creating initial image package info file&quot;
+ 		rpm -qa --last &gt; /etc/ImagePackages
+@@ -91,7 +91,7 @@
+ #======================================
+ # 9) Reset systemIntegrity
+ #--------------------------------------
+-if test ! -z $DISK;then
++if [ ! -z &quot;$DISK&quot; ];then
+ 	if test ! -z $RELOAD_CONFIG;then
+ 		systemIntegrity=$systemIntegrity_save
+ 	fi
+@@ -100,7 +100,7 @@
+ #======================================
+ # 10) check for valid mount points 
+ #--------------------------------------
+-if test ! -z $DISK;then
++if [ ! -z &quot;$DISK&quot; ];then
+ 	IFS=&quot;:&quot; ; for i in $PART_MOUNT;do
+ 	if test ! -z &quot;$i&quot;;then
+ 	if test ! -f &quot;$i&quot;;then
+@@ -113,7 +113,7 @@
+ #======================================
+ # 11) Update /etc/ImageVersion files
+ #--------------------------------------
+-if test ! -z $DISK;then
++if [ ! -z &quot;$DISK&quot; ];then
+ 	count=0
+ 	IFS=&quot;,&quot; ; for i in $IMAGE;do
+ 		count=$(($count + 1))
+@@ -140,7 +140,7 @@
+ #======================================
+ # 12) setup network for nfs boot
+ #--------------------------------------
+-if test ! -z $NFSROOT;then
++if [ ! -z &quot;$NFSROOT&quot; ];then
+ 	mount -o nolock -t proc  proc    /proc
+ 	mount -o nolock -t sysfs sysfs   /sys
+ 	mount -o nolock -t devpts devpts /dev/pts
+@@ -150,7 +150,7 @@
+ #======================================
+ # 13) kill udev
+ #--------------------------------------
+-if [ ! -z $DISK ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ]; then
++if [ ! -z &quot;$DISK&quot; ] &amp;&amp; [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ]; then
+ 	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+ 		udevKill
+ 		umountSystemFilesystems
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001019.html">[Kiwi-devel] r1898 - in kiwi-head: modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ppc/netboot
+</A></li>
+	<LI>Next message: <A HREF="001021.html">[Kiwi-devel] r1900 - in kiwi-head: . modules rpm	system/boot/ix86/netboot system/boot/ppc/netboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1020">[ date ]</a>
+              <a href="thread.html#1020">[ thread ]</a>
+              <a href="subject.html#1020">[ subject ]</a>
+              <a href="author.html#1020">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

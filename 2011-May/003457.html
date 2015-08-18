@@ -1,0 +1,344 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 006ed05164d19c55c097171940a07090c6823ec4
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20006ed05164d19c55c097171940a07090c6823ec4&In-Reply-To=%3C20110523102525.84D154814E7%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003456.html">
+   <LINK REL="Next"  HREF="003458.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 006ed05164d19c55c097171940a07090c6823ec4</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20006ed05164d19c55c097171940a07090c6823ec4&In-Reply-To=%3C20110523102525.84D154814E7%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 006ed05164d19c55c097171940a07090c6823ec4">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon May 23 12:25:25 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003456.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. 19cfb983d5998691bf0a9ff13939fd05cd10019b
+</A></li>
+        <LI>Next message: <A HREF="003458.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9cbb2adca3ec0659bcbd7c0284d36be3c4824f73
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3457">[ date ]</a>
+              <a href="thread.html#3457">[ thread ]</a>
+              <a href="subject.html#3457">[ subject ]</a>
+              <a href="author.html#3457">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  006ed05164d19c55c097171940a07090c6823ec4 (commit)
+      from  fa903ac89ab2c1ca682988f602ce5ff1afcad6b5 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 006ed05164d19c55c097171940a07090c6823ec4
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon May 23 11:55:55 2011 +0200
+
+    - eliminate use of global variables: main::FS* and main::SetImageType
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 2309fa2..8621968 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -102,7 +102,6 @@ our $SetRepository;         # set first repository for building physical extend
+ our $SetRepositoryType;     # set firt repository type
+ our $SetRepositoryAlias;    # alias name for the repository
+ our $SetRepositoryPriority; # priority for the repository
+-our $SetImageType;          # set image type to use, default is primary type
+ our $Migrate;               # migrate running system to image description
+ our @Exclude;               # exclude directories in migrate search
+ our @Skip;                  # skip this package in migration mode
+@@ -115,12 +114,6 @@ our $GzipCmd;               # command to run to gzip things
+ our $PrebuiltBootImage;     # directory where a prepared boot image may be found
+ our $CreatePassword;        # create crypted password
+ our $ISOCheck;              # create checkmedia boot entry
+-our $FSBlockSize;           # filesystem block size
+-our $FSInodeSize;           # filesystem inode size
+-our $FSJournalSize;         # filesystem journal size
+-our $FSMaxMountCount;       # filesystem (ext2-4) max mount count between checks
+-our $FSCheckInterval;       # filesystem (ext2-4) max interval between fs checks
+-our $FSInodeRatio;          # filesystem bytes/inode ratio
+ our $Verbosity = 0;         # control the verbosity level
+ our $TargetArch;            # target architecture -&gt; writes zypp.conf
+ our $CheckKernel;           # check for kernel matches in boot and system image
+@@ -472,6 +465,7 @@ sub main {
+ 		$kiwi -&gt; info (&quot;Starting image test run...&quot;);
+ 		my $suite  = &quot;/usr/lib/os-autoinst&quot;;
+ 		my $distri = &quot;kiwi-$$&quot;;
++		my $type   = $cmdL -&gt; getBuildType();
+ 		#==========================================
+ 		# Check pre-conditions
+ 		#------------------------------------------
+@@ -487,7 +481,7 @@ sub main {
+ 			$kiwi -&gt; failed ();
+ 			kiwiExit (1);
+ 		}
+-		if (! defined $SetImageType) {
++		if (! defined $type) {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error (&quot;No test image type specified&quot;);
+ 			$kiwi -&gt; failed ();
+@@ -499,9 +493,9 @@ sub main {
+ 			$kiwi -&gt; failed ();
+ 			kiwiExit (1);
+ 		}
+-		if (! -d $TestCase.&quot;/&quot;.$SetImageType) {
++		if (! -d $TestCase.&quot;/&quot;.$type) {
+ 			$kiwi -&gt; failed ();
+-			$kiwi -&gt; error (&quot;Test case $SetImageType does not exist&quot;);
++			$kiwi -&gt; error (&quot;Test case $type does not exist&quot;);
+ 			$kiwi -&gt; failed ();
+ 			kiwiExit (1);
+ 		}
+@@ -519,7 +513,7 @@ sub main {
+ 		#==========================================
+ 		# Create distri link for os-autoinst
+ 		#------------------------------------------
+-		my $test = $TestCase.&quot;/&quot;.$SetImageType;
++		my $test = $TestCase.&quot;/&quot;.$type;
+ 		my $data = qxx (&quot;ln -s $test $suite/distri/$distri 2&gt;&amp;1&quot;);
+ 		my $code = $? &gt;&gt; 8;
+ 		if ($code != 0) {
+@@ -614,15 +608,30 @@ sub init {
+ 	# requires you to perform at least one action.
+ 	# An action is either to prepare or create an image
+ 	# ---
++	#==========================================
++	# IPC; signal setup
++	#------------------------------------------
+ 	$SIG{&quot;HUP&quot;}      = \&quit;
+ 	$SIG{&quot;TERM&quot;}     = \&quit;
+ 	$SIG{&quot;INT&quot;}      = \&quit;
++	#==========================================
++	# Option variables
++	#------------------------------------------
+ 	my $gdata = $global -&gt; getGlobals();
+ 	my $Help;
+ 	my @ListXMLInfoSelection;  # info selection for listXMLInfo
++	my $FSBlockSize;           # filesystem block size
++	my $FSInodeSize;           # filesystem inode size
++	my $FSJournalSize;         # filesystem journal size
++	my $FSMaxMountCount;       # filesystem (ext) max mount count between checks
++	my $FSCheckInterval;       # filesystem (ext) max interval between fs checks
++	my $FSInodeRatio;          # filesystem bytes/inode ratio
++	my $SetImageType;          # set image type to use, default is primary type
+ 	my $PackageManager;
+ 	my $Version;
+-
++	#==========================================
++	# create logger and cmdline object
++	#------------------------------------------
+ 	$kiwi = new KIWILog(&quot;tiny&quot;);
+ 	$cmdL = new KIWICommandLine($kiwi);
+ 	if (! $cmdL) {
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index ba368aa..347296b 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -105,12 +105,12 @@ sub new {
+ 	#==========================================
+ 	# find image type...
+ 	#------------------------------------------
+-	if (! defined $main::SetImageType) {
++	if (! defined $cmdL-&gt;getBuildType()) {
+ 		if ($initrd =~ /oemboot/) {
+-			$main::SetImageType = &quot;oem&quot;;
++			$cmdL -&gt; setBuildType (&quot;oem&quot;);
+ 		}
+ 		if ($initrd =~ /vmxboot/) {
+-			$main::SetImageType = &quot;vmx&quot;;
++			$cmdL -&gt; setBuildType (&quot;vmx&quot;);
+ 		}
+ 	}
+ 	#==========================================
+@@ -236,7 +236,7 @@ sub new {
+ 				return undef;
+ 			}
+ 			$xml = new KIWIXML (
+-				$kiwi,$system.&quot;/image&quot;,$main::SetImageType,$profile
++				$kiwi,$system.&quot;/image&quot;,$cmdL-&gt;getBuildType(),$profile
+ 			);
+ 		} else {
+ 			my %fsattr = $main::global -&gt; checkFileSystem ($system);
+@@ -294,7 +294,7 @@ sub new {
+ 					return undef;
+ 				}
+ 				$xml = new KIWIXML (
+-					$kiwi,$tmpdir.&quot;/image&quot;,$main::SetImageType,$profile
++					$kiwi,$tmpdir.&quot;/image&quot;,$cmdL-&gt;getBuildType(),$profile
+ 				);
+ 				#==========================================
+ 				# clean up
+@@ -311,7 +311,7 @@ sub new {
+ 				# check for split type
+ 				#------------------------------------------
+ 				if (-f &quot;$tmpdir/rootfs.tar&quot;) {
+-					$main::SetImageType = &quot;split&quot;;
++					$cmdL -&gt; setBuildType (&quot;split&quot;);
+ 					$haveSplit = 1;
+ 				}
+ 				#==========================================
+@@ -331,7 +331,7 @@ sub new {
+ 					return undef;
+ 				}
+ 				$xml = new KIWIXML (
+-					$kiwi,$tmpdir.&quot;/image&quot;,$main::SetImageType,$profile
++					$kiwi,$tmpdir.&quot;/image&quot;,$cmdL-&gt;getBuildType(),$profile
+ 				);
+ 				#==========================================
+ 				# clean up
+@@ -364,6 +364,9 @@ sub new {
+ 		my $cmdlBytes    = 0;
+ 		my $spare        = 1.5;
+ 		my $journal      = 12 * 1024 * 1024;
++		my $fsopts       = $cmdL -&gt; getFilesystemOptions();
++		my $inodesize    = $fsopts-&gt;[1];
++		my $inoderatio   = $fsopts-&gt;[2];
+ 		#==========================================
+ 		# Calculate minimum size of the system
+ 		#------------------------------------------
+@@ -374,7 +377,7 @@ sub new {
+ 			chomp $minInodes;
+ 			chomp $sizeBytes;
+ 			$minInodes*= 2;
+-			$sizeBytes+= $minInodes * $main::FSInodeSize;
++			$sizeBytes+= $minInodes * $inodesize;
+ 			$sizeBytes*= $spare;
+ 			$sizeBytes+= $journal;
+ 		} else {
+@@ -428,7 +431,7 @@ sub new {
+ 			# will be created during the image creation. In this
+ 			# case we need to create the inode count
+ 			# ----
+-			$this-&gt;{inodes} = int ($sizeBytes / $main::FSInodeRatio);
++			$this-&gt;{inodes} = int ($sizeBytes / $inoderatio);
+ 			$kiwi -&gt; loginfo (
+ 				&quot;Using &quot;.$this-&gt;{inodes}.&quot; inodes for the root filesystem\n&quot;
+ 			);
+@@ -495,7 +498,7 @@ sub new {
+ 	$this-&gt;{xendomain} = $xendomain;
+ 	$this-&gt;{profile}   = $profile;
+ 	$this-&gt;{haveSplit} = $haveSplit;
+-	$this-&gt;{imgtype}   = $main::SetImageType;
++	$this-&gt;{imgtype}   = $cmdL-&gt;getBuildType();
+ 	return $this;
+ }
+ 
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 20e1722..3df1d4b 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -1334,9 +1334,12 @@ sub createImageLiveCD {
+ 		# Create EXT2 filesystem on RW extend
+ 		#------------------------------------------
+ 		my $setBlockSize = 0;
+-		if (! defined $main::FSBlockSize) {
+-			$main::FSBlockSize = 4096;
++		my $fsopts       = $cmdL -&gt; getFilesystemOptions();
++		my $blocksize    = $fsopts-&gt;[0];
++		if (! defined $blocksize) {
++			$fsopts-&gt;[0] = 4096;
+ 			$setBlockSize = 1;
++			$cmdL -&gt; setFilesystemOptions (@{$fsopts});
+ 		}
+ 		if (! $this -&gt; setupEXT2 ( $namerw )) {
+ 			$this -&gt; restoreSplitExtend ();
+@@ -1344,7 +1347,8 @@ sub createImageLiveCD {
+ 			return undef;
+ 		}
+ 		if ($setBlockSize) {
+-			undef $main::FSBlockSize;
++			undef $fsopts-&gt;[0];
++			$cmdL -&gt; setFilesystemOptions (@{$fsopts});
+ 		}
+ 		#==========================================
+ 		# mount logical extend for data transfer
+@@ -3808,6 +3812,7 @@ sub getSize {
+ 	# ---
+ 	my $this   = shift;
+ 	my $kiwi   = $this-&gt;{kiwi};
++	my $cmdL   = $this-&gt;{cmdL};
+ 	my $extend = shift;
+ 	my $xml    = $this-&gt;{xml};
+ 	my $mini   = qxx (&quot;find $extend | wc -l&quot;); chomp $mini;
+@@ -3815,6 +3820,9 @@ sub getSize {
+ 	my $spare  = 1.5;
+ 	my $journal= 12 * 1024 * 1024;
+ 	my $files  = $mini;
++	my $fsopts = $cmdL -&gt; getFilesystemOptions();
++	my $isize  = $fsopts-&gt;[1];
++	my $iratio = $fsopts-&gt;[2];
+ 	my $xmlsize;
+ 	#==========================================
+ 	# Double minimum inode count
+@@ -3826,9 +3834,9 @@ sub getSize {
+ 	$kiwi -&gt; loginfo (&quot;getSize: files: $files\n&quot;);
+ 	$kiwi -&gt; loginfo (&quot;getSize: spare: $spare\n&quot;);
+ 	$kiwi -&gt; loginfo (&quot;getSize: usage: $minsize Bytes\n&quot;);
+-	$kiwi -&gt; loginfo (&quot;getSize: inode: $main::FSInodeSize Bytes\n&quot;);
++	$kiwi -&gt; loginfo (&quot;getSize: inode: $isize Bytes\n&quot;);
+ 	$kiwi -&gt; loginfo (&quot;getSize: journ: $journal Bytes\n&quot;);
+-	$minsize += $mini * $main::FSInodeSize;
++	$minsize += $mini * $isize;
+ 	$minsize *= $spare;
+ 	$minsize += $journal;
+ 	$xmlsize = $minsize;
+@@ -3872,7 +3880,7 @@ sub getSize {
+ 	my $usedsize = $minsize; 
+ 	if ($xmlsize &gt; $minsize) {
+ 		$usedsize = $xmlsize;
+-		$this-&gt;{inodes} = sprintf (&quot;%.0f&quot;,$usedsize / $main::FSInodeRatio);
++		$this-&gt;{inodes} = sprintf (&quot;%.0f&quot;,$usedsize / $iratio);
+ 	} else {
+ 		$this-&gt;{inodes} = $mini;
+ 	}
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003456.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. 19cfb983d5998691bf0a9ff13939fd05cd10019b
+</A></li>
+	<LI>Next message: <A HREF="003458.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9cbb2adca3ec0659bcbd7c0284d36be3c4824f73
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3457">[ date ]</a>
+              <a href="thread.html#3457">[ thread ]</a>
+              <a href="subject.html#3457">[ subject ]</a>
+              <a href="author.html#3457">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

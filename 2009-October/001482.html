@@ -1,0 +1,1311 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8c2cde697575dbaa07fcc7625790af364cbb671a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%208c2cde697575dbaa07fcc7625790af364cbb671a&In-Reply-To=%3C200910051536.n95FaQhm030194%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001480.html">
+   <LINK REL="Next"  HREF="001481.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8c2cde697575dbaa07fcc7625790af364cbb671a</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%208c2cde697575dbaa07fcc7625790af364cbb671a&In-Reply-To=%3C200910051536.n95FaQhm030194%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8c2cde697575dbaa07fcc7625790af364cbb671a">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Oct  5 17:36:26 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001480.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5dc7abe170b7243f4b1d882212f1f35000a0bc38
+</A></li>
+        <LI>Next message: <A HREF="001481.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 87690a50b31931940b0601f6224aa8d2ea46bd57
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1482">[ date ]</a>
+              <a href="thread.html#1482">[ thread ]</a>
+              <a href="subject.html#1482">[ subject ]</a>
+              <a href="author.html#1482">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  8c2cde697575dbaa07fcc7625790af364cbb671a (commit)
+       via  5735c5baff16fb46680e8d1409ecff631a40cdfb (commit)
+      from  5dc7abe170b7243f4b1d882212f1f35000a0bc38 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 8c2cde697575dbaa07fcc7625790af364cbb671a
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Oct 5 17:35:59 2009 +0200
+
+    - fixed race condition in setupRecoveryArchive() when
+      creating the tar archive
+    - fixed fbiterm support for SLE10
+    - fixed baseStripUnusedLibs
+
+commit 5735c5baff16fb46680e8d1409ecff631a40cdfb
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Oct 5 16:43:52 2009 +0200
+
+    - added and improved official JeOS templates to the kiwi git
+      source tree. The official templates used by the SDK product
+      and the SuSE Studio online service are now provided via the
+      kiwi package kiwi-templates (bnc #521970)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 6d486c7..43123fa 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -755,7 +755,7 @@ sub main {
+ 		#------------------------------------------
+ 		if ($type eq &quot;oem&quot;) {
+ 			my $configure = new KIWIConfigure (
+-				$kiwi,$xml,$Create,$Create.&quot;/image&quot;
++				$kiwi,$xml,$Create,$Create.&quot;/image&quot;,$Destination
+ 			);
+ 			if (! defined $configure) {
+ 				if (defined $BaseRoot) {
+@@ -2033,7 +2033,9 @@ sub kiwiExit {
+ 	#==========================================
+ 	# Write temporary XML changes as xml log...
+ 	#------------------------------------------
+-	$kiwi -&gt; writeXML();
++	if (defined $kiwi) {
++		$kiwi -&gt; writeXML();
++	}
+ 	#==========================================
+ 	# Survive because kiwi called itself
+ 	#------------------------------------------
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 477b5a2..ef766f2 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -821,6 +821,7 @@ function baseStripUnusedLibs {
+ 	# find directly used libraries, by calling ldd
+ 	# on files in *bin*
+ 	# ---
++	ldconfig
+ 	rm -f /tmp/needlibs
+ 	for i in /usr/bin/* /bin/* /sbin/* /usr/sbin/*;do
+ 		for n in `ldd $i 2&gt;/dev/null`;do
+@@ -845,7 +846,7 @@ function baseStripUnusedLibs {
+ 	# add exceptions
+ 	# ----
+ 	while [ ! -z $1 ];do
+-		for i in /lib*/$1* /usr/lib*/$1*;do
++		for i in /lib*/$1* /usr/lib*/$1* /usr/X11R6/lib*/$1*;do
+ 			if [ -e $i ];then
+ 				needlibs[$count]=$i
+ 				count=`expr $count + 1`
+@@ -857,9 +858,11 @@ function baseStripUnusedLibs {
+ 	# find unused libs and remove it, dl loaded libs
+ 	# seems not to be that important within the initrd
+ 	# ----
+-	#mkdir /mylibs
+ 	rm -f /tmp/needlibs
+-	for i in /lib/lib* /lib64/lib* /usr/lib/lib* /usr/lib64/lib*;do
++	for i in \
++		/lib/lib*/* /lib64/lib*/* /usr/lib/lib*/* \
++		/usr/lib64/lib*/* /usr/X11R6/lib*/*
++	do
+ 		found=0
+ 		if [ -d $i ];then
+ 			continue
+@@ -871,7 +874,6 @@ function baseStripUnusedLibs {
+ 		done
+ 		if [ $found -eq 0 ];then
+ 			echo &quot;Removing: $i&quot;
+-			#mv $i /mylibs
+ 			rm $i
+ 		fi
+ 	done
+@@ -907,7 +909,7 @@ function suseStripInitrd {
+ 		/etc/pam.d* /etc/DIR_COLORS /etc/rc* /usr/share/hal /usr/share/ssl
+ 		/usr/lib*/hal /usr/lib*/*.a /usr/lib*/*.la /usr/lib*/librpm*
+ 		/usr/lib*/libpanel* /usr/lib*/libmenu* /usr/src/packages/RPMS
+-		/usr/X11R6 /usr/lib*/X11 /var/X11R6 /usr/share/X11 /etc/X11
++		/usr/lib*/X11 /var/X11R6 /usr/share/X11 /etc/X11
+ 		/usr/lib*/xorg /usr/lib*/libidn* /usr/share/locale-bundle
+ 		/etc/ppp /etc/xdg /etc/NetworkManager /lib*/YaST /lib*/security
+ 		/lib*/mkinitrd /srv /var/adm /usr/lib*/engines /usr/src/packages
+@@ -935,6 +937,7 @@ function suseStripInitrd {
+ 		/lib/modules/*/kernel/drivers/net/tokenring
+ 		/lib/modules/*/kernel/drivers/net/bonding
+ 		/lib/modules/*/kernel/drivers/net/hamradio
++		/usr/X11R6/bin /usr/X11R6/lib/X11/locale
+ 	&quot;
+ 	for i in $files;do
+ 		rm -rfv $i
+diff --git a/modules/KIWIConfigure.pm b/modules/KIWIConfigure.pm
+index e897860..4e6f48d 100644
+--- a/modules/KIWIConfigure.pm
++++ b/modules/KIWIConfigure.pm
+@@ -44,6 +44,7 @@ sub new {
+ 	my $xml  = shift; 
+ 	my $root = shift;
+ 	my $imageDesc = shift;
++	my $imageDest = shift;
+ 	#==========================================
+ 	# Constructor setup
+ 	#------------------------------------------
+@@ -65,11 +66,17 @@ sub new {
+ 		$kiwi -&gt; failed (); 
+ 		return undef;
+ 	}
++	if (! defined $imageDest) {
++		$kiwi -&gt; error  (&quot;Missing image destination path&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
+ 	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
+ 	$this-&gt;{kiwi}      = $kiwi;
+ 	$this-&gt;{imageDesc} = $imageDesc;
++	$this-&gt;{imageDest} = $imageDest;
+ 	$this-&gt;{xml}       = $xml;
+ 	$this-&gt;{root}      = $root;
+ 	return $this;
+@@ -82,6 +89,7 @@ sub setupRecoveryArchive {
+ 	my $this  = shift;
+ 	my $fstype= shift;
+ 	my $kiwi  = $this-&gt;{kiwi};
++	my $dest  = $this-&gt;{imageDest};
+ 	my $xml   = $this-&gt;{xml};
+ 	my $root  = $this-&gt;{root};
+ 	my $start = $xml -&gt; getOEMRecovery();
+@@ -93,8 +101,8 @@ sub setupRecoveryArchive {
+ 	my $topts  = &quot;--numeric-owner -czpf&quot;;
+ 	my $excld  = &quot;--exclude ./dev --exclude ./proc --exclude ./sys&quot;;
+ 	my $status = qxx (
+-		&quot;cd $root &amp;&amp; tar $topts $root.recovery.tar.gz . $excld 2&gt;&amp;1 &amp;&amp;
+-		mv $root.recovery.tar.gz $root/recovery.tar.gz&quot;
++		&quot;cd $root &amp;&amp; tar $topts $dest/.recovery.tar.gz . $excld 2&gt;&amp;1 &amp;&amp;
++		mv $dest/.recovery.tar.gz $root/recovery.tar.gz&quot;
+ 	);
+ 	my $code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index ba2fbe3..a9b6f70 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -34,6 +34,11 @@ export TERM=linux
+ export LANG=en_US.utf8
+ 
+ #======================================
++# Update library path
++#--------------------------------------
++ldconfig
++
++#======================================
+ # Dialog
+ #--------------------------------------
+ function Dialog {
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 8a99454..977be92 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,16 @@
+ -------------------------------------------------------------------
++Mon Oct  5 15:22:06 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- added and improved official JeOS templates to the kiwi git
++  source tree. The official templates used by the SDK product
++  and the SuSE Studio online service are now provided via the
++  kiwi package kiwi-templates (bnc #521970)
++- fixed race condition in setupRecoveryArchive() when
++  creating the tar archive
++- fixed fbiterm support for SLE10
++- fixed baseStripUnusedLibs
++
++-------------------------------------------------------------------
+ Mon Oct  5 10:16:11 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed detection of USB install media
+diff --git a/template/suse-11.1-JeOS/README b/template/suse-11.1-JeOS/README
+new file mode 100644
+index 0000000..292023f
+--- /dev/null
++++ b/template/suse-11.1-JeOS/README
+@@ -0,0 +1,8 @@
++Build instructions for local build
++==================================
++* tip: create a local 11.1 installation source to speed up the build process
++  tip: copy 11.1 DVD
++
++* call kiwi:
++  kiwi --build suse-11.1-JeOS --set-repo /path/to/11.1/repo \
++	   -d /tmp/myimage --type vmx
+diff --git a/template/suse-11.1-JeOS/config.sh b/template/suse-11.1-JeOS/config.sh
+index 1b8fcb4..da854cd 100755
+--- a/template/suse-11.1-JeOS/config.sh
++++ b/template/suse-11.1-JeOS/config.sh
+@@ -1,20 +1,4 @@
+ #!/bin/bash
+-#================
+-# FILE          : config.sh
+-#----------------
+-# PROJECT       : OpenSuSE KIWI Image System
+-# COPYRIGHT     : (c) 2006 SUSE LINUX Products GmbH. All rights reserved
+-#               :
+-# AUTHOR        : Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>&gt;
+-#               :
+-# BELONGS TO    : Operating System images
+-#               :
+-# DESCRIPTION   : configuration script for SUSE based
+-#               : operating systems
+-#               :
+-#               :
+-# STATUS        : BETA
+-#----------------
+ #======================================
+ # Functions...
+ #--------------------------------------
+@@ -27,30 +11,34 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #======================================
++# Activate services
++#--------------------------------------
++suseActivateDefaultServices
++suseRemoveService sshd
++suseRemoveService gpm
++suseRemoveService kbd
++suseRemoveService nfs
++
++#======================================
+ # Setup baseproduct link
+ #--------------------------------------
+ suseSetupProduct
+ 
+ #======================================
+-# Activate services
++# Add missing gpg keys to rpm
+ #--------------------------------------
+-suseInsertService sshd
+-suseInsertService boot.device-mapper
+-suseRemoveService avahi-dnsconfd
+-suseRemoveService avahi-daemon
+-
++suseImportBuildKey
++    
+ #==========================================
+ # remove unneeded packages
+ #------------------------------------------
+ rpm -e --nodeps --noscripts \
+ 	$(rpm -q `baseGetPackagesForDeletion` | grep -v &quot;is not installed&quot;)
+ 
+-#==========================================
+-# remove package docs
+-#------------------------------------------
+-rm -rf /usr/share/doc/packages/*
+-rm -rf /usr/share/doc/manual/*
+-rm -rf /opt/kde3
++#======================================
++# Remove all documentation
++#--------------------------------------
++baseStripDocs
+ 
+ #======================================
+ # SuSEconfig
+@@ -65,11 +53,6 @@ baseName=&quot;suse-11.1&quot;
+ zypper ar $baseRepo $baseName
+ 
+ #======================================
+-# Remove unneeded packages
+-#--------------------------------------
+-rpm -qa | grep yast | xargs rpm -e --nodeps
+-
+-#======================================
+ # Umount kernel filesystems
+ #--------------------------------------
+ baseCleanMount
+diff --git a/template/suse-11.1-JeOS/config.xml b/template/suse-11.1-JeOS/config.xml
+index 0e1b2e8..f23d817 100644
+--- a/template/suse-11.1-JeOS/config.xml
++++ b/template/suse-11.1-JeOS/config.xml
+@@ -1,62 +1,113 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+ &lt;image schemaversion=&quot;3.7&quot; name=&quot;LimeJeOS-openSUSE-11.1&quot;&gt;
+-	&lt;!-- Base Information --&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;
+-			openSUSE 11.1 JeOS, is a small text based image which
+-			allows editing of files as well as upgrading to a full
+-			distro by using zypper with the pre-defined repository 
+-		&lt;/specification&gt;
++		&lt;author&gt;Christoph Thiel&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">cthiel at novell.com</A>&lt;/contact&gt;
++		&lt;specification&gt;SUSE Linux Enterprise 11 JeOS&lt;/specification&gt;
+ 	&lt;/description&gt;
+-	&lt;!-- Image Type and Preferences --&gt;
++	&lt;profiles&gt;
++		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot;/&gt;
++		&lt;profile name=&quot;vmxFlavour&quot; description=&quot;VMX with default kernel&quot; import=&quot;true&quot;/&gt;
++	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+-		&lt;type primary=&quot;true&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.1&quot; format=&quot;vmdk&quot;&gt;vmx&lt;/type&gt;
+-		&lt;type filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-11.1&quot; format=&quot;iso&quot;&gt;oem&lt;/type&gt;
+-		&lt;type boot=&quot;isoboot/suse-11.1&quot; flags=&quot;unified&quot;&gt;iso&lt;/type&gt;
+-		&lt;type filesystem=&quot;ext3&quot; boot=&quot;xenboot/suse-11.1&quot;&gt;xen&lt;/type&gt;
+-		&lt;version&gt;1.11.1&lt;/version&gt;
++		&lt;version&gt;1.1.0&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+-		&lt;locale&gt;en_US.UTF-8&lt;/locale&gt;
++		&lt;boot-theme&gt;openSUSE&lt;/boot-theme&gt;
++		&lt;rpm-excludedocs&gt;true&lt;/rpm-excludedocs&gt;
++		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 		&lt;timezone&gt;Europe/Berlin&lt;/timezone&gt;
+-		&lt;rpm-excludedocs&gt;true&lt;/rpm-excludedocs&gt;
+-		&lt;boot-theme&gt;openSUSE&lt;/boot-theme&gt;
++		&lt;oem-home&gt;false&lt;/oem-home&gt;
++		&lt;oem-systemsize&gt;2048&lt;/oem-systemsize&gt;
+ 	&lt;/preferences&gt;
+-	&lt;!-- Users setup --&gt;
++	&lt;preferences profiles=&quot;xenFlavour&quot;&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.1&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;nex&quot;&gt;vmx&lt;/type&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-11.1&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;nex&quot; format=&quot;iso&quot;&gt;oem&lt;/type&gt;
++	&lt;/preferences&gt;
++	&lt;preferences profiles=&quot;vmxFlavour&quot;&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.1&quot; format=&quot;vmdk&quot;&gt;vmx&lt;/type&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-11.1&quot; format=&quot;iso&quot;&gt;oem&lt;/type&gt;
++	&lt;/preferences&gt;
++
+ 	&lt;users group=&quot;root&quot;&gt;
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+-	&lt;!-- Package Repositories --&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+ 		&lt;source path=&quot;<A HREF="opensuse://11.1/repo/oss">opensuse://11.1/repo/oss</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;!-- Packages and Patterns --&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
++		&lt;package name=&quot;openSUSE-release&quot;/&gt;
++		&lt;package name=&quot;aaa_base&quot;/&gt;
++		&lt;package name=&quot;bash&quot;/&gt;
++		&lt;package name=&quot;coreutils&quot;/&gt;
++		&lt;package name=&quot;device-mapper&quot;/&gt;
++		&lt;package name=&quot;e2fsprogs&quot;/&gt;
++		&lt;package name=&quot;filesystem&quot;/&gt;
++		&lt;package name=&quot;glibc&quot;/&gt;
++		&lt;package name=&quot;mdadm&quot;/&gt;
++		&lt;package name=&quot;rpm&quot;/&gt;
++		&lt;package name=&quot;insserv&quot;/&gt;
++		&lt;package name=&quot;pam&quot;/&gt;
++		&lt;package name=&quot;pam-modules&quot;/&gt;
++		&lt;package name=&quot;login&quot;/&gt;
++		&lt;package name=&quot;pwdutils&quot;/&gt;
++		&lt;package name=&quot;sysconfig&quot;/&gt;
++		&lt;package name=&quot;sysvinit&quot;/&gt;
++		&lt;package name=&quot;procps&quot;/&gt;
++		&lt;package name=&quot;zypper&quot;/&gt;
++		&lt;package name=&quot;kbd&quot;/&gt;
++		&lt;package name=&quot;mkinitrd&quot;/&gt;
++		&lt;package name=&quot;module-init-tools&quot;/&gt;
++		&lt;package name=&quot;dhcpcd&quot;/&gt;
++		&lt;package name=&quot;initviocons&quot;/&gt;
++		&lt;package name=&quot;irqbalance&quot;/&gt;
++		&lt;package name=&quot;syslog-ng&quot;/&gt;
++		&lt;package name=&quot;grub&quot;/&gt;
++		&lt;package name=&quot;rpcbind&quot;/&gt;
++		&lt;package name=&quot;nfs-client&quot;/&gt;
++		&lt;package name=&quot;iputils&quot;/&gt;
++		&lt;package name=&quot;w3m&quot;/&gt;
++		&lt;package name=&quot;ncurses-utils&quot;/&gt;
++		&lt;package name=&quot;klogd&quot;/&gt;
++		&lt;package name=&quot;elfutils&quot;/&gt;
++		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
++		&lt;package name=&quot;openssh&quot;/&gt;
++		&lt;package name=&quot;suseRegister&quot;/&gt;
++		&lt;package name=&quot;openssl-certs&quot;/&gt;
++		&lt;package name=&quot;vim-base&quot;/&gt;
++		&lt;package name=&quot;vim&quot;/&gt;
++		&lt;package name=&quot;tar&quot;/&gt;
++		&lt;package name=&quot;ifplugd&quot;/&gt;
++		&lt;package name=&quot;branding-openSUSE&quot;/&gt;
++		&lt;package name=&quot;release-notes-openSUSE&quot;/&gt;
++		&lt;package name=&quot;glib2-branding-openSUSE&quot;/&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
+-		&lt;package name=&quot;ifplugd&quot;/&gt;
+-		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;grub&quot;/&gt;
+-		&lt;opensusePattern name=&quot;base&quot;/&gt;
+-		&lt;opensuseProduct name=&quot;openSUSE&quot;/&gt;
++		&lt;!-- not on public media --&gt;
++		&lt;!--&lt;package name=&quot;suse-build-key&quot;/&gt;--&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
+-		&lt;package name=&quot;xen&quot;/&gt;
++		&lt;package name=&quot;kernel-xen-base&quot; replaces=&quot;kernel-default-base&quot;/&gt;
++		&lt;package name=&quot;xen-tools-domU&quot; replaces=&quot;&quot;/&gt;
++		&lt;package name=&quot;xen&quot; replaces=&quot;&quot;/&gt;
++	&lt;/packages&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;vmxFlavour&quot;&gt;
++		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
++		&lt;package name=&quot;kernel-default-base&quot; replaces=&quot;kernel-xen-base&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
++		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
++		&lt;package name=&quot;openssl-certs&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;!-- Virtual Machine configurations --&gt;
+-	&lt;vmwareconfig memory=&quot;256&quot; guestOS=&quot;suse&quot; HWversion=&quot;4&quot;&gt;
++	&lt;vmwareconfig memory=&quot;512&quot; guestOS=&quot;suse&quot; HWversion=&quot;4&quot;&gt;
+ 		&lt;vmwaredisk controller=&quot;scsi&quot; id=&quot;0&quot;/&gt;
+ 		&lt;vmwarenic driver=&quot;e1000&quot; interface=&quot;0&quot; mode=&quot;bridged&quot;/&gt;
+ 	&lt;/vmwareconfig&gt;
+-	&lt;xenconfig memory=&quot;256&quot;&gt;
+-		&lt;xendisk device=&quot;/dev/sda&quot;/&gt;
++	&lt;xenconfig memory=&quot;512&quot; domain=&quot;domU&quot;&gt;
++		&lt;xendisk device=&quot;/dev/xvda&quot;/&gt;
++		&lt;xenbridge name=&quot;&quot;/&gt;
+ 	&lt;/xenconfig&gt;
+ &lt;/image&gt;
+diff --git a/template/suse-11.1-JeOS/root/etc/X11/xorg.conf b/template/suse-11.1-JeOS/root/etc/X11/xorg.conf
+index 5181a87..39270a1 100644
+--- a/template/suse-11.1-JeOS/root/etc/X11/xorg.conf
++++ b/template/suse-11.1-JeOS/root/etc/X11/xorg.conf
+@@ -4,7 +4,6 @@ Section &quot;Files&quot;
+   FontPath		&quot;/usr/share/fonts/truetype/&quot;
+   FontPath		&quot;/usr/share/fonts/uni/&quot;
+   FontPath		&quot;/usr/share/fonts/misc/&quot;
+-  ModulePath		&quot;/usr/lib/xorg/modules&quot;
+   InputDevices	&quot;/dev/ttyS0&quot;
+   InputDevices	&quot;/dev/ttyS1&quot;
+   InputDevices	&quot;/dev/ttyS2&quot;
+diff --git a/template/suse-11.1-JeOS/suse-11.1-JeOS.kiwi b/template/suse-11.1-JeOS/suse-11.1-JeOS.kiwi
+new file mode 120000
+index 0000000..2288558
+--- /dev/null
++++ b/template/suse-11.1-JeOS/suse-11.1-JeOS.kiwi
+@@ -0,0 +1 @@
++config.xml
+\ No newline at end of file
+diff --git a/template/suse-11.2-JeOS/README b/template/suse-11.2-JeOS/README
+new file mode 100644
+index 0000000..bc55723
+--- /dev/null
++++ b/template/suse-11.2-JeOS/README
+@@ -0,0 +1,8 @@
++Build instructions for local build
++==================================
++* tip: create a local 11.2 installation source to speed up the build process
++  tip: copy 11.2 DVD
++
++* call kiwi:
++  kiwi --build suse-11.2-JeOS --set-repo /path/to/11.2/repo \
++	   -d /tmp/myimage --type vmx
+diff --git a/template/suse-11.2-JeOS/config.sh b/template/suse-11.2-JeOS/config.sh
+index 1b8fcb4..46c1e01 100755
+--- a/template/suse-11.2-JeOS/config.sh
++++ b/template/suse-11.2-JeOS/config.sh
+@@ -50,7 +50,7 @@ rpm -e --nodeps --noscripts \
+ #------------------------------------------
+ rm -rf /usr/share/doc/packages/*
+ rm -rf /usr/share/doc/manual/*
+-rm -rf /opt/kde3
++rm -rf /opt/kde*
+ 
+ #======================================
+ # SuSEconfig
+@@ -60,8 +60,8 @@ suseConfig
+ #======================================
+ # Add 11.1 repo
+ #--------------------------------------
+-baseRepo=&quot;<A HREF="http://download.opensuse.org/distribution/11.1/repo/oss">http://download.opensuse.org/distribution/11.1/repo/oss</A>&quot;
+-baseName=&quot;suse-11.1&quot;
++baseRepo=&quot;<A HREF="http://download.opensuse.org/distribution/11.2/repo/oss">http://download.opensuse.org/distribution/11.2/repo/oss</A>&quot;
++baseName=&quot;suse-11.2&quot;
+ zypper ar $baseRepo $baseName
+ 
+ #======================================
+diff --git a/template/suse-11.2-JeOS/config.xml b/template/suse-11.2-JeOS/config.xml
+index 9ca3bec..e8fb43f 100644
+--- a/template/suse-11.2-JeOS/config.xml
++++ b/template/suse-11.2-JeOS/config.xml
+@@ -10,23 +10,46 @@
+ 			distro by using zypper with the pre-defined repository 
+ 		&lt;/specification&gt;
+ 	&lt;/description&gt;
++	&lt;!-- Profiles --&gt;
++	&lt;profiles&gt;
++		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot;/&gt;
++		&lt;profile name=&quot;vmxFlavour&quot; description=&quot;VMX with default kernel&quot; import=&quot;true&quot;/&gt;
++	&lt;/profiles&gt;
+ 	&lt;!-- Image Type and Preferences --&gt;
+ 	&lt;preferences&gt;
+-		&lt;type primary=&quot;true&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.2&quot; format=&quot;vmdk&quot;&gt;vmx&lt;/type&gt;
+-		&lt;type filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-11.2&quot; format=&quot;iso&quot;&gt;oem&lt;/type&gt;
+-		&lt;type boot=&quot;isoboot/suse-11.2&quot; flags=&quot;clic&quot;&gt;iso&lt;/type&gt;
+-		&lt;type filesystem=&quot;ext3&quot; boot=&quot;xenboot/suse-11.2&quot;&gt;xen&lt;/type&gt;
++		&lt;type primary=&quot;true&quot; boot=&quot;isoboot/suse-11.2&quot;
++			  flags=&quot;clic&quot; hybrid=&quot;true&quot;
++		&gt;iso&lt;/type&gt;
+ 		&lt;version&gt;1.11.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+-		&lt;locale&gt;en_US.UTF-8&lt;/locale&gt;
++		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 		&lt;timezone&gt;Europe/Berlin&lt;/timezone&gt;
+ 		&lt;rpm-excludedocs&gt;true&lt;/rpm-excludedocs&gt;
+ 		&lt;boot-theme&gt;openSUSE&lt;/boot-theme&gt;
++		&lt;oem-home&gt;false&lt;/oem-home&gt;
++		&lt;oem-systemsize&gt;2048&lt;/oem-systemsize&gt;
+ 	&lt;/preferences&gt;
++	&lt;preferences profiles=&quot;xenFlavour&quot;&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.2&quot;
++			  bootprofile=&quot;xen&quot; bootkernel=&quot;nex&quot;
++		&gt;vmx&lt;/type&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-11.2&quot;
++			bootprofile=&quot;xen&quot; bootkernel=&quot;nex&quot; format=&quot;iso&quot;
++		&gt;oem&lt;/type&gt;
++	&lt;/preferences&gt;
++	&lt;preferences profiles=&quot;vmxFlavour&quot;&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.2&quot;
++			  format=&quot;vmdk&quot;
++		&gt;vmx&lt;/type&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-11.2&quot;
++			  format=&quot;iso&quot;
++		&gt;oem&lt;/type&gt;
++    &lt;/preferences&gt;
+ 	&lt;!-- Users setup --&gt;
+ 	&lt;users group=&quot;root&quot;&gt;
+-		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
++		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot;
++			  home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;!-- Package Repositories --&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+@@ -34,29 +57,39 @@
+ 	&lt;/repository&gt;
+ 	&lt;!-- Packages and Patterns --&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+-		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
++		&lt;package name=&quot;bootsplash-branding-openSUSE&quot;
++				 bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
++		&lt;package name=&quot;gfxboot-branding-openSUSE&quot;
++				 bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+ 		&lt;package name=&quot;grub&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 		&lt;opensuseProduct name=&quot;openSUSE&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
+-		&lt;package name=&quot;xen&quot;/&gt;
++		&lt;package name=&quot;kernel-xen-base&quot; replaces=&quot;kernel-default-base&quot;/&gt;
++		&lt;package name=&quot;xen-tools-domU&quot; replaces=&quot;&quot;/&gt;
++		&lt;package name=&quot;xen&quot; replaces=&quot;&quot;/&gt;
++	&lt;/packages&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;vmxFlavour&quot;&gt;
++		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
++		&lt;package name=&quot;kernel-default-base&quot; replaces=&quot;kernel-xen-base&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
++		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
++		&lt;package name=&quot;openssl-certs&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;!-- Virtual Machine configurations --&gt;
+-	&lt;vmwareconfig memory=&quot;256&quot; guestOS=&quot;suse&quot; HWversion=&quot;4&quot;&gt;
++	&lt;vmwareconfig memory=&quot;512&quot; guestOS=&quot;suse&quot; HWversion=&quot;4&quot;&gt;
+ 		&lt;vmwaredisk controller=&quot;scsi&quot; id=&quot;0&quot;/&gt;
+ 		&lt;vmwarenic driver=&quot;e1000&quot; interface=&quot;0&quot; mode=&quot;bridged&quot;/&gt;
+ 	&lt;/vmwareconfig&gt;
+-	&lt;xenconfig memory=&quot;256&quot;&gt;
+-		&lt;xendisk device=&quot;/dev/sda&quot;/&gt;
++	&lt;xenconfig memory=&quot;512&quot; domain=&quot;domU&quot;&gt;
++		&lt;xendisk device=&quot;/dev/xvda&quot;/&gt;
++		&lt;xenbridge name=&quot;&quot;/&gt;
+ 	&lt;/xenconfig&gt;
+ &lt;/image&gt;
+diff --git a/template/suse-11.2-JeOS/root/etc/motd b/template/suse-11.2-JeOS/root/etc/motd
+index e5d27e7..d6b7805 100644
+--- a/template/suse-11.2-JeOS/root/etc/motd
++++ b/template/suse-11.2-JeOS/root/etc/motd
+@@ -1,7 +1,7 @@
+-This is the Lime-JeOS 11.1 SuSE Linux System.
++This is the Lime-JeOS 11.2 SuSE Linux System.
+ To upgrade your system call:
+ 
+     zypper refresh
+-    zypper install -t product openSUSE-11.1
++    zypper install -t product openSUSE-11.2
+ 
+ Have a lot of fun...
+diff --git a/template/suse-11.2-JeOS/suse-11.2-JeOS.kiwi b/template/suse-11.2-JeOS/suse-11.2-JeOS.kiwi
+new file mode 120000
+index 0000000..2288558
+--- /dev/null
++++ b/template/suse-11.2-JeOS/suse-11.2-JeOS.kiwi
+@@ -0,0 +1 @@
++config.xml
+\ No newline at end of file
+diff --git a/template/suse-SLE10-JeOS/README b/template/suse-SLE10-JeOS/README
+new file mode 100644
+index 0000000..287465d
+--- /dev/null
++++ b/template/suse-SLE10-JeOS/README
+@@ -0,0 +1,13 @@
++Build instructions for local build
++==================================
++* make sure you have the smart packagemanager installed
++  <A HREF="http://download.opensuse.org/repositories/smart">http://download.opensuse.org/repositories/smart</A>
++
++* create a SLES10 installation source below /path/to/SLE10/repo
++  tip: copy SLE10 DVD
++
++* call kiwi:
++  kiwi --build suse-SLE10-JeOS --ignore-repos \
++	   --add-repo /path/to/SLE10/repo --add-repotype yast2 \
++   	   --add-repo /usr/share/kiwi/repo/suse-repo/suse-sle10-repo --add-repotype rpm-dir \
++	   -d /tmp/myimage --type vmx --fs-inodesize 128
+diff --git a/template/suse-SLE10-JeOS/config.sh b/template/suse-SLE10-JeOS/config.sh
+index cb9b17b..c862926 100755
+--- a/template/suse-SLE10-JeOS/config.sh
++++ b/template/suse-SLE10-JeOS/config.sh
+@@ -1,20 +1,4 @@
+ #!/bin/bash
+-#================
+-# FILE          : config.sh
+-#----------------
+-# PROJECT       : OpenSuSE KIWI Image System
+-# COPYRIGHT     : (c) 2006 SUSE LINUX Products GmbH. All rights reserved
+-#               :
+-# AUTHOR        : Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>&gt;
+-#               :
+-# BELONGS TO    : Operating System images
+-#               :
+-# DESCRIPTION   : configuration script for SUSE based
+-#               : operating systems
+-#               :
+-#               :
+-# STATUS        : BETA
+-#----------------
+ #======================================
+ # Functions...
+ #--------------------------------------
+@@ -27,17 +11,25 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #======================================
+-# Setup baseproduct link
++# Activate services
+ #--------------------------------------
+-suseSetupProduct
++suseActivateDefaultServices
++suseRemoveService gpm
++suseRemoveService sshd
++suseRemoveService nfs
+ 
+ #======================================
+-# Activate services
++# Add missing gpg keys to rpm
++#--------------------------------------
++suseImportBuildKey
++
++#======================================
++# fix arch on x86_64 in /var/lib/zypp/db/products/*
+ #--------------------------------------
+-suseInsertService sshd
+-suseInsertService boot.device-mapper
+-suseRemoveService avahi-dnsconfd
+-suseRemoveService avahi-daemon
++if [ `uname -m` == 'x86_64' ];then
++	sed -i -e 's;&lt;arch&gt;i686&lt;/arch&gt;;&lt;arch&gt;x86_64&lt;/arch&gt;;' \
++		/var/lib/zypp/db/products/*
++fi
+ 
+ #==========================================
+ # remove unneeded packages
+@@ -45,29 +37,15 @@ suseRemoveService avahi-daemon
+ rpm -e --nodeps --noscripts \
+ 	$(rpm -q `baseGetPackagesForDeletion` | grep -v &quot;is not installed&quot;)
+ 
+-#==========================================
+-# remove package docs
+-#------------------------------------------
+-rm -rf /usr/share/doc/packages/*
+-rm -rf /usr/share/doc/manual/*
+-rm -rf /opt/kde3
+-
+ #======================================
+-# SuSEconfig
++# Remove all documentation
+ #--------------------------------------
+-suseConfig
++baseStripDocs
+ 
+ #======================================
+-# Add 10.1 repo
+-#--------------------------------------
+-baseRepo=&quot;<A HREF="ftp://ftp.suse.com/pub/suse/i386/10.1/SUSE-Linux10.1-GM-Extra">ftp://ftp.suse.com/pub/suse/i386/10.1/SUSE-Linux10.1-GM-Extra</A>&quot;
+-baseName=&quot;suse-10.1&quot;
+-zypper sa $baseRepo $baseName
+-
+-#======================================
+-# Remove unneeded packages
++# SuSEconfig
+ #--------------------------------------
+-rpm -qa | grep yast | xargs rpm -e --nodeps
++suseConfig
+ 
+ #======================================
+ # Umount kernel filesystems
+diff --git a/template/suse-SLE10-JeOS/config.xml b/template/suse-SLE10-JeOS/config.xml
+index 12e1197..8bc6aa5 100644
+--- a/template/suse-SLE10-JeOS/config.xml
++++ b/template/suse-SLE10-JeOS/config.xml
+@@ -1,121 +1,115 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+ &lt;image schemaversion=&quot;3.7&quot; name=&quot;LimeJeOS-SLE10&quot;&gt;
+-	&lt;!-- Base Information --&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;
+-			SUSE SLE10 JeOS, is a small text based image which
+-			allows editing of files as well as upgrading to a full
+-			distro by using zypper with the pre-defined repository 
+-		&lt;/specification&gt;
++		&lt;author&gt;Christoph Thiel&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">cthiel at novell.com</A>&lt;/contact&gt;
++		&lt;specification&gt;SUSE Linux Enterprise 10 SP3 JeOS&lt;/specification&gt;
+ 	&lt;/description&gt;
+-	&lt;!-- Image Type and Preferences --&gt;
++	&lt;profiles&gt;
++		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot;/&gt;
++		&lt;profile name=&quot;vmxFlavour&quot; description=&quot;VMX with default kernel&quot; import=&quot;true&quot;/&gt;
++	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+-		&lt;type primary=&quot;true&quot; filesystem=&quot;reiserfs&quot; boot=&quot;vmxboot/suse-SLES10&quot;&gt;vmx&lt;/type&gt;
+-		&lt;type filesystem=&quot;reiserfs&quot; boot=&quot;oemboot/suse-SLES10&quot; format=&quot;iso&quot;&gt;oem&lt;/type&gt;
+-		&lt;type boot=&quot;isoboot/suse-SLES10&quot;&gt;iso&lt;/type&gt;
+-		&lt;type filesystem=&quot;reiserfs&quot; boot=&quot;xenboot/suse-SLES10&quot;&gt;xen&lt;/type&gt;
+-		&lt;version&gt;1.10.1&lt;/version&gt;
++		&lt;version&gt;1.1.0&lt;/version&gt;
+ 		&lt;packagemanager&gt;smart&lt;/packagemanager&gt;
+-		&lt;locale&gt;en_US.UTF-8&lt;/locale&gt;
++		&lt;boot-theme&gt;SLES&lt;/boot-theme&gt;
++		&lt;rpm-excludedocs&gt;true&lt;/rpm-excludedocs&gt;
++		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
++		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 		&lt;timezone&gt;Europe/Berlin&lt;/timezone&gt;
+-		&lt;rpm-excludedocs&gt;true&lt;/rpm-excludedocs&gt;
+-		&lt;boot-theme&gt;SLES&lt;/boot-theme&gt;
++		&lt;oem-home&gt;false&lt;/oem-home&gt;
++		&lt;oem-systemsize&gt;2048&lt;/oem-systemsize&gt;
++	&lt;/preferences&gt;
++	&lt;preferences profiles=&quot;xenFlavour&quot;&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-SLES10&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;nex&quot;&gt;vmx&lt;/type&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-SLES10&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;nex&quot; format=&quot;iso&quot;&gt;oem&lt;/type&gt;
++	&lt;/preferences&gt;
++	&lt;preferences profiles=&quot;vmxFlavour&quot;&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-SLES10&quot; format=&quot;vmdk&quot;&gt;vmx&lt;/type&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-SLES10&quot; format=&quot;iso&quot;&gt;oem&lt;/type&gt;
+ 	&lt;/preferences&gt;
+-	&lt;!-- Users setup --&gt;
+ 	&lt;users group=&quot;root&quot;&gt;
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+-	&lt;!-- Package Repositories --&gt;
+-	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;!-- you need to setup your SLE10 source here --&gt;
+-		&lt;source path=&quot;/image/CDs/full-sles10-sp2-i386&quot;/&gt;
++	&lt;!-- For local image creation, change this to your SLE10 DVD source --&gt;
++	&lt;repository priority=&quot;3&quot; type=&quot;rpm-md&quot;&gt;
++		&lt;source path=&quot;<A HREF="obs:///SUSE:SLE-10-SP3:GA/SLE_10_SP2_Update">obs:///SUSE:SLE-10-SP3:GA/SLE_10_SP2_Update</A>&quot;/&gt;
++	&lt;/repository&gt;
++	&lt;repository priority=&quot;4&quot; type=&quot;rpm-md&quot;&gt;
++		&lt;source path=&quot;<A HREF="obs:///Devel:JeOS:SLE-10-SP3/SLE_10_SP3_Update">obs:///Devel:JeOS:SLE-10-SP3/SLE_10_SP3_Update</A>&quot;/&gt;
++	&lt;/repository&gt; 
++	&lt;repository priority=&quot;2&quot; type=&quot;rpm-md&quot;&gt;
++		&lt;source path=&quot;<A HREF="obs:///SUSE:SLE-10-SP2:Update/standard">obs:///SUSE:SLE-10-SP2:Update/standard</A>&quot;/&gt;
++	&lt;/repository&gt;
++	&lt;repository priority=&quot;1&quot; type=&quot;rpm-md&quot;&gt;
++		&lt;source path=&quot;<A HREF="obs:///SUSE:SLE-10-SP2:GA/standard">obs:///SUSE:SLE-10-SP2:GA/standard</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;repository type=&quot;rpm-dir&quot;&gt;
+ 		&lt;source path=&quot;/usr/share/kiwi/repo/suse-repo/suse-sle10-repo&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;!-- Packages and Patterns --&gt;
+-	&lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot; patternPackageType=&quot;plusRecommended&quot;&gt;
+-		&lt;package name=&quot;bootsplash-theme-SuSE-SLES&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;gfxboot&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
+-		&lt;package name=&quot;bootsplash&quot;/&gt;
+-		&lt;package name=&quot;ifplugd&quot;/&gt;
++	&lt;!----&gt;
++	&lt;packages type=&quot;image&quot;&gt;
++		&lt;package name=&quot;aaa_base&quot;/&gt;
++		&lt;package name=&quot;dhcpcd&quot;/&gt;
+ 		&lt;package name=&quot;dhcp-client&quot;/&gt;
+-		&lt;package name=&quot;vim&quot;/&gt;
++		&lt;package name=&quot;insserv&quot;/&gt;
++		&lt;package name=&quot;kbd&quot;/&gt;
++		&lt;package name=&quot;mkinitrd&quot;/&gt;
++		&lt;package name=&quot;mdadm&quot;/&gt;
++		&lt;package name=&quot;module-init-tools&quot;/&gt;
++		&lt;package name=&quot;netcfg&quot;/&gt;
++		&lt;package name=&quot;openssh&quot;/&gt;
++		&lt;package name=&quot;procps&quot;/&gt;
++		&lt;package name=&quot;pwdutils&quot;/&gt;
++		&lt;package name=&quot;rpm&quot;/&gt;
++		&lt;package name=&quot;sles-release&quot;/&gt;
++		&lt;package name=&quot;suse-build-key&quot;/&gt;
++		&lt;package name=&quot;sysconfig&quot;/&gt;
++		&lt;package name=&quot;syslog-ng&quot;/&gt;
+ 		&lt;package name=&quot;grub&quot;/&gt;
+-		&lt;opensusePattern name=&quot;base&quot;/&gt;
+-		&lt;ignore name=&quot;855resolution&quot;/&gt;
+-		&lt;ignore name=&quot;xbsql&quot;/&gt;
+-		&lt;ignore name=&quot;xbase&quot;/&gt;
+-		&lt;ignore name=&quot;wv2-devel&quot;/&gt;
+-		&lt;ignore name=&quot;thinkfinger&quot;/&gt;
+-		&lt;ignore name=&quot;steak&quot;/&gt;
+-		&lt;ignore name=&quot;sles-release&quot;/&gt;
+-		&lt;ignore name=&quot;release-notes-sles&quot;/&gt;
+-		&lt;ignore name=&quot;raptor&quot;/&gt;
+-		&lt;ignore name=&quot;raptor-devel&quot;/&gt;
+-		&lt;ignore name=&quot;qtc&quot;/&gt;
+-		&lt;ignore name=&quot;mpg321&quot;/&gt;
+-		&lt;ignore name=&quot;libyaz-devel&quot;/&gt;
+-		&lt;ignore name=&quot;libpqxx-devel&quot;/&gt;
+-		&lt;ignore name=&quot;liblrdf-devel&quot;/&gt;
+-		&lt;ignore name=&quot;libdar-devel&quot;/&gt;
+-		&lt;ignore name=&quot;libchipcard-devel&quot;/&gt;
+-		&lt;ignore name=&quot;lib3ds&quot;/&gt;
+-		&lt;ignore name=&quot;lame&quot;/&gt;
+-		&lt;ignore name=&quot;krpmbuilder&quot;/&gt;
+-		&lt;ignore name=&quot;kdbg&quot;/&gt;
+-		&lt;ignore name=&quot;hk_classes&quot;/&gt;
+-		&lt;ignore name=&quot;hk_classes-devel&quot;/&gt;
+-		&lt;ignore name=&quot;gambas&quot;/&gt;
+-		&lt;ignore name=&quot;ffmpeg-devel&quot;/&gt;
+-		&lt;ignore name=&quot;eric&quot;/&gt;
+-		&lt;ignore name=&quot;dclib-devel&quot;/&gt;
+-		&lt;ignore name=&quot;colorgcc&quot;/&gt;
+-		&lt;ignore name=&quot;bootsplash-theme-SuSE-SLES&quot;/&gt;
+-		&lt;ignore name=&quot;amarok-helix&quot;/&gt;
+-		&lt;ignore name=&quot;agg-devel&quot;/&gt;
+-		&lt;ignore name=&quot;smtp_daemon&quot;/&gt;
+-		&lt;ignore name=&quot;pdisk&quot;/&gt;
+-		&lt;ignore name=&quot;pfmon&quot;/&gt;
+-		&lt;ignore name=&quot;powerpc32&quot;/&gt;
+-		&lt;ignore name=&quot;s390-32&quot;/&gt;
+-		&lt;ignore name=&quot;s390-tools&quot;/&gt;
+-		&lt;ignore name=&quot;salinfo&quot;/&gt;
+-		&lt;ignore name=&quot;sles-preparation-power_en&quot;/&gt;
+-		&lt;ignore name=&quot;sles-preparation-zseries_en&quot;/&gt;
+-		&lt;ignore name=&quot;libpfm&quot;/&gt;
+-		&lt;ignore name=&quot;gnome2-SLES&quot;/&gt;
+-		&lt;ignore name=&quot;mcelog&quot;/&gt;
+-		&lt;ignore name=&quot;numactl&quot;/&gt;
+-		&lt;ignore name=&quot;bootloader-theme-NLD&quot;/&gt;
+-		&lt;ignore name=&quot;evolution-caldav&quot;/&gt;
+-		&lt;ignore name=&quot;gstreamer010-plugins-good-oil&quot;/&gt;
+-		&lt;ignore name=&quot;linux32&quot;/&gt;
+-		&lt;ignore name=&quot;mDNSResponder&quot;/&gt;
+-		&lt;ignore name=&quot;neo&quot;/&gt;
+-		&lt;ignore name=&quot;novfs-kmp&quot;/&gt;
+-		&lt;ignore name=&quot;openh323-devel&quot;/&gt;
+-		&lt;ignore name=&quot;texinfo&quot;/&gt;
++		&lt;package name=&quot;resmgr&quot;/&gt;
++		&lt;package name=&quot;iputils&quot;/&gt;
++		&lt;package name=&quot;zypper&quot;/&gt;
++		&lt;package name=&quot;bootsplash&quot;/&gt;
++		&lt;package name=&quot;vim&quot;/&gt;
++		&lt;package name=&quot;patch&quot;/&gt;
++		&lt;package name=&quot;psmisc&quot;/&gt;
++		&lt;package name=&quot;tar&quot;/&gt;
++		&lt;package name=&quot;sed&quot;/&gt;
++		&lt;package name=&quot;w3m&quot;/&gt;
++		&lt;package name=&quot;ifplugd&quot;/&gt;
++		&lt;package name=&quot;bootsplash-theme-SuSE-SLES&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
++		&lt;package name=&quot;gfxboot&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
++		&lt;!-- not on public media --&gt;
++		&lt;!-- &lt;package name=&quot;suseRegister-jeos&quot;/&gt; --&gt;
++	&lt;/packages&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
++		&lt;package name=&quot;kernel-xen&quot; arch=&quot;x86_64&quot; replaces=&quot;kernel-default&quot;/&gt;
++		&lt;package name=&quot;kernel-xenpae&quot; arch=&quot;i686&quot; replaces=&quot;kernel-default&quot;/&gt;
++		&lt;package name=&quot;xen-tools-domU&quot; replaces=&quot;&quot;/&gt;
++		&lt;package name=&quot;xen&quot; replaces=&quot;&quot;/&gt;
++	&lt;/packages&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;vmxFlavour&quot;&gt;
++		&lt;package name=&quot;kernel-default&quot; arch=&quot;x86_64&quot; replaces=&quot;kernel-xen&quot;/&gt;
++		&lt;package name=&quot;kernel-default&quot; arch=&quot;i686&quot; replaces=&quot;kernel-xenpae&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;xen&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
+-		&lt;package name=&quot;xen&quot;/&gt;
++	&lt;packages type=&quot;delete&quot;&gt;
++		&lt;package name=&quot;patch&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
++		&lt;package name=&quot;procps&quot;/&gt;
++		&lt;package name=&quot;cracklib&quot;/&gt;
+ 		&lt;package name=&quot;openssl&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;!-- Virtual Machine configurations --&gt;
+-	&lt;vmwareconfig memory=&quot;256&quot; guestOS=&quot;suse&quot; HWversion=&quot;4&quot;&gt;
++	&lt;vmwareconfig memory=&quot;512&quot; guestOS=&quot;suse&quot; HWversion=&quot;4&quot;&gt;
+ 		&lt;vmwaredisk controller=&quot;scsi&quot; id=&quot;0&quot;/&gt;
+ 		&lt;vmwarenic driver=&quot;e1000&quot; interface=&quot;0&quot; mode=&quot;bridged&quot;/&gt;
+ 	&lt;/vmwareconfig&gt;
+-	&lt;xenconfig memory=&quot;256&quot;&gt;
+-		&lt;xendisk device=&quot;/dev/sda&quot;/&gt;
++	&lt;xenconfig memory=&quot;512&quot; domain=&quot;domU&quot;&gt;
++		&lt;xendisk device=&quot;/dev/xvda&quot;/&gt;
++		&lt;xenbridge name=&quot;&quot;/&gt;
+ 	&lt;/xenconfig&gt;
+ &lt;/image&gt;
+diff --git a/template/suse-SLE10-JeOS/root.tar.gz b/template/suse-SLE10-JeOS/root.tar.gz
+new file mode 100644
+index 0000000..e12cbf7
+Binary files /dev/null and b/template/suse-SLE10-JeOS/root.tar.gz differ
+diff --git a/template/suse-SLE10-JeOS/suse-SLE10-JeOS.kiwi b/template/suse-SLE10-JeOS/suse-SLE10-JeOS.kiwi
+new file mode 120000
+index 0000000..2288558
+--- /dev/null
++++ b/template/suse-SLE10-JeOS/suse-SLE10-JeOS.kiwi
+@@ -0,0 +1 @@
++config.xml
+\ No newline at end of file
+diff --git a/template/suse-SLE11-JeOS/README b/template/suse-SLE11-JeOS/README
+new file mode 100644
+index 0000000..73b930d
+--- /dev/null
++++ b/template/suse-SLE11-JeOS/README
+@@ -0,0 +1,9 @@
++Build instructions for local build
++==================================
++* create a SLES11 installation source below /path/to/SLE11/repo
++  tip: copy SLE11 DVD
++
++* call kiwi:
++  kiwi --build suse-SLE11-JeOS --ignore-repos \
++	   --add-repo /path/to/SLE11/repo --add-repotype yast2 \
++	   -d /tmp/myimage --type vmx
+diff --git a/template/suse-SLE11-JeOS/config.sh b/template/suse-SLE11-JeOS/config.sh
+index 1b8fcb4..900c8b3 100755
+--- a/template/suse-SLE11-JeOS/config.sh
++++ b/template/suse-SLE11-JeOS/config.sh
+@@ -1,20 +1,4 @@
+ #!/bin/bash
+-#================
+-# FILE          : config.sh
+-#----------------
+-# PROJECT       : OpenSuSE KIWI Image System
+-# COPYRIGHT     : (c) 2006 SUSE LINUX Products GmbH. All rights reserved
+-#               :
+-# AUTHOR        : Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>&gt;
+-#               :
+-# BELONGS TO    : Operating System images
+-#               :
+-# DESCRIPTION   : configuration script for SUSE based
+-#               : operating systems
+-#               :
+-#               :
+-# STATUS        : BETA
+-#----------------
+ #======================================
+ # Functions...
+ #--------------------------------------
+@@ -27,47 +11,39 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #======================================
++# Activate services
++#--------------------------------------
++suseActivateDefaultServices
++suseRemoveService sshd
++suseRemoveService gpm
++suseRemoveService kbd
++suseRemoveService nfs
++
++#======================================
+ # Setup baseproduct link
+ #--------------------------------------
+ suseSetupProduct
+ 
+ #======================================
+-# Activate services
++# Add missing gpg keys to rpm
+ #--------------------------------------
+-suseInsertService sshd
+-suseInsertService boot.device-mapper
+-suseRemoveService avahi-dnsconfd
+-suseRemoveService avahi-daemon
++suseImportBuildKey
+ 
+ #==========================================
+ # remove unneeded packages
+ #------------------------------------------
+ rpm -e --nodeps --noscripts \
+ 	$(rpm -q `baseGetPackagesForDeletion` | grep -v &quot;is not installed&quot;)
+-
+-#==========================================
+-# remove package docs
+-#------------------------------------------
+-rm -rf /usr/share/doc/packages/*
+-rm -rf /usr/share/doc/manual/*
+-rm -rf /opt/kde3
+-
+-#======================================
+-# SuSEconfig
+-#--------------------------------------
+-suseConfig
+-
++        
+ #======================================
+-# Add 11.1 repo
++# Remove all documentation
+ #--------------------------------------
+-baseRepo=&quot;<A HREF="http://download.opensuse.org/distribution/11.1/repo/oss">http://download.opensuse.org/distribution/11.1/repo/oss</A>&quot;
+-baseName=&quot;suse-11.1&quot;
+-zypper ar $baseRepo $baseName
++baseStripDocs
+ 
+ #======================================
+-# Remove unneeded packages
++# SuSEconfig
+ #--------------------------------------
+-rpm -qa | grep yast | xargs rpm -e --nodeps
++suseConfig
+ 
+ #======================================
+ # Umount kernel filesystems
+diff --git a/template/suse-SLE11-JeOS/config.xml b/template/suse-SLE11-JeOS/config.xml
+index 31a6d8d..a19911b 100644
+--- a/template/suse-SLE11-JeOS/config.xml
++++ b/template/suse-SLE11-JeOS/config.xml
+@@ -1,64 +1,117 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+ &lt;image schemaversion=&quot;3.7&quot; name=&quot;LimeJeOS-SLE11&quot;&gt;
+-	&lt;!-- Base Information --&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;
+-			SUSE SLE11 JeOS, is a small text based image which
+-			allows editing of files as well as upgrading to a full
+-			distro by using zypper with the pre-defined repository 
+-		&lt;/specification&gt;
++		&lt;author&gt;Christoph Thiel&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">cthiel at novell.com</A>&lt;/contact&gt;
++		&lt;specification&gt;SUSE Linux Enterprise 11 JeOS&lt;/specification&gt;
+ 	&lt;/description&gt;
+-	&lt;!-- Image Type and Preferences --&gt;
++	&lt;profiles&gt;
++		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot;/&gt;
++		&lt;profile name=&quot;vmxFlavour&quot; description=&quot;VMX with default kernel&quot; import=&quot;true&quot;/&gt;
++	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+-		&lt;type primary=&quot;true&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-SLES11&quot; format=&quot;vmdk&quot;&gt;vmx&lt;/type&gt;
+-		&lt;type filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-SLES11&quot; format=&quot;iso&quot;&gt;oem&lt;/type&gt;
+-		&lt;type boot=&quot;isoboot/suse-SLES11&quot; flags=&quot;compressed&quot;&gt;iso&lt;/type&gt;
+-		&lt;type filesystem=&quot;ext3&quot; boot=&quot;xenboot/suse-SLES11&quot;&gt;xen&lt;/type&gt;
+-		&lt;version&gt;1.11.1&lt;/version&gt;
++		&lt;version&gt;1.1.0&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+-		&lt;locale&gt;en_US.UTF-8&lt;/locale&gt;
++		&lt;boot-theme&gt;SLES&lt;/boot-theme&gt;
++		&lt;rpm-excludedocs&gt;true&lt;/rpm-excludedocs&gt;
++		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 		&lt;timezone&gt;Europe/Berlin&lt;/timezone&gt;
+-		&lt;rpm-excludedocs&gt;true&lt;/rpm-excludedocs&gt;
+-		&lt;boot-theme&gt;SLES&lt;/boot-theme&gt;
++		&lt;oem-home&gt;false&lt;/oem-home&gt;
++		&lt;oem-systemsize&gt;2048&lt;/oem-systemsize&gt;
++	&lt;/preferences&gt;
++	&lt;preferences profiles=&quot;xenFlavour&quot;&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-SLES11&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;nex&quot;&gt;vmx&lt;/type&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-SLES11&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;nex&quot; format=&quot;iso&quot;&gt;oem&lt;/type&gt;
++	&lt;/preferences&gt;
++	&lt;preferences profiles=&quot;vmxFlavour&quot;&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-SLES11&quot; format=&quot;vmdk&quot;&gt;vmx&lt;/type&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-SLES11&quot; format=&quot;iso&quot;&gt;oem&lt;/type&gt;
+ 	&lt;/preferences&gt;
+-	&lt;!-- Users setup --&gt;
+ 	&lt;users group=&quot;root&quot;&gt;
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+-	&lt;!-- Package Repositories --&gt;
+-	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;!-- you need to setup your SLE11 source here --&gt;
+-		&lt;source path=&quot;/image/CDs/full-sles11-i386&quot;/&gt;
++	&lt;!-- For local image creation, change this to your SLE11 DVD source --&gt;
++	&lt;repository type=&quot;rpm-md&quot;&gt;
++		&lt;source path=&quot;<A HREF="obs:///SUSE:SLE-11:GA:Products:Test/standard">obs:///SUSE:SLE-11:GA:Products:Test/standard</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;!-- Packages and Patterns --&gt;
++	&lt;repository type=&quot;rpm-md&quot;&gt;
++		&lt;source path=&quot;<A HREF="obs:///SUSE:SLE-11:GA/standard">obs:///SUSE:SLE-11:GA/standard</A>&quot;/&gt;
++	&lt;/repository&gt;
++	&lt;!----&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
++		&lt;package name=&quot;sles-release&quot;/&gt;
++		&lt;package name=&quot;sles-release-DVD&quot;/&gt;
++		&lt;package name=&quot;aaa_base&quot;/&gt;
++		&lt;package name=&quot;bash&quot;/&gt;
++		&lt;package name=&quot;coreutils&quot;/&gt;
++		&lt;package name=&quot;device-mapper&quot;/&gt;
++		&lt;package name=&quot;e2fsprogs&quot;/&gt;
++		&lt;package name=&quot;filesystem&quot;/&gt;
++		&lt;package name=&quot;glibc&quot;/&gt;
++		&lt;package name=&quot;mdadm&quot;/&gt;
++		&lt;package name=&quot;rpm&quot;/&gt;
++		&lt;package name=&quot;insserv&quot;/&gt;
++		&lt;package name=&quot;pam&quot;/&gt;
++		&lt;package name=&quot;pam-modules&quot;/&gt;
++		&lt;package name=&quot;login&quot;/&gt;
++		&lt;package name=&quot;pwdutils&quot;/&gt;
++		&lt;package name=&quot;sysconfig&quot;/&gt;
++		&lt;package name=&quot;sysvinit&quot;/&gt;
++		&lt;package name=&quot;procps&quot;/&gt;
++		&lt;package name=&quot;zypper&quot;/&gt;
++		&lt;package name=&quot;kbd&quot;/&gt;
++		&lt;package name=&quot;mkinitrd&quot;/&gt;
++		&lt;package name=&quot;module-init-tools&quot;/&gt;
++		&lt;package name=&quot;dhcpcd&quot;/&gt;
++		&lt;package name=&quot;initviocons&quot;/&gt;
++		&lt;package name=&quot;irqbalance&quot;/&gt;
++		&lt;package name=&quot;suse-build-key&quot;/&gt;
++		&lt;package name=&quot;syslog-ng&quot;/&gt;
++		&lt;package name=&quot;grub&quot;/&gt;
++		&lt;package name=&quot;rpcbind&quot;/&gt;
++		&lt;package name=&quot;nfs-client&quot;/&gt;
++		&lt;package name=&quot;iputils&quot;/&gt;
++		&lt;package name=&quot;w3m&quot;/&gt;
++		&lt;package name=&quot;ncurses-utils&quot;/&gt;
++		&lt;package name=&quot;klogd&quot;/&gt;
++		&lt;package name=&quot;elfutils&quot;/&gt;
++		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
++		&lt;package name=&quot;openssh&quot;/&gt;
++		&lt;package name=&quot;suseRegister&quot;/&gt;
++		&lt;package name=&quot;openssl-certs&quot;/&gt;
++		&lt;package name=&quot;vim-base&quot;/&gt;
++		&lt;package name=&quot;vim&quot;/&gt;
++		&lt;package name=&quot;tar&quot;/&gt;
++		&lt;package name=&quot;ifplugd&quot;/&gt;
++		&lt;package name=&quot;branding-SLES&quot;/&gt;
++		&lt;package name=&quot;release-notes-sles&quot;/&gt;
++		&lt;package name=&quot;glib2-branding-SLES&quot;/&gt;
+ 		&lt;package name=&quot;bootsplash-branding-SLES&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-SLES&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
+-		&lt;package name=&quot;ifplugd&quot;/&gt;
+-		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;grub&quot;/&gt;
+-		&lt;opensusePattern name=&quot;base&quot;/&gt;
+-		&lt;opensuseProduct name=&quot;SUSE_SLES&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
+-		&lt;package name=&quot;xen&quot;/&gt;
++		&lt;package name=&quot;kernel-xen-base&quot; replaces=&quot;kernel-default-base&quot;/&gt;
++		&lt;package name=&quot;xen-tools-domU&quot; replaces=&quot;&quot;/&gt;
++		&lt;package name=&quot;xen&quot; replaces=&quot;&quot;/&gt;
++	&lt;/packages&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;vmxFlavour&quot;&gt;
++		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
++		&lt;package name=&quot;kernel-default-base&quot; replaces=&quot;kernel-xen-base&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
++		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+ 		&lt;package name=&quot;openssl-certs&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;!-- Virtual Machine configurations --&gt;
+-	&lt;vmwareconfig memory=&quot;256&quot; guestOS=&quot;suse&quot; HWversion=&quot;4&quot;&gt;
++	&lt;vmwareconfig memory=&quot;512&quot; guestOS=&quot;suse&quot; HWversion=&quot;4&quot;&gt;
+ 		&lt;vmwaredisk controller=&quot;scsi&quot; id=&quot;0&quot;/&gt;
+ 		&lt;vmwarenic driver=&quot;e1000&quot; interface=&quot;0&quot; mode=&quot;bridged&quot;/&gt;
+ 	&lt;/vmwareconfig&gt;
+-	&lt;xenconfig memory=&quot;256&quot;&gt;
+-		&lt;xendisk device=&quot;/dev/sda&quot;/&gt;
++	&lt;xenconfig memory=&quot;512&quot; domain=&quot;domU&quot;&gt;
++		&lt;xendisk device=&quot;/dev/xvda&quot;/&gt;
++		&lt;xenbridge name=&quot;&quot;/&gt;
+ 	&lt;/xenconfig&gt;
+ &lt;/image&gt;
+diff --git a/template/suse-SLE11-JeOS/root.tar.gz b/template/suse-SLE11-JeOS/root.tar.gz
+new file mode 100644
+index 0000000..e8982fa
+Binary files /dev/null and b/template/suse-SLE11-JeOS/root.tar.gz differ
+diff --git a/template/suse-SLE11-JeOS/suse-SLE11-JeOS.kiwi b/template/suse-SLE11-JeOS/suse-SLE11-JeOS.kiwi
+new file mode 120000
+index 0000000..2288558
+--- /dev/null
++++ b/template/suse-SLE11-JeOS/suse-SLE11-JeOS.kiwi
+@@ -0,0 +1 @@
++config.xml
+\ No newline at end of file
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001480.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5dc7abe170b7243f4b1d882212f1f35000a0bc38
+</A></li>
+	<LI>Next message: <A HREF="001481.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 87690a50b31931940b0601f6224aa8d2ea46bd57
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1482">[ date ]</a>
+              <a href="thread.html#1482">[ thread ]</a>
+              <a href="subject.html#1482">[ subject ]</a>
+              <a href="author.html#1482">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,418 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1843 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1843%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200901130953.n0D9r1GP015121%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000958.html">
+   <LINK REL="Next"  HREF="000960.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1843 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1843%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200901130953.n0D9r1GP015121%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1843 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jan 13 10:53:01 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000958.html">[Kiwi-devel] r1842 - in kiwi-head: modules rpm	system/boot/ix86/oemboot
+</A></li>
+        <LI>Next message: <A HREF="000960.html">[Kiwi-devel] r1844 - kiwi-head/doc/examples/suse-11.1/suse-vm-guest
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#959">[ date ]</a>
+              <a href="thread.html#959">[ thread ]</a>
+              <a href="subject.html#959">[ subject ]</a>
+              <a href="author.html#959">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-01-13 10:52:56 +0100 (Tue, 13 Jan 2009)
+New Revision: 1843
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWILog.pm
+   kiwi-head/modules/KIWIRoot.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- added check for broken root trees. While setting up the
+  root tree kiwi marks it as broken and after a successful
+  preparation the tree looses the broken mark
+- removed jabber log functions, never used
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2009-01-12 16:49:15 UTC (rev 1842)
++++ kiwi-head/kiwi.pl	2009-01-13 09:52:56 UTC (rev 1843)
+@@ -75,12 +75,6 @@
+ #--------------------------------------------
+ our $BasePath;         # configurable base kiwi path
+ our $System;           # configurable baes kiwi image desc. path
+-our $JabberServer;     # configurable jabber server
+-our $JabberPort;       # configurable jabber port
+-our $JabberUserName;   # configurable jabber user name
+-our $JabberPassword;   # configurable jabber password
+-our $JabberRessource;  # configurable jabber ressource
+-our $JabberComponent;  # configurable jabber component
+ our $LogServerPort;    # configurable log server port
+ our $Gzip;             # configurable gzip command
+ if (! defined $LogServerPort) {
+@@ -89,9 +83,6 @@
+ if (! defined $Gzip) {
+ 	$Gzip = &quot;gzip -9&quot;;
+ }
+-if (! defined $JabberPort) {
+-	$JabberPort = 5223;
+-}
+ if ( ! defined $BasePath ) {
+ 	$BasePath = &quot;/usr/share/kiwi&quot;;
+ }
+@@ -417,6 +408,14 @@
+ 	#------------------------------------------
+ 	if (defined $Create) {
+ 		#==========================================
++		# Check the tree first...
++		#------------------------------------------
++		if (-f &quot;$Create/.broken&quot;) {
++			$kiwi -&gt; error  (&quot;Image root tree $Create is broken&quot;);
++			$kiwi -&gt; failed ();
++			my $code = kiwiExit (1); return $code;
++		}
++		#==========================================
+ 		# Cleanup the tree according to prev runs
+ 		#------------------------------------------
+ 		if (-f &quot;$Create/rootfs.tar&quot;) {
+@@ -1632,12 +1631,21 @@
+ 	# private Exit function, exit safely
+ 	# ---
+ 	my $code = $_[0];
++	#==========================================
++	# Survive because kiwi called itself
++	#------------------------------------------
+ 	if ((defined $Survive) &amp;&amp; ($Survive eq &quot;yes&quot;)) {
+ 		if ($code != 0) {
+ 			return undef;
+ 		}
++		if ($root) {
++			$root -&gt; cleanBroken();
++		}
+ 		return $code;
+ 	}
++	#==========================================
++	# Really exit kiwi now...
++	#------------------------------------------
+ 	if (! defined $kiwi) {
+ 		$kiwi = new KIWILog(&quot;tiny&quot;);
+ 	}
+@@ -1646,10 +1654,16 @@
+ 		if (defined $Debug) {
+ 			$kiwi -&gt; printBackTrace();
+ 		}
++		if ($root) {
++			$root -&gt; copyBroken();
++		}
+ 		$kiwi -&gt; printLogExcerpt();
+ 		$kiwi -&gt; error  (&quot;KIWI exited with error(s)&quot;);
+ 		$kiwi -&gt; done ();
+ 	} else {
++		if ($root) {
++			$root -&gt; cleanBroken();
++		}
+ 		$kiwi -&gt; info (&quot;KIWI exited successfully&quot;);
+ 		$kiwi -&gt; done ();
+ 	}
+@@ -1682,6 +1696,7 @@
+ 		$kiwi -&gt; reopenRootChannel();
+ 	}
+ 	$kiwi -&gt; note (&quot;\n*** $$: Received signal $_[0] ***\n&quot;);
++	$kiwi -&gt; setLogHumanReadable();
+ 	$kiwi -&gt; cleanSweep();
+ 	if (defined $CreatePassword) {
+ 		system &quot;stty echo&quot;;
+@@ -1690,6 +1705,7 @@
+ 		$boot -&gt; cleanLoop ();
+ 	}
+ 	if (defined $root) {
++		$root  -&gt; copyBroken  ();
+ 		$root  -&gt; cleanLock   ();
+ 		$root  -&gt; cleanManager();
+ 		$root  -&gt; cleanSource ();
+
+Modified: kiwi-head/modules/KIWILog.pm
+===================================================================
+--- kiwi-head/modules/KIWILog.pm	2009-01-12 16:49:15 UTC (rev 1842)
++++ kiwi-head/modules/KIWILog.pm	2009-01-13 09:52:56 UTC (rev 1843)
+@@ -32,23 +32,6 @@
+ $Carp::Internal{KIWILog}++;
+ 
+ #==========================================
+-# Plugins
+-#------------------------------------------
+-BEGIN {
+-	$KIWILog::haveJabberSupport = 1;
+-	eval {
+-		require Net::Jabber;
+-		Net::Jabber-&gt;import qw(Client);
+-	};
+-	if ($@) {
+-		$KIWILog::haveJabberSupport = 0;
+-	}
+-	if (! $KIWILog::haveJabberSupport) {
+-		package Net::Jabber::Client;
+-	}
+-}
+-
+-#==========================================
+ # Constructor
+ #------------------------------------------
+ sub new {
+@@ -84,11 +67,6 @@
+ 		return $this;
+ 	}
+ 	#==========================================
+-	# Setup jabber connection
+-	#------------------------------------------
+-	$this -&gt; setJabberConnection();
+-
+-	#==========================================
+ 	# Create shmem segment for log messages
+ 	#------------------------------------------
+ 	my $smem = new KIWISharedMem ( $this,$this-&gt;{message} );
+@@ -108,29 +86,6 @@
+ }
+ 
+ #==========================================
+-# sendJabberMessage
+-#------------------------------------------
+-sub sendJabberMessage {
+-	# ...
+-	# send a jabber message to the jabber server with the
+-	# given component. The same information which one can see
+-	# on the command line will be send
+-	# ---
+-	my $this       = shift;
+-	my $message    = shift;
+-	my $jclient    = $this-&gt;{jclient};
+-	my $jcomponent = $this-&gt;{jcomponent};
+-	if (defined $jclient) {
+-		$jclient -&gt; MessageSend (
+-			to   =&gt; $jcomponent,
+-			body =&gt; $message
+-		);
+-		$jclient-&gt;Process();
+-	}
+-	return $this;
+-}
+-
+-#==========================================
+ # sendLogServerMessage
+ #------------------------------------------
+ sub sendLogServerMessage {
+@@ -518,10 +473,6 @@
+ 	$this -&gt; {message} = $logdata;
+ 	$this -&gt; sendLogServerMessage ();
+ 	#==========================================
+-	# send message to jabber server if con
+-	#------------------------------------------
+-	$this -&gt; sendJabberMessage (&quot;$needcr,$date,$logdata&quot;);
+-	#==========================================
+ 	# print message to root file
+ 	#------------------------------------------
+ 	if ($this-&gt;{errorOk}) {
+@@ -823,68 +774,6 @@
+ }
+ 
+ #==========================================
+-# setJabberConnection
+-#------------------------------------------
+-sub setJabberConnection {
+-	# ...
+-	# Setup jabber connection if possible. This requires the
+-	# package perl-Net-Jabber to be installed
+-	# ---
+-	my $this = shift;
+-	my $jclient;
+-	my @jresult;
+-	my $jstatus;
+-	if (! $main::ConfigStatus) {
+-		return undef;
+-	}
+-	if (
+-		(! defined $main::JabberServer)    ||
+-		(! defined $main::JabberUserName)  ||
+-		(! defined $main::JabberPassword)  ||
+-		(! defined $main::JabberRessource) ||
+-		(! defined $main::JabberComponent)
+-	) {
+-		#$this -&gt; warning (&quot;Jabber setup skipped: Missing login data&quot;);
+-		#$this -&gt; skipped ();
+-		return undef;
+-	}
+-	if (! $KIWILog::haveJabberSupport) {
+-		return undef;
+-	}
+-	$this -&gt; info (&quot;Connecting to Jabber server: $main::JabberServer&quot;);
+-	$jclient = new Net::Jabber::Client;
+-	$jstatus = $jclient -&gt; Connect (
+-		hostname =&gt; $main::JabberServer,
+-		port     =&gt; $main::JabberPort
+-	);
+-	if (! defined $jstatus) {
+-		$this -&gt; failed ();
+-		$this -&gt; error  (&quot;Server is not answering: $!&quot;);
+-		$this -&gt; skipped ();
+-		return $this;
+-	}
+-	$this -&gt; done();
+-	$this -&gt; info (&quot;Login to Jabber server: $main::JabberUserName&quot;);
+-	@jresult = $jclient -&gt; AuthSend (
+-		username =&gt; $main::JabberUserName,
+-		password =&gt; $main::JabberPassword,
+-		resource =&gt; $main::JabberRessource
+-	);
+-	if ($jresult[0] ne &quot;ok&quot;) {
+-		$this -&gt; error   (&quot;Failed: $jresult[0] $jresult[1]&quot;);
+-		$this -&gt; skipped ();
+-		return $this;
+-	}
+-	$this -&gt; done ();
+-	#==========================================
+-	# Store object data
+-	#------------------------------------------
+-	$this-&gt;{jcomponent}= $main::JabberComponent;
+-	$this-&gt;{jclient}   = $jclient;
+-	return $this;
+-}
+-
+-#==========================================
+ # setLogServer
+ #------------------------------------------
+ sub setLogServer {
+@@ -1002,16 +891,12 @@
+ #------------------------------------------
+ sub cleanSweep {
+ 	my $this     = shift;
+-	my $jclient  = $this-&gt;{jclient};
+ 	my $logchild = $this-&gt;{logchild};
+ 	my $rootEFD  = $this-&gt;{rootefd};
+ 	my $sharedMem= $this-&gt;{smem};
+ 	if ($this-&gt;{errorOk}) {
+ 		close $rootEFD;
+ 	}
+-	if (defined $jclient) {
+-		$jclient -&gt; Disconnect();
+-	}
+ 	if (defined $logchild) {
+ 		kill (15, $logchild);
+ 		waitpid ($logchild,0);
+
+Modified: kiwi-head/modules/KIWIRoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIRoot.pm	2009-01-12 16:49:15 UTC (rev 1842)
++++ kiwi-head/modules/KIWIRoot.pm	2009-01-13 09:52:56 UTC (rev 1843)
+@@ -189,6 +189,10 @@
+ 		return undef;
+ 	}
+ 	#==========================================
++	# Mark new root directory as broken
++	#------------------------------------------
++	qxx (&quot;touch $root/.broken 2&gt;&amp;1&quot;);
++	#==========================================
+ 	# Set root log file
+ 	#------------------------------------------
+ 	if (! defined $main::LogFile) {
+@@ -245,6 +249,40 @@
+ }
+ 
+ #==========================================
++# cleanBroken
++#------------------------------------------
++sub cleanBroken {
++	# ...
++	# Remove the .broken indicator to allow
++	# use of this root path for image creation
++	# ---
++	my $this = shift;
++	my $root = $this-&gt;{root};
++	unlink $root.&quot;/.broken&quot;;
++	return $this;
++}
++
++#==========================================
++# copyBroken
++#------------------------------------------
++sub copyBroken {
++	# ...
++	# copy the current logfile contents into
++	# the .broken file below the root tree which
++	# is indicated to be broken for some reason
++	# mentioned in the log file
++	# ---
++	my $this = shift;
++	my $kiwi = $this-&gt;{kiwi};
++	my $root = $this-&gt;{root};
++	my $log  = $kiwi-&gt;getRootLog();	
++	if (-f $log) {
++		qxx (&quot;cp $log $root/.broken 2&gt;&amp;1&quot;);
++	}
++	return $this;
++}
++
++#==========================================
+ # init
+ #------------------------------------------
+ sub init {
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2009-01-12 16:49:15 UTC (rev 1842)
++++ kiwi-head/rpm/kiwi.changes	2009-01-13 09:52:56 UTC (rev 1843)
+@@ -14,6 +14,10 @@
+   by the ovftool from VMware (bnc #464810)
+ - fixed missing eval output in case of wrong eval call
+ - print internal backtrace only if --debug is set
++- added check for broken root trees. While setting up the
++  root tree kiwi marks it as broken and after a successful
++  preparation the tree looses the broken mark
++- removed jabber log functions, never used
+ 
+ -------------------------------------------------------------------
+ Tue Dec 30 19:45:45 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000958.html">[Kiwi-devel] r1842 - in kiwi-head: modules rpm	system/boot/ix86/oemboot
+</A></li>
+	<LI>Next message: <A HREF="000960.html">[Kiwi-devel] r1844 - kiwi-head/doc/examples/suse-11.1/suse-vm-guest
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#959">[ date ]</a>
+              <a href="thread.html#959">[ thread ]</a>
+              <a href="subject.html#959">[ subject ]</a>
+              <a href="author.html#959">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

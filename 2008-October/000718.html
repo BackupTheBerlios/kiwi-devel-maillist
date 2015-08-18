@@ -1,0 +1,486 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1622 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1622%20-%20kiwi-head/modules&In-Reply-To=%3C200810071623.m97GNxAW009260%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000717.html">
+   <LINK REL="Next"  HREF="000719.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1622 - kiwi-head/modules</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1622%20-%20kiwi-head/modules&In-Reply-To=%3C200810071623.m97GNxAW009260%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1622 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Tue Oct  7 18:23:59 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000717.html">[Kiwi-devel] r1621 - in kiwi-head: . modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000719.html">[Kiwi-devel] r1623 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#718">[ date ]</a>
+              <a href="thread.html#718">[ thread ]</a>
+              <a href="subject.html#718">[ subject ]</a>
+              <a href="author.html#718">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2008-10-07 18:23:58 +0200 (Tue, 07 Oct 2008)
+New Revision: 1622
+
+Modified:
+   kiwi-head/modules/KIWICollect.pm
+Log:
+- added a method for retrieving arch list (used in multiple places)
+- fixed archlist handling for metapackages (bnc#432480)
+- cleaned up mangled packages/metapackages hashes
+
+
+Modified: kiwi-head/modules/KIWICollect.pm
+===================================================================
+--- kiwi-head/modules/KIWICollect.pm	2008-10-07 16:05:31 UTC (rev 1621)
++++ kiwi-head/modules/KIWICollect.pm	2008-10-07 16:23:58 UTC (rev 1622)
+@@ -504,7 +504,7 @@
+ sub getPackagesList
+ {
+   my $this = shift;
+-  my $t = shift;
++  my $type = shift;
+ 
+   my $failed = 0;
+   if(!@_) {
+@@ -513,10 +513,10 @@
+   }
+   
+   foreach my $pack(@_) {
+-    my $numfail = $this-&gt;fetchFileFrom($pack, $this-&gt;{m_repos});
++    my $numfail = $this-&gt;fetchFileFrom($pack, $this-&gt;{m_repos}, $type);
+     if( $numfail == 0) {
+       $this-&gt;{m_logger}-&gt;warning(&quot;[W] Package $pack not found in any repository!&quot;);
+-      if($t =~ m{meta}) {
++      if($type =~ m{meta}) {
+ 	push @{$this-&gt;{m_fmpacks}}, &quot;$pack&quot;;
+       }
+       else {
+@@ -579,54 +579,18 @@
+     return $retval;
+   }
+ 
++  if(!%{$this-&gt;{m_packages}}) {
++    # empty repopackages -&gt; probably a mini-iso (metadata only) - nothing to do
++    $this-&gt;{m_logger}-&gt;info(&quot;[I] Looks like no repopackages are required, assuming miniiso. Skipping queryRpmHeaders.\n&quot;);
++    return $retval;
++  }
++
+   PACK:foreach my $pack(sort(keys(%{$this-&gt;{m_packages}}))) {
+     my $tmp = $this-&gt;{m_packages}-&gt;{$pack}; #optimisation
+-    #my $arch = $tmp-&gt;{'arch'};
+-    #my @archs = grep { $_ !~ m{(addarch|removearch|onlyarch|priority|medium)}} keys(%{$tmp});
+-    my @omits = ();
+-    my @archs = ();
+     my $nofallback = 0;
+-    if(defined($tmp-&gt;{'onlyarch'})) {
+-      # allow 'onlyarch=&quot;x86_64,i586&quot;'
+-      $tmp-&gt;{'onlyarch'} =~ s{,\s*,}{,}g;
+-      $tmp-&gt;{'onlyarch'} =~ s{,\s*}{,}g;
+-      $tmp-&gt;{'onlyarch'} =~ s{,\s*$}{};
+-      $tmp-&gt;{'onlyarch'} =~ s{^\s*,}{};
+-      push @archs, split(/,\s/, $tmp-&gt;{'onlyarch'});
+-      $nofallback = 1;
+-    }
+-    elsif(defined($tmp-&gt;{'addarch'})) {
+-      push @archs, $this-&gt;{m_archlist}-&gt;headList();
+-      if(not(grep(/$tmp-&gt;{'addarch'}/, @archs))) {
+-      $tmp-&gt;{'addarch'} =~ s{,\s*,}{,}g;
+-      $tmp-&gt;{'addarch'} =~ s{,\s*}{,}g;
+-      $tmp-&gt;{'addarch'} =~ s{,\s*$}{};
+-      $tmp-&gt;{'addarch'} =~ s{^\s*,}{};
+-	push @archs, split(/,\s/, $tmp-&gt;{'addarch'});
+-      }
+-    }
+-    elsif(defined($tmp-&gt;{'removearch'})) {
+-      $tmp-&gt;{'removearch'} =~ s{,\s*,}{,}g;
+-      $tmp-&gt;{'removearch'} =~ s{,\s*}{,}g;
+-      $tmp-&gt;{'removearch'} =~ s{,\s*$}{};
+-      $tmp-&gt;{'removearch'} =~ s{^\s*,}{};
+-      push @archs, $this-&gt;{m_archlist}-&gt;headList();
+-      @omits = split(/,\s/, $tmp-&gt;{'removearch'});
+-      my @rl;
+-      foreach my $x(@omits) {
+-	push @rl, grep(/$x/, @archs);
+-      }
+-      if(@rl) {
+-	my %h = map { $_ =&gt; 1 } @archs;
+-	my @cleared = grep delete($h{$_}), @rl;
+-	@archs = ();
+-	@archs = keys(%h);
+-      }
+-    }
+-    else {
+-      push @archs, $this-&gt;{m_archlist}-&gt;headList();
+-    }
++    my @archs = $this-&gt;getArchList($pack, \$nofallback);
+ 
++    ## mls hack:
+     push @archs, 'src', 'nosrc';
+     ARCH:foreach my $a(@archs) {
+       my @fallbacklist;
+@@ -787,17 +751,23 @@
+ 
+ 
+   $this-&gt;{m_logger}-&gt;info(&quot;[I] retrieve package lists for regular packages&quot;) if $this-&gt;{m_debug};
+-  my $result = $this-&gt;getPackagesList(&quot;norm&quot;, keys(%{$this-&gt;{m_packages}}));
+-  if( $result == -1) {
+-    $this-&gt;{m_logger}-&gt;error(&quot;[E] getPackagesList for regular packages called with invalid parameter&quot;);
++  if(!%{$this-&gt;{m_packages}}) {
++    $this-&gt;{m_logger}-&gt;info(&quot;[I] Skipping empty repopackages section\n&quot;);
+   }
+   else {
+-    $this-&gt;failedPackagesWarning(&quot;[repopackages]&quot;, $result, $this-&gt;{m_fpacks});
+-    $rfailed += $result;
++    my $result = $this-&gt;getPackagesList(&quot;norm&quot;, keys(%{$this-&gt;{m_packages}}));
++    if( $result == -1) {
++      $this-&gt;{m_logger}-&gt;error(&quot;[E] getPackagesList for regular packages called with invalid parameter&quot;);
++    }
++    else {
++      $this-&gt;failedPackagesWarning(&quot;[repopackages]&quot;, $result, $this-&gt;{m_fpacks});
++      $rfailed += $result;
++    }
+   }
+ 
+   $this-&gt;{m_logger}-&gt;info(&quot;[I] retrieve package lists for metapackages&quot;) if $this-&gt;{m_debug};
+-  $result += $this-&gt;getPackagesList(&quot;meta&quot;, keys(%{$this-&gt;{m_metapackages}}));
++  ## metapackages must not be empty according to current scheme
++  my $result += $this-&gt;getPackagesList(&quot;meta&quot;, keys(%{$this-&gt;{m_metapackages}}));
+   if( $result == -1) {
+     $this-&gt;{m_logger}-&gt;error(&quot;[E] getPackagesList for metapackages called with invalid parameter&quot;);
+   }
+@@ -916,6 +886,7 @@
+   foreach my $metapack(@packlist) {
+     my %tmp = %{$this-&gt;{m_metapackages}-&gt;{$metapack}};
+ 
++    my $nofallback;
+     my $medium = 1;
+     my $nokeep = 0;
+     if(defined($tmp{'medium'})) {
+@@ -940,15 +911,25 @@
+       die;
+     }
+     
+-    my %dirs = $this-&gt;getSrcList($metapack);
+-    if(!%dirs) {
+-      $this-&gt;{m_logger}-&gt;error(&quot;[E] [unpackMetapackages] dirs not defined!\n&quot;);
+-      next;
+-      #return undef; # rock hard exit here, can't proceed without the proper input
+-    }
++    #my %dirs = $this-&gt;getSrcList($metapack);
++    #if(!%dirs) {
++    #  $this-&gt;{m_logger}-&gt;error(&quot;[E] [unpackMetapackages] dirs not defined!\n&quot;);
++    #  next;
++    #  #return undef; # rock hard exit here, can't proceed without the proper input
++    #}
+ 
+-    foreach my $dir(keys(%dirs)) {
+-      $this-&gt;{m_util}-&gt;unpac_package($this-&gt;{m_packages}-&gt;{$metapack}-&gt;{$dir}-&gt;{'source'}, &quot;$tmp&quot;);
++    foreach my $arch($this-&gt;getArchList($metapack, \$nofallback)) {
++    #foreach my $dir(keys(%dirs)) {
++      next if($arch =~ m{(src|nosrc)});
++      if(!$this-&gt;{m_metapackages}-&gt;{$metapack}-&gt;{$arch}) {
++	$this-&gt;{m_logger}-&gt;warning(&quot;[W] Metapackage &lt;$metapack&gt; not available for architecure &lt;$arch&gt;!&quot;);
++	next;
++      }
++      if(!$this-&gt;{m_metapackages}-&gt;{$metapack}-&gt;{$arch}-&gt;{'source'}) {
++	$this-&gt;{m_logger}-&gt;error(&quot;[E] Metapackage &lt;$metapack&gt; has no source defined!&quot;);
++	next;
++      }
++      $this-&gt;{m_util}-&gt;unpac_package($this-&gt;{m_metapackages}-&gt;{$metapack}-&gt;{$arch}-&gt;{'source'}, &quot;$tmp&quot;);
+       ## all metapackages contain at least a CD1 dir and _may_ contain another /usr/share/&lt;name&gt; dir
+       qx(cp -r $tmp/CD1/* $this-&gt;{m_basesubdir}-&gt;{$medium});
+       for my $sub(&quot;usr&quot;, &quot;etc&quot;) {
+@@ -1258,10 +1239,19 @@
+   my $this   = shift;
+   my $pack   = shift;
+   my $repref = shift;
++  my $type   = shift; # meta or other
+   my $force  = shift; # may be omitted
+ 
+   my $retval = 0;
+ 
++  my $targethash;
++  if($type =~ m{meta}) {
++    $targethash = $this-&gt;{m_metapackages};
++  }
++  else {
++    $targethash = $this-&gt;{m_packages};
++  }
++
+   my %list = $this-&gt;bestBet($pack);
+   return $retval if(! %list);
+ 
+@@ -1331,12 +1321,15 @@
+ 	# We can now sort out the required architectures once and for all.
+ 	my $store;
+ 	my $subdir = $r_tmp2-&gt;{'subdir'};
+-	if($this-&gt;{m_packages}-&gt;{$pack}) {
+-	  $store = $this-&gt;{m_packages}-&gt;{$pack};
++	### FIXME: differentiate metapackages here?
++	# because here's the reason why metapacks show up in the m_packages list
++	#if($this-&gt;{m_packages}-&gt;{$pack}) {
++	if($targethash-&gt;{$pack}) {
++	  $store = $targethash-&gt;{$pack};
+ 	}
+ 	else {
+ 	  $store = {};
+-	  $this-&gt;{m_packages}-&gt;{$pack} = $store;
++	  $targethash-&gt;{$pack} = $store;
+ 	}
+ 	if(!$store-&gt;{$subdir}) {
+ 	  $store-&gt;{$subdir} = {};
+@@ -1420,6 +1413,10 @@
+   print DUMP &quot;Dumped data from KIWICollect object\n\n&quot;;
+ 
+   print DUMP &quot;LIST OF REQUIRED PACKAGES:\n\n&quot;;
++  if(!%{$this-&gt;{m_packages}}) {
++    $this-&gt;{m_logger}-&gt;info(&quot;[I] Empty packages list\n&quot;);
++    return;
++  }
+   foreach my $pack(keys(%{$this-&gt;{m_packages}})) {
+     print DUMP &quot;$pack&quot;;
+     if(defined($this-&gt;{m_packages}-&gt;{$pack}-&gt;{'priority'})) {
+@@ -1446,76 +1443,136 @@
+ # out cases where the filename provides no usable information
+ #------------------------------------------
+ # 
+-sub checkArchitectureList
++#sub checkArchitectureList
++#{
++#  my $this = shift;
++#  return undef if !$this;
++#
++#  my $pack = shift;
++#  return undef if !$pack;
++#  
++#  my @ret = ();
++#  # the required architectures as specified in the xml description:
++#  # mapped to 0 means &quot;removed&quot;	(removearch)
++#  #	      1 means &quot;original from xml&quot;
++#  #	      2 means &quot;added&quot; (addarch)
++#  #	      3 means &quot;force&quot; (onlyarch)
++#  # for ADDED (=2) archs no fallback expansion is done!
++#  my %requiredarch = map { $_ =&gt; 1 } @{$this-&gt;{m_archlist}};
++#
++#  my @addarchs = ();
++#  my @remarchs = ();
++#
++#  if(defined($this-&gt;{m_packages}-&gt;{$pack}) and $this-&gt;{m_packages}-&gt;{$pack}-&gt;{'onlyarch'}) {
++#    $requiredarch{$this-&gt;{m_packages}-&gt;{$pack}-&gt;{'onlyarch'}} = 3;
++#  }
++#  else {
++#    # step 1 - sort out the one and only definite architecture list:
++#    if(defined($this-&gt;{m_packages}-&gt;{$pack}) and $this-&gt;{m_packages}-&gt;{$pack}-&gt;{'addarch'}) {
++#      @addarchs = split(',', $this-&gt;{m_packages}-&gt;{$pack}-&gt;{'addarch'});
++#      if(@addarchs) {
++#	$this-&gt;{m_logger}-&gt;info(&quot;[I] Additional architecture(s) for package $pack: &quot;) if $this-&gt;{m_debug};
++#	foreach(@addarchs) {
++#	  $this-&gt;{m_logger}-&gt;info(&quot;\t$_&quot;);
++#	  $requiredarch{$_} = 2;
++#	}
++#      }
++#    }
++#
++#    if(defined($this-&gt;{m_packages}-&gt;{$pack}) and $this-&gt;{m_packages}-&gt;{$pack}-&gt;{'removearch'}) {
++#      @remarchs = split(',', $this-&gt;{m_packages}-&gt;{$pack}-&gt;{'removearch'});
++#      if(@remarchs) {
++#	foreach(@remarchs) {
++#	  $requiredarch{$_} = 0;
++#	}
++#      }
++#    }
++#  }
++#
++#  $this-&gt;{m_logger}-&gt;info(&quot;[I] Architectures for package $pack:&quot;) if $this-&gt;{m_debug};
++#  foreach my $a(keys(%requiredarch)) {
++#    if($requiredarch{$a} == 3) {
++#      $this-&gt;{m_logger}-&gt;info(&quot;\tarch $a forced&quot;);
++#      push @ret, $a;
++#      last;
++#    }
++#    elsif($requiredarch{$a} == 1) {
++#      $this-&gt;{m_logger}-&gt;info(&quot;\tarch $a as per global list&quot;);
++## BAUSTELLE #      push @ret, $this-&gt;getArchListByName($a);
++#    }
++#    elsif($requiredarch{$a} == 2) {
++#      $this-&gt;{m_logger}-&gt;info(&quot;\tarch $a added explicitely&quot;);
++#      push @ret, $a;
++#    }
++#    elsif($requiredarch{$a} == 0) {
++#      $this-&gt;{m_logger}-&gt;info(&quot;\tarch $a removed.&quot;);
++#    }
++#  }
++#  return @ret;
++#}
++
++
++sub getArchList
+ {
+   my $this = shift;
+-  return undef if !$this;
+-
+   my $pack = shift;
+-  return undef if !$pack;
+-  
+-  my @ret = ();
+-  # the required architectures as specified in the xml description:
+-  # mapped to 0 means &quot;removed&quot;	(removearch)
+-  #	      1 means &quot;original from xml&quot;
+-  #	      2 means &quot;added&quot; (addarch)
+-  #	      3 means &quot;force&quot; (onlyarch)
+-  # for ADDED (=2) archs no fallback expansion is done!
+-  my %requiredarch = map { $_ =&gt; 1 } @{$this-&gt;{m_archlist}};
++  my $nofallback = shift;
+ 
+-  my @addarchs = ();
+-  my @remarchs = ();
+-
+-  if(defined($this-&gt;{m_packages}-&gt;{$pack}) and $this-&gt;{m_packages}-&gt;{$pack}-&gt;{'onlyarch'}) {
+-    $requiredarch{$this-&gt;{m_packages}-&gt;{$pack}-&gt;{'onlyarch'}} = 3;
++  my @archs = ();
++  my $ret = 0;
++  if(not defined($pack)) {
++    return $ret;
+   }
+   else {
+-    # step 1 - sort out the one and only definite architecture list:
+-    if(defined($this-&gt;{m_packages}-&gt;{$pack}) and $this-&gt;{m_packages}-&gt;{$pack}-&gt;{'addarch'}) {
+-      @addarchs = split(',', $this-&gt;{m_packages}-&gt;{$pack}-&gt;{'addarch'});
+-      if(@addarchs) {
+-	$this-&gt;{m_logger}-&gt;info(&quot;[I] Additional architecture(s) for package $pack: &quot;) if $this-&gt;{m_debug};
+-	foreach(@addarchs) {
+-	  $this-&gt;{m_logger}-&gt;info(&quot;\t$_&quot;);
+-	  $requiredarch{$_} = 2;
++    my $tmp = $this-&gt;{m_packages}-&gt;{$pack}; #optimisation
++    my @omits = ();
++    if(defined($tmp-&gt;{'onlyarch'})) {
++      # allow 'onlyarch=&quot;x86_64,i586&quot;'
++      $tmp-&gt;{'onlyarch'} =~ s{,\s*,}{,}g;
++      $tmp-&gt;{'onlyarch'} =~ s{,\s*}{,}g;
++      $tmp-&gt;{'onlyarch'} =~ s{,\s*$}{};
++      $tmp-&gt;{'onlyarch'} =~ s{^\s*,}{};
++      push @archs, split(/,\s/, $tmp-&gt;{'onlyarch'});
++      $nofallback = 1;
++    }
++    else {
++      if(defined($tmp-&gt;{'addarch'})) {
++	push @archs, $this-&gt;{m_archlist}-&gt;headList();
++	if(not(grep(/$tmp-&gt;{'addarch'}/, @archs))) {
++	$tmp-&gt;{'addarch'} =~ s{,\s*,}{,}g;
++	$tmp-&gt;{'addarch'} =~ s{,\s*}{,}g;
++	$tmp-&gt;{'addarch'} =~ s{,\s*$}{};
++	$tmp-&gt;{'addarch'} =~ s{^\s*,}{};
++	  push @archs, split(/,\s/, $tmp-&gt;{'addarch'});
+ 	}
+       }
+-    }
+-
+-    if(defined($this-&gt;{m_packages}-&gt;{$pack}) and $this-&gt;{m_packages}-&gt;{$pack}-&gt;{'removearch'}) {
+-      @remarchs = split(',', $this-&gt;{m_packages}-&gt;{$pack}-&gt;{'removearch'});
+-      if(@remarchs) {
+-	foreach(@remarchs) {
+-	  $requiredarch{$_} = 0;
++      elsif(defined($tmp-&gt;{'removearch'})) {
++	$tmp-&gt;{'removearch'} =~ s{,\s*,}{,}g;
++	$tmp-&gt;{'removearch'} =~ s{,\s*}{,}g;
++	$tmp-&gt;{'removearch'} =~ s{,\s*$}{};
++	$tmp-&gt;{'removearch'} =~ s{^\s*,}{};
++	push @archs, $this-&gt;{m_archlist}-&gt;headList();
++	@omits = split(/,\s/, $tmp-&gt;{'removearch'});
++	my @rl;
++	foreach my $x(@omits) {
++	  push @rl, grep(/$x/, @archs);
+ 	}
++	if(@rl) {
++	  my %h = map { $_ =&gt; 1 } @archs;
++	  my @cleared = grep delete($h{$_}), @rl;
++	  @archs = ();
++	  @archs = keys(%h);
++	}
+       }
++      else {
++	push @archs, $this-&gt;{m_archlist}-&gt;headList();
++      }
+     }
+   }
+-
+-  $this-&gt;{m_logger}-&gt;info(&quot;[I] Architectures for package $pack:&quot;) if $this-&gt;{m_debug};
+-  foreach my $a(keys(%requiredarch)) {
+-    if($requiredarch{$a} == 3) {
+-      $this-&gt;{m_logger}-&gt;info(&quot;\tarch $a forced&quot;);
+-      push @ret, $a;
+-      last;
+-    }
+-    elsif($requiredarch{$a} == 1) {
+-      $this-&gt;{m_logger}-&gt;info(&quot;\tarch $a as per global list&quot;);
+-# BAUSTELLE #      push @ret, $this-&gt;getArchListByName($a);
+-    }
+-    elsif($requiredarch{$a} == 2) {
+-      $this-&gt;{m_logger}-&gt;info(&quot;\tarch $a added explicitely&quot;);
+-      push @ret, $a;
+-    }
+-    elsif($requiredarch{$a} == 0) {
+-      $this-&gt;{m_logger}-&gt;info(&quot;\tarch $a removed.&quot;);
+-    }
+-  }
+-  return @ret;
++  return @archs;
+ }
+ 
+ 
+-
+ sub failedPackagesWarning
+ {
+   my $this = shift;
+@@ -1673,7 +1730,7 @@
+       close(MEDIA);
+     }
+   }
+-  else 
++  else { 
+     $this-&gt;{m_logger}-&gt;error(&quot;[E] [createMetadata] required variable \&quot;VENDOR\&quot; not set&quot;);
+     $this-&gt;{m_logger}-&gt;info(&quot;[I] [createMetadata] skipping media file due to error!&quot;);
+   }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000717.html">[Kiwi-devel] r1621 - in kiwi-head: . modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000719.html">[Kiwi-devel] r1623 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#718">[ date ]</a>
+              <a href="thread.html#718">[ thread ]</a>
+              <a href="subject.html#718">[ subject ]</a>
+              <a href="author.html#718">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

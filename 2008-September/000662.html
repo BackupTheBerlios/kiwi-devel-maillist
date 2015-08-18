@@ -1,0 +1,161 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1565 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1565%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200809151007.m8FA7ZU2019286%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000661.html">
+   <LINK REL="Next"  HREF="000663.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1565 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1565%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200809151007.m8FA7ZU2019286%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1565 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Sep 15 12:07:35 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000661.html">[Kiwi-devel] r1564 - kiwi-head/rpm
+</A></li>
+        <LI>Next message: <A HREF="000663.html">[Kiwi-devel] r1566 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#662">[ date ]</a>
+              <a href="thread.html#662">[ thread ]</a>
+              <a href="subject.html#662">[ subject ]</a>
+              <a href="author.html#662">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-09-15 12:07:29 +0200 (Mon, 15 Sep 2008)
+New Revision: 1565
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIMigrate.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+Log:
+
+- v2.76
+- fixed files (-f) check in migration mode (bnc #419219)
+- added quoting for excluded param values (bnc #419219)
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-09-12 09:31:26 UTC (rev 1564)
++++ kiwi-head/kiwi.pl	2008-09-15 10:07:29 UTC (rev 1565)
+@@ -43,7 +43,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;2.75&quot;;
++our $Version       = &quot;2.76&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+ our $ConfigFile    = &quot;$ENV{'HOME'}/.kiwirc&quot;;
+ our $ConfigName    = &quot;config.xml&quot;;
+
+Modified: kiwi-head/modules/KIWIMigrate.pm
+===================================================================
+--- kiwi-head/modules/KIWIMigrate.pm	2008-09-12 09:31:26 UTC (rev 1564)
++++ kiwi-head/modules/KIWIMigrate.pm	2008-09-15 10:07:29 UTC (rev 1565)
+@@ -184,6 +184,7 @@
+ 	);
+ 	if (defined $excl) {
+ 		my @exclude = @{$excl};
++		foreach (@exclude) { $_ = quotemeta; };
+ 		push @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">denyFiles, at exclude</A>;
+ 	}
+ 	#==========================================
+@@ -590,7 +591,7 @@
+ 		my $filehash = shift;
+ 		my $mount    = shift;
+ 		return sub {
+-			if (-f $File::Find::name) {
++			if (! -d $File::Find::name) {
+ 				my $expr = quotemeta $mount;
+ 				my $file = $File::Find::name; $file =~ s/$expr//;
+ 				my $dirn = $File::Find::dir;  $dirn =~ s/$expr//;
+@@ -712,7 +713,7 @@
+ 				if (! -d &quot;$dest/root/$dir&quot;) {
+ 					qxx (&quot;mkdir -p $dest/root/$dir&quot;);
+ 				}
+-				qxx (&quot;cp -a \&quot;$file\&quot; $dest/root/$file&quot;);
++				qxx (&quot;cp -a \&quot;$file\&quot; \&quot;$dest/root/$file\&quot;&quot;);
+ 			}
+ 			$done = int ($count * $spart);
+ 			if ($done != $done_old) {
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-09-12 09:31:26 UTC (rev 1564)
++++ kiwi-head/rpm/kiwi.changes	2008-09-15 10:07:29 UTC (rev 1565)
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Mon Sep 15 12:00:17 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v2.76
++- fixed files (-f) check in migration mode (bnc #419219)
++- added quoting for excluded param values (bnc #419219)
++
++-------------------------------------------------------------------
+ Tue Sep  9 10:40:54 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.75
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-09-12 09:31:26 UTC (rev 1564)
++++ kiwi-head/rpm/kiwi.spec	2008-09-15 10:07:29 UTC (rev 1565)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 2.75
++# spec file for package kiwi (Version 2.76
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        2.75
++Version:        2.76
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000661.html">[Kiwi-devel] r1564 - kiwi-head/rpm
+</A></li>
+	<LI>Next message: <A HREF="000663.html">[Kiwi-devel] r1566 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#662">[ date ]</a>
+              <a href="thread.html#662">[ thread ]</a>
+              <a href="subject.html#662">[ subject ]</a>
+              <a href="author.html#662">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

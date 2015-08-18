@@ -1,0 +1,190 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a67097542c2de40446875ef20eaade1c2528da0b
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a67097542c2de40446875ef20eaade1c2528da0b&In-Reply-To=%3C201001071713.o07HDeRK031556%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001749.html">
+   <LINK REL="Next"  HREF="001751.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a67097542c2de40446875ef20eaade1c2528da0b</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a67097542c2de40446875ef20eaade1c2528da0b&In-Reply-To=%3C201001071713.o07HDeRK031556%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a67097542c2de40446875ef20eaade1c2528da0b">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jan  7 18:13:40 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001749.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 40b8eea0b5a92376f16a0779885baa3091e17164
+</A></li>
+        <LI>Next message: <A HREF="001751.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4928cedd77a744a3139096c83f40675f3c439c86
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1750">[ date ]</a>
+              <a href="thread.html#1750">[ thread ]</a>
+              <a href="subject.html#1750">[ subject ]</a>
+              <a href="author.html#1750">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  a67097542c2de40446875ef20eaade1c2528da0b (commit)
+      from  40b8eea0b5a92376f16a0779885baa3091e17164 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit a67097542c2de40446875ef20eaade1c2528da0b
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Jan 7 18:13:19 2010 +0100
+
+    - migration: added modified files tree
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIMigrate.pm b/modules/KIWIMigrate.pm
+index 14f9878..484d330 100644
+--- a/modules/KIWIMigrate.pm
++++ b/modules/KIWIMigrate.pm
+@@ -25,6 +25,7 @@ use Carp qw (cluck);
+ use File::Find;
+ use File::Basename;
+ use File::Path;
++use File::Copy;
+ use Storable;
+ use KIWILog;
+ use KIWIQX;
+@@ -348,10 +349,6 @@ sub setTemplate {
+ 	my $pacs    = $this-&gt;{packages};
+ 	my %osc     = %{$this-&gt;{source}};
+ 	#==========================================
+-	# create root directory
+-	#------------------------------------------
+-	mkdir &quot;$dest/root&quot;;
+-	#==========================================
+ 	# create xml description
+ 	#------------------------------------------
+ 	if (! open (FD,&quot;&gt;$dest/$main::ConfigName&quot;)) {
+@@ -867,7 +864,7 @@ sub setSystemOverlayFiles {
+ 	# Create overlay root tree
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Creating link list...\n&quot;);
+-	$data = qxx (&quot;mkdir -p $dest/root 2&gt;&amp;1&quot;);
++	$data = qxx (&quot;mkdir -p $dest/root-nopackage 2&gt;&amp;1&quot;);
+ 	$code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+ 		$kiwi -&gt; failed ();
+@@ -881,7 +878,7 @@ sub setSystemOverlayFiles {
+ 	my %paths = ();
+ 	foreach my $file (keys %result) {
+ 		my $path = $result{$file};
+-		$paths{&quot;$dest/root/$path&quot;} = $path;
++		$paths{&quot;$dest/root-nopackage/$path&quot;} = $path;
+ 	}
+ 	mkpath (keys %paths, {verbose =&gt; 0});
+ 	#==========================================
+@@ -889,7 +886,7 @@ sub setSystemOverlayFiles {
+ 	#------------------------------------------
+ 	foreach my $file (keys %result) {
+ 		my $old = $file;
+-		my $new = $dest.&quot;/root&quot;.$old;
++		my $new = $dest.&quot;/root-nopackage&quot;.$old;
+ 		if (! link &quot;$old&quot;,&quot;$new&quot;) {
+ 			$kiwi -&gt; warning (&quot;hard link for $file failed: $!&quot;);
+ 			$kiwi -&gt; skipped ();
+@@ -902,10 +899,21 @@ sub setSystemOverlayFiles {
+ 	$this -&gt; checkBrokenLinks();
+ 	$kiwi -&gt; done();
+ 	#==========================================
++	# Create modified files tree
++	#------------------------------------------
++	$kiwi -&gt; info (&quot;Creating modified files tree...&quot;);
++	mkdir &quot;$dest/root-modified&quot;;
++	foreach my $file (@modified) {
++		my ($name,$dir,$suffix) = fileparse ($file);
++		mkpath (&quot;$dest/root-modified/$dir&quot;, {verbose =&gt; 0});
++		move (&quot;$dest/root-nopackage/$file&quot;,&quot;$dest/root-modified/$dir&quot;);
++	}
++	$kiwi -&gt; done();
++	#==========================================
+ 	# Remove empty directories
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Removing empty directories...&quot;);
+-	qxx (&quot;find $dest/root -type d | xargs rmdir -p 2&gt;/dev/null&quot;);
++	qxx (&quot;find $dest/root-nopackage -type d | xargs rmdir -p 2&gt;/dev/null&quot;);
+ 	$kiwi -&gt; done();
+ 	#==========================================
+ 	# Store in instance for report
+@@ -934,6 +942,10 @@ sub setInitialSetup {
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	$kiwi -&gt; info (&quot;Setting up initial deployment workflow...&quot;);
+ 	#==========================================
++	# create root directory
++	#------------------------------------------
++	mkdir &quot;$dest/root&quot;;
++	#==========================================
+ 	# create xorg.conf [fbdev]
+ 	#------------------------------------------
+ 	qxx (&quot;mkdir -p $dest/root/etc/X11&quot;);
+@@ -1072,7 +1084,7 @@ sub checkBrokenLinks {
+ 	my $this = shift;
+ 	my $dest = $this-&gt;{dest};
+ 	my $kiwi = $this-&gt;{kiwi};
+-	my @link = qxx (&quot;find $dest/root -type l&quot;);
++	my @link = qxx (&quot;find $dest/root-nopackage -type l&quot;);
+ 	my $returnok = 1;
+ 	my $dir;
+ 	my $name;
+@@ -1084,7 +1096,7 @@ sub checkBrokenLinks {
+ 			($name,$dir,$suffix) = fileparse ($linkfile);
+ 			$dir.= &quot;/&quot;;
+ 		} else {
+-			$dir = $dest.&quot;/root&quot;;
++			$dir = $dest.&quot;/root-nopackage&quot;;
+ 		}
+ 		if (! -e $dir.$ref) {
+ 			$kiwi -&gt; loginfo (&quot;Broken link: $linkfile -&gt; $ref [ REMOVED ]&quot;);
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001749.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 40b8eea0b5a92376f16a0779885baa3091e17164
+</A></li>
+	<LI>Next message: <A HREF="001751.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4928cedd77a744a3139096c83f40675f3c439c86
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1750">[ date ]</a>
+              <a href="thread.html#1750">[ thread ]</a>
+              <a href="subject.html#1750">[ subject ]</a>
+              <a href="author.html#1750">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

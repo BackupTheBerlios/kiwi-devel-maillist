@@ -1,0 +1,477 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 05cf3f3570de6f4c8a1b0bcbca6dc4c4bf9c3f52
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2005cf3f3570de6f4c8a1b0bcbca6dc4c4bf9c3f52&In-Reply-To=%3C201006211416.o5LEG2br005709%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002318.html">
+   <LINK REL="Next"  HREF="002321.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 05cf3f3570de6f4c8a1b0bcbca6dc4c4bf9c3f52</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2005cf3f3570de6f4c8a1b0bcbca6dc4c4bf9c3f52&In-Reply-To=%3C201006211416.o5LEG2br005709%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 05cf3f3570de6f4c8a1b0bcbca6dc4c4bf9c3f52">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Jun 21 16:16:02 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002318.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1ac0ac9e5c011e37029802863f4af9d463516900
+</A></li>
+        <LI>Next message: <A HREF="002321.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d12fa168b89b97e13f42c0a5d143f241c3e71d78
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2320">[ date ]</a>
+              <a href="thread.html#2320">[ thread ]</a>
+              <a href="subject.html#2320">[ subject ]</a>
+              <a href="author.html#2320">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  05cf3f3570de6f4c8a1b0bcbca6dc4c4bf9c3f52 (commit)
+      from  1ac0ac9e5c011e37029802863f4af9d463516900 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 05cf3f3570de6f4c8a1b0bcbca6dc4c4bf9c3f52
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Jun 21 16:15:40 2010 +0200
+
+    - fixed split section evaluation (bnc #615121)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index ed78b9a..84d2370 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -2321,73 +2321,31 @@ sub createImageSplit {
+ 	$imageTreeTmp =~ s/\/+$//;
+ 	$imageTreeTmp.= &quot;-tmp/&quot;;
+ 	$this-&gt;{imageTreeTmp} = $imageTreeTmp;
+-	my @persistFiles = $sxml -&gt; getSplitPersistentFiles ();
+-	my @exceptFiles  = $sxml -&gt; getSplitExceptions ();
+-	my %exceptHash;
+-	my %persistDir;
+ 	#==========================================
+-	# walk through except files if any
++	# run split tree creation
+ 	#------------------------------------------
+-	foreach my $except (@exceptFiles) {
+-		my $globsource = &quot;${imageTree}${except}&quot;;
+-		my @files = glob($globsource);
+-		foreach my $file (@files) {
+-			#==========================================
+-			# find except files to set read-only
+-			#------------------------------------------
+-			if (! -e $file) {
++	if (! -d $imageTreeTmp) {
++		$kiwi -&gt; info (&quot;Creating temporary image part...\n&quot;);
++		#==========================================
++		# walk through except files if any
++		#------------------------------------------
++		my %exceptHash;
++		foreach my $except ($sxml -&gt; getSplitTmpExceptions()) {
++			my $globsource = &quot;${imageTree}${except}&quot;;
++			my @files = qxx (&quot;find $globsource -xtype f 2&gt;/dev/null&quot;);
++			my $code  = $? &gt;&gt; 8;
++			if ($code != 0) {
++				# excepted file(s) doesn't exist anyway
+ 				next;
+ 			}
+-			my $rerooted = $file;
+-			$rerooted =~ s#$imageTree#/read-only/#;
+-			my $tmpdest = $file;
+-			$tmpdest =~ s#$imageTree#$imageTreeTmp#;
+-			$exceptHash{$tmpdest} = $rerooted;
+-			#==========================================
+-			# check file dirname in persistent list 
+-			#------------------------------------------
+-			my $tdir = dirname $tmpdest;
+-			$tdir =~ s#$imageTreeTmp##;
+-			foreach my $persist (@persistFiles) {
+-				if (($persist eq $tdir) &amp;&amp; (! $persistDir{$persist})) {
+-					$persistDir{$persist} = $persist;
+-					last;
+-				}
+-			}
+-		}
+-	}
+-	#==========================================
+-	# reordering persistent directory list
+-	#------------------------------------------
+-	foreach my $pdir (keys %persistDir) {
+-		my $dir = &quot;${imageTree}${pdir}&quot;;
+-		my @res = ();
+-		if (! opendir (FD,$dir)) {
+-			$kiwi -&gt; warning (&quot;Can't open directory: $dir: $!&quot;);
+-			$kiwi -&gt; skipped ();
+-			next;
+-		}
+-		while (my $entry = readdir (FD)) {
+-			next if ($entry =~ /^\.+$/);
+-			if (-d $imageTree.$pdir.&quot;/&quot;.$entry) {
+-				push @res,$pdir.&quot;/&quot;.$entry;
+-			}
+-		}
+-		closedir (FD);
+-		my @newlist = ();
+-		push @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">persistFiles, at res</A>;
+-		foreach my $entry (@persistFiles) {
+-			if ($entry ne $pdir) {
+-				push @newlist,$entry;
++			chomp @files;
++			foreach my $file (@files) {
++				$exceptHash{$file} = $file;
+ 			}
+ 		}
+-		@persistFiles = @newlist;
+-	}
+-	#==========================================
+-	# run split tree creation
+-	#------------------------------------------
+-	if (! -d $imageTreeTmp) {
+-		$kiwi -&gt; info (&quot;Creating temporary image part&quot;);
++		#==========================================
++		# create linked list for files, create dirs
++		#------------------------------------------
+ 		if (! mkdir $imageTreeTmp) {
+ 			$error = $!;
+ 			$kiwi -&gt; failed ();
+@@ -2416,40 +2374,48 @@ sub createImageSplit {
+ 			) {
+ 				qxx (&quot;cp -a $path $target&quot;);
+ 			} else {
++				$rerooted =~ s#/+#/#g;
+ 				symlink ($rerooted, $target);
+ 			}
+ 		};
+ 		find(\&amp;$createTmpTree, $imageTree);
+-		my @tempFiles = $sxml -&gt; getSplitTempFiles ();
++		my @tempFiles    = $sxml -&gt; getSplitTempFiles ();
++		my @persistFiles = $sxml -&gt; getSplitPersistentFiles ();
+ 		if ($nopersistent) {
+ 			push (@tempFiles, @persistFiles);
+-			@persistFiles = ();
+ 		}
++		#==========================================
++		# search temporary files, respect excepts
++		#------------------------------------------
++		my %tempFiles_new;
+ 		if (@tempFiles) {
+ 			foreach my $temp (@tempFiles) {
+ 				my $globsource = &quot;${imageTree}${temp}&quot;;
+-				my @files = glob($globsource);
+-				foreach my $file (@files) {
+-					if (! -e $file) {
+-						next;
+-					}
+-					my $dest = $file;
+-					$dest =~ s#$imageTree#$imageTreeTmp#;
+-					qxx (&quot;rm -rf $dest&quot;);
+-					qxx (&quot;mv $file $dest&quot;);
++				my @files = qxx (&quot;find $globsource -xtype f 2&gt;/dev/null&quot;);
++				my $code  = $? &gt;&gt; 8;
++				if ($code != 0) {
++					$kiwi -&gt; warning (&quot;file $globsource doesn't exist&quot;);
++					$kiwi -&gt; skipped ();
++					next;
++				}
++				chomp @files;
++				foreach (@files) {
++					$tempFiles_new{$_} = $_;
+ 				}
+ 			}
+ 		}
+-		#==========================================
+-		# handle optional exceptions
+-		#------------------------------------------
+-		if (@exceptFiles) {
+-			foreach my $except (keys %exceptHash) {
+-				qxx (&quot;rm -rf $except&quot;);
+-				symlink ($exceptHash{$except},$except);
++		@tempFiles = sort keys %tempFiles_new;
++		if (@tempFiles) {
++			foreach my $file (@tempFiles) {
++				if (defined $exceptHash{$file}) {
++					next;
++				}
++				my $dest = $file;
++				$dest =~ s#$imageTree#$imageTreeTmp#;
++				qxx (&quot;rm -rf $dest&quot;);
++				qxx (&quot;mv $file $dest&quot;);
+ 			}
+ 		}
+-		$kiwi -&gt; done();
+ 	}
+ 	#==========================================
+ 	# find persistent files for the read-write
+@@ -2457,71 +2423,109 @@ sub createImageSplit {
+ 	$imageTreeRW = $imageTree;
+ 	$imageTreeRW =~ s/\/+$//;
+ 	$imageTreeRW.= &quot;-read-write&quot;;
++	my @persistFiles = $sxml -&gt; getSplitPersistentFiles ();
++	if ($nopersistent) {
++		undef @persistFiles;
++	}
+ 	if (! -d $imageTreeRW &amp;&amp; @persistFiles) {
+-		$kiwi -&gt; info (&quot;Creating read-write image part&quot;);
++		$kiwi -&gt; info (&quot;Creating read-write image part...\n&quot;);
++		#==========================================
++		# Create read-write directory
++		#------------------------------------------
+ 		$this-&gt;{imageTreeRW} = $imageTreeRW;
+ 		if (! mkdir $imageTreeRW) {
+ 			$error = $!;
+-			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error  (&quot;Couldn't create read-write directory: $error&quot;);
+ 			$kiwi -&gt; failed ();
+ 			qxx (&quot;rm -rf $imageTree&quot;);
+ 			return undef;
+ 		}
+-		my @expandedPersistFiles = ();
+-		foreach my $persist (@persistFiles) {
+-			my $globsource = &quot;${imageTreeTmp}${persist}&quot;;
+-			my @files = glob($globsource);
++		#==========================================
++		# walk through except files if any
++		#------------------------------------------
++		my %exceptHash;
++		foreach my $except ($sxml -&gt; getSplitPersistentExceptions()) {
++			my $globsource = &quot;${imageTree}${except}&quot;;
++			my @files = qxx (&quot;find $globsource -xtype f 2&gt;/dev/null&quot;);
++			my $code  = $? &gt;&gt; 8;
++			if ($code != 0) {
++				# excepted file(s) doesn't exist anyway
++				next;
++			}
++			chomp @files;
+ 			foreach my $file (@files) {
+-				push @expandedPersistFiles, $file;
++				$exceptHash{$file} = $file;
+ 			}
+ 		}
+-		sub dirsort {
+-			if (-d $a &amp;&amp; -d $b) {
+-				my $lena = length($a);
+-				my $lenb = length($b);
+-				if ($lena == $lenb) {
+-					return 0;
+-				} elsif ($lena &lt; $lenb) {
+-					return -1;
+-				} else {
+-					return 1;
++		#==========================================
++		# search persistent files, respect excepts
++		#------------------------------------------
++		my %expandedPersistFiles;
++		foreach my $persist (@persistFiles) {
++			my $globsource = &quot;${imageTree}${persist}&quot;;
++			my @files = qxx (&quot;find $globsource 2&gt;/dev/null&quot;);
++			my $code  = $? &gt;&gt; 8;
++			if ($code != 0) {
++				$kiwi -&gt; warning (&quot;file $globsource doesn't exist&quot;);
++				$kiwi -&gt; skipped ();
++				next;
++			}
++			chomp @files;
++			foreach my $file (@files) {
++				if (defined $exceptHash{$file}) {
++					next;
+ 				}
+-			} elsif (-d $a) {
+-				return -1;
+-			} else {
+-				return 1;
++				$expandedPersistFiles{$file} = $file;
+ 			}
+ 		}
+-		my @sortedPersistFiles = sort dirsort @expandedPersistFiles;
+-		foreach my $file (@sortedPersistFiles) {
+-			if ($exceptHash{$file}) {
+-				# /.../
+-				# don't handle this file for read-write
+-				# because of an exception
+-				# ----
+-				next;
+-			}
+-			my $source  = $file;
+-			my $rosource= $file;
+-			my $dest    = $file;
+-			my $rwroot  = $file;
+-			$rosource   =~ s#$imageTreeTmp#$imageTree#;
+-			$dest       =~ s#$imageTreeTmp#$imageTreeRW#;
+-			$rwroot     =~ s#$imageTreeTmp#/read-write/#;
+-			my $destdir = dirname $dest;
+-			qxx (&quot;rm -rf $dest&quot;);
+-			qxx (&quot;mkdir -p $destdir&quot;);
+-			if (-d $source) {
+-				qxx (&quot;mv $source $dest&quot;);
+-				symlink ($rwroot, $source);
++		@persistFiles = keys %expandedPersistFiles;
++		#==========================================
++		# relink to read-write, and move files
++		#------------------------------------------
++		foreach my $file (@persistFiles) {
++			my $dest = $file;
++			my $link = $file;
++			my $rlnk = $file;
++			$dest =~ s#$imageTree#$imageTreeRW#;
++			$link =~ s#$imageTree#$imageTreeTmp#;
++			$rlnk =~ s#$imageTree#/read-write#;
++			if (-d $file) {
++				#==========================================
++				# recreate directory
++				#------------------------------------------
++				qxx (&quot;mkdir -p $dest&quot;);
+ 			} else {
+-				qxx (&quot;mv $rosource $dest&quot;);
+-				qxx (&quot;rm -f $source&quot;);
+-				symlink ($rwroot, $source);
++				#==========================================
++				# move file to read-write area
++				#------------------------------------------
++				my $destdir = dirname $dest;
++				qxx (&quot;rm -rf $dest&quot;);
++				qxx (&quot;mkdir -p $destdir&quot;);
++				qxx (&quot;mv $file $dest&quot;);
++				#==========================================
++				# relink file to read-write area
++				#------------------------------------------
++				qxx (&quot;rm -rf $link&quot;);
++				qxx (&quot;ln -s $rlnk $link&quot;);
++			}
++		}
++		#==========================================
++		# relink if entire directory was set
++		#------------------------------------------
++		foreach my $persist ($sxml -&gt; getSplitPersistentFiles()) {
++			my $globsource = &quot;${imageTree}${persist}&quot;;
++			if (-d $globsource) {
++				my $link = $globsource;
++				my $rlnk = $globsource;
++				$link =~ s#$imageTree#$imageTreeTmp#;
++				$rlnk =~ s#$imageTree#/read-write#;
++				#==========================================
++				# relink directory to read-write area
++				#------------------------------------------
++				qxx (&quot;rm -rf $link&quot;);
++				qxx (&quot;ln -s $rlnk $link&quot;);
+ 			}
+ 		}
+-		$kiwi -&gt; done();
+ 	}
+ 	#==========================================
+ 	# Embed tmp extend into ro extend
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index ffcb5ce..6ce213a 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -1088,12 +1088,13 @@ sub getSplitTempFiles {
+ }
+ 
+ #==========================================
+-# getSplitExceptions
++# getSplitTmpExceptions
+ #------------------------------------------
+-sub getSplitExceptions {
++sub getSplitTmpExceptions {
+ 	# ...
+-	# Get the exceptions defined for temporary and/or persistent
+-	# split portions. If no exceptions defined return an empty list
++	# Get the exceptions defined for temporary
++	# split portions. If there are no exceptions defined
++	# return an empty list
+ 	# ----
+ 	my $this = shift;
+ 	my $tnode= $this-&gt;{typeNode};
+@@ -1111,12 +1112,31 @@ sub getSplitExceptions {
+ 	foreach my $fileNode (@fileNodeList) {
+ 		push @result, $fileNode -&gt; getAttribute (&quot;name&quot;);
+ 	}
++	return @result;
++}
++
++#==========================================
++# getSplitPersistentExceptions
++#------------------------------------------
++sub getSplitPersistentExceptions {
++	# ...
++	# Get the exceptions defined for persistent
++	# split portions. If there are no exceptions defined
++	# return an empty list
++	# ----
++	my $this = shift;
++	my $tnode= $this-&gt;{typeNode};
++	my $node = $tnode -&gt; getElementsByTagName (&quot;split&quot;) -&gt; get_node(1);
++	my @result = ();
++	if (! defined $node) {
++		return @result;
++	}
+ 	my $persistNode = $node -&gt; getElementsByTagName (&quot;persistent&quot;)
+ 		-&gt; get_node(1);
+ 	if (! defined $persistNode) {
+ 		return @result;
+ 	}
+-	@fileNodeList = $persistNode -&gt; getElementsByTagName (&quot;except&quot;)
++	my @fileNodeList = $persistNode -&gt; getElementsByTagName (&quot;except&quot;)
+ 		-&gt; get_nodelist();
+ 	foreach my $fileNode (@fileNodeList) {
+ 		push @result, $fileNode -&gt; getAttribute (&quot;name&quot;);
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index edd78bd..40442f8 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,6 +1,7 @@
+ -------------------------------------------------------------------
+ Fri Jun 18 12:18:11 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- fixed split section evaluation (bnc #615121)
+ - exit kiwi directly if the possible question to create
+   the destination directory was canceled by the user
+ 
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002318.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1ac0ac9e5c011e37029802863f4af9d463516900
+</A></li>
+	<LI>Next message: <A HREF="002321.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d12fa168b89b97e13f42c0a5d143f241c3e71d78
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2320">[ date ]</a>
+              <a href="thread.html#2320">[ thread ]</a>
+              <a href="subject.html#2320">[ subject ]</a>
+              <a href="author.html#2320">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

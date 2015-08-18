@@ -1,0 +1,210 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. aeca986f1133b794c87e78cced5f7e6d4b518376
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20aeca986f1133b794c87e78cced5f7e6d4b518376&In-Reply-To=%3C20100720145606.A9FEC480CE7%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002430.html">
+   <LINK REL="Next"  HREF="002432.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. aeca986f1133b794c87e78cced5f7e6d4b518376</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20aeca986f1133b794c87e78cced5f7e6d4b518376&In-Reply-To=%3C20100720145606.A9FEC480CE7%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. aeca986f1133b794c87e78cced5f7e6d4b518376">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jul 20 16:56:06 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002430.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. 221f43c739ae1bcbc0bca1df6cbc972f3c032d9b
+</A></li>
+        <LI>Next message: <A HREF="002432.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f5b3c98ee0245f2d3fa89715a29c512a7d6a4e2d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2431">[ date ]</a>
+              <a href="thread.html#2431">[ thread ]</a>
+              <a href="subject.html#2431">[ subject ]</a>
+              <a href="author.html#2431">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  aeca986f1133b794c87e78cced5f7e6d4b518376 (commit)
+      from  be47d128044dbb458b210767f40ed5e76902c5fd (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit aeca986f1133b794c87e78cced5f7e6d4b518376
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Jul 20 16:55:53 2010 +0200
+
+    - fixed oem recovery for LVM based images. It's required
+      to backup the LVM metadata in order to restore it
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 268b65a..3e10fb2 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -970,7 +970,7 @@ function suseStripInitrd {
+ 		lvchange lvresize lvextend lvcreate grub dcounter tty
+ 		dmsetup dialog awk gawk clicfs cryptsetup clear blkid fbiterm
+ 		gettext diff bc utimer cmp busybox kexec pam_console_apply
+-		setterm kpartx
++		setterm kpartx vgcfgbackup vgcfgrestore
+ 	&quot;
+ 	tools=&quot;$tools $@&quot;
+ 	for path in /sbin /usr/sbin /usr/bin /bin;do
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index aa1dae9..3b9a2dc 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -5651,6 +5651,32 @@ function createFilesystem {
+ 	fi
+ }
+ #======================================
++# restoreLVMMetadata
++#--------------------------------------
++function restoreLVMPhysicalVolumes {
++	# /.../
++	# restore the pysical volumes by the given restore file
++	# created from vgcfgbackup. It's important to create them
++	# with the same uuid's compared to the restore file
++	# ----
++	local restorefile=$1
++	cat $restorefile | grep -A2 -E 'pv[0-9] {' | while read line;do
++		if [ -z &quot;$uuid&quot; ];then
++			uuid=$(echo $line | grep 'id =' |\
++				cut -f2 -d= | tr -d \&quot;)
++		fi
++		if [ -z &quot;$pdev&quot; ];then
++			pdev=$(echo $line|grep 'device =' |\
++				cut -f2 -d\&quot; | cut -f1 -d\&quot;)
++		fi
++		if [ ! -z &quot;$pdev&quot; ];then
++			pvcreate -u $uuid $pdev
++			unset uuid
++			unset pdev
++		fi
++	done
++}
++#======================================
+ # pxeSizeToMB
+ #--------------------------------------
+ function pxeSizeToMB {
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 49faeb1..5d50d64 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -8,6 +8,8 @@ Fri Jul 16 15:01:09 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+   the -s operator. This is done because of SUSE Studio
+   which maps a file to a block special under certain
+   circumstances which causes -s to not work anymore
++- fixed oem recovery for LVM based images. It's required
++  to backup the LVM metadata in order to restore it
+ 
+ -------------------------------------------------------------------
+ Thu Jul 15 15:59:20 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index b7ce8e9..2083b85 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -118,14 +118,6 @@ function setupInitialDeviceNames {
+ 		export haveLuks=yes
+ 	fi
+ 	#======================================
+-	# Check root filesystem type
+-	#--------------------------------------
+-	if [ &quot;$FSTYPE&quot; = &quot;unknown&quot; ];then
+-		systemException \
+-			&quot;Couldn't determine filesystem type... abort&quot; \
+-		&quot;reboot&quot;
+-	fi
+-	#======================================
+ 	# Check for LUKS extension on rw fs
+ 	#--------------------------------------
+ 	if isFSTypeReadOnly;then
+@@ -323,7 +315,7 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 		systemException &quot;Failed to mount recovery device&quot; &quot;reboot&quot;
+ 	fi
+ 	#======================================
+-	# 16.2) restore MBR in restore mode
++	# 16.2) restore MBR/LVM in restore mode
+ 	#--------------------------------------
+ 	if [ ! -z &quot;$RESTORE&quot; ];then
+ 		if ! dd if=/reco-save/mbr of=$imageDiskDevice;then
+@@ -335,6 +327,13 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 		if ! mount -o ro $imageRecoveryDevice /reco-save &gt;/dev/null;then
+ 			systemException &quot;Failed to remount recovery device&quot; &quot;reboot&quot;
+ 		fi
++		if [ -f /reco-save/lvm ];then
++			restoreLVMPhysicalVolumes /reco-save/lvm
++			if ! vgcfgrestore -f /reco-save/lvm $VGROUP;then
++				systemException &quot;Failed to restore LVM metadata&quot; &quot;reboot&quot;
++			fi
++			setupInitialDeviceNames
++		fi
+ 	fi
+ 	#======================================
+ 	# 16.3) restore root archive
+diff --git a/system/boot/ix86/oemboot/suse-repart b/system/boot/ix86/oemboot/suse-repart
+index cffb19f..30fe2ee 100755
+--- a/system/boot/ix86/oemboot/suse-repart
++++ b/system/boot/ix86/oemboot/suse-repart
+@@ -613,6 +613,11 @@ function OEMRepart {
+ 			systemException &quot;Failed to store MBR&quot; &quot;reboot&quot;
+ 		fi
+ 		if [ ! -z &quot;$haveLVM&quot; ];then
++			if ! vgcfgbackup -f /reco-save/lvm $VGROUP;then
++				systemException &quot;Failed to store LVM metadata&quot; &quot;reboot&quot;
++			fi
++		fi
++		if [ ! -z &quot;$haveLVM&quot; ];then
+ 			umount /reco-root/boot
+ 			umount /recoboot &amp;&amp; rmdir /recoboot
+ 		fi
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002430.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. 221f43c739ae1bcbc0bca1df6cbc972f3c032d9b
+</A></li>
+	<LI>Next message: <A HREF="002432.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f5b3c98ee0245f2d3fa89715a29c512a7d6a4e2d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2431">[ date ]</a>
+              <a href="thread.html#2431">[ thread ]</a>
+              <a href="subject.html#2431">[ subject ]</a>
+              <a href="author.html#2431">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

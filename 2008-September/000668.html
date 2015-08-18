@@ -1,0 +1,618 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1571 - in kiwi-head: modules rpm	system/boot/ix86/oemboot system/boot/ix86/oemboot/suse-10.2	system/boot/ix86/oemboot/suse-10.3	system/boot/ix86/oemboot/suse-11.0	system/boot/ix86/oemboot/suse-11.1	system/boot/ix86/oemboot/suse-SLED10	system/boot/ix86/oemboot/suse-SLES10
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1571%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ix86/oemboot%20system/boot/ix86/oemboot/suse-10.2%0A%09system/boot/ix86/oemboot/suse-10.3%0A%09system/boot/ix86/oemboot/suse-11.0%0A%09system/boot/ix86/oemboot/suse-11.1%0A%09system/boot/ix86/oemboot/suse-SLED10%0A%09system/boot/ix86/oemboot/suse-SLES10&In-Reply-To=%3C200809181638.m8IGcC6W000941%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000667.html">
+   <LINK REL="Next"  HREF="000669.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1571 - in kiwi-head: modules rpm	system/boot/ix86/oemboot system/boot/ix86/oemboot/suse-10.2	system/boot/ix86/oemboot/suse-10.3	system/boot/ix86/oemboot/suse-11.0	system/boot/ix86/oemboot/suse-11.1	system/boot/ix86/oemboot/suse-SLED10	system/boot/ix86/oemboot/suse-SLES10</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1571%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ix86/oemboot%20system/boot/ix86/oemboot/suse-10.2%0A%09system/boot/ix86/oemboot/suse-10.3%0A%09system/boot/ix86/oemboot/suse-11.0%0A%09system/boot/ix86/oemboot/suse-11.1%0A%09system/boot/ix86/oemboot/suse-SLED10%0A%09system/boot/ix86/oemboot/suse-SLES10&In-Reply-To=%3C200809181638.m8IGcC6W000941%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1571 - in kiwi-head: modules rpm	system/boot/ix86/oemboot system/boot/ix86/oemboot/suse-10.2	system/boot/ix86/oemboot/suse-10.3	system/boot/ix86/oemboot/suse-11.0	system/boot/ix86/oemboot/suse-11.1	system/boot/ix86/oemboot/suse-SLED10	system/boot/ix86/oemboot/suse-SLES10">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Sep 18 18:38:12 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000667.html">[Kiwi-devel] r1570 - kiwi-head
+</A></li>
+        <LI>Next message: <A HREF="000669.html">[Kiwi-devel] r1572 - in kiwi-head: . rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#668">[ date ]</a>
+              <a href="thread.html#668">[ thread ]</a>
+              <a href="subject.html#668">[ subject ]</a>
+              <a href="author.html#668">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-09-18 18:37:55 +0200 (Thu, 18 Sep 2008)
+New Revision: 1571
+
+Modified:
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/modules/KIWIConfig.sh
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/system/boot/ix86/oemboot/suse-10.2/config.xml
+   kiwi-head/system/boot/ix86/oemboot/suse-10.3/config.xml
+   kiwi-head/system/boot/ix86/oemboot/suse-11.0/config.xml
+   kiwi-head/system/boot/ix86/oemboot/suse-11.1/config.xml
+   kiwi-head/system/boot/ix86/oemboot/suse-SLED10/config.xml
+   kiwi-head/system/boot/ix86/oemboot/suse-SLES10/config.xml
+   kiwi-head/system/boot/ix86/oemboot/suse-linuxrc
+Log:
+
+- fixed detection of boot device in oemboot by using the BIOS
+  id value 0x80. This fixes the detection of the wrong storage
+  device when oemboot starts the repartitioning of the device
+  on first boot. The change requires the edd module to be present
+  in the boot image (initrd)
+- added custom MBR ID for virtual disks. If the BIOS 0x80 check
+  fails we still have the chance to find the correct boot device
+  by the /boot/grub/mbrid file written by kiwi itself
+
+
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2008-09-17 13:02:18 UTC (rev 1570)
++++ kiwi-head/modules/KIWIBoot.pm	2008-09-18 16:37:55 UTC (rev 1571)
+@@ -318,6 +318,10 @@
+ 		$syszip = sprintf (&quot;%.0f&quot;, $syszip);
+ 	}
+ 	#==========================================
++	# Store a disk label ID for this object
++	#------------------------------------------
++	$this -&gt; getMBRDiskLabel();
++	#==========================================
+ 	# find system architecture
+ 	#------------------------------------------
+ 	my $arch = qxx (&quot;uname -m&quot;); chomp $arch;
+@@ -2464,6 +2468,66 @@
+ }
+ 
+ #==========================================
++# getMBRDiskLabel
++#------------------------------------------
++sub getMBRDiskLabel {
++	# ...
++	# create a random 4byte MBR disk label ID
++	# ---
++	my $this  = shift;
++	my $range = 0xff;
++	my @bytes;
++	undef $this-&gt;{mbrid};
++	for (my $i=0;$i&lt;4;$i++) {
++		$bytes[$i] = int(rand($range));
++	}
++	my $nid = sprintf (&quot;0x%02x%02x%02x%02x&quot;,
++		$bytes[0],$bytes[1],$bytes[2],$bytes[3]
++	);
++	$this-&gt;{mbrid} = $nid;
++	return $this;
++}
++
++#==========================================
++# writeMBRDiskLabel
++#------------------------------------------
++sub writeMBRDiskLabel {
++	# ...
++	# writes a 4byte random ID into the MBR of the
++	# previosly installed boot manager. The function
++	# returns the written ID or undef on error
++	# ---
++	my $this  = shift;
++	my $file  = shift;
++	my $kiwi  = $this-&gt;{kiwi};
++	my $nid   = $this-&gt;{mbrid};
++	if (! defined $nid) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;MBR: don't have a mbr id&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	my $pid = pack &quot;V&quot;, eval $nid;
++	if (! open (FD,&quot;+&lt;$file&quot;)) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;MBR: failed to open file: $file: $!&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	seek FD,440,0;
++	my $done = syswrite (FD,$pid,4);
++	if ($done != 4) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;MBR: only $done bytes written&quot;);
++		$kiwi -&gt; failed ();
++		seek FD,0,2; close FD;
++		return undef;
++	}
++	seek FD,0,2; close FD;
++	return $this;
++}
++
++#==========================================
+ # relocateCatalog
+ #------------------------------------------
+ sub relocateCatalog {
+@@ -2696,6 +2760,22 @@
+ 	# Grub
+ 	#------------------------------------------
+ 	if ($loader eq &quot;grub&quot;) {
++		#==========================================
++		# Create MBR id file for boot device check
++		#------------------------------------------
++		$kiwi -&gt; info (&quot;Saving disk label on disk: $this-&gt;{mbrid}...&quot;);
++		if (! open (FD,&quot;&gt;$tmpdir/boot/grub/mbrid&quot;)) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Couldn't create mbrid file: $!&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		print FD &quot;$this-&gt;{mbrid}&quot;;
++		close FD;
++		$kiwi -&gt; done();
++		#==========================================
++		# Create menu.lst file
++		#------------------------------------------
+ 		$kiwi -&gt; info (&quot;Creating grub menu list file...&quot;);
+ 		if (! open (FD,&quot;&gt;$tmpdir/boot/grub/menu.lst&quot;)) {
+ 			$kiwi -&gt; failed ();
+@@ -2919,6 +2999,15 @@
+ 	#==========================================
+ 	# more boot managers to come...
+ 	#------------------------------------------
++	# ...
++	#==========================================
++	# Write custom disk label ID to MBR
++	#------------------------------------------
++	$kiwi -&gt; info (&quot;Saving disk label in MBR: $this-&gt;{mbrid}...&quot;);
++	if (! $this -&gt; writeMBRDiskLabel ($diskname)) {
++		return undef;
++	}
++	$kiwi -&gt; done();
+ 	return $this;
+ }
+ 
+
+Modified: kiwi-head/modules/KIWIConfig.sh
+===================================================================
+--- kiwi-head/modules/KIWIConfig.sh	2008-09-17 13:02:18 UTC (rev 1570)
++++ kiwi-head/modules/KIWIConfig.sh	2008-09-18 16:37:55 UTC (rev 1571)
+@@ -763,7 +763,7 @@
+ 		udevsettle udevtrigger mknod stat path_id hwup scsi_id scsi_tur
+ 		usb_id ata_id vol_id edd_id setctsid dumpe2fs debugreiserfs
+ 		fuser udevadm blogd showconsole killproc curl tar cromfs-driver
+-		cvcromfs ldd driveready checkmedia splashy bzip2
++		cvcromfs ldd driveready checkmedia splashy bzip2 hexdump
+ 	&quot;
+ 	tools=&quot;$tools $@&quot;
+ 	for path in /sbin /usr/sbin /usr/bin /bin;do
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-09-17 13:02:18 UTC (rev 1570)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-09-18 16:37:55 UTC (rev 1571)
+@@ -1246,6 +1246,7 @@
+ 	modprobe ide-disk
+ 	modprobe rd &amp;&gt;/dev/null
+ 	modprobe brd &amp;&gt;/dev/null
++	modprobe edd &amp;&gt;/dev/null
+ 	probeUSB
+ }
+ #======================================
+@@ -1415,6 +1416,41 @@
+ 	eject $cddev
+ }
+ #======================================
++# searchBIOSBootDevice
++#--------------------------------------
++function searchBIOSBootDevice {
++	# /.../
++	# search for the BIOS boot device which is the device
++	# with the BIOS id 0x80. The test may fail if the boot
++	# device is a CD/DVD drive. If the test fails we search
++	# for the MBR disk label and compare it with the kiw
++	# written mbrid file in /boot/grub/ of the system image
++	# ----
++	local h=/usr/sbin/hwinfo
++	local c=&quot;Device File:|BIOS id&quot;
++	local ddevs=`$h --disk|grep -E &quot;$c&quot;|sed -e&quot;s@(.*)@@&quot;|cut -f2 -d:|tr -d &quot; &quot;`
++	local pred
++	for curd in $ddevs;do
++		if [ $curd = &quot;0x80&quot; ];then
++			echo $pred; return
++		fi
++		pred=$curd
++	done
++	for curd in $ddevs;do
++		mbrM=`dd if=$curd bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
++		mbrI=0
++		if mount $curd&quot;1&quot; /mnt;then
++			if [ -f /mnt/boot/grub/mbrid ];then
++				read mbrI &lt; /mnt/boot/grub/mbrid
++			fi
++			umount /mnt
++		fi
++		if [ &quot;$mbrM&quot; = &quot;$mbrI&quot; ];then
++			echo $curd; return
++		fi
++	done
++}
++#======================================
+ # searchSwapSpace
+ #--------------------------------------
+ function searchSwapSpace {
+@@ -2041,20 +2077,23 @@
+ # partitionID
+ #--------------------------------------
+ function partitionID {
++	diskDevice=$1
++	diskNumber=$2
+ 	if [ $PARTITIONER = &quot;sfdisk&quot; ];then
+-		sfdiskGetPartitionID
++		sfdiskGetPartitionID $diskDevice $diskNumber
+ 	else
+-		partedGetPartitionID
++		partedGetPartitionID $diskDevice $diskNumber
+ 	fi
+ }
+ #======================================
+ # partitionSize
+ #--------------------------------------
+ function partitionSize {
++	diskDevice=$1
+ 	if [ $PARTITIONER = &quot;sfdisk&quot; ];then
+-		sfdiskGetPartitionSize
++		sfdiskGetPartitionSize $diskDevice
+ 	else
+-		partedGetPartitionSize
++		partedGetPartitionSize $diskDevice
+ 	fi
+ }
+ #======================================
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-09-17 13:02:18 UTC (rev 1570)
++++ kiwi-head/rpm/kiwi.changes	2008-09-18 16:37:55 UTC (rev 1571)
+@@ -10,6 +10,14 @@
+ - added log excerpt information and fixed exit code handling
+   if kiwi operation doesn't take place in a screen session. Last
+   part of the fix is related to (bnc #420320)
++- fixed detection of boot device in oemboot by using the BIOS
++  id value 0x80. This fixes the detection of the wrong storage
++  device when oemboot starts the repartitioning of the device
++  on first boot. The change requires the edd module to be present
++  in the boot image (initrd)
++- added custom MBR ID for virtual disks. If the BIOS 0x80 check
++  fails we still have the chance to find the correct boot device
++  by the /boot/grub/mbrid file written by kiwi itself
+ 
+ -------------------------------------------------------------------
+ Mon Sep 15 12:00:17 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-10.2/config.xml
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-10.2/config.xml	2008-09-17 13:02:18 UTC (rev 1570)
++++ kiwi-head/system/boot/ix86/oemboot/suse-10.2/config.xml	2008-09-18 16:37:55 UTC (rev 1571)
+@@ -47,6 +47,7 @@
+ 		&lt;file name=&quot;drivers/scsi/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/message/fusion/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/cdrom/*&quot;/&gt;
++		&lt;file name=&quot;drivers/firmware/edd.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+         &lt;source path=&quot;/image/CDs/full-i386&quot;/&gt;
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-10.3/config.xml
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-10.3/config.xml	2008-09-17 13:02:18 UTC (rev 1570)
++++ kiwi-head/system/boot/ix86/oemboot/suse-10.3/config.xml	2008-09-18 16:37:55 UTC (rev 1571)
+@@ -48,6 +48,7 @@
+ 		&lt;file name=&quot;drivers/cdrom/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/parport/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/char/lp.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/firmware/edd.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+         &lt;source path=&quot;/image/CDs/full-10.3-i386&quot;/&gt;
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-11.0/config.xml
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-11.0/config.xml	2008-09-17 13:02:18 UTC (rev 1570)
++++ kiwi-head/system/boot/ix86/oemboot/suse-11.0/config.xml	2008-09-18 16:37:55 UTC (rev 1571)
+@@ -50,6 +50,7 @@
+ 		&lt;file name=&quot;drivers/parport/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/char/lp.ko&quot;/&gt;
+ 		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/firmware/edd.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+         &lt;source path=&quot;/image/CDs/full-11.0-i386&quot;/&gt;
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-11.1/config.xml
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-11.1/config.xml	2008-09-17 13:02:18 UTC (rev 1570)
++++ kiwi-head/system/boot/ix86/oemboot/suse-11.1/config.xml	2008-09-18 16:37:55 UTC (rev 1571)
+@@ -50,6 +50,7 @@
+ 		&lt;file name=&quot;drivers/parport/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/char/lp.ko&quot;/&gt;
+ 		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/firmware/edd.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+         &lt;source path=&quot;/image/CDs/full-i386&quot;/&gt;
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-SLED10/config.xml
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-SLED10/config.xml	2008-09-17 13:02:18 UTC (rev 1570)
++++ kiwi-head/system/boot/ix86/oemboot/suse-SLED10/config.xml	2008-09-18 16:37:55 UTC (rev 1571)
+@@ -41,6 +41,7 @@
+ 		&lt;file name=&quot;drivers/ata/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/scsi/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/message/fusion/*&quot;/&gt;
++		&lt;file name=&quot;drivers/firmware/edd.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;<A HREF="ftp://dist.suse.de/install/SLP/SLED-10-SP2-GMC/%arch/DVD1">ftp://dist.suse.de/install/SLP/SLED-10-SP2-GMC/%arch/DVD1</A>&quot;/&gt;   
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-SLES10/config.xml
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-SLES10/config.xml	2008-09-17 13:02:18 UTC (rev 1570)
++++ kiwi-head/system/boot/ix86/oemboot/suse-SLES10/config.xml	2008-09-18 16:37:55 UTC (rev 1571)
+@@ -41,6 +41,7 @@
+ 		&lt;file name=&quot;drivers/ata/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/scsi/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/message/fusion/*&quot;/&gt;
++		&lt;file name=&quot;drivers/firmware/edd.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;<A HREF="ftp://dist.suse.de/install/SLP/SLES-10-SP2-GMC/%arch/DVD1">ftp://dist.suse.de/install/SLP/SLES-10-SP2-GMC/%arch/DVD1</A>&quot;/&gt;   
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-linuxrc	2008-09-17 13:02:18 UTC (rev 1570)
++++ kiwi-head/system/boot/ix86/oemboot/suse-linuxrc	2008-09-18 16:37:55 UTC (rev 1571)
+@@ -106,14 +106,16 @@
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	if [ ! -f $VMX_SYSTEM ];then
+ 		# /.../
+-		# installed system: Check for a root device to mount and
+-		# prefer a USB stick if there is any. Otherwise check for
+-		# first partition of a disk device. During first boot of
+-		# the installed system there is only one partition and this
+-		# initrd is going to be replaced by a later mkinitrd call
+-		# for unified systems the kiwi initrd is used and the
+-		# kernel parameters of this initrd defines the missing
+-		# information. Additionally the partition table is different
++		# installed system: Find the boot device which is flagged
++		# in the BIOS as 0x80:
++		# ----
++		# During first boot of the installed system there is only
++		# one partition and this initrd is going to be replaced by
++		# a later mkinitrd call for unified systems the kiwi initrd
++		# is used and the kernel parameters of this initrd defines
++		# the missing information.
++		# ----
++		# Additionally the partition table is different
+ 		# for unified systems. Therefore we check if the second
+ 		# partition is a squashfs/cromfs partition and change the root
+ 		# partition name accordingly
+@@ -122,45 +124,28 @@
+ 			Echo &quot;Including oem partition info file&quot;
+ 			importFile &lt; $OEM_PARTITION_CONFIG
+ 		fi
+-		Echo &quot;Searching for disk and root partition&quot;
+-		USBStickDevice
+-		if [ $stickFound = 0 ];then
+-			deviceFound=0
+-			for deviceRoot in /dev/sda1 /dev/hda1;do
+-				if mount $deviceRoot /mnt &amp;&gt;/dev/null;then
+-					deviceFound=1
+-					umount /mnt
+-					break
+-				fi
+-			done
+-			if [ $deviceFound = 0 ];then
+-				systemException \
+-					&quot;Couldn't find any disk device... abort&quot; \
+-				&quot;reboot&quot;
+-			fi
+-			export deviceDisk=`echo $deviceRoot | tr -d [0-9]`
+-			export deviceSwap=&quot;$deviceDisk&quot;2
+-			if [ -z &quot;$OEM_WITHOUTHOME&quot; ];then
+-				export deviceHome=&quot;$deviceDisk&quot;3
+-			fi
+-		else
+-			Echo &quot;USB stick found, prefer root on stick&quot;
+-			export deviceDisk=$stickRoot
+-			export deviceSwap=&quot;$deviceDisk&quot;2
+-			if [ -z &quot;$OEM_WITHOUTHOME&quot; ];then
+-				export deviceHome=&quot;$deviceDisk&quot;3
+-			fi
++		Echo &quot;Searching for boot device...&quot;
++		sleep 5
++		deviceDisk=`searchBIOSBootDevice`
++		if [ -z &quot;$deviceDisk&quot; ];then
++			systemException \
++				&quot;Couldn't find any boot device... abort&quot; \
++			&quot;reboot&quot;
+ 		fi
+-		probeFileSystem &quot;$deviceDisk&quot;1
++		export deviceSwap=$deviceDisk&quot;2&quot;
++		if [ -z &quot;$OEM_WITHOUTHOME&quot; ];then
++			export deviceHome=$deviceDisk&quot;3&quot;
++		fi
++		probeFileSystem $deviceDisk&quot;1&quot;
+ 		if isFSTypeReadOnly;then
+ 			if [ -z &quot;$COMBINED_IMAGE&quot; ];then
+ 				Echo &quot;Unified system detected, adapting root partition&quot;
+-				export UNIONFS_CONFIG=&quot;$deviceDisk&quot;2,&quot;$deviceDisk&quot;1,aufs
++				export UNIONFS_CONFIG=$deviceDisk&quot;2,&quot;$deviceDisk&quot;1,aufs&quot;
+ 			fi
+-			export deviceRoot=&quot;$deviceDisk&quot;1
+-			export deviceSwap=&quot;$deviceDisk&quot;3
++			export deviceRoot=$deviceDisk&quot;1&quot;
++			export deviceSwap=$deviceDisk&quot;3&quot;
+ 		else
+-			export deviceRoot=&quot;$deviceDisk&quot;1
++			export deviceRoot=$deviceDisk&quot;1&quot;
+ 		fi
+ 		Echo &quot;Using root partition $deviceRoot on disk $deviceDisk&quot;
+ 	else
+@@ -177,8 +162,8 @@
+ 		# a disk please fixme
+ 		# ---
+ 		sleep 5
+-		hwinfo=&quot;/usr/sbin/hwinfo --disk&quot;
+-		export deviceDisks=`$hwinfo |\
++		hwinfo=/usr/sbin/hwinfo
++		export deviceDisks=`$hwinfo --disk |\
+ 			grep &quot;Device File:&quot; | cut -f2 -d: | cut -f1 -d&quot;(&quot;`
+ 		export deviceDisks=`echo $deviceDisks`
+ 		if [ -z $deviceDisks ];then
+@@ -220,7 +205,7 @@
+ 	#======================================
+ 	# 8.2) check version of installed OS
+ 	#--------------------------------------
+-	deviceRoot=&quot;$deviceDisk&quot;2
++	deviceRoot=$deviceDisk&quot;2&quot;
+ 	probeFileSystem $deviceRoot
+ 	if test &quot;$FSTYPE&quot; = &quot;unknown&quot;;then
+ 		deviceRoot=&quot;$deviceDisk&quot;1
+@@ -228,7 +213,7 @@
+ 	fi
+ 	if [ -z &quot;$COMBINED_IMAGE&quot; ];then
+ 		if isFSTypeReadOnly;then
+-			export UNIONFS_CONFIG=&quot;$deviceDisk&quot;2,&quot;$deviceDisk&quot;1,aufs
++			export UNIONFS_CONFIG=$deviceDisk&quot;2,&quot;$deviceDisk&quot;1,aufs&quot;
+ 		fi
+ 	fi
+ 	Echo &quot;Try mounting installed system to check version&quot;
+@@ -301,7 +286,7 @@
+ 	#--------------------------------------
+ 	blockdev --rereadpt $deviceDisk
+ 	deviceTest=&quot;$deviceDisk&quot;1
+-	if ! waitForStorageDevice $deviceTest:then
++	if ! waitForStorageDevice $deviceTest;then
+ 		systemException \
+ 			&quot;Partition $deviceTest doesn't appear... fatal !&quot; \
+ 		&quot;reboot&quot;
+@@ -310,12 +295,12 @@
+ 	# 8.7) find new root partition
+ 	#--------------------------------------
+ 	unset UNIONFS_CONFIG
+-	deviceRoot=&quot;$deviceDisk&quot;1
++	deviceRoot=$deviceDisk&quot;1&quot;
+ 	probeFileSystem $deviceRoot
+ 	Echo &quot;Filesystem of root system is: $FSTYPE -&gt; $deviceRoot&quot;
+ 	if [ -z &quot;$COMBINED_IMAGE&quot; ];then
+ 		if isFSTypeReadOnly;then
+-			export UNIONFS_CONFIG=&quot;$deviceDisk&quot;2,&quot;$deviceDisk&quot;1,aufs
++			export UNIONFS_CONFIG=$deviceDisk&quot;2,&quot;$deviceDisk&quot;1,aufs&quot;
+ 		fi
+ 	fi
+ 	#======================================
+@@ -405,7 +390,7 @@
+ 		#====================================== 
+ 		# 10.2 check for read-write partition
+ 		#--------------------------------------
+-		if ! partitionSize &quot;$deviceDisk&quot;2 &amp;&gt;/dev/null;then
++		if ! partitionSize $deviceDisk&quot;2&quot; &amp;&gt;/dev/null;then
+ 			Echo &quot;No read-write partition in this split image&quot;
+ 			DONT_PARTITION=1
+ 		fi
+@@ -475,9 +460,9 @@
+ 		#======================================
+ 		# 10.5 Update new device names
+ 		#--------------------------------------
+-		export deviceRoot=&quot;$deviceDisk&quot;1
+-		export deviceSwap=&quot;$deviceDisk&quot;3
+-		export deviceIOWR=&quot;$deviceDisk&quot;2
++		export deviceRoot=$deviceDisk&quot;1&quot;
++		export deviceSwap=$deviceDisk&quot;3&quot;
++		export deviceIOWR=$deviceDisk&quot;2&quot;
+ 
+ 		#======================================
+ 		# 10.6 Activate swap space
+@@ -726,16 +711,16 @@
+ 			# 10.3 Update new device names
+ 			#--------------------------------------
+ 			if [ -z &quot;$DONT_PARTITION&quot; ];then
+-				export deviceRoot=&quot;$deviceDisk&quot;2
+-				export deviceSwap=&quot;$deviceDisk&quot;1
++				export deviceRoot=$deviceDisk&quot;2&quot;
++				export deviceSwap=$deviceDisk&quot;1&quot;
+ 			else
+-				export deviceRoot=&quot;$deviceDisk&quot;1
++				export deviceRoot=$deviceDisk&quot;1&quot;
+ 			fi
+ 			if [ -z &quot;$OEM_WITHOUTHOME&quot; ];then
+-				export deviceHome=&quot;$deviceDisk&quot;3
++				export deviceHome=$deviceDisk&quot;3&quot;
+ 			fi
+ 			if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+-				export deviceRecovery=&quot;$deviceDisk&quot;4
++				export deviceRecovery=$deviceDisk&quot;4&quot;
+ 			fi
+ 			#======================================
+ 			# 10.4 Activate swap space
+@@ -854,9 +839,9 @@
+ 			#======================================
+ 			# 10.4 Update new device names
+ 			#--------------------------------------
+-			export deviceRoot=&quot;$deviceDisk&quot;1
+-			export deviceSwap=&quot;$deviceDisk&quot;3
+-			export deviceIOWR=&quot;$deviceDisk&quot;2
++			export deviceRoot=$deviceDisk&quot;1&quot;
++			export deviceSwap=$deviceDisk&quot;3&quot;
++			export deviceIOWR=$deviceDisk&quot;2&quot;
+ 
+ 			#======================================
+ 			# 10.5 Activate swap space
+@@ -883,7 +868,7 @@
+ 	fi
+ 	if isFSTypeReadOnly &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ];then
+ 		deviceResize=$deviceIOWR
+-		export UNIONFS_CONFIG=&quot;$deviceDisk&quot;2,&quot;$deviceDisk&quot;1,aufs
++		export UNIONFS_CONFIG=$deviceDisk&quot;2,&quot;$deviceDisk&quot;1,aufs&quot;
+ 		KIWI_INITRD_PARAMS=&quot;UNIONFS_CONFIG=\&quot;$UNIONFS_CONFIG\&quot;&quot;
+ 		KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS deviceRoot=\&quot;$deviceRoot\&quot;&quot;
+ 		export KIWI_INITRD_PARAMS
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000667.html">[Kiwi-devel] r1570 - kiwi-head
+</A></li>
+	<LI>Next message: <A HREF="000669.html">[Kiwi-devel] r1572 - in kiwi-head: . rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#668">[ date ]</a>
+              <a href="thread.html#668">[ thread ]</a>
+              <a href="subject.html#668">[ subject ]</a>
+              <a href="author.html#668">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

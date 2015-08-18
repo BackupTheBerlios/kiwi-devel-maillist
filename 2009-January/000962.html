@@ -1,0 +1,226 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1846 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1846%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200901150900.n0F901if004131%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000961.html">
+   <LINK REL="Next"  HREF="000963.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1846 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1846%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200901150900.n0F901if004131%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1846 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jan 15 10:00:01 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000961.html">[Kiwi-devel] r1845 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+        <LI>Next message: <A HREF="000963.html">[Kiwi-devel] r1847 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#962">[ date ]</a>
+              <a href="thread.html#962">[ thread ]</a>
+              <a href="subject.html#962">[ subject ]</a>
+              <a href="author.html#962">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-01-15 09:59:56 +0100 (Thu, 15 Jan 2009)
+New Revision: 1846
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+Log:
+
+- v3.04
+- fixed size calculation for data plus filesystem overhead
+  if only the root tree is present.
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2009-01-13 17:14:45 UTC (rev 1845)
++++ kiwi-head/kiwi.pl	2009-01-15 08:59:56 UTC (rev 1846)
+@@ -44,7 +44,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.03&quot;;
++our $Version       = &quot;3.04&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2009-01-13 17:14:45 UTC (rev 1845)
++++ kiwi-head/modules/KIWIBoot.pm	2009-01-15 08:59:56 UTC (rev 1846)
+@@ -278,12 +278,88 @@
+ 		# not at the following code
+ 		# ----
+ 		if (-d $system) {
++			#==========================================
++			# Find size on a per file basis first
++			#------------------------------------------
+ 			$systemSXML = $xml -&gt; getImageSizeBytes();
+-			$systemSize = qxx (&quot;du -bs $system | cut -f1 2&gt;&amp;1&quot;);
+-			chomp $systemSize;
++			$systemSize = qxx (&quot;du -bs $system | cut -f1&quot;); chomp $systemSize;
+ 			if ($systemSXML eq &quot;auto&quot;) {
+ 				$systemSXML = 0;
+ 			}
++			#==========================================
++			# Calculate required size for this tree
++			#------------------------------------------
++			my %type   = %{$xml-&gt;getImageTypeAndAttributes()};
++			my %FSopts = main::checkFSOptions();
++			my $size   = $systemSize * 1.2;
++			my $size   = int ($size / 1024);
++			my $fstype = $type{filesystem};
++			if ($fstype =~ /(.*),(.*)/) {
++				$fstype = $1;
++			}
++			while (1) {
++				my $file   = $tmpdir.&quot;/fstest&quot;;
++				my $status = qxx (&quot;qemu-img create $file $size 2&gt;&amp;1&quot;);
++				my $result = $? &gt;&gt; 8;
++				if ($result != 0) {
++					$kiwi -&gt; error  (&quot;Failed creating test disk: $status&quot;);
++					$kiwi -&gt; failed ();
++					$this -&gt; cleanTmp ();
++					return undef;
++				}
++				SWITCH: for ($fstype) {
++					/^ext2/     &amp;&amp; do {
++						my $fsopts = $FSopts{ext2};
++						$fsopts.= &quot;-F&quot;;
++						$status = qxx (&quot;/sbin/mke2fs $fsopts $file 2&gt;&amp;1&quot;);
++						$result = $? &gt;&gt; 8;
++						last SWITCH;
++					};
++					/^ext3/     &amp;&amp; do {
++						my $fsopts = $FSopts{ext3};
++						$fsopts.= &quot;-j -F&quot;;
++						$status = qxx (&quot;/sbin/mke2fs $fsopts $file 2&gt;&amp;1&quot;);
++						$result = $? &gt;&gt; 8;
++						last SWITCH;
++					};
++					/^reiserfs/ &amp;&amp; do {
++						my $fsopts = $FSopts{reiserfs};
++						$fsopts.= &quot;-f&quot;;
++						$status = qxx (&quot;/sbin/mkreiserfs $fsopts $file 2&gt;&amp;1&quot;);
++						$result = $? &gt;&gt; 8;
++						last SWITCH;
++					};
++					$kiwi -&gt; error  (&quot;Unsupported filesystem type: $fstype&quot;);
++					$kiwi -&gt; failed ();
++					$this -&gt; cleanTmp ();
++					return undef;
++				};
++				$status = qxx (&quot;mount -o loop $file $tmpdir 2&gt;&amp;1&quot;);
++				$result = $? &gt;&gt; 8;
++				if ($result != 0) {
++					$kiwi -&gt; error (&quot;test disk mount failed: $status&quot;);
++					$kiwi -&gt; failed ();
++					$this -&gt; cleanTmp ();
++					return undef;
++				}
++				if (! open (PIPE,&quot;df -k $tmpdir | tail -n1|&quot;)) {
++					$kiwi -&gt; error (&quot;test disk df call failed: $!&quot;);
++					$kiwi -&gt; failed ();
++					$this -&gt; cleanTmp ();
++					return undef;
++				}
++				my @line   = split (/ +/,&lt;PIPE&gt;); close PIPE;
++				my $freeKB = $line[3];
++				qxx (&quot;umount $tmpdir 2&gt;&amp;1&quot;);
++				unlink $file;
++				# print &quot;++++++++ FREE: $freeKB Kb NEED: $systemSize Byte\n&quot;;
++				if ($freeKB &gt; $systemSize / 1024) {
++					$systemSize = $freeKB * 1024;
++					last;
++				}
++				# next try with 5 MB more...
++				$size += 5120;
++			}
+ 		} else {
+ 			$systemSXML = $xml -&gt; getImageSizeBytes();
+ 			$systemSize = -s $system;
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2009-01-13 17:14:45 UTC (rev 1845)
++++ kiwi-head/rpm/kiwi.changes	2009-01-15 08:59:56 UTC (rev 1846)
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Thu Jan 15 09:58:23 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.04
++- fixed size calculation for data plus filesystem overhead
++  if only the root tree is present.
++
++-------------------------------------------------------------------
+ Thu Jan  8 16:26:29 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.03
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2009-01-13 17:14:45 UTC (rev 1845)
++++ kiwi-head/rpm/kiwi.spec	2009-01-15 08:59:56 UTC (rev 1846)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.03
++# spec file for package kiwi (Version 3.04
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.03
++Version:        3.04
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000961.html">[Kiwi-devel] r1845 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+	<LI>Next message: <A HREF="000963.html">[Kiwi-devel] r1847 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#962">[ date ]</a>
+              <a href="thread.html#962">[ thread ]</a>
+              <a href="subject.html#962">[ subject ]</a>
+              <a href="author.html#962">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

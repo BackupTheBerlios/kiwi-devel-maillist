@@ -1,0 +1,243 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. dabbd1bf6485ec1f829bf51035fe1fed421716a0
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20dabbd1bf6485ec1f829bf51035fe1fed421716a0&In-Reply-To=%3C20110627092442.D67BC482950%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003562.html">
+   <LINK REL="Next"  HREF="003565.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. dabbd1bf6485ec1f829bf51035fe1fed421716a0</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20dabbd1bf6485ec1f829bf51035fe1fed421716a0&In-Reply-To=%3C20110627092442.D67BC482950%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. dabbd1bf6485ec1f829bf51035fe1fed421716a0">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Jun 27 11:24:42 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003562.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0d2b75690c9dc1824d78f7f1bf74271b469969cc
+</A></li>
+        <LI>Next message: <A HREF="003565.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. abe4f8b90f16934ce69c22e96e7de41e719ab6e4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3564">[ date ]</a>
+              <a href="thread.html#3564">[ thread ]</a>
+              <a href="subject.html#3564">[ subject ]</a>
+              <a href="author.html#3564">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  dabbd1bf6485ec1f829bf51035fe1fed421716a0 (commit)
+       via  da886d1621454d308c66f6730a5da414db5205ab (commit)
+      from  0d2b75690c9dc1824d78f7f1bf74271b469969cc (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit dabbd1bf6485ec1f829bf51035fe1fed421716a0
+Merge: da886d1 0d2b756
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Jun 27 11:24:16 2011 +0200
+
+    Merge branch 'master' of <A HREF="ssh://git.berlios.de/gitroot/kiwi">ssh://git.berlios.de/gitroot/kiwi</A>
+
+commit da886d1621454d308c66f6730a5da414db5205ab
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Jun 27 11:19:31 2011 +0200
+
+    - added network functions for s390 pxeboot. New functions are
+      setupNetworkInterfaceS390, setupNetworkStatic, setupDefaultGateway
+      setupDNS. Normally the pxe boot on x86 expects a DHCP server to
+      provide all the required network services but on s390 pxe boot
+      works together with a parm file containing that information
+      which is evaluated by the new functions.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index adbb46a..839f57f 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -3637,6 +3637,137 @@ function releaseNetwork {
+ 	fi
+ }
+ #======================================
++# setupNetworkInterfaceS390
++#--------------------------------------
++function setupNetworkInterfaceS390 {
++	# /.../
++	# bring up the network card according to the parm file
++	# parameters and create the correspondent udev rules
++	# needs includeKernelParametersLowerCase to be run
++	# because parm file parameters are case insensitive
++	# ----
++	case &quot;$instnetdev&quot; in
++		&quot;osa&quot;|&quot;hsi&quot;)
++			local qeth_cmd=&quot;/sbin/qeth_configure&quot;
++			if [ &quot;$layer2&quot; = &quot;1&quot; ];then
++				qeth_cmd=&quot;$qeth_cmd -l&quot;
++			fi
++			if [ -n &quot;$portname&quot; ];then
++				qeth_cmd=&quot;$qeth_cmd -p$portname&quot;
++			fi
++			if [ -n &quot;$portno&quot; ];then
++				qeth_cmd=&quot;$qeth_cmd -n$portno&quot;
++			fi
++			qeth_cmd=&quot;$qeth_cmd $readchannel $writechannel&quot;
++			if [ -n &quot;$datachannel&quot; ];then
++				qeth_cmd=&quot;$qeth_cmd $datachannel&quot;
++			fi
++			$qeth_cmd 1
++			;;
++		&quot;ctc&quot;)
++			/sbin/ctc_configure $readchannel $writechannel 1 $ctcprotocol
++			;;
++		&quot;iucv&quot;)
++			/sbin/iucv_configure $iucvpeer 1
++			;;
++		*)
++			systemException \
++				&quot;Unknown s390 network type: $instnetdev&quot; &quot;reboot&quot;
++			;;
++	esac
++	if [ ! $? = 0 ];then
++		systemException \
++			&quot;Failed to bring up the network: $instnetdev&quot; \
++		&quot;reboot&quot;
++	fi
++}
++#======================================
++# setupNetworkStatic
++#--------------------------------------
++function setupNetworkStatic {
++	# /.../
++	# configure static network either bring it up manually
++	# or save the configuration depending on 'up' parameter
++	# ----
++	local up=$1
++	if [ &quot;$up&quot; == &quot;1&quot; ];then
++		#======================================
++		# activate network
++		#--------------------------------------
++		local iface=`cat /proc/net/dev|tail -n1|cut -d':' -f1|sed 's/ //g'`
++		local ifconfig_cmd=&quot;/sbin/ifconfig $iface $hostip netmask $netmask&quot;
++		if [ -n &quot;$broadcast&quot; ];then
++			ifconfig_cmd=&quot;$ifconfig_cmd broadcast $broadcast&quot;
++		fi
++		if [ -n &quot;$pointopoint&quot; ];then
++			ifconfig_cmd=&quot;$ifconfig_cmd pointopoint $pointopoint&quot;
++		fi
++		if [ -n &quot;$osahwaddr&quot; ];then
++			ifconfig_cmd=&quot;$ifconfig_cmd hw ether $osahwaddr&quot;
++		fi
++		$ifconfig_cmd up
++		if [ ! $? = 0 ];then
++			systemException &quot;Failed to set up the network: $iface&quot; &quot;reboot&quot;
++		fi
++	else
++		#======================================
++		# write network setup
++		#--------------------------------------
++		local netFile=&quot;/etc/sysconfig/network/ifcfg-$iface&quot;
++		echo &quot;BOOTPROTO='static'&quot; &gt; $netFile
++		echo &quot;STARTMODE='auto'&quot; &gt;&gt; $netFile
++		echo &quot;IPADDR='$hostip'&quot; &gt;&gt; $netFile
++		echo &quot;NETMASK='$netmask'&quot; &gt;&gt; $netFile
++		if [ -n &quot;$broadcast&quot; ];then
++			echo &quot;BROADCAST='$broadcast'&quot; &gt;&gt; $netFile
++		fi
++		if [ -n &quot;$pointopoint&quot; ];then
++			echo &quot;REMOTE_IPADDR='$pointopoint'&quot; &gt;&gt; $netFile
++		fi
++	fi
++	setupDefaultGateway
++	setupDNS
++}
++#======================================
++# setupDefaultGateway
++#--------------------------------------
++function setupDefaultGateway {
++	# /.../
++	# setup default gateway. either set the route or save
++	# the configuration depending on 'up' parameter
++	# ----
++	local up=$1
++	if [ &quot;$up&quot; == &quot;1&quot; ];then
++		#======================================
++		# activate GW route
++		#--------------------------------------
++		route add default gw $gateway
++	else
++		#======================================
++		# write GW configuration
++		#--------------------------------------
++		echo &quot;default  $gateway - -&quot; &gt; &quot;/etc/sysconfig/network/routes&quot;
++	fi
++}
++#======================================
++# setupDNS
++#--------------------------------------
++function setupDNS {
++	# /.../
++	# setup DNS. write data to resolv.conf
++	# ----
++	if [ -n &quot;$domain&quot; ];then
++		export DOMAIN=$domain
++		echo &quot;search $domain&quot; &gt;&gt; /etc/resolv.conf
++	fi
++	if [ -n &quot;$nameserver&quot; ];then
++		export DNS=$nameserver
++		IFS=&quot;,&quot; ; for i in $nameserver;do
++			echo &quot;nameserver $i&quot; &gt;&gt; /etc/resolv.conf
++		done
++	fi
++}
++#======================================
+ # updateNeeded
+ #--------------------------------------
+ function updateNeeded {
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003562.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0d2b75690c9dc1824d78f7f1bf74271b469969cc
+</A></li>
+	<LI>Next message: <A HREF="003565.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. abe4f8b90f16934ce69c22e96e7de41e719ab6e4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3564">[ date ]</a>
+              <a href="thread.html#3564">[ thread ]</a>
+              <a href="subject.html#3564">[ subject ]</a>
+              <a href="author.html#3564">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

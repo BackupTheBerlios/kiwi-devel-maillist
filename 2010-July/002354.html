@@ -1,0 +1,180 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2de53f610ce592fee90996cd198b8586dd79fea8
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%202de53f610ce592fee90996cd198b8586dd79fea8&In-Reply-To=%3C20100701145856.9CBD3480A1F%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002353.html">
+   <LINK REL="Next"  HREF="002355.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2de53f610ce592fee90996cd198b8586dd79fea8</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%202de53f610ce592fee90996cd198b8586dd79fea8&In-Reply-To=%3C20100701145856.9CBD3480A1F%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2de53f610ce592fee90996cd198b8586dd79fea8">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jul  1 16:58:56 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002353.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b83025c0fd68344060e6a9776561571ba305296b
+</A></li>
+        <LI>Next message: <A HREF="002355.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a2aaffa7544b26b616a972bc2682dd283c34dd0d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2354">[ date ]</a>
+              <a href="thread.html#2354">[ thread ]</a>
+              <a href="subject.html#2354">[ subject ]</a>
+              <a href="author.html#2354">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  2de53f610ce592fee90996cd198b8586dd79fea8 (commit)
+      from  b83025c0fd68344060e6a9776561571ba305296b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 2de53f610ce592fee90996cd198b8586dd79fea8
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Jul 1 16:58:34 2010 +0200
+
+    - fixed repartition problem with new and old parted. The
+      code has been changed in a way that it uses a sector
+      based start value and a cylinder based end value
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 6fce461..2461438 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -4971,6 +4971,7 @@ function createPartitionerInput {
+ 	else
+ 		Echo &quot;Repartition the disk according to real geometry [ parted ]&quot;
+ 		partedInit $imageDiskDevice
++		partedSectorInit $imageDiskDevice
+ 		createPartedInput $imageDiskDevice $@
+     fi
+ }
+@@ -5026,6 +5027,35 @@ function partedWrite {
+ 	partedInit $device
+ }
+ #======================================
++# partedSectorInit
++#--------------------------------------
++function partedSectorInit {
++	# /.../
++	# return start/end sectors of current partitions.
++	# ----
++	local disk=$1
++	local s_start
++	local s_stopp
++	unset startSectors
++	unset endSectors
++	for i in $(
++		parted -m $disk unit s print | grep ^[1-4]: | cut -f2-3 -d: | tr -d s
++	);do
++		s_start=$(echo $i | cut -f1 -d:)
++		s_stopp=$(echo $i | cut -f2 -d:)
++		if [ -z &quot;$startSectors&quot; ];then
++			startSectors=${s_start}s
++		else
++			startSectors=${startSectors}:${s_start}s
++		fi
++		if [ -z &quot;$endSectors&quot; ];then
++			endSectors=$((s_stopp + 1))s
++		else
++			endSectors=$endSectors:$((s_stopp + 1))s
++		fi
++	done
++}
++#======================================
+ # partedEndCylinder
+ #--------------------------------------
+ function partedEndCylinder {
+@@ -5141,14 +5171,15 @@ function createPartedInput {
+ 				partid=$(($partid / 1))
+ 				pstart=${pcmds[$index + 3]}
+ 				if [ &quot;$pstart&quot; = &quot;1&quot; ];then
+-					pstart=0
++					pstart=$(echo $startSectors | cut -f $partid -d:)
+ 				fi
+ 				if [ $pstart = &quot;.&quot; ];then
+-					# start is next cylinder according to previous partition
++					# start is next sector according to previous partition
+ 					pstart=$(($partid - 1))
+ 					if [ $pstart -gt 0 ];then
+-						pstart=$(partedEndCylinder $pstart)
+-						pstart=$(($pstart + 1))
++						pstart=$(echo $endSectors | cut -f $pstart -d:)
++					else
++						pstart=$(echo $startSectors | cut -f $partid -d:)
+ 					fi
+ 				fi
+ 				pstopp=${pcmds[$index + 4]}
+@@ -5167,6 +5198,7 @@ function createPartedInput {
+ 				fi
+ 				cmdq=&quot;$cmdq mkpart primary $pstart $pstopp&quot;
+ 				partedWrite &quot;$disk&quot; &quot;$cmdq&quot;
++				partedSectorInit $imageDiskDevice
+ 				cmdq=&quot;&quot;
+ 				;;
+ 			#======================================
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index be686fd..9e0867f 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -23,6 +23,9 @@ Mon Jun 28 10:28:17 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ - fixed typo in convert45to46.xsl. Do not swallow attributes
+   on packages of the vmware section
+ - Thanks to Robert who did the last three ones, great work :)
++- fixed repartition problem with new and old parted. The
++  code has been changed in a way that it uses a sector
++  based start value and a cylinder based end value
+ 
+ -------------------------------------------------------------------
+ Fri Jun 18 12:18:11 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002353.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b83025c0fd68344060e6a9776561571ba305296b
+</A></li>
+	<LI>Next message: <A HREF="002355.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a2aaffa7544b26b616a972bc2682dd283c34dd0d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2354">[ date ]</a>
+              <a href="thread.html#2354">[ thread ]</a>
+              <a href="subject.html#2354">[ subject ]</a>
+              <a href="author.html#2354">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

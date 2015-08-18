@@ -1,0 +1,160 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 773d954502096ce8489cb7f7eef7bccf9ea1db2d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20773d954502096ce8489cb7f7eef7bccf9ea1db2d&In-Reply-To=%3C201005120811.o4C8BYSc024629%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002168.html">
+   <LINK REL="Next"  HREF="002170.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 773d954502096ce8489cb7f7eef7bccf9ea1db2d</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20773d954502096ce8489cb7f7eef7bccf9ea1db2d&In-Reply-To=%3C201005120811.o4C8BYSc024629%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 773d954502096ce8489cb7f7eef7bccf9ea1db2d">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed May 12 10:11:34 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002168.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 048fda737b4c1164a4eb2837ead3bf6c08602bc0
+</A></li>
+        <LI>Next message: <A HREF="002170.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0339dacc2a241c9f46dde554d2e5d3b57802a27b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2169">[ date ]</a>
+              <a href="thread.html#2169">[ thread ]</a>
+              <a href="subject.html#2169">[ subject ]</a>
+              <a href="author.html#2169">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  773d954502096ce8489cb7f7eef7bccf9ea1db2d (commit)
+      from  048fda737b4c1164a4eb2837ead3bf6c08602bc0 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 773d954502096ce8489cb7f7eef7bccf9ea1db2d
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed May 12 10:09:42 2010 +0200
+
+    - added .info file for cached solvables
+    - fixed solvable pattern creation. It's required to lookup susetags
+      even if there is a repodata meta data information to be able to
+      create a full featured solvable including all pattern names
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIMigrate.pm b/modules/KIWIMigrate.pm
+index 2acd518..ab134b7 100644
+--- a/modules/KIWIMigrate.pm
++++ b/modules/KIWIMigrate.pm
+@@ -498,13 +498,17 @@ sub getRepos {
+ 		return undef;
+ 	}
+ 	foreach my $repo (@list) {
+-		$repo =~ s/ +//g;
+ 		if ($repo =~ /^\d.*\|(.*)\|.*\|(.*)\|.*\|(.*)\|(.*)\|(.*)\|/) {
+ 			my $enabled = $2;
+ 			my $source  = $5;
+ 			my $type    = $4;
+ 			my $alias   = $1;
+ 			my $prio    = $3;
++			$enabled =~ s/^ +//; $enabled =~ s/ +$//;
++			$source  =~ s/^ +//; $source  =~ s/ +$//;
++			$type    =~ s/^ +//; $type    =~ s/ +$//;
++			$alias   =~ s/^ +//; $alias   =~ s/ +$//; $alias =~ s/ $/-/g;
++			$prio    =~ s/^ +//; $prio    =~ s/ +$//;
+ 			my $origsrc = $source;
+ 			if ($enabled eq &quot;Yes&quot;) {
+ 				#==========================================
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 8592799..c50e1c3 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -3714,9 +3714,16 @@ sub getSingleInstSourceSatSolvable {
+ 		#==========================================
+ 		# Store distro path and new time stamp
+ 		#------------------------------------------
++		my %newdistro = ();
++		foreach my $key (keys %distro) {
++			if ($distro{$key} ne &quot;distxml&quot;) {
++				$newdistro{$key} = $distro{$key};
++			}
++		}
++		$newdistro{&quot;/&quot;.$path}      = &quot;distxml&quot;;
++		$newdistro{&quot;/suse/&quot;.$path} = &quot;distxml&quot;;
+ 		undef %distro;
+-		$distro{&quot;/&quot;.$path}      = &quot;distxml&quot;;
+-		$distro{&quot;/suse/&quot;.$path} = &quot;distxml&quot;;
++		%distro = %newdistro;
+ 		if (! open ($RXML,&quot;&gt;$index.timestamp&quot;)) {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error (&quot;--&gt; Failed to create timestamp: $!&quot;);
+@@ -3727,6 +3734,13 @@ sub getSingleInstSourceSatSolvable {
+ 		close $RXML;
+ 	}
+ 	#==========================================
++	# create repo info file
++	#------------------------------------------
++	if (open (my $FD,&quot;&gt;$index.info&quot;)) {
++		print $FD $repo.&quot;\n&quot;;
++		close $FD;
++	}
++	#==========================================
+ 	# download distro solvable(s)
+ 	#------------------------------------------
+ 	my $foundDist = 0;
+@@ -3739,7 +3753,7 @@ sub getSingleInstSourceSatSolvable {
+ 			$destfile = $sdir.&quot;/$name-&quot;.$count;
+ 		}
+ 		if (KIWIXML::getInstSourceFile ($kiwi,$repo.$dist,$destfile)) {
+-			$foundDist = 1; last;
++			$foundDist = 1;
+ 		}
+ 	}
+ 	if (! $foundDist) {
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002168.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 048fda737b4c1164a4eb2837ead3bf6c08602bc0
+</A></li>
+	<LI>Next message: <A HREF="002170.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0339dacc2a241c9f46dde554d2e5d3b57802a27b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2169">[ date ]</a>
+              <a href="thread.html#2169">[ thread ]</a>
+              <a href="subject.html#2169">[ subject ]</a>
+              <a href="author.html#2169">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

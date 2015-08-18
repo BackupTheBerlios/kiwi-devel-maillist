@@ -1,0 +1,177 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 926ae510740d0fded98042edafdf6e7efd42961c
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20926ae510740d0fded98042edafdf6e7efd42961c&In-Reply-To=%3C201004141051.o3EApKpb008602%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002092.html">
+   <LINK REL="Next"  HREF="002094.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 926ae510740d0fded98042edafdf6e7efd42961c</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20926ae510740d0fded98042edafdf6e7efd42961c&In-Reply-To=%3C201004141051.o3EApKpb008602%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 926ae510740d0fded98042edafdf6e7efd42961c">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Apr 14 12:51:20 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002092.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0d8cd42940c41ffc34aab070a014bf08daf454af
+</A></li>
+        <LI>Next message: <A HREF="002094.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 276f8670f67abd6ac3e9ddaa8a1257e6588f1b89
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2093">[ date ]</a>
+              <a href="thread.html#2093">[ thread ]</a>
+              <a href="subject.html#2093">[ subject ]</a>
+              <a href="author.html#2093">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  926ae510740d0fded98042edafdf6e7efd42961c (commit)
+      from  0d8cd42940c41ffc34aab070a014bf08daf454af (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 926ae510740d0fded98042edafdf6e7efd42961c
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Apr 14 11:46:43 2010 +0200
+
+    - enhanced KIWILinuxRC create/resize filesystem functions
+      to be able to return only the command without actually
+      invoking it
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index d677e02..8c4bc69 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -5463,52 +5463,64 @@ function reloadKernel {
+ #--------------------------------------
+ function resizeFilesystem {
+ 	local deviceResize=$1
++	local callme=$2
++	local resize_fs
++	local resize_lucks
++	local check
+ 	if [ -z &quot;$FSTYPE&quot; ];then
+ 		probeFileSystem $deviceResize
+ 	fi
++	resize_lucks=&quot;luksResize $deviceResize&quot;
+ 	if [ &quot;$FSTYPE&quot; = &quot;reiserfs&quot; ];then
+ 		Echo &quot;Resize Reiser filesystem to full partition space...&quot;
+-		luksResize $deviceResize
+-		resize_reiserfs -q $deviceResize
++		resize_fs=&quot;resize_reiserfs -q $deviceResize&quot;
++		check=&quot;reiserfsck -y $deviceResize&quot;
+ 	elif [ &quot;$FSTYPE&quot; = &quot;ext2&quot; ];then
+ 		Echo &quot;Resize EXT2 filesystem to full partition space...&quot;
+-		luksResize $deviceResize
+-		resize2fs -f -F -p $deviceResize &amp;&amp; e2fsck -p $deviceResize
++		resize_fs=&quot;resize2fs -f -F -p $deviceResize&quot;
++		check=&quot;e2fsck -p $deviceResize&quot;
+ 	elif [ &quot;$FSTYPE&quot; = &quot;ext3&quot; ];then
+ 		Echo &quot;Resize EXT3 filesystem to full partition space...&quot;
+-		luksResize $deviceResize
+-		resize2fs -f -F -p $deviceResize &amp;&amp; e2fsck -p $deviceResize
++		resize_fs=&quot;resize2fs -f -F -p $deviceResize&quot;
++		check=&quot;e2fsck -p $deviceResize&quot;
+ 	elif [ &quot;$FSTYPE&quot; = &quot;ext4&quot; ];then
+ 		Echo &quot;Resize EXT4 filesystem to full partition space...&quot;
+-		luksResize $deviceResize
+-		resize2fs -f -F -p $deviceResize &amp;&amp; e2fsck -p $deviceResize
++		resize_fs=&quot;resize2fs -f -F -p $deviceResize&quot;
++		check=&quot;e2fsck -p $deviceResize&quot;
+ 	else
+ 		# don't know how to resize this filesystem
+ 		return
+ 	fi
+-	if [ ! $? = 0 ];then
+-		systemException \
+-			&quot;Failed to resize/check filesystem&quot; \
+-		&quot;reboot&quot;
++	if [ -z &quot;$callme&quot; ];then
++		eval $resize_lucks
++		eval $resize_fs &amp;&amp; $check
++		if [ ! $? = 0 ];then
++			systemException \
++				&quot;Failed to resize/check filesystem&quot; \
++			&quot;reboot&quot;
++		fi
++		INITRD_MODULES=&quot;$INITRD_MODULES $FSTYPE&quot;
++	else
++		echo $resize_fs
+ 	fi
+-	INITRD_MODULES=&quot;$INITRD_MODULES $FSTYPE&quot;
+ }
+ #======================================
+ # createFilesystem
+ #--------------------------------------
+ function createFilesystem {
+ 	local deviceCreate=$1
++	local blocks=$2
+ 	if [ &quot;$FSTYPE&quot; = &quot;reiserfs&quot; ];then
+-		mkreiserfs -f $deviceCreate 1&gt;&amp;2
++		mkreiserfs -f $deviceCreate $blocks 1&gt;&amp;2
+ 	elif [ &quot;$FSTYPE&quot; = &quot;ext2&quot; ];then
+-		mke2fs -T ext2 -F $deviceCreate 1&gt;&amp;2
++		mke2fs -T ext2 -F $deviceCreate $blocks 1&gt;&amp;2
+ 	elif [ &quot;$FSTYPE&quot; = &quot;ext3&quot; ];then
+-		mke2fs -T ext3 -j -F $deviceCreate 1&gt;&amp;2
++		mke2fs -T ext3 -j -F $deviceCreate $blocks 1&gt;&amp;2
+ 	elif [ &quot;$FSTYPE&quot; = &quot;ext4&quot; ];then
+-		mke2fs -T ext4 -j -F $deviceCreate 1&gt;&amp;2
++		mke2fs -T ext4 -j -F $deviceCreate $blocks 1&gt;&amp;2
+ 	else
+ 		# use ext3 by default
+-		mke2fs -T ext3 -j -F $deviceCreate 1&gt;&amp;2
++		mke2fs -T ext3 -j -F $deviceCreate $blocks 1&gt;&amp;2
+ 	fi
+ 	if [ ! $? = 0 ];then
+ 		systemException \
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002092.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0d8cd42940c41ffc34aab070a014bf08daf454af
+</A></li>
+	<LI>Next message: <A HREF="002094.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 276f8670f67abd6ac3e9ddaa8a1257e6588f1b89
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2093">[ date ]</a>
+              <a href="thread.html#2093">[ thread ]</a>
+              <a href="subject.html#2093">[ subject ]</a>
+              <a href="author.html#2093">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

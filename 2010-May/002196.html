@@ -1,0 +1,144 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 30f7835378c69270a5700b6631243e6712b351bb
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%2030f7835378c69270a5700b6631243e6712b351bb&In-Reply-To=%3C201005181434.o4IEYc20002848%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002195.html">
+   <LINK REL="Next"  HREF="002197.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 30f7835378c69270a5700b6631243e6712b351bb</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%2030f7835378c69270a5700b6631243e6712b351bb&In-Reply-To=%3C201005181434.o4IEYc20002848%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 30f7835378c69270a5700b6631243e6712b351bb">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue May 18 16:34:38 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002195.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 451598293d77dd8faef53e69e5ce7ffd71cb6ec6
+</A></li>
+        <LI>Next message: <A HREF="002197.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a5e831feb884ba1b7822a3f8b1ecafa5a78f623a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2196">[ date ]</a>
+              <a href="thread.html#2196">[ thread ]</a>
+              <a href="subject.html#2196">[ subject ]</a>
+              <a href="author.html#2196">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-374-SuSE-11-1-SLE-SP-Devel has been updated
+       via  30f7835378c69270a5700b6631243e6712b351bb (commit)
+      from  7e51020760491cf437ec33a4041785ce9443cc79 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 30f7835378c69270a5700b6631243e6712b351bb
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue May 18 16:34:26 2010 +0200
+
+    - use tar command to copy overlay files which is more
+      error prune than the cp command (bnc #476117)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIRoot.pm b/modules/KIWIRoot.pm
+index bf5aca7..0907e13 100644
+--- a/modules/KIWIRoot.pm
++++ b/modules/KIWIRoot.pm
+@@ -754,6 +754,7 @@ sub setup {
+ 	my $configFile= $xml -&gt; getConfigName();
+ 	my $imageDesc = $this-&gt;{imageDesc};
+ 	my $manager   = $this-&gt;{manager};
++	my $data;
+ 	#======================================== 
+ 	# Consistency check
+ 	#----------------------------------------
+@@ -768,19 +769,22 @@ sub setup {
+ 	if (-d &quot;$imageDesc/root&quot;) {
+ 		$kiwi -&gt; info (&quot;Copying user defined files to image tree&quot;);
+ 		mkdir $root.&quot;/tmproot&quot;;
+-		my $copy = &quot;cp -dR --remove-destination&quot;;
+ 		if ((-l &quot;$imageDesc/root/linuxrc&quot;) || (-l &quot;$imageDesc/root/include&quot;)) {
+-			$copy = &quot;cp -LR --remove-destination&quot;;
++			$data = qxx (
++				&quot;cp -LR --force $imageDesc/root/* $root/tmproot 2&gt;&amp;1&quot;
++			);
++		} else {
++			$data = qxx (
++				&quot;tar -cf - -C $imageDesc/root . | tar -x -C $root/tmproot 2&gt;&amp;1&quot;
++			);
+ 		}
+-		my $data = qxx (&quot;$copy $imageDesc/root/* $root/tmproot 2&gt;&amp;1&quot;);
+ 		my $code = $? &gt;&gt; 8;
+ 		if ($code != 0) {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; info   ($data);
+ 			return undef;
+ 		}
+-		qxx (&quot;find $root/tmproot -type d | grep '.svn\$' | xargs rm -rf 2&gt;&amp;1&quot;);
+-		$data = qxx (&quot;$copy $root/tmproot/* $root&quot;);
++		$data = qxx (&quot;tar -cf - -C $root/tmproot . | tar -x -C $root 2&gt;&amp;1&quot;);
+ 		$code = $? &gt;&gt; 8;
+ 		if ($code != 0) {
+ 			$kiwi -&gt; failed ();
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index f97385f..55e511b 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Tue May 18 16:00:05 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- use tar command to copy overlay files which is more
++  error prune than the cp command (bnc #476117)
++
++-------------------------------------------------------------------
+ Mon May 17 11:30:57 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - deactivate splash screen for initial deployment
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002195.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 451598293d77dd8faef53e69e5ce7ffd71cb6ec6
+</A></li>
+	<LI>Next message: <A HREF="002197.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a5e831feb884ba1b7822a3f8b1ecafa5a78f623a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2196">[ date ]</a>
+              <a href="thread.html#2196">[ thread ]</a>
+              <a href="subject.html#2196">[ subject ]</a>
+              <a href="author.html#2196">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

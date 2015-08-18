@@ -1,0 +1,191 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ec4846b0a18df8e05e8bd42b7f418676d6236d79
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ec4846b0a18df8e05e8bd42b7f418676d6236d79&In-Reply-To=%3C20110119135313.06B29480A9F%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002987.html">
+   <LINK REL="Next"  HREF="002990.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ec4846b0a18df8e05e8bd42b7f418676d6236d79</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ec4846b0a18df8e05e8bd42b7f418676d6236d79&In-Reply-To=%3C20110119135313.06B29480A9F%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ec4846b0a18df8e05e8bd42b7f418676d6236d79">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jan 19 14:53:12 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002987.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6e4288ee099959555b5b15aeb81cf8c6683e4e31
+</A></li>
+        <LI>Next message: <A HREF="002990.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. eeecf05d029e7e75abfc44a5c2c600263838c50e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2989">[ date ]</a>
+              <a href="thread.html#2989">[ thread ]</a>
+              <a href="subject.html#2989">[ subject ]</a>
+              <a href="author.html#2989">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  ec4846b0a18df8e05e8bd42b7f418676d6236d79 (commit)
+      from  6e4288ee099959555b5b15aeb81cf8c6683e4e31 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ec4846b0a18df8e05e8bd42b7f418676d6236d79
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jan 19 14:47:45 2011 +0100
+
+    - added check which disallows white space in the value for
+      the displayname attribute
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIXMLValidator.pm b/modules/KIWIXMLValidator.pm
+index f8deb88..6ca6698 100644
+--- a/modules/KIWIXMLValidator.pm
++++ b/modules/KIWIXMLValidator.pm
+@@ -208,6 +208,32 @@ sub __checkDefaultTypeSetting {
+ }
+ 
+ #==========================================
++# __checkDisplaynameValid
++#------------------------------------------
++sub __checkDisplaynameValid {
++	# ...
++	# The displayname attribute of the image may not contain spaces
++	# ---
++	my $this = shift;
++	my @imgNodes = $this-&gt;{systemTree} -&gt; getElementsByTagName('image');
++	# There is only one image node, it is the root node
++	my $displayName = $imgNodes[0] -&gt; getAttribute('displayname');
++	if ($displayName) {
++		my @words = split /\s/, $displayName;
++		my $count = @words;
++		if ($count &gt; 1) {
++			my $kiwi = $this-&gt;{kiwi};
++			my $msg = 'Found white space in string provided as displayname. '
++			. 'No white space permitted';
++			$kiwi -&gt; error ( $msg );
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++	}
++	return 1;
++}
++
++#==========================================
+ # __checkFilesysSpec
+ #------------------------------------------
+ sub __checkFilesysSpec {
+@@ -244,28 +270,28 @@ sub __checkFilesysSpec {
+ # __checkPatternTypeAttrUse
+ #------------------------------------------
+ sub __checkPatternTypeAttrUse {
+-    # ...
+-    # The PatternType attribute may only be used for image and bootstrap
+-    # packages. Check that this is set appropriately.
+-    # ---
+-    my $this = shift;
+-    my @pkgsNodes = $this-&gt;{systemTree} -&gt; getElementsByTagName(&quot;packages&quot;);
+-    my @allowedTypes = qw /bootstrap image/;
+-    for my $pkgs (@pkgsNodes) {
+-        if ($pkgs -&gt; getAttribute( &quot;patternType&quot; )) {
+-            my $type = $pkgs -&gt; getAttribute( &quot;type&quot;);
+-            if (! grep /$type/, @allowedTypes) {
+-                my $kiwi = $this-&gt;{kiwi};
+-                my $msg = 'The patternType atribute may only be used for '
+-                  . '&lt;packages&gt; specification of type &quot;bootstrap&quot; and '
+-                  . 'type &quot;image&quot;.';
+-                $kiwi -&gt; error ( $msg );
++	# ...
++	# The PatternType attribute may only be used for image and bootstrap
++	# packages. Check that this is set appropriately.
++	# ---
++	my $this = shift;
++	my @pkgsNodes = $this-&gt;{systemTree} -&gt; getElementsByTagName(&quot;packages&quot;);
++	my @allowedTypes = qw /bootstrap image/;
++	for my $pkgs (@pkgsNodes) {
++		if ($pkgs -&gt; getAttribute( &quot;patternType&quot; )) {
++			my $type = $pkgs -&gt; getAttribute( &quot;type&quot;);
++			if (! grep /$type/, @allowedTypes) {
++				my $kiwi = $this-&gt;{kiwi};
++				my $msg = 'The patternType atribute may only be used for '
++				. '&lt;packages&gt; specification of type &quot;bootstrap&quot; and '
++				. 'type &quot;image&quot;.';
++				$kiwi -&gt; error ( $msg );
+ 				$kiwi -&gt; failed ();
+-                return undef
+-            }
+-        }
+-    }
+-    return 1;
++				return undef
++			}
++		}
++	}
++	return 1;
+ }
+ 
+ #==========================================
+@@ -557,10 +583,13 @@ sub __validateConsistency {
+ 	if (! $this -&gt; __checkDefaultTypeSetting()){
+ 		return undef;
+ 	}
++	if (! $this -&gt; __checkDisplaynameValid()) {
++		return undef;
++	}
+ 	if (! $this -&gt; __checkFilesysSpec()) {
+ 		return undef;
+ 	}
+-    if (! $this -&gt; __checkPatternTypeAttrUse()) {
++	if (! $this -&gt; __checkPatternTypeAttrUse()) {
+ 		return undef;
+ 	}
+ 	if (! $this -&gt; __checkPostDumpAction()) {
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002987.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6e4288ee099959555b5b15aeb81cf8c6683e4e31
+</A></li>
+	<LI>Next message: <A HREF="002990.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. eeecf05d029e7e75abfc44a5c2c600263838c50e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2989">[ date ]</a>
+              <a href="thread.html#2989">[ thread ]</a>
+              <a href="subject.html#2989">[ subject ]</a>
+              <a href="author.html#2989">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

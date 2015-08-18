@@ -1,0 +1,1512 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c35b71b29486d225c167328e4756c915fd960478
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20c35b71b29486d225c167328e4756c915fd960478&In-Reply-To=%3C20110414075509.6ED8E48137E%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003333.html">
+   <LINK REL="Next"  HREF="003336.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c35b71b29486d225c167328e4756c915fd960478</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20c35b71b29486d225c167328e4756c915fd960478&In-Reply-To=%3C20110414075509.6ED8E48137E%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c35b71b29486d225c167328e4756c915fd960478">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Apr 14 09:55:08 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003333.html">[Kiwi-devel] new consistency check, updated tests
+</A></li>
+        <LI>Next message: <A HREF="003336.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. af431d97c3cc8392e8423f71eaa8ebd9ba530358
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3335">[ date ]</a>
+              <a href="thread.html#3335">[ thread ]</a>
+              <a href="subject.html#3335">[ subject ]</a>
+              <a href="author.html#3335">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  c35b71b29486d225c167328e4756c915fd960478 (commit)
+       via  bcee25ea29f488281ee7a208d726972224ff1dc9 (commit)
+      from  820f348fb2c64c732d9a93d2651b191568597000 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit c35b71b29486d225c167328e4756c915fd960478
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Apr 14 09:53:38 2011 +0200
+
+    - update config.sh scripts for the ec2 examples to ensure
+      the ssh policy and inittab console settings are correct
+
+commit bcee25ea29f488281ee7a208d726972224ff1dc9
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Apr 14 09:50:43 2011 +0200
+
+    - added new consistency check to enforce that ec2 formatted images are
+      created as file system types. This required an update to a number of
+      other config files used for Validator unit testing. Added new unit
+      tests for the EC2 requirement.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/doc/examples/suse-11.2/suse-ec2-guest/config.sh b/doc/examples/suse-11.2/suse-ec2-guest/config.sh
+index e3c80f6..d57d920 100644
+--- a/doc/examples/suse-11.2/suse-ec2-guest/config.sh
++++ b/doc/examples/suse-11.2/suse-ec2-guest/config.sh
+@@ -36,11 +36,60 @@ suseSetupProduct
+ #--------------------------------------
+ suseActivateDefaultServices
+ suseInsertService amazon
++suseInsertService amazon-late
+ suseInsertService boot.device-mapper
+-suseInsertService boot.xen
+ suseInsertService sshd
+ 
+ #======================================
++# Let the DHCP server set the hostname
++#--------------------------------------
++baseUpdateSysConfig /etc/sysconfig/network/dhcp DHCLIENT_SET_HOSTNAME yes
++
++#======================================
++# Set a random strong root password
++#--------------------------------------
++echo &quot;Setting a random root password&quot;
++head -c 200 /dev/urandom | tr -cd '[:graph:]' | head -c 40 | passwd --stdin root
++
++#======================================
++# Change SSH policies
++#--------------------------------------
++echo &quot;Changing SSH policies&quot;
++sed -r -i -e 's@^#?PermitRootLogin[[:space:]].*@PermitRootLogin without-password@;s@^#?UseDNS[[:space:]].*@UseDNS no@' /etc/ssh/sshd_config
++
++#======================================
++# Update inittab tty setup
++#--------------------------------------
++# The inittab needs to run getty on the appropriate consoles
++echo &quot;Updating inittab: disabling mingetty&quot;
++awk '{
++	if ($0 ~ /^[^#].*mingetty/) {
++		print &quot;# $0&quot;
++	} else {
++		print
++	}
++}' /etc/inittab &gt; /etc/inittab.new
++cat /etc/inittab.new &gt; /etc/inittab
++rm /etc/inittab.new
++
++grep -E -q '^x0:' /etc/inittab
++if [ $? -eq 0 ]; then
++	echo &quot;Updating inittab: resetting agetty&quot;
++	sed -i -e 's@^x0:.*@x0:12345:respawn:/sbin/agetty -L 9600 xvc0 vt102@' /etc/inittab
++else
++	echo &quot;Updating inittab: enabling agetty&quot;
++	awk '{
++		if ($0 ~/\/agetty/) {
++			print $0 &quot;\nx0:12345:respawn:/sbin/agetty -L 9600 xvc0 vt102&quot;
++		} else {
++			print
++		}
++	}' /etc/inittab &gt; /etc/inittab.new
++	cat /etc/inittab.new &gt; /etc/inittab
++	rm /etc/inittab.new
++fi
++
++#======================================
+ # SuSEconfig
+ #--------------------------------------
+ suseConfig
+diff --git a/doc/examples/suse-11.2/suse-ec2-guest/root/etc/init.d/boot.xen b/doc/examples/suse-11.2/suse-ec2-guest/root/etc/init.d/boot.xen
+deleted file mode 100644
+index 052c25f..0000000
+--- a/doc/examples/suse-11.2/suse-ec2-guest/root/etc/init.d/boot.xen
++++ /dev/null
+@@ -1,80 +0,0 @@
+-#! /bin/sh
+-#
+-# Copyright (c) 2001-2002 SuSE Linux AG, Nuernberg, Germany.
+-# All rights reserved.
+-#
+-# /etc/init.d/boot.xen
+-#
+-### BEGIN INIT INFO
+-# Provides:          boot.xen
+-# Required-Start:    boot.localfs
+-# Required-Stop:
+-# Default-Start:     B S
+-# Default-Stop:
+-# Description:       Check and Prepare xen environment
+-### END INIT INFO
+-
+-. /etc/rc.status
+-rc_reset
+-
+-kernel=`uname -r | grep -qi &quot;\-xen&quot; &amp;&amp; echo xen || echo none`
+-if [ ! -e /proc/xen/capabilities ]; then
+-	domain=native
+-elif ! grep control_d /proc/xen/capabilities &gt;/dev/null 2&gt;&amp;1; then
+-	domain=domU
+-else
+-	domain=dom0
+-fi
+-
+-case &quot;$1&quot; in
+-    start|restart)
+-		#
+-		# Check and Prepare xen environment
+-		#
+-		echo -n &quot;Setting up xen environment&quot;
+-		if test ! &quot;$kernel&quot; = &quot;xen&quot;;then
+-			rc_status -s
+-			rc_failed 6
+-		else
+-			if test &quot;$domain&quot; = &quot;dom0&quot;;then
+-				rc_status -s
+-				rc_failed 6
+-			else
+-				insserv -r /etc/init.d/kbd
+-				insserv -r /etc/init.d/acpid
+-				sed -ie &quot;s/^[2-6]:/#\\0/&quot; /etc/inittab
+-				init q
+-				rc_status
+-				rc_status -v -r
+-			fi
+-		fi
+-	;;
+-    stop)
+-		echo -n &quot;Restoring default environment&quot;
+-		if test ! &quot;$kernel&quot; = &quot;xen&quot;;then
+-			rc_status -s
+-			rc_failed 6
+-		else
+-			if test &quot;$domain&quot; = &quot;dom0&quot;;then
+-				rc_status -s
+-				rc_failed 6
+-			else
+-				insserv /etc/init.d/acpid
+-				insserv /etc/init.d/kbd
+-				sed -ie &quot;s/^#\([2-6]:\)/\\1/&quot; /etc/inittab
+-				init q
+-				rc_status -v -r
+-			fi
+-		fi
+-	;;
+-    status)
+-		rc_failed 4
+-		rc_status -v
+-	;;
+-	*)
+-		echo &quot;Usage: $0 {start|stop|status|restart}&quot;
+-		exit 1
+-	;;
+-esac
+-
+-rc_exit
+diff --git a/doc/examples/suse-11.3/suse-ec2-guest/config.sh b/doc/examples/suse-11.3/suse-ec2-guest/config.sh
+index bcd77ec..d57d920 100644
+--- a/doc/examples/suse-11.3/suse-ec2-guest/config.sh
++++ b/doc/examples/suse-11.3/suse-ec2-guest/config.sh
+@@ -36,10 +36,60 @@ suseSetupProduct
+ #--------------------------------------
+ suseActivateDefaultServices
+ suseInsertService amazon
++suseInsertService amazon-late
+ suseInsertService boot.device-mapper
+ suseInsertService sshd
+ 
+ #======================================
++# Let the DHCP server set the hostname
++#--------------------------------------
++baseUpdateSysConfig /etc/sysconfig/network/dhcp DHCLIENT_SET_HOSTNAME yes
++
++#======================================
++# Set a random strong root password
++#--------------------------------------
++echo &quot;Setting a random root password&quot;
++head -c 200 /dev/urandom | tr -cd '[:graph:]' | head -c 40 | passwd --stdin root
++
++#======================================
++# Change SSH policies
++#--------------------------------------
++echo &quot;Changing SSH policies&quot;
++sed -r -i -e 's@^#?PermitRootLogin[[:space:]].*@PermitRootLogin without-password@;s@^#?UseDNS[[:space:]].*@UseDNS no@' /etc/ssh/sshd_config
++
++#======================================
++# Update inittab tty setup
++#--------------------------------------
++# The inittab needs to run getty on the appropriate consoles
++echo &quot;Updating inittab: disabling mingetty&quot;
++awk '{
++	if ($0 ~ /^[^#].*mingetty/) {
++		print &quot;# $0&quot;
++	} else {
++		print
++	}
++}' /etc/inittab &gt; /etc/inittab.new
++cat /etc/inittab.new &gt; /etc/inittab
++rm /etc/inittab.new
++
++grep -E -q '^x0:' /etc/inittab
++if [ $? -eq 0 ]; then
++	echo &quot;Updating inittab: resetting agetty&quot;
++	sed -i -e 's@^x0:.*@x0:12345:respawn:/sbin/agetty -L 9600 xvc0 vt102@' /etc/inittab
++else
++	echo &quot;Updating inittab: enabling agetty&quot;
++	awk '{
++		if ($0 ~/\/agetty/) {
++			print $0 &quot;\nx0:12345:respawn:/sbin/agetty -L 9600 xvc0 vt102&quot;
++		} else {
++			print
++		}
++	}' /etc/inittab &gt; /etc/inittab.new
++	cat /etc/inittab.new &gt; /etc/inittab
++	rm /etc/inittab.new
++fi
++
++#======================================
+ # SuSEconfig
+ #--------------------------------------
+ suseConfig
+diff --git a/doc/examples/suse-11.4/suse-ec2-guest/config.sh b/doc/examples/suse-11.4/suse-ec2-guest/config.sh
+index bcd77ec..d57d920 100644
+--- a/doc/examples/suse-11.4/suse-ec2-guest/config.sh
++++ b/doc/examples/suse-11.4/suse-ec2-guest/config.sh
+@@ -36,10 +36,60 @@ suseSetupProduct
+ #--------------------------------------
+ suseActivateDefaultServices
+ suseInsertService amazon
++suseInsertService amazon-late
+ suseInsertService boot.device-mapper
+ suseInsertService sshd
+ 
+ #======================================
++# Let the DHCP server set the hostname
++#--------------------------------------
++baseUpdateSysConfig /etc/sysconfig/network/dhcp DHCLIENT_SET_HOSTNAME yes
++
++#======================================
++# Set a random strong root password
++#--------------------------------------
++echo &quot;Setting a random root password&quot;
++head -c 200 /dev/urandom | tr -cd '[:graph:]' | head -c 40 | passwd --stdin root
++
++#======================================
++# Change SSH policies
++#--------------------------------------
++echo &quot;Changing SSH policies&quot;
++sed -r -i -e 's@^#?PermitRootLogin[[:space:]].*@PermitRootLogin without-password@;s@^#?UseDNS[[:space:]].*@UseDNS no@' /etc/ssh/sshd_config
++
++#======================================
++# Update inittab tty setup
++#--------------------------------------
++# The inittab needs to run getty on the appropriate consoles
++echo &quot;Updating inittab: disabling mingetty&quot;
++awk '{
++	if ($0 ~ /^[^#].*mingetty/) {
++		print &quot;# $0&quot;
++	} else {
++		print
++	}
++}' /etc/inittab &gt; /etc/inittab.new
++cat /etc/inittab.new &gt; /etc/inittab
++rm /etc/inittab.new
++
++grep -E -q '^x0:' /etc/inittab
++if [ $? -eq 0 ]; then
++	echo &quot;Updating inittab: resetting agetty&quot;
++	sed -i -e 's@^x0:.*@x0:12345:respawn:/sbin/agetty -L 9600 xvc0 vt102@' /etc/inittab
++else
++	echo &quot;Updating inittab: enabling agetty&quot;
++	awk '{
++		if ($0 ~/\/agetty/) {
++			print $0 &quot;\nx0:12345:respawn:/sbin/agetty -L 9600 xvc0 vt102&quot;
++		} else {
++			print
++		}
++	}' /etc/inittab &gt; /etc/inittab.new
++	cat /etc/inittab.new &gt; /etc/inittab
++	rm /etc/inittab.new
++fi
++
++#======================================
+ # SuSEconfig
+ #--------------------------------------
+ suseConfig
+diff --git a/modules/KIWIXMLValidator.pm b/modules/KIWIXMLValidator.pm
+index 328824a..025741b 100644
+--- a/modules/KIWIXMLValidator.pm
++++ b/modules/KIWIXMLValidator.pm
+@@ -262,6 +262,40 @@ sub __checkDisplaynameValid {
+ }
+ 
+ #==========================================
++# __checkEC2IsFsysType
++#------------------------------------------
++sub __checkEC2IsFsysType {
++	# ...
++	# When building an EC2 image we expect the type to be a file system image.
++	# ---
++	my $this = shift;
++	# TODO:
++	# Excluding btrfs and xfs, needs testing first. There are potentisl issues
++	# with both file systems as they require a boot partiotion and our current
++	# setup for EC2 is to not have a boot partition.
++	# Excluding clicfs and squashfs, they appear to be impractical for EC2,
++	# can be enabled if someone complains
++	my @supportedFSTypes = qw /ext2 ext3 ext4 reiserfs/;
++	my @typeNodes = $this-&gt;{systemTree}-&gt;getElementsByTagName('type');
++	for my $type (@typeNodes) {
++		my $format = $type -&gt; getAttribute('format');
++		if ($format &amp;&amp; $format eq 'ec2') {
++			my $imgType = $type -&gt; getAttribute('image');
++			if (! grep /^$imgType$/, @supportedFSTypes) {
++				my $kiwi = $this-&gt;{kiwi};
++				my $msg = 'For EC2 image creation the image type must be '
++					. 'one of the following supported file systems: '
++					. &quot;@supportedFSTypes&quot;;
++				$kiwi -&gt; error ( $msg );
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++		}
++	}
++	return 1;
++}
++
++#==========================================
+ # __checkEC2Regions
+ #------------------------------------------
+ sub __checkEC2Regions {
+@@ -842,6 +876,9 @@ sub __validateConsistency {
+ 	if (! $this -&gt; __checkDisplaynameValid()) {
+ 		return undef;
+ 	}
++	if (! $this -&gt; __checkEC2IsFsysType()) {
++		return undef;
++	}
+ 	if (! $this -&gt; __checkEC2Regions()) {
+ 		return undef;
+ 	}
+diff --git a/tests/unit/data/kiwiXMLValidator/defaultProfileInvalid_1.xml b/tests/unit/data/kiwiXMLValidator/defaultProfileInvalid_1.xml
+index 1cf6048..3a2b84c 100644
+--- a/tests/unit/data/kiwiXMLValidator/defaultProfileInvalid_1.xml
++++ b/tests/unit/data/kiwiXMLValidator/defaultProfileInvalid_1.xml
+@@ -1,14 +1,13 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+ &lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
++		&lt;author&gt;Robert Schweikert&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+ 		&lt;specification&gt;test profiles validation&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+-		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+-		&lt;profile name=&quot;ec2Flavour&quot; description=&quot;VMX with default kernel&quot; import=&quot;true&quot;/&gt;
++		&lt;profile name=&quot;xenFlavor&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
++		&lt;profile name=&quot;vmwFlavor&quot; description=&quot;VMX with default kernel&quot; import=&quot;true&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+ 		&lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +24,7 @@
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;xenFlavour&quot;&gt;
++	&lt;preferences profiles=&quot;xenFlavor&quot;&gt;
+ 		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;xenk&quot;&gt;
+ 			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+@@ -33,17 +32,11 @@
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;ec2&quot; format=&quot;ec2&quot;&gt;
++	&lt;preferences profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+ 			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+-				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+-				&lt;vmnic interface=&quot;br0&quot; mac=&quot;00:0C:6E:AA:57:2F&quot;/&gt;
++				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+-			&lt;ec2config&gt;
+-				&lt;ec2privatekeyfile&gt;Path to EC2 private key file&lt;/ec2privatekeyfile&gt;
+-				&lt;ec2certfile&gt;Path to EC2 public certificate file&lt;/ec2certfile&gt;
+-				&lt;ec2accountnr&gt;12345678911&lt;/ec2accountnr&gt;
+-			&lt;/ec2config&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+ 	&lt;users group=&quot;root&quot;&gt;
+@@ -57,15 +50,15 @@
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
+-		&lt;package name=&quot;xen&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-ec2&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
++		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;package name=&quot;kernel-ec2&quot; replaces=&quot;kernel-xen&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/tests/unit/data/kiwiXMLValidator/defaultProfileValid_1.xml b/tests/unit/data/kiwiXMLValidator/defaultProfileValid_1.xml
+index 64cc0f9..abd2915 100644
+--- a/tests/unit/data/kiwiXMLValidator/defaultProfileValid_1.xml
++++ b/tests/unit/data/kiwiXMLValidator/defaultProfileValid_1.xml
+@@ -1,22 +1,22 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+ &lt;image schemaversion=&quot;5.1&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
++		&lt;author&gt;Robert Schweikert&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+ 		&lt;specification&gt;test profiles validation&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+-		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+-		&lt;profile name=&quot;ec2Flavour&quot; description=&quot;VMX with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xenFlavor&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
++		&lt;profile name=&quot;vmwFlavor&quot; description=&quot;VMX with default kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+-        &lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
+-            &lt;oemconfig&gt; 
+-                &lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
+-                &lt;oem-swap&gt;false&lt;/oem-swap&gt; 
+-                &lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
+-            &lt;/oemconfig&gt; 
+-        &lt;/type&gt;
++		&lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
++			&lt;oemconfig&gt; 
++				&lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
++				&lt;oem-swap&gt;false&lt;/oem-swap&gt; 
++				&lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
++			&lt;/oemconfig&gt; 
++		&lt;/type&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -24,7 +24,7 @@
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;xenFlavour&quot;&gt;
++	&lt;preferences profiles=&quot;xenFlavor&quot;&gt;
+ 		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;xenk&quot;&gt;
+ 			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+@@ -32,17 +32,11 @@
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;ec2&quot; format=&quot;ec2&quot;&gt;
++	&lt;preferences profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+ 			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+-				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+-				&lt;vmnic interface=&quot;br0&quot; mac=&quot;00:0C:6E:AA:57:2F&quot;/&gt;
++				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+-			&lt;ec2config&gt;
+-				&lt;ec2privatekeyfile&gt;Path to EC2 private key file&lt;/ec2privatekeyfile&gt;
+-				&lt;ec2certfile&gt;Path to EC2 public certificate file&lt;/ec2certfile&gt;
+-				&lt;ec2accountnr&gt;12345678911&lt;/ec2accountnr&gt;
+-			&lt;/ec2config&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+ 
+@@ -57,15 +51,15 @@
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
+-		&lt;package name=&quot;xen&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-ec2&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
++		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;package name=&quot;kernel-ec2&quot; replaces=&quot;kernel-xen&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/tests/unit/data/kiwiXMLValidator/defaultProfileValid_3.xml b/tests/unit/data/kiwiXMLValidator/defaultProfileValid_3.xml
+index 59ddce0..61750be 100644
+--- a/tests/unit/data/kiwiXMLValidator/defaultProfileValid_3.xml
++++ b/tests/unit/data/kiwiXMLValidator/defaultProfileValid_3.xml
+@@ -1,22 +1,22 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+ &lt;image schemaversion=&quot;5.1&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
++		&lt;author&gt;Robert Schweikert&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+ 		&lt;specification&gt;test profiles validation&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+-		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+-		&lt;profile name=&quot;ec2Flavour&quot; description=&quot;VMX with default kernel&quot; import=&quot;false&quot;/&gt;
++		&lt;profile name=&quot;xenFlavor&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
++		&lt;profile name=&quot;vmwFlavor&quot; description=&quot;VMX with default kernel&quot; import=&quot;false&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+-        &lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
+-            &lt;oemconfig&gt; 
+-                &lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
+-                &lt;oem-swap&gt;false&lt;/oem-swap&gt; 
+-                &lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
+-            &lt;/oemconfig&gt; 
+-        &lt;/type&gt;
++		&lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
++			&lt;oemconfig&gt; 
++				&lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
++				&lt;oem-swap&gt;false&lt;/oem-swap&gt; 
++				&lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
++			&lt;/oemconfig&gt; 
++		&lt;/type&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -24,7 +24,7 @@
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;xenFlavour&quot;&gt;
++	&lt;preferences profiles=&quot;xenFlavor&quot;&gt;
+ 		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;xenk&quot;&gt;
+ 			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+@@ -32,17 +32,11 @@
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;ec2&quot; format=&quot;ec2&quot;&gt;
++	&lt;preferences profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+ 			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+-				&lt;vmnic interface=&quot;br0&quot; mac=&quot;00:0C:6E:AA:57:2F&quot;/&gt;
+ 			&lt;/machine&gt;
+-			&lt;ec2config&gt;
+-				&lt;ec2privatekeyfile&gt;Path to EC2 private key file&lt;/ec2privatekeyfile&gt;
+-				&lt;ec2certfile&gt;Path to EC2 public certificate file&lt;/ec2certfile&gt;
+-				&lt;ec2accountnr&gt;12345678911&lt;/ec2accountnr&gt;
+-			&lt;/ec2config&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+ 
+@@ -57,15 +51,15 @@
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
+-		&lt;package name=&quot;xen&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-ec2&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
++		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;package name=&quot;kernel-ec2&quot; replaces=&quot;kernel-xen&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/tests/unit/data/kiwiXMLValidator/defaultTypeInvalid_1.xml b/tests/unit/data/kiwiXMLValidator/defaultTypeInvalid_1.xml
+index 56e6f53..5464462 100644
+--- a/tests/unit/data/kiwiXMLValidator/defaultTypeInvalid_1.xml
++++ b/tests/unit/data/kiwiXMLValidator/defaultTypeInvalid_1.xml
+@@ -1,23 +1,23 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+ &lt;image schemaversion=&quot;5.1&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
++		&lt;author&gt;Robert Schweikert&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+ 		&lt;specification&gt;test multiple default type per pref section&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+-		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+-		&lt;profile name=&quot;ec2Flavour&quot; description=&quot;VMX with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xenFlavor&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
++		&lt;profile name=&quot;vmwFlavor&quot; description=&quot;VMX with default kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+-        &lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
+-            &lt;oemconfig&gt; 
+-                &lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
+-                &lt;oem-swap&gt;false&lt;/oem-swap&gt; 
+-                &lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
+-            &lt;/oemconfig&gt; 
+-        &lt;/type&gt;
+-        &lt;type primary=&quot;true&quot; image=&quot;vmx&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;/&gt;
++		&lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
++			&lt;oemconfig&gt; 
++				&lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
++				&lt;oem-swap&gt;false&lt;/oem-swap&gt; 
++				&lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
++			&lt;/oemconfig&gt; 
++		&lt;/type&gt;
++		&lt;type primary=&quot;true&quot; image=&quot;vmx&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;/&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -25,32 +25,26 @@
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;xenFlavour&quot;&gt;
++	&lt;preferences profiles=&quot;xenFlavor&quot;&gt;
+ 		&lt;type primary=&quot;true&quot; image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;xenk&quot;&gt;
+ 			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+ 				&lt;vmnic interface=&quot;br0&quot; mac=&quot;00:0C:6E:AA:57:2F&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+-        &lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
+-            &lt;oemconfig&gt; 
+-                &lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
+-                &lt;oem-swap&gt;false&lt;/oem-swap&gt; 
+-                &lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
+-            &lt;/oemconfig&gt; 
+-        &lt;/type&gt;
++		&lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
++			&lt;oemconfig&gt; 
++				&lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
++				&lt;oem-swap&gt;false&lt;/oem-swap&gt; 
++				&lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
++			&lt;/oemconfig&gt; 
++		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;type primary=&quot;true&quot; image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;ec2&quot; format=&quot;ec2&quot;&gt;
+-			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+-				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+-				&lt;vmnic interface=&quot;br0&quot; mac=&quot;00:0C:6E:AA:57:2F&quot;/&gt;
++	&lt;preferences profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;type primary=&quot;true&quot; image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
++			&lt;machine memory=&quot;128&quot;&gt;
++				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+-			&lt;ec2config&gt;
+-				&lt;ec2privatekeyfile&gt;Path to EC2 private key file&lt;/ec2privatekeyfile&gt;
+-				&lt;ec2certfile&gt;Path to EC2 public certificate file&lt;/ec2certfile&gt;
+-				&lt;ec2accountnr&gt;12345678911&lt;/ec2accountnr&gt;
+-			&lt;/ec2config&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+ 
+@@ -65,15 +59,15 @@
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
+-		&lt;package name=&quot;xen&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-ec2&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
++		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;package name=&quot;kernel-ec2&quot; replaces=&quot;kernel-xen&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/tests/unit/data/kiwiXMLValidator/defaultTypeValid_2.xml b/tests/unit/data/kiwiXMLValidator/defaultTypeValid_2.xml
+index 47d920d..f4270d7 100644
+--- a/tests/unit/data/kiwiXMLValidator/defaultTypeValid_2.xml
++++ b/tests/unit/data/kiwiXMLValidator/defaultTypeValid_2.xml
+@@ -1,22 +1,22 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+ &lt;image schemaversion=&quot;5.1&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
++		&lt;author&gt;Robert Schweikert&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+ 		&lt;specification&gt;test one default type per pref section&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+-		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+-		&lt;profile name=&quot;ec2Flavour&quot; description=&quot;VMX with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xenFlavor&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
++		&lt;profile name=&quot;vmwFlavor&quot; description=&quot;VMX with default kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+-        &lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
+-            &lt;oemconfig&gt; 
+-                &lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
+-                &lt;oem-swap&gt;false&lt;/oem-swap&gt; 
+-                &lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
+-            &lt;/oemconfig&gt; 
+-        &lt;/type&gt;
++		&lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
++			&lt;oemconfig&gt; 
++				&lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
++				&lt;oem-swap&gt;false&lt;/oem-swap&gt; 
++				&lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
++			&lt;/oemconfig&gt; 
++		&lt;/type&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -24,32 +24,26 @@
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;xenFlavour&quot;&gt;
++	&lt;preferences profiles=&quot;xenFlavor&quot;&gt;
+ 		&lt;type primary=&quot;true&quot; image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;xenk&quot;&gt;
+ 			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+ 				&lt;vmnic interface=&quot;br0&quot; mac=&quot;00:0C:6E:AA:57:2F&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+-        &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
+-            &lt;oemconfig&gt; 
+-                &lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
+-                &lt;oem-swap&gt;false&lt;/oem-swap&gt; 
+-                &lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
+-            &lt;/oemconfig&gt; 
+-        &lt;/type&gt;
++		&lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
++			&lt;oemconfig&gt; 
++				&lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
++				&lt;oem-swap&gt;false&lt;/oem-swap&gt; 
++				&lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
++			&lt;/oemconfig&gt; 
++		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;type primary=&quot;true&quot; image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;ec2&quot; format=&quot;ec2&quot;&gt;
+-			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+-				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+-				&lt;vmnic interface=&quot;br0&quot; mac=&quot;00:0C:6E:AA:57:2F&quot;/&gt;
++	&lt;preferences profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;type primary=&quot;true&quot; image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
++			&lt;machine memory=&quot;128&quot;&gt;
++				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+-			&lt;ec2config&gt;
+-				&lt;ec2privatekeyfile&gt;Path to EC2 private key file&lt;/ec2privatekeyfile&gt;
+-				&lt;ec2certfile&gt;Path to EC2 public certificate file&lt;/ec2certfile&gt;
+-				&lt;ec2accountnr&gt;12345678911&lt;/ec2accountnr&gt;
+-			&lt;/ec2config&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+ 
+@@ -64,15 +58,15 @@
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
+-		&lt;package name=&quot;xen&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-ec2&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
++		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;package name=&quot;kernel-ec2&quot; replaces=&quot;kernel-xen&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/tests/unit/data/kiwiXMLValidator/defaultTypeValid_3.xml b/tests/unit/data/kiwiXMLValidator/defaultTypeValid_3.xml
+index 6b865fd..3405575 100644
+--- a/tests/unit/data/kiwiXMLValidator/defaultTypeValid_3.xml
++++ b/tests/unit/data/kiwiXMLValidator/defaultTypeValid_3.xml
+@@ -1,14 +1,13 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+ &lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
++		&lt;author&gt;Robert Schweikert&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+ 		&lt;specification&gt;test use of default type&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+-		&lt;profile name=&quot;ec2Flavour&quot; description=&quot;VMX with default kernel&quot;/&gt;
++		&lt;profile name=&quot;vmwFlavor&quot; description=&quot;VMX with default kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+ 		&lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -40,17 +39,11 @@
+ 			&lt;/oemconfig&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;type primary=&quot;true&quot; image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;ec2&quot; format=&quot;ec2&quot;&gt;
+-			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+-				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+-				&lt;vmnic interface=&quot;br0&quot; mac=&quot;00:0C:6E:AA:57:2F&quot;/&gt;
++	&lt;preferences profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;type primary=&quot;true&quot; image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
++			&lt;machine memory=&quot;128&quot;&gt;
++				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+-			&lt;ec2config&gt;
+-				&lt;ec2privatekeyfile&gt;Path to EC2 private key file&lt;/ec2privatekeyfile&gt;
+-				&lt;ec2certfile&gt;Path to EC2 public certificate file&lt;/ec2certfile&gt;
+-				&lt;ec2accountnr&gt;12345678911&lt;/ec2accountnr&gt;
+-			&lt;/ec2config&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+ 	&lt;users group=&quot;root&quot;&gt;
+@@ -69,10 +62,10 @@
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-ec2&quot;/&gt;
++		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;package name=&quot;kernel-ec2&quot; replaces=&quot;kernel-xen&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/doc/examples/suse-11.3/suse-ec2-guest/config.xml b/tests/unit/data/kiwiXMLValidator/ec2IsFSInvalid_1.xml
+similarity index 85%
+copy from doc/examples/suse-11.3/suse-ec2-guest/config.xml
+copy to tests/unit/data/kiwiXMLValidator/ec2IsFSInvalid_1.xml
+index 514d3b1..3eaaad1 100644
+--- a/doc/examples/suse-11.3/suse-ec2-guest/config.xml
++++ b/tests/unit/data/kiwiXMLValidator/ec2IsFSInvalid_1.xml
+@@ -1,10 +1,9 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+ &lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.3-ec2-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 ec2 guest system&lt;/specification&gt;
++		&lt;author&gt;Robert Schweikert&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
++		&lt;specification&gt;test ec2 type specification&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+@@ -13,11 +12,12 @@
+ 		&lt;rpm-force&gt;true&lt;/rpm-force&gt;
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+-		&lt;type image=&quot;ext3&quot; format=&quot;ec2&quot;&gt;
++		&lt;type image=&quot;oem&quot; format=&quot;ec2&quot; boot=&quot;oemboot/suse-11.4&quot; filesystem=&quot;ext3&quot;&gt;
+ 			&lt;ec2config&gt;
+ 				&lt;ec2privatekeyfile&gt;Path to EC2 private key file&lt;/ec2privatekeyfile&gt;
+ 				&lt;ec2certfile&gt;Path to EC2 public certificate file&lt;/ec2certfile&gt;
+ 				&lt;ec2accountnr&gt;12345678911&lt;/ec2accountnr&gt;
++				&lt;ec2region&gt;US-West&lt;/ec2region&gt;
+ 			&lt;/ec2config&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+diff --git a/doc/examples/suse-11.3/suse-ec2-guest/config.xml b/tests/unit/data/kiwiXMLValidator/ec2IsFSInvalid_2.xml
+similarity index 87%
+copy from doc/examples/suse-11.3/suse-ec2-guest/config.xml
+copy to tests/unit/data/kiwiXMLValidator/ec2IsFSInvalid_2.xml
+index 514d3b1..4babf72 100644
+--- a/doc/examples/suse-11.3/suse-ec2-guest/config.xml
++++ b/tests/unit/data/kiwiXMLValidator/ec2IsFSInvalid_2.xml
+@@ -1,10 +1,9 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+ &lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.3-ec2-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 ec2 guest system&lt;/specification&gt;
++		&lt;author&gt;Robert Schweikert&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
++		&lt;specification&gt;test ec2 type specification&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+@@ -13,11 +12,12 @@
+ 		&lt;rpm-force&gt;true&lt;/rpm-force&gt;
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+-		&lt;type image=&quot;ext3&quot; format=&quot;ec2&quot;&gt;
++		&lt;type image=&quot;clicfs&quot; format=&quot;ec2&quot;&gt;
+ 			&lt;ec2config&gt;
+ 				&lt;ec2privatekeyfile&gt;Path to EC2 private key file&lt;/ec2privatekeyfile&gt;
+ 				&lt;ec2certfile&gt;Path to EC2 public certificate file&lt;/ec2certfile&gt;
+ 				&lt;ec2accountnr&gt;12345678911&lt;/ec2accountnr&gt;
++				&lt;ec2region&gt;US-West&lt;/ec2region&gt;
+ 			&lt;/ec2config&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+diff --git a/doc/examples/suse-11.3/suse-ec2-guest/config.xml b/tests/unit/data/kiwiXMLValidator/ec2IsFSValid_1.xml
+similarity index 85%
+copy from doc/examples/suse-11.3/suse-ec2-guest/config.xml
+copy to tests/unit/data/kiwiXMLValidator/ec2IsFSValid_1.xml
+index 514d3b1..edbb650 100644
+--- a/doc/examples/suse-11.3/suse-ec2-guest/config.xml
++++ b/tests/unit/data/kiwiXMLValidator/ec2IsFSValid_1.xml
+@@ -1,10 +1,9 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+ &lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.3-ec2-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 ec2 guest system&lt;/specification&gt;
++		&lt;author&gt;Robert Schweikert&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
++		&lt;specification&gt;test ec2 type specification&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+@@ -13,11 +12,13 @@
+ 		&lt;rpm-force&gt;true&lt;/rpm-force&gt;
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+-		&lt;type image=&quot;ext3&quot; format=&quot;ec2&quot;&gt;
++		&lt;type image=&quot;reiserfs&quot; format=&quot;ec2&quot;&gt;
+ 			&lt;ec2config&gt;
+ 				&lt;ec2privatekeyfile&gt;Path to EC2 private key file&lt;/ec2privatekeyfile&gt;
+ 				&lt;ec2certfile&gt;Path to EC2 public certificate file&lt;/ec2certfile&gt;
+ 				&lt;ec2accountnr&gt;12345678911&lt;/ec2accountnr&gt;
++				&lt;ec2region&gt;EU-West&lt;/ec2region&gt;
++				&lt;ec2region&gt;US-West&lt;/ec2region&gt;
+ 			&lt;/ec2config&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+diff --git a/tests/unit/data/kiwiXMLValidator/preferenceUniqueInvalid_2.xml b/tests/unit/data/kiwiXMLValidator/preferenceUniqueInvalid_2.xml
+index 3157729..a55639a 100644
+--- a/tests/unit/data/kiwiXMLValidator/preferenceUniqueInvalid_2.xml
++++ b/tests/unit/data/kiwiXMLValidator/preferenceUniqueInvalid_2.xml
+@@ -1,22 +1,22 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+ &lt;image schemaversion=&quot;5.1&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
++		&lt;author&gt;Robert Schweikert&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+ 		&lt;specification&gt;test preferences consistency, ref same profile twice&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+-		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+-		&lt;profile name=&quot;ec2Flavour&quot; description=&quot;VMX with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xenFlavor&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
++		&lt;profile name=&quot;vmwFlavor&quot; description=&quot;VMX with default kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+-        &lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
+-            &lt;oemconfig&gt; 
+-                &lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
+-                &lt;oem-swap&gt;false&lt;/oem-swap&gt; 
+-                &lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
+-            &lt;/oemconfig&gt; 
+-        &lt;/type&gt;
++		&lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
++			&lt;oemconfig&gt; 
++				&lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
++				&lt;oem-swap&gt;false&lt;/oem-swap&gt; 
++				&lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
++			&lt;/oemconfig&gt; 
++		&lt;/type&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -24,7 +24,7 @@
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;xenFlavour&quot;&gt;
++	&lt;preferences profiles=&quot;xenFlavor&quot;&gt;
+ 		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;xenk&quot;&gt;
+ 			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+@@ -32,17 +32,11 @@
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;xenFlavour&quot;&gt;
+-		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;ec2&quot; format=&quot;ec2&quot;&gt;
++	&lt;preferences profiles=&quot;xenFlavor&quot;&gt;
++		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+ 			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+-				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+-				&lt;vmnic interface=&quot;br0&quot; mac=&quot;00:0C:6E:AA:57:2F&quot;/&gt;
++				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+-			&lt;ec2config&gt;
+-				&lt;ec2privatekeyfile&gt;Path to EC2 private key file&lt;/ec2privatekeyfile&gt;
+-				&lt;ec2certfile&gt;Path to EC2 public certificate file&lt;/ec2certfile&gt;
+-				&lt;ec2accountnr&gt;12345678911&lt;/ec2accountnr&gt;
+-			&lt;/ec2config&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+ 
+@@ -61,11 +55,13 @@
+ 		&lt;package name=&quot;xen&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-ec2&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
++		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;package name=&quot;kernel-ec2&quot; replaces=&quot;kernel-xen&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/tests/unit/data/kiwiXMLValidator/preferenceUniqueValid_1.xml b/tests/unit/data/kiwiXMLValidator/preferenceUniqueValid_1.xml
+index d6d6b04..0e99778 100644
+--- a/tests/unit/data/kiwiXMLValidator/preferenceUniqueValid_1.xml
++++ b/tests/unit/data/kiwiXMLValidator/preferenceUniqueValid_1.xml
+@@ -1,22 +1,22 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+ &lt;image schemaversion=&quot;5.1&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
++		&lt;author&gt;Robert Schweikert&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+ 		&lt;specification&gt;test preference section uniqueness&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+-		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+-		&lt;profile name=&quot;ec2Flavour&quot; description=&quot;VMX with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xenFlavor&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
++		&lt;profile name=&quot;vmwFlavor&quot; description=&quot;VMX with default kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+-        &lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
+-            &lt;oemconfig&gt; 
+-                &lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
+-                &lt;oem-swap&gt;false&lt;/oem-swap&gt; 
+-                &lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
+-            &lt;/oemconfig&gt; 
+-        &lt;/type&gt;
++		&lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
++			&lt;oemconfig&gt; 
++				&lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
++				&lt;oem-swap&gt;false&lt;/oem-swap&gt; 
++				&lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
++			&lt;/oemconfig&gt; 
++		&lt;/type&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -24,7 +24,7 @@
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;xenFlavour&quot;&gt;
++	&lt;preferences profiles=&quot;xenFlavor&quot;&gt;
+ 		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;xenk&quot;&gt;
+ 			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+@@ -32,17 +32,11 @@
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;ec2&quot; format=&quot;ec2&quot;&gt;
++	&lt;preferences profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+ 			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+-				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+-				&lt;vmnic interface=&quot;br0&quot; mac=&quot;00:0C:6E:AA:57:2F&quot;/&gt;
++				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+-			&lt;ec2config&gt;
+-				&lt;ec2privatekeyfile&gt;Path to EC2 private key file&lt;/ec2privatekeyfile&gt;
+-				&lt;ec2certfile&gt;Path to EC2 public certificate file&lt;/ec2certfile&gt;
+-				&lt;ec2accountnr&gt;12345678911&lt;/ec2accountnr&gt;
+-			&lt;/ec2config&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+ 
+@@ -57,15 +51,15 @@
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
+-		&lt;package name=&quot;xen&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-ec2&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
++		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;package name=&quot;kernel-ec2&quot; replaces=&quot;kernel-xen&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/tests/unit/data/kiwiXMLValidator/profileReferenceExistInvalid_1.xml b/tests/unit/data/kiwiXMLValidator/profileReferenceExistInvalid_1.xml
+index 6e8aff9..30f5008 100644
+--- a/tests/unit/data/kiwiXMLValidator/profileReferenceExistInvalid_1.xml
++++ b/tests/unit/data/kiwiXMLValidator/profileReferenceExistInvalid_1.xml
+@@ -6,13 +6,13 @@
+ 		&lt;specification&gt;test profile cross references&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+-        &lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
+-            &lt;oemconfig&gt; 
+-                &lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
+-                &lt;oem-swap&gt;false&lt;/oem-swap&gt; 
+-                &lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
+-            &lt;/oemconfig&gt; 
+-        &lt;/type&gt;
++		&lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
++			&lt;oemconfig&gt; 
++				&lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
++				&lt;oem-swap&gt;false&lt;/oem-swap&gt; 
++				&lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
++			&lt;/oemconfig&gt; 
++		&lt;/type&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -20,7 +20,7 @@
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;xenFlavour&quot;&gt;
++	&lt;preferences profiles=&quot;xenFlavor&quot;&gt;
+ 		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;xenk&quot;&gt;
+ 			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+@@ -28,17 +28,11 @@
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;ec2&quot; format=&quot;ec2&quot;&gt;
+-			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+-				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+-				&lt;vmnic interface=&quot;br0&quot; mac=&quot;00:0C:6E:AA:57:2F&quot;/&gt;
++	&lt;preferences profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
++			&lt;machine memory=&quot;128&quot;&gt;
++				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+-			&lt;ec2config&gt;
+-				&lt;ec2privatekeyfile&gt;Path to EC2 private key file&lt;/ec2privatekeyfile&gt;
+-				&lt;ec2certfile&gt;Path to EC2 public certificate file&lt;/ec2certfile&gt;
+-				&lt;ec2accountnr&gt;12345678911&lt;/ec2accountnr&gt;
+-			&lt;/ec2config&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+ 
+@@ -53,15 +47,15 @@
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
+-		&lt;package name=&quot;xen&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-ec2&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
++		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;package name=&quot;kernel-ec2&quot; replaces=&quot;kernel-xen&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/tests/unit/data/kiwiXMLValidator/profileReferenceExistInvalid_2.xml b/tests/unit/data/kiwiXMLValidator/profileReferenceExistInvalid_2.xml
+index 119b743..69432bf 100644
+--- a/tests/unit/data/kiwiXMLValidator/profileReferenceExistInvalid_2.xml
++++ b/tests/unit/data/kiwiXMLValidator/profileReferenceExistInvalid_2.xml
+@@ -6,13 +6,13 @@
+ 		&lt;specification&gt;test profile cross references&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+-        &lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
+-            &lt;oemconfig&gt; 
+-                &lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
+-                &lt;oem-swap&gt;false&lt;/oem-swap&gt; 
+-                &lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
+-            &lt;/oemconfig&gt; 
+-        &lt;/type&gt;
++		&lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
++			&lt;oemconfig&gt; 
++				&lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
++				&lt;oem-swap&gt;false&lt;/oem-swap&gt; 
++				&lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
++			&lt;/oemconfig&gt; 
++		&lt;/type&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -31,15 +31,15 @@
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
+-		&lt;package name=&quot;xen&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-ec2&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
++		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;package name=&quot;kernel-ec2&quot; replaces=&quot;kernel-xen&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/tests/unit/data/kiwiXMLValidator/typeUniqueInvalid_1.xml b/tests/unit/data/kiwiXMLValidator/typeUniqueInvalid_1.xml
+index 77d1c7e..3c9ea89 100644
+--- a/tests/unit/data/kiwiXMLValidator/typeUniqueInvalid_1.xml
++++ b/tests/unit/data/kiwiXMLValidator/typeUniqueInvalid_1.xml
+@@ -6,17 +6,17 @@
+ 		&lt;specification&gt;test multiple same type settings&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+-		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+-		&lt;profile name=&quot;ec2Flavour&quot; description=&quot;VMX with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xenFlavor&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
++		&lt;profile name=&quot;vmwFlavor&quot; description=&quot;VMX with default kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+-        &lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
+-            &lt;oemconfig&gt; 
+-                &lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
+-                &lt;oem-swap&gt;false&lt;/oem-swap&gt; 
+-                &lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
+-            &lt;/oemconfig&gt; 
+-        &lt;/type&gt;
++		&lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
++			&lt;oemconfig&gt; 
++				&lt;oem-reboot&gt;true&lt;/oem-reboot&gt; 
++				&lt;oem-swap&gt;false&lt;/oem-swap&gt; 
++				&lt;oem-unattended&gt;true&lt;/oem-unattended&gt; 
++			&lt;/oemconfig&gt; 
++		&lt;/type&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -24,27 +24,21 @@
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;xenFlavour&quot;&gt;
++	&lt;preferences profiles=&quot;xenFlavor&quot;&gt;
+ 		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;xenk&quot;&gt;
+ 			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+ 				&lt;vmnic interface=&quot;br0&quot; mac=&quot;00:0C:6E:AA:57:2F&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+-        &lt;type image=&quot;iso&quot; boot=&quot;isoboot/suse-11.3&quot; hybrid=&quot;true&quot; flags=&quot;clic&quot;/&gt;
+-        &lt;type image=&quot;iso&quot; boot=&quot;isoboot/suse-11.3&quot; hybrid=&quot;true&quot; flags=&quot;clic&quot;/&gt;
++		&lt;type image=&quot;iso&quot; boot=&quot;isoboot/suse-11.3&quot; hybrid=&quot;true&quot; flags=&quot;clic&quot;/&gt;
++		&lt;type image=&quot;iso&quot; boot=&quot;isoboot/suse-11.3&quot; hybrid=&quot;true&quot; flags=&quot;clic&quot;/&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;ec2&quot; format=&quot;ec2&quot;&gt;
+-			&lt;machine memory=&quot;128&quot; domain=&quot;domU&quot;&gt;
+-				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+-				&lt;vmnic interface=&quot;br0&quot; mac=&quot;00:0C:6E:AA:57:2F&quot;/&gt;
++	&lt;preferences profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
++			&lt;machine memory=&quot;128&quot;&gt;
++				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+-			&lt;ec2config&gt;
+-				&lt;ec2privatekeyfile&gt;Path to EC2 private key file&lt;/ec2privatekeyfile&gt;
+-				&lt;ec2certfile&gt;Path to EC2 public certificate file&lt;/ec2certfile&gt;
+-				&lt;ec2accountnr&gt;12345678911&lt;/ec2accountnr&gt;
+-			&lt;/ec2config&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+ 
+@@ -60,14 +54,14 @@
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+ 		&lt;package name=&quot;xen-tools-domU&quot;/&gt;
+-		&lt;package name=&quot;xen&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-ec2&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;ec2Flavour&quot;&gt;
+-		&lt;package name=&quot;kernel-ec2&quot; replaces=&quot;kernel-xen&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;vmwFlavor&quot;&gt;
++		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/tests/unit/lib/Test/kiwiXMLValidator.pm b/tests/unit/lib/Test/kiwiXMLValidator.pm
+index 813272e..30025e6 100644
+--- a/tests/unit/lib/Test/kiwiXMLValidator.pm
++++ b/tests/unit/lib/Test/kiwiXMLValidator.pm
+@@ -301,6 +301,36 @@ sub test_displayName {
+ }
+ 
+ #==========================================
++# test_ec2IsFileSys
++#------------------------------------------
++sub test_ec2IsFileSys {
++	# ...
++	# Test that the image type for the EC2 format is a file system image
++	# ---
++	my $this = shift;
++	my @invalidConfigs = $this -&gt; __getInvalidFiles('ec2IsFS');
++	for my $iConfFile (@invalidConfigs) {
++		my $validator = $this -&gt; __getValidator($iConfFile);
++		$validator -&gt; validate();
++		my $kiwi = $this -&gt; {kiwi};
++		my $msg = $kiwi -&gt; getMessage();
++		my $expectedMsg = 'For EC2 image creation the image type must be '
++			. 'one of the following supported file systems: ext2 ext3 '
++			. 'ext4 reiserfs';
++		my @supportedFS = qw /ext2 ext3 ext4 reiserfs/;
++		$this -&gt; assert_str_equals($expectedMsg, $msg);
++		my $msgT = $kiwi -&gt; getMessageType();
++		$this -&gt; assert_str_equals('error', $msgT);
++		my $state = $kiwi -&gt; getState();
++		$this -&gt; assert_str_equals('failed', $state);
++		# Test this condition last to get potential error messages
++		$this -&gt; assert_not_null($validator);
++	}
++	my @validConfigs = $this -&gt; __getValidFiles('ec2IsFS');
++	$this -&gt; __verifyValid(@validConfigs);
++}
++
++#==========================================
+ # test_ec2Regions
+ #------------------------------------------
+ sub test_ec2Regions {
+@@ -540,7 +570,7 @@ sub test_preferenceUnique {
+ 		. 'using the &quot;profiles&quot; attribute.';
+ 		} elsif ($iConfFile =~ /preferenceUniqueInvalid_2.xml/) {
+ 			$expectedMsg = 'Only one &lt;preferences&gt; element may reference a '
+-			. 'given profile. xenFlavour referenced multiple times.';
++			. 'given profile. xenFlavor referenced multiple times.';
+ 		}
+ 		$this -&gt; assert_str_equals($expectedMsg, $msg);
+ 		my $msgT = $kiwi -&gt; getMessageType();
+@@ -603,7 +633,7 @@ sub test_profileReferenceExist {
+ 		my $msg = $kiwi -&gt; getMessage();
+ 		my $expectedMsg = 'Found reference to profile &quot;';
+ 		if ($iConfFile =~ /profileReferenceExistInvalid_(1|2).xml/) {
+-			$expectedMsg .= 'ec2Flavour';
++			$expectedMsg .= 'vmwFlavor';
+ 		} elsif ($iConfFile =~ /profileReferenceExistInvalid_(3|4).xml/) {
+ 			$expectedMsg .= 'ola';
+ 		}
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003333.html">[Kiwi-devel] new consistency check, updated tests
+</A></li>
+	<LI>Next message: <A HREF="003336.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. af431d97c3cc8392e8423f71eaa8ebd9ba530358
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3335">[ date ]</a>
+              <a href="thread.html#3335">[ thread ]</a>
+              <a href="subject.html#3335">[ subject ]</a>
+              <a href="author.html#3335">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

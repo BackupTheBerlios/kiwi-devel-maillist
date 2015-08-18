@@ -1,0 +1,377 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 62b628041a07b208a18a5885266c33c6286340bb
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2062b628041a07b208a18a5885266c33c6286340bb&In-Reply-To=%3C201002171217.o1HCH1Ph021474%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001910.html">
+   <LINK REL="Next"  HREF="001912.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 62b628041a07b208a18a5885266c33c6286340bb</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2062b628041a07b208a18a5885266c33c6286340bb&In-Reply-To=%3C201002171217.o1HCH1Ph021474%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 62b628041a07b208a18a5885266c33c6286340bb">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Feb 17 13:17:01 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001910.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b5f0b40ce12a1712ed3bf099a346ddc850a1d148
+</A></li>
+        <LI>Next message: <A HREF="001912.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 196afe5bed6fcab514b3981b45180968cf8272be
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1911">[ date ]</a>
+              <a href="thread.html#1911">[ thread ]</a>
+              <a href="subject.html#1911">[ subject ]</a>
+              <a href="author.html#1911">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  62b628041a07b208a18a5885266c33c6286340bb (commit)
+      from  b5f0b40ce12a1712ed3bf099a346ddc850a1d148 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 62b628041a07b208a18a5885266c33c6286340bb
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Feb 17 13:16:38 2010 +0100
+
+    - added support for additional kernel commandline options
+      specified in the new &lt;commandline&gt; section (bnc #577720)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 3cb2916..451af26 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -3631,8 +3631,28 @@ sub setupBootLoaderConfiguration {
+ 	my $vga      = $this-&gt;{vga};
+ 	my $lvm      = $this-&gt;{lvm};
+ 	my $vgroup   = $this-&gt;{lvmgroup};
++	my $xml      = $this-&gt;{xml};
++	my $cmdline  = $xml -&gt; getCmdline();
+ 	my $title;
+ 	#==========================================
++	# report additional cmdline options
++	#------------------------------------------
++	if ($cmdline) {
++		$kiwi -&gt; loginfo (
++			&quot;Additional commandline options: \&quot;$cmdline\&quot;&quot;
++		);
++	}
++	#==========================================
++	# join common options, finish with '\n'
++	#------------------------------------------
++	$cmdline .= &quot; $extra&quot; if $extra;
++	$cmdline .= &quot; VGROUP=$vgroup&quot; if $lvm;
++	$cmdline .= &quot; COMBINED_IMAGE=yes&quot; if $imgtype eq &quot;split&quot;;
++	$cmdline .= &quot; showopts\n&quot;;
++	# ensure exactly one space at start
++	$cmdline =~ s/^\s*/ /;
++
++	#==========================================
+ 	# Check boot partition number
+ 	#------------------------------------------
+ 	if (! defined $bootpart) {
+@@ -3700,16 +3720,7 @@ sub setupBootLoaderConfiguration {
+ 				print FD &quot; kernel /boot/linux vga=$vga&quot;;
+ 				print FD &quot; loader=$loader splash=silent&quot;;
+ 			}
+-			print FD &quot; $extra&quot;;
+-			if ($lvm) {
+-				print FD &quot; VGROUP=$vgroup&quot;;
+-			}
+-			if ($imgtype eq &quot;split&quot;) {
+-				print FD &quot; COMBINED_IMAGE=yes showopts&quot;;
+-			} else {
+-				print FD &quot; showopts&quot;;
+-			}
+-			print FD &quot;\n&quot;;
++			print FD $cmdline;
+ 			if ($type =~ /^KIWI CD/) {
+ 				print FD &quot; initrd (cd)/boot/initrd\n&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+@@ -3733,16 +3744,7 @@ sub setupBootLoaderConfiguration {
+ 				print FD &quot; module /boot/linux vga=$vga&quot;;
+ 				print FD &quot; loader=$loader splash=silent&quot;;
+ 			}
+-			print FD &quot; $extra&quot;;
+-			if ($lvm) {
+-				print FD &quot; VGROUP=$vgroup&quot;;
+-			}
+-			if ($imgtype eq &quot;split&quot;) {
+-				print FD &quot; COMBINED_IMAGE=yes showopts&quot;;
+-			} else {
+-				print FD &quot; showopts&quot;;
+-			}
+-			print FD &quot;\n&quot;;
++			print FD $cmdline;
+ 			if ($type =~ /^KIWI CD/) {
+ 				print FD &quot; module (cd)/boot/initrd\n&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+@@ -3770,16 +3772,8 @@ sub setupBootLoaderConfiguration {
+ 				print FD &quot; loader=$loader splash=silent&quot;;
+ 			}
+ 			print FD &quot; ide=nodma apm=off acpi=off noresume selinux=0 nosmp&quot;;
+-			print FD &quot; noapic maxcpus=0 edd=off $extra\n&quot;;
+-			if ($lvm) {
+-				print FD &quot; VGROUP=$vgroup&quot;;
+-			}
+-			if ($imgtype eq &quot;split&quot;) {
+-				print FD &quot; COMBINED_IMAGE=yes showopts&quot;;
+-			} else {
+-				print FD &quot; showopts&quot;;
+-			}
+-			print FD &quot;\n&quot;;
++			print FD &quot; noapic maxcpus=0 edd=off&quot;;
++			print FD $cmdline;
+ 			if ($type =~ /^KIWI CD/) {
+ 				print FD &quot; initrd (cd)/boot/initrd\n&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+@@ -3804,16 +3798,8 @@ sub setupBootLoaderConfiguration {
+ 				print FD &quot; loader=$loader splash=silent&quot;;
+ 			}
+ 			print FD &quot; ide=nodma apm=off acpi=off noresume selinux=0 nosmp&quot;;
+-			print FD &quot; noapic maxcpus=0 edd=off $extra&quot;;
+-			if ($lvm) {
+-				print FD &quot; VGROUP=$vgroup&quot;;
+-			}
+-			if ($imgtype eq &quot;split&quot;) {
+-				print FD &quot; COMBINED_IMAGE=yes showopts&quot;;
+-			} else {
+-				print FD &quot; showopts&quot;;
+-			}
+-			print FD &quot;\n&quot;;
++			print FD &quot; noapic maxcpus=0 edd=off&quot;;
++			print FD $cmdline;
+ 			if ($type =~ /^KIWI CD/) {
+ 				print FD &quot; module (cd)/boot/initrd\n&quot;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+@@ -3885,14 +3871,6 @@ sub setupBootLoaderConfiguration {
+ 				print FD &quot;APPEND initrd=/boot/initrd &quot;;
+ 				print FD &quot;vga=$vga loader=$loader splash=silent&quot;;
+ 			}
+-			if ($lvm) {
+-				print FD &quot; VGROUP=$vgroup&quot;;
+-			}
+-			if ($imgtype eq &quot;split&quot;) {
+-				print FD &quot; COMBINED_IMAGE=yes showopts\n&quot;;
+-			} else {
+-				print FD &quot; showopts\n&quot;;
+-			}
+ 		} else {
+ 			if ($type =~ /^KIWI CD/) {
+ 				# not supported yet..
+@@ -3901,15 +3879,8 @@ sub setupBootLoaderConfiguration {
+ 			} else {
+ 				# not supported yet..
+ 			}
+-			if ($lvm) {
+-				print FD &quot; VGROUP=$vgroup&quot;;
+-			}
+-			if ($imgtype eq &quot;split&quot;) {
+-				print FD &quot; COMBINED_IMAGE=yes showopts\n&quot;;
+-			} else {
+-				print FD &quot; showopts\n&quot;;
+-			}
+ 		}
++		print FD $cmdline;
+ 		#==========================================
+ 		# Failsafe boot
+ 		#------------------------------------------
+@@ -3936,14 +3907,6 @@ sub setupBootLoaderConfiguration {
+ 			}
+ 			print FD &quot; ide=nodma apm=off acpi=off noresume selinux=0 nosmp&quot;;
+ 			print FD &quot; noapic maxcpus=0 edd=off&quot;;
+-			if ($lvm) {
+-				print FD &quot; VGROUP=$vgroup&quot;;
+-			}
+-			if ($imgtype eq &quot;split&quot;) {
+-				print FD &quot; COMBINED_IMAGE=yes showopts\n&quot;;
+-			} else {
+-				print FD &quot; showopts\n&quot;;
+-			}
+ 		} else {
+ 			if ($type =~ /^KIWI CD/) {
+ 				# not supported yet..
+@@ -3954,15 +3917,8 @@ sub setupBootLoaderConfiguration {
+ 			}
+ 			print FD &quot; ide=nodma apm=off acpi=off noresume selinux=0 nosmp&quot;;
+ 			print FD &quot; noapic maxcpus=0 edd=off&quot;;
+-			if ($lvm) {
+-				print FD &quot; VGROUP=$vgroup&quot;;
+-			}
+-			if ($imgtype eq &quot;split&quot;) {
+-				print FD &quot; COMBINED_IMAGE=yes showopts\n&quot;;
+-			} else {
+-				print FD &quot; showopts\n&quot;;
+-			}
+ 		}
++		print FD $cmdline;
+ 		close FD;
+ 		$kiwi -&gt; done();
+ 	}
+diff --git a/modules/KIWISchema.rnc b/modules/KIWISchema.rnc
+index 2123725..242876a 100644
+--- a/modules/KIWISchema.rnc
++++ b/modules/KIWISchema.rnc
+@@ -1344,7 +1344,8 @@ div {
+ 			k.size? &amp;
+ 			k.split? &amp;
+ 			k.vmwareconfig? &amp;
+-			k.xenconfig?
++			k.xenconfig? &amp;
++			k.type.commandline?
+ 		}
+ }
+ 
+@@ -2036,6 +2037,25 @@ div {
+ }
+ 
+ #==========================================
++# main block: &lt;commandline&gt;
++#
++div {
++	k.type.commandline.attlist = empty
++	k.type.commandline =
++		## specifies additional commandline options
++		[
++		db:para [
++			&quot;The commandline element specifies additional\x{a}&quot;~
++			&quot;kernel commandline options.&quot;
++		]
++		]
++		element commandline {
++			k.type.commandline.attlist,
++			text
++		}
++}
++
++#==========================================
+ # main block: &lt;packages&gt;
+ #
+ div {
+diff --git a/modules/KIWISchema.rng b/modules/KIWISchema.rng
+index 50bc140..3849dcb 100644
+--- a/modules/KIWISchema.rng
++++ b/modules/KIWISchema.rng
+@@ -1931,6 +1931,9 @@ vmx/oem types only.&lt;/a:documentation&gt;
+           &lt;optional&gt;
+             &lt;ref name=&quot;k.xenconfig&quot;/&gt;
+           &lt;/optional&gt;
++          &lt;optional&gt;
++            &lt;ref name=&quot;k.type.commandline&quot;/&gt;
++          &lt;/optional&gt;
+         &lt;/interleave&gt;
+       &lt;/element&gt;
+     &lt;/define&gt;
+@@ -2950,6 +2953,25 @@ para virtual machine when running the image.&lt;/db:para&gt;
+   &lt;/div&gt;
+   &lt;!--
+     ==========================================
++    main block: &lt;commandline&gt;
++    
++  --&gt;
++  &lt;div&gt;
++    &lt;define name=&quot;k.type.commandline.attlist&quot;&gt;
++      &lt;empty/&gt;
++    &lt;/define&gt;
++    &lt;define name=&quot;k.type.commandline&quot;&gt;
++      &lt;element name=&quot;commandline&quot;&gt;
++        &lt;a:documentation&gt;specifies additional commandline options&lt;/a:documentation&gt;
++        &lt;db:para&gt;The commandline element specifies additional
++kernel commandline options.&lt;/db:para&gt;
++        &lt;ref name=&quot;k.type.commandline.attlist&quot;/&gt;
++        &lt;text/&gt;
++      &lt;/element&gt;
++    &lt;/define&gt;
++  &lt;/div&gt;
++  &lt;!--
++    ==========================================
+     main block: &lt;packages&gt;
+     
+   --&gt;
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 03dc558..30ca9e1 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -2702,6 +2702,19 @@ sub getXenConfig {
+ }
+ 
+ #==========================================
++# getCmdline
++#------------------------------------------
++sub getCmdline {
++	# ...
++	# Get &lt;commandline&gt;.
++	# ---
++	my $this = shift;
++	my $tnode= $this -&gt; {typeNode};
++	my $cmdline = $tnode -&gt; getElementsByTagName (&quot;commandline&quot;);
++	return $cmdline;
++}
++
++#==========================================
+ # getInstSourcePackageAttributes
+ #------------------------------------------
+ sub getInstSourcePackageAttributes {
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 7c42291..f85f311 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -13,6 +13,8 @@ Mon Feb 15 17:39:37 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+   through /proc/mounts
+ - don't remove ldap and sasl in oemboot it's required for 
+   curl based downloads
++- added support for additional kernel commandline options
++  specified in the new &lt;commandline&gt; section (bnc #577720)
+ 
+ -------------------------------------------------------------------
+ Mon Feb 15 16:00:51 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">adrian at suse.de</A>
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001910.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b5f0b40ce12a1712ed3bf099a346ddc850a1d148
+</A></li>
+	<LI>Next message: <A HREF="001912.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 196afe5bed6fcab514b3981b45180968cf8272be
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1911">[ date ]</a>
+              <a href="thread.html#1911">[ thread ]</a>
+              <a href="subject.html#1911">[ subject ]</a>
+              <a href="author.html#1911">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

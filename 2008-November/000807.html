@@ -1,0 +1,263 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1728 - kiwi-head/system/boot/ppc/netboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1728%20-%20kiwi-head/system/boot/ppc/netboot&In-Reply-To=%3C200811061142.mA6Bg8Z5008599%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000806.html">
+   <LINK REL="Next"  HREF="000808.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1728 - kiwi-head/system/boot/ppc/netboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1728%20-%20kiwi-head/system/boot/ppc/netboot&In-Reply-To=%3C200811061142.mA6Bg8Z5008599%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1728 - kiwi-head/system/boot/ppc/netboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Nov  6 12:42:08 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000806.html">[Kiwi-devel] r1727 - in kiwi-head: rpm system/boot/ix86/netboot
+</A></li>
+        <LI>Next message: <A HREF="000808.html">[Kiwi-devel] r1729 - in kiwi-head: rpm	system/boot/ix86/netboot/suse-11.0	system/boot/ix86/netboot/suse-11.1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#807">[ date ]</a>
+              <a href="thread.html#807">[ thread ]</a>
+              <a href="subject.html#807">[ subject ]</a>
+              <a href="author.html#807">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-11-06 12:42:00 +0100 (Thu, 06 Nov 2008)
+New Revision: 1728
+
+Modified:
+   kiwi-head/system/boot/ppc/netboot/suse-linuxrc
+   kiwi-head/system/boot/ppc/netboot/suse-preinit
+Log:
+
+- adapt current netboot linuxrc to ppc version
+
+
+
+Modified: kiwi-head/system/boot/ppc/netboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ppc/netboot/suse-linuxrc	2008-11-06 11:35:31 UTC (rev 1727)
++++ kiwi-head/system/boot/ppc/netboot/suse-linuxrc	2008-11-06 11:42:00 UTC (rev 1728)
+@@ -251,8 +251,8 @@
+ #======================================
+ # 11) Is this a diskful station
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-if [ ! -z &quot;$PART&quot; ] &amp;&amp; [ -z &quot;$NFSROOT&quot; ] &amp;&amp; [ -z &quot;$NBDROOT&quot; ];then
++if [ ! -z &quot;$PART&quot; ] &amp;&amp; [ -z &quot;$NFSROOT&quot; ] &amp;&amp; \
++   [ -z &quot;$NBDROOT&quot; ] &amp;&amp; [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	#======================================
+ 	# Check for possible extended partition
+ 	#--------------------------------------
+@@ -273,8 +273,7 @@
+ 		esac
+ 		done
+ 		count=1
+-		waitForStorageDevice $DISK
+-		if ! sfdisk -s $DISK &amp;&gt;/dev/null;then
++		if ! waitForStorageDevice $DISK;then
+ 			systemException \
+ 				&quot;Disk $DISK doesn't appear... fatal !&quot; \
+ 			&quot;reboot&quot;
+@@ -323,13 +322,12 @@
+ 		runHook postpartition
+ 	fi
+ fi
+-fi
+ 
+ #======================================
+ # 12) Download network client image
+ #--------------------------------------
+ runHook predownload
+-if [ -z &quot;$NFSROOT&quot; ] &amp;&amp; [ -z &quot;$NBDROOT&quot; ];then
++if [ -z &quot;$NFSROOT&quot; ] &amp;&amp; [ -z &quot;$NBDROOT&quot; ] &amp;&amp; [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	count=0
+ 	IFS=&quot;,&quot; ; for i in $IMAGE;do
+ 		imageZipped=&quot;uncompressed&quot;
+@@ -352,9 +350,6 @@
+ 		if [ $count = 2 ];then
+ 			imageNextRootDevice=$imageDevice
+ 		fi
+-		if [ $LOCAL_BOOT = &quot;yes&quot; ];then
+-			continue
+-		fi
+ 		if test `getSystemIntegrity $count` = &quot;fine&quot;;then
+ 			continue
+ 		fi
+@@ -472,8 +467,23 @@
+ 	done
+ else
+ 	#======================================
+-	# 12.1) Check for NFS root
++	# 12.1) Check for local boot
+ 	#--------------------------------------
++	if [ $LOCAL_BOOT = &quot;yes&quot; ];then
++		imageDisk=`getDiskDevice $root | sed -e s&quot;@[0-9]@@g&quot;`
++		imageDevice=$imageDisk&quot;2&quot;
++		imageRootDevice=$imageDevice
++		imageRootName=&quot;Local-System&quot;
++		if [ ! -z &quot;$UNIONFS_CONFIG&quot; ];then
++			setupUnionFS $imageDisk&quot;3&quot; $imageDisk&quot;2&quot; aufs
++		fi
++		if [ ! -z &quot;$COMBINED_IMAGE&quot; ];then
++			imageNextRootDevice=$imageDisk&quot;3&quot;
++		fi
++	fi
++	#======================================
++	# 12.2) Check for NFS root
++	#--------------------------------------
+ 	if [ ! -z &quot;$NFSROOT&quot; ];then
+ 		IFS=&quot;,&quot; ; for i in $NFSROOT;do
+ 			field=0
+@@ -494,7 +504,7 @@
+ 		export FSTYPE=nfs
+ 	fi
+ 	#======================================
+-	# 12.2) Check for NBD root
++	# 12.3) Check for NBD root
+ 	#--------------------------------------
+ 	if [ ! -z &quot;$NBDROOT&quot; ];then
+ 		if ! modprobe nbd;then
+@@ -618,18 +628,19 @@
+ 		if [ ! -z $KIWI_INITRD ];then
+ 			Echo &quot;Import KIWI initrd file: $KIWI_INITRD&quot;
+ 			rm -f /mnt/boot/initrd* &amp;&amp; mkdir -p /mnt/boot &gt;/dev/null 2&gt;&amp;1
+-			fetchFile $KIWI_INITRD /mnt/boot/initrd
++			fetchFile $KIWI_INITRD /mnt/boot/initrd.kiwi
+ 			if [ ! -z $KIWI_KERNEL ];then
+ 				Echo &quot;Import KIWI kernel file: $KIWI_KERNEL&quot;
+-				fetchFile $KIWI_KERNEL /mnt/boot/vmlinuz
++				rm -f /mnt/boot/linux*
++				fetchFile $KIWI_KERNEL /mnt/boot/linux.kiwi
+ 			fi
+-			KIWI_INITRD_PARAMS=&quot;IMAGE=\&quot;$IMAGE\&quot;&quot;
++			KIWI_INITRD_PARAMS=&quot;IMAGE=local&quot;
+ 			if [ ! -z $COMBINED_IMAGE ]; then
+ 				SPLIT=&quot;COMBINED_IMAGE=$COMBINED_IMAGE&quot;
+ 				KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS $SPLIT&quot;
+ 			fi
+ 			if [ ! -z &quot;$UNIONFS_CONFIG&quot; ]; then
+-				UNIONED=&quot;UNIONFS_CONFIG=$UNIONFS_CONFIG&quot;
++				UNIONED=&quot;UNIONFS_CONFIG=yes&quot;
+ 				KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS $UNIONED&quot;
+ 			fi
+ 		fi
+@@ -650,7 +661,7 @@
+ #======================================
+ # 17) make initrd available on unionfs
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
++if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ -z &quot;$NFSROOT&quot; ] &amp;&amp; [ -z &quot;$NBDROOT&quot; ];then
+ 	if test ! -z &quot;$UNIONFS_CONFIG&quot; &amp;&amp; test $systemIntegrity = &quot;clean&quot;;then
+ 		# /.../
+ 		# have to do this so that /boot gets copied to the
+@@ -658,9 +669,35 @@
+ 		# be able to find the data in there (it can't read squashfs
+ 		# or cromfs)
+ 		# ----
+-		cp -a /mnt/boot /dev/shm/boot2
+-		rm -rf /mnt/boot
++		cp -a /mnt/boot /dev/shm/boot2 &amp;&amp; rm -rf /mnt/boot
+ 		mv /dev/shm/boot2 /mnt/boot
++		# /.../
++		# we are using a special root setup with aufs. In this case
++		# we can't use the SuSE Linux initrd but must stick to the
++		# kiwi boot system.
++		# ----
++		kiwiMount &quot;$DISK&quot;3 &quot;/mnt&quot;
++		pushd /mnt/boot &gt;/dev/null
++		IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
++			if test -z &quot;$i&quot;;then
++				continue
++			fi
++			kernel=`echo $i | cut -f1 -d:`
++			initrd=`echo $i | cut -f2 -d:`
++			if [ ! -f initrd.kiwi ] &amp;&amp; [ ! -f linux.kiwi ];then
++				Echo &quot;WARNING: can't find kiwi initrd/linux !&quot;
++				Echo -b &quot;local boot will not work, maybe you forgot&quot;
++				Echo -b &quot;to add KIWI_INITRD and KIWI_KERNEL in config.&lt;MAC&gt; ?&quot;
++				break
++			fi
++			rm -f $initrd &amp;&amp; ln -s initrd.kiwi $initrd
++			rm -f $kernel &amp;&amp; ln -s linux.kiwi  $kernel
++			export bootLoaderOK=1
++			break
++		done
++		IFS=$IFS_ORIG
++		popd &gt;/dev/null
++		umount /mnt
+ 	fi
+ fi
+ 
+@@ -770,6 +807,6 @@
+ activateImage
+ 
+ #======================================
+-# 29) Unmount initrd / system init
++# 28) Unmount initrd / system init
+ #--------------------------------------
+ bootImage $@
+
+Modified: kiwi-head/system/boot/ppc/netboot/suse-preinit
+===================================================================
+--- kiwi-head/system/boot/ppc/netboot/suse-preinit	2008-11-06 11:35:31 UTC (rev 1727)
++++ kiwi-head/system/boot/ppc/netboot/suse-preinit	2008-11-06 11:42:00 UTC (rev 1728)
+@@ -55,17 +55,16 @@
+ 		#======================================
+ 		# use kiwi initrd downloaded before
+ 		#--------------------------------------
+-		bootLoaderOK=1
++		:
+ 	fi
+ fi
+ 
+ #======================================
+ # 6) Install boot loader on diskful
+ #--------------------------------------
+-if test ! -z $DISK;then
++if [ ! -z $DISK ] &amp;&amp; [ $bootLoaderOK = 1 ];then
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+ 		installBootLoader
+-		echo &quot;alias eth0 $networkModule&quot; &gt;&gt; /etc/modules.conf
+ 	fi
+ fi
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000806.html">[Kiwi-devel] r1727 - in kiwi-head: rpm system/boot/ix86/netboot
+</A></li>
+	<LI>Next message: <A HREF="000808.html">[Kiwi-devel] r1729 - in kiwi-head: rpm	system/boot/ix86/netboot/suse-11.0	system/boot/ix86/netboot/suse-11.1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#807">[ date ]</a>
+              <a href="thread.html#807">[ thread ]</a>
+              <a href="subject.html#807">[ subject ]</a>
+              <a href="author.html#807">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

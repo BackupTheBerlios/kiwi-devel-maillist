@@ -1,0 +1,953 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 97780d95cbe8fc7524ef2a31864142d6afb33088
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2097780d95cbe8fc7524ef2a31864142d6afb33088&In-Reply-To=%3C20100716161351.03399480266%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002424.html">
+   <LINK REL="Next"  HREF="002426.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 97780d95cbe8fc7524ef2a31864142d6afb33088</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2097780d95cbe8fc7524ef2a31864142d6afb33088&In-Reply-To=%3C20100716161351.03399480266%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 97780d95cbe8fc7524ef2a31864142d6afb33088">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Jul 16 18:13:50 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002424.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0228e1a7730f43f48a7bc9511149da0a22493e8f
+</A></li>
+        <LI>Next message: <A HREF="002426.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. fa88b8c19403536dc04f31d55d8076d645fd38cc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2425">[ date ]</a>
+              <a href="thread.html#2425">[ thread ]</a>
+              <a href="subject.html#2425">[ subject ]</a>
+              <a href="author.html#2425">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  97780d95cbe8fc7524ef2a31864142d6afb33088 (commit)
+      from  0228e1a7730f43f48a7bc9511149da0a22493e8f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 97780d95cbe8fc7524ef2a31864142d6afb33088
+Author: root &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">root at linux.</A>(none)&gt;
+Date:   Fri Jul 16 18:23:02 2010 +0200
+
+    - added suport for the btrfs filesystem (bnc #596205)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index fbfa807..53587f9 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -118,6 +118,7 @@ $KnownFS{clic}{tool}      = findExec(&quot;mkclicfs&quot;);
+ $KnownFS{unified}{tool}   = findExec(&quot;mksquashfs&quot;);
+ $KnownFS{compressed}{tool}= findExec(&quot;mksquashfs&quot;);
+ $KnownFS{reiserfs}{tool}  = findExec(&quot;mkreiserfs&quot;);
++$KnownFS{btrfs}{tool}     = findExec(&quot;mkfs.btrfs&quot;);
+ $KnownFS{cpio}{tool}      = findExec(&quot;cpio&quot;);
+ $KnownFS{ext3}{ro}        = 0;
+ $KnownFS{ext4}{ro}        = 0;
+@@ -128,6 +129,7 @@ $KnownFS{clic}{ro}        = 1;
+ $KnownFS{unified}{ro}     = 1;
+ $KnownFS{compressed}{ro}  = 1;
+ $KnownFS{reiserfs}{ro}    = 0;
++$KnownFS{btrfs}{ro}       = 0;
+ $KnownFS{cpio}{ro}        = 0;
+ 
+ #============================================
+@@ -829,6 +831,10 @@ sub main {
+ 				$ok = $image -&gt; createImageReiserFS ();
+ 				last SWITCH;
+ 			};
++			/^btrfs/    &amp;&amp; do {
++				$ok = $image -&gt; createImageBTRFS ();
++				last SWITCH;
++			};
+ 			/^squashfs/ &amp;&amp; do {
+ 				$ok = $image -&gt; createImageSquashFS ();
+ 				last SWITCH;
+@@ -2735,6 +2741,10 @@ sub checkFileSystem {
+ 					$type = &quot;reiserfs&quot;;
+ 					last SWITCH;
+ 				};
++				/BTRFS/     &amp;&amp; do {
++					$type = &quot;btrfs&quot;;
++					last SWITCH;
++				};
+ 				/Squashfs/  &amp;&amp; do {
+ 					$type = &quot;squashfs&quot;;
+ 					last SWITCH;
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 4d0c77c..9f91708 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -575,6 +575,7 @@ sub setupBootStick {
+ 	my $dmbootMB  = 0;
+ 	my $dmapper   = 0;
+ 	my $haveluks  = 0;
++	my $needBootP = 0;
+ 	my $bootloader= &quot;grub&quot;;
+ 	my $lvmsize;
+ 	my $syslsize;
+@@ -677,7 +678,7 @@ sub setupBootStick {
+ 		}
+ 	}
+ 	#==========================================
+-	# check for device mapper snapshot / clicfs
++	# check for overlay filesystems
+ 	#------------------------------------------
+ 	if ($type{filesystem} eq &quot;clicfs&quot;) {
+ 		$this-&gt;{dmapper} = 1;
+@@ -685,6 +686,13 @@ sub setupBootStick {
+ 		$dmbootMB = 60;
+ 	}
+ 	#==========================================
++	# check if fs requires a boot partition
++	#------------------------------------------
++	if ($type{filesystem} eq &quot;btrfs&quot;) {
++		$needBootP  = 1;
++		$luksbootMB = 60;
++	}
++	#==========================================
+ 	# check for LUKS extension
+ 	#------------------------------------------
+ 	if ($type{luks}) {
+@@ -722,7 +730,7 @@ sub setupBootStick {
+ 	# set boot partition number
+ 	#------------------------------------------
+ 	my $bootpart = &quot;0&quot;;
+-	if (($syszip) || ($haveSplit) || ($lvm) || ($haveluks)) {
++	if (($syszip) || ($haveSplit) || ($lvm) || ($haveluks) || ($needBootP)) {
+ 		$bootpart = &quot;1&quot;;
+ 	}
+ 	if ((($syszip) || ($haveSplit)) &amp;&amp; ($haveluks)) {
+@@ -925,7 +933,7 @@ sub setupBootStick {
+ 							&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;.&quot;,&quot;t&quot;,&quot;2&quot;,$partid,
+ 							&quot;a&quot;,&quot;2&quot;,&quot;w&quot;,&quot;q&quot;
+ 						);
+-					} elsif ($haveluks) {
++					} elsif (($haveluks) || ($needBootP)) {
+ 						$lukssize = $hardSize;
+ 						$lukssize /= 1024;
+ 						$lukssize -= $luksbootMB;
+@@ -1194,6 +1202,15 @@ sub setupBootStick {
+ 			$status = qxx (&quot;/sbin/resize_reiserfs $mapper 2&gt;&amp;1&quot;);
+ 			$result = $? &gt;&gt; 8;
+ 			last SWITCH;
++		};
++		/^btrfs/    &amp;&amp; do {
++			$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
++			my $bctl = &quot;/sbin/btrfsctl -r max /mnt&quot;;
++			$status = qxx (&quot;
++				mount $mapper /mnt &amp;&amp; $bctl ; umount /mnt 2&gt;&amp;1&quot;
++			);
++			$result = $? &gt;&gt; 8;
++			last SWITCH;
+ 		}
+ 	};
+ 	if ($result != 0) {
+@@ -1234,6 +1251,15 @@ sub setupBootStick {
+ 				$status = qxx (&quot;/sbin/resize_reiserfs $mapper 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
++			};
++			/^btrfs/    &amp;&amp; do {
++				$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
++				my $bctl = &quot;/sbin/btrfsctl -r max /mnt&quot;;
++				$status = qxx (&quot;
++					mount $mapper /mnt &amp;&amp; $bctl; umount /mnt 2&gt;&amp;1&quot;
++				);
++				$result = $? &gt;&gt; 8;
++				last SWITCH;
+ 			}
+ 		};
+ 		if ($result != 0) {
+@@ -1333,11 +1359,11 @@ sub setupBootStick {
+ 		}
+ 		$kiwi -&gt; done();
+ 	} elsif (
+-		($dmapper) || ($haveluks) || ($lvm) || ($bootloader eq &quot;extlinux&quot;)
++		($dmapper) || ($haveluks) || ($needBootP) || ($lvm) || ($bootloader eq &quot;extlinux&quot;)
+ 	) {
+ 		$root = $deviceMap{dmapper};
+ 		$kiwi -&gt; info (&quot;Creating ext2 boot filesystem&quot;);
+-		if ($haveluks) {
++		if (($haveluks) || ($needBootP)) {
+ 			if (($syszip) || ($haveSplit) || ($dmapper)) {
+ 				$root = $deviceMap{3};
+ 			} else {
+@@ -1385,7 +1411,7 @@ sub setupBootStick {
+ 		if ($lvm) {
+ 			$root = $deviceMap{0};
+ 		}
+-	} elsif ($haveluks) {
++	} elsif (($haveluks) || ($needBootP)) {
+ 		$root = $deviceMap{2};
+ 	} else {
+ 		$root = $deviceMap{1};
+@@ -2269,6 +2295,7 @@ sub setupBootDisk {
+ 	my $dmbootMB  = 0;
+ 	my $dmapper   = 0;
+ 	my $haveluks  = 0;
++	my $needBootP = 0;
+ 	my $bootloader= &quot;grub&quot;;
+ 	my $splitfile;
+ 	my $version;
+@@ -2417,7 +2444,7 @@ sub setupBootDisk {
+ 		}
+ 	}
+ 	#==========================================
+-	# check for device mapper snapshot / clicfs
++	# check for overlay filesystems
+ 	#------------------------------------------
+ 	if ($type{filesystem} eq &quot;clicfs&quot;) {
+ 		$this-&gt;{dmapper} = 1;
+@@ -2425,6 +2452,13 @@ sub setupBootDisk {
+ 		$dmbootMB = 60;
+ 	}
+ 	#==========================================
++	# check if fs requires a boot partition
++	#------------------------------------------
++	if ($type{filesystem} eq &quot;btrfs&quot;) {
++		$needBootP  = 1;
++		$luksbootMB = 60;
++	}
++	#==========================================
+ 	# check for LUKS extension
+ 	#------------------------------------------
+ 	if ($type{luks}) {
+@@ -2538,7 +2572,7 @@ sub setupBootDisk {
+ 	# Setup boot partition ID
+ 	#------------------------------------------
+ 	my $bootpart = &quot;0&quot;;
+-	if (($syszip) || ($haveSplit) || ($lvm) || ($haveluks)) {
++	if (($syszip) || ($haveSplit) || ($lvm) || ($haveluks) || ($needBootP)) {
+ 		$bootpart = &quot;1&quot;;
+ 	}
+ 	if ((($syszip) || ($haveSplit)) &amp;&amp; ($haveluks)) {
+@@ -2657,7 +2691,7 @@ sub setupBootDisk {
+ 						&quot;t&quot;,&quot;2&quot;,$partid,
+ 						&quot;a&quot;,&quot;2&quot;,&quot;w&quot;,&quot;q&quot;
+ 					);
+-				} elsif ($haveluks) {
++				} elsif (($haveluks) || ($needBootP)) {
+ 					my $lukssize = $this-&gt;{vmmbyte} - $luksbootMB;
+ 					@commands = (
+ 						&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$lukssize.&quot;M&quot;,
+@@ -2809,6 +2843,15 @@ sub setupBootDisk {
+ 				$status = qxx (&quot;/sbin/resize_reiserfs $mapper 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
++			};
++			/^btrfs/    &amp;&amp; do {
++				$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
++				my $bctl = &quot;/sbin/btrfsctl -r max /mnt&quot;;
++				$status = qxx (&quot;
++					mount $mapper /mnt &amp;&amp; $bctl; umount /mnt 2&gt;&amp;1&quot;
++				);
++				$result = $? &gt;&gt; 8;
++				last SWITCH;
+ 			}
+ 		};
+ 		if ($result != 0) {
+@@ -2862,6 +2905,15 @@ sub setupBootDisk {
+ 					$status = qxx (&quot;/sbin/resize_reiserfs $mapper 2&gt;&amp;1&quot;);
+ 					$result = $? &gt;&gt; 8;
+ 					last SWITCH;
++				};
++				/^btrfs/    &amp;&amp; do {
++					$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
++					my $bctl = &quot;/sbin/btrfsctl -r max /mnt&quot;;
++					$status = qxx (&quot;
++						mount $mapper /mnt&amp;&amp; $bctl; umount /mnt 2&gt;&amp;1&quot;
++					);
++					$result = $? &gt;&gt; 8;
++					last SWITCH;
+ 				}
+ 			};
+ 			if ($result != 0) {
+@@ -3001,11 +3053,11 @@ sub setupBootDisk {
+ 		}
+ 		$kiwi -&gt; done();
+ 	} elsif (
+-		($dmapper) || ($haveluks) || ($lvm) || ($bootloader eq &quot;extlinux&quot;)
++		($dmapper) || ($haveluks) || ($needBootP) || ($lvm) || ($bootloader eq &quot;extlinux&quot;)
+ 	) {
+ 		$root = $deviceMap{dmapper};
+ 		$kiwi -&gt; info (&quot;Creating ext2 boot filesystem&quot;);
+-		if ($haveluks) {
++		if (($haveluks) || ($needBootP)) {
+ 			if (($syszip) || ($haveSplit) || ($dmapper)) {
+ 				$root = $deviceMap{3};
+ 			} else {
+@@ -3052,7 +3104,7 @@ sub setupBootDisk {
+ 		if ($lvm) {
+ 			$root = $deviceMap{0};
+ 		}
+-	} elsif ($haveluks) {
++	} elsif (($haveluks) || ($needBootP)) {
+ 		$root = $deviceMap{2};
+ 	} else {
+ 		$root = $deviceMap{1};
+@@ -5374,6 +5426,15 @@ sub setupFilesystem {
+ 			$result = $? &gt;&gt; 8;
+ 			last SWITCH;
+ 		};
++		/^btrfs/    &amp;&amp; do {
++			$kiwi -&gt; info (&quot;Creating btrfs $name filesystem&quot;);
++			my $fsopts = $FSopts{btrfs};
++			$status = qxx (
++				&quot;/sbin/mkfs.btrfs $fsopts $device 2&gt;&amp;1&quot;
++			);
++			$result = $? &gt;&gt; 8;
++			last SWITCH;
++		};
+ 		$kiwi -&gt; error  (&quot;Unsupported filesystem type: $fstype&quot;);
+ 		$kiwi -&gt; failed ();
+ 		$this-&gt;{inodes} = $iorig;
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index e1e5125..268b65a 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -950,7 +950,7 @@ function suseStripInitrd {
+ 	local tools=&quot;
+ 		tune2fs swapon swapoff shutdown sfdisk resize_reiserfs
+ 		reiserfsck reboot halt pivot_root modprobe modinfo rmmod
+-		mkswap mkinitrd mkreiserfs mkfs.cramfs
++		mkswap mkinitrd mkreiserfs mkfs.cramfs mkfs.btrfs btrfsctl
+ 		losetup ldconfig insmod init ifconfig fdisk e2fsck fsck.ext2
+ 		fsck.ext3 fsck.ext4 dhcpcd mkfs.ext2 mkfs.ext3 mkfs.ext4
+ 		depmod atftpd klogconsole hwinfo xargs wc tail tac readlink
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 21ee51d..b949c87 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -673,6 +673,36 @@ sub createImageReiserFS {
+ }
+ 
+ #==========================================
++# createImageBTRFS
++#------------------------------------------
++sub createImageBTRFS {
++	# ...
++	# create BTRFS image from source tree
++	# ---
++	my $this = shift;
++	#==========================================
++	# PRE filesystem setup
++	#------------------------------------------
++	my $name = $this -&gt; preImage ();
++	if (! defined $name) {
++		return undef;
++	}
++	#==========================================
++	# Create filesystem on extend
++	#------------------------------------------
++	if (! $this -&gt; setupBTRFS ( $name )) {
++		return undef;
++	}
++	#==========================================
++	# POST filesystem setup
++	#------------------------------------------
++	if (! $this -&gt; postImage ($name)) {
++		return undef;
++	}
++	return $this;
++}
++
++#==========================================
+ # createImageSquashFS
+ #------------------------------------------
+ sub createImageSquashFS {
+@@ -882,6 +912,10 @@ sub createImageUSB {
+ 			$ok = $this -&gt; createImageClicFS ();
+ 			last SWITCH;
+ 		};
++		/^btrfs/      &amp;&amp; do {
++			$ok = $this -&gt; createImageBTRFS ();
++			last SWITCH;
++		};
+ 		$kiwi -&gt; error  (&quot;Unsupported $text type: $type&quot;);
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+@@ -2511,6 +2545,10 @@ sub createImageSplit {
+ 				$ok = $this -&gt; setupReiser ( $namerw );
+ 				last SWITCH;
+ 			};
++			/btrfs/      &amp;&amp; do {
++				$ok = $this -&gt; setupBTRFS ( $namerw );
++				last SWITCH;
++			};
+ 			$kiwi -&gt; error  (&quot;Unsupported type: $FSTypeRW&quot;);
+ 			$kiwi -&gt; failed ();
+ 			qxx (&quot;rm -rf $imageTreeRW&quot;);
+@@ -2555,6 +2593,10 @@ sub createImageSplit {
+ 			$ok = $this -&gt; setupReiser ( $namero );
+ 			last SWITCH;
+ 		};
++		/btrfs/      &amp;&amp; do {
++			$ok = $this -&gt; setupBTRFS ( $namero );
++			last SWITCH;
++		};
+ 		/squashfs/   &amp;&amp; do {
+ 			$ok = $this -&gt; setupSquashFS ( $namero,$imageTree );
+ 			last SWITCH;
+@@ -2641,6 +2683,11 @@ sub createImageSplit {
+ 				$kiwi -&gt; done();
+ 				last SWITCH;
+ 			};
++			/btrfs/      &amp;&amp; do {
++				qxx (&quot;/sbin/btrfsck $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
++				$kiwi -&gt; done();
++				last SWITCH;
++			};
+ 			/squashfs/   &amp;&amp; do {
+ 				$kiwi -&gt; done ();
+ 				last SWITCH;
+@@ -3222,6 +3269,14 @@ sub postImage {
+ 			last SWITCH;
+ 		};
+ 		#==========================================
++		# Check BTRFS file system
++		#------------------------------------------
++		/btrfs/     &amp;&amp; do {
++			qxx (&quot;/sbin/btrfsck $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
++			$kiwi -&gt; done();
++			last SWITCH;
++		};
++		#==========================================
+ 		# Unknown filesystem type
+ 		#------------------------------------------
+ 		$kiwi -&gt; failed();
+@@ -3596,6 +3651,10 @@ sub extractKernel {
+ 			return $name;
+ 			last SWITCH;
+ 		};
++		/btrfs/i  &amp;&amp; do {
++			return $name;
++			last SWITCH;
++		};
+ 	}
+ 	#==========================================
+ 	# this is a boot image, extract kernel
+@@ -3725,6 +3784,32 @@ sub setupEXT2 {
+ }
+ 
+ #==========================================
++# setupBTRFS
++#------------------------------------------
++sub setupBTRFS {
++	my $this = shift;
++	my $name = shift;
++	my $kiwi = $this-&gt;{kiwi};
++	my %FSopts = main::checkFSOptions();
++	my $fsopts = $FSopts{btrfs};
++	my $data = qxx (
++		&quot;/sbin/mkfs.btrfs $fsopts $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;
++	);
++	my $code = $? &gt;&gt; 8;
++	if ($code != 0) {
++		$kiwi -&gt; error  (&quot;Couldn't create BTRFS filesystem&quot;);
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  ($data);
++		return undef;
++	}
++	$this -&gt; restoreImageDest();
++	$data = qxx (&quot;cd $this-&gt;{imageDest} &amp;&amp; ln -vs $name $name.btrfs 2&gt;&amp;1&quot;);
++	$this -&gt; remapImageDest();
++	$kiwi -&gt; loginfo ($data);
++	return $name;
++}
++
++#==========================================
+ # setupReiser
+ #------------------------------------------
+ sub setupReiser {
+@@ -4095,8 +4180,8 @@ sub checkKernel {
+ 		return undef;
+ 	}
+ 	#==========================================
+-    # 1) unpack initrd...
+-    #------------------------------------------
++	# 1) unpack initrd...
++	#------------------------------------------
+ 	$status = qxx (&quot;cd $tmpdir &amp;&amp; $cmd|cpio -i --quiet&quot;);
+ 	$result = $? &gt;&gt; 8;
+ 	if ($result != 0) {
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index b3b8c79..aa1dae9 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -2151,6 +2151,12 @@ function updateLuksBootDeviceFstab {
+ 	updateLVMBootDeviceFstab $1 $2 &quot;/luksboot&quot;
+ }
+ #======================================
++# updateBtrBootDeviceFstab
++#--------------------------------------
++function updateBtrBootDeviceFstab {
++	updateLVMBootDeviceFstab $1 $2 &quot;/btrboot&quot;
++}
++#======================================
+ # updateSyslinuxBootDeviceFstab
+ #--------------------------------------
+ function updateSyslinuxBootDeviceFstab {
+@@ -2287,6 +2293,7 @@ function probeFileSystem {
+ 	FSTYPE=unknown
+ 	FSTYPE=$(blkid $1 -s TYPE -o value)
+ 	case $FSTYPE in
++		btrfs)       FSTYPE=btrfs ;;
+ 		ext4)        FSTYPE=ext4 ;;
+ 		ext3)        FSTYPE=ext3 ;;
+ 		ext2)        FSTYPE=ext2 ;;
+@@ -3295,12 +3302,11 @@ function kernelList {
+ 				break
+ 			fi
+ 		done
+-		if [ -z &quot;$kernel&quot; ];then
+-			continue
++		if [ ! -z &quot;$kernel&quot; ];then
++			KERNEL_PAIR=$kernel:$initrd
++			KERNEL_NAME[$kcount]=$krunning
++			KERNEL_LIST=$KERNEL_PAIR
+ 		fi
+-		KERNEL_PAIR=$kernel:$initrd
+-		KERNEL_NAME[$kcount]=$krunning
+-		KERNEL_LIST=$KERNEL_PAIR
+ 	fi
+ 	#======================================
+ 	# search for other kernels
+@@ -3958,6 +3964,9 @@ function mountSystemCombined {
+ #--------------------------------------
+ function mountSystemStandard {
+ 	local mountDevice=$1
++	if [ &quot;$FSTYPE&quot; = &quot;btrfs&quot; ];then
++		export haveBtrFS=yes
++	fi
+ 	if [ ! -z $FSTYPE ]          &amp;&amp; 
+ 	   [ ! $FSTYPE = &quot;unknown&quot; ] &amp;&amp; 
+ 	   [ ! $FSTYPE = &quot;auto&quot; ]
+@@ -4601,6 +4610,7 @@ function cleanImage {
+ 	#--------------------------------------
+ 	if \
+ 		[ &quot;$haveClicFS&quot; = &quot;yes&quot; ] || \
++		[ &quot;$haveBtrFS&quot;  = &quot;yes&quot; ] || \
+ 		[ ! -z &quot;$NFSROOT&quot; ]       || \
+ 		[ ! -z &quot;$NBDROOT&quot; ]       || \
+ 		[ ! -z &quot;$AOEROOT&quot; ]       || \
+@@ -5582,6 +5592,11 @@ function resizeFilesystem {
+ 		if [ $ramdisk -eq 1 ];then
+ 			resize_fs=&quot;resize2fs -f $deviceResize&quot;
+ 		fi
++	elif [ &quot;$FSTYPE&quot; = &quot;btrfs&quot; ];then
++		Echo &quot;Resize BTRFS filesystem to full partition space...&quot;
++		resize_fs=&quot;mount $deviceResize /mnt &amp;&amp;&quot;
++		resize_fs=&quot;$resize_fs btrfsctl -r max /mnt;umount /mnt&quot;
++		check=&quot;btrfsck $deviceResize&quot;
+ 	else
+ 		# don't know how to resize this filesystem
+ 		return
+@@ -5618,6 +5633,13 @@ function createFilesystem {
+ 		mke2fs -T ext3 -j -F $deviceCreate $blocks 1&gt;&amp;2
+ 	elif [ &quot;$FSTYPE&quot; = &quot;ext4&quot; ];then
+ 		mke2fs -T ext4 -j -F $deviceCreate $blocks 1&gt;&amp;2
++	elif [ &quot;$FSTYPE&quot; = &quot;btrfs&quot; ];then
++		if [ ! -z &quot;$blocks&quot; ];then
++			local bytes=$((blocks * 4096))
++			mkfs.btrfs -b $bytes $deviceCreate
++		else
++			mkfs.btrfs $deviceCreate
++		fi
+ 	else
+ 		# use ext3 by default
+ 		mke2fs -T ext3 -j -F $deviceCreate $blocks 1&gt;&amp;2
+@@ -5741,6 +5763,12 @@ function setupBootPartition {
+ 		#--------------------------------------
+ 		test -z &quot;$bootid&quot; &amp;&amp; export bootid=2
+ 		mpoint=lvmboot
++	elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
++		#======================================
++		# btrboot
++		#--------------------------------------
++		test -z &quot;$bootid&quot; &amp;&amp; export bootid=2
++		mpoint=btrboot
+ 	elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+ 		#======================================
+ 		# clicboot
+diff --git a/modules/KIWISchema.rnc b/modules/KIWISchema.rnc
+index 57770d5..e625d8c 100644
+--- a/modules/KIWISchema.rnc
++++ b/modules/KIWISchema.rnc
+@@ -1350,18 +1350,19 @@ div {
+ 		## clicfs is a fuse based compressed filesystem using a cow
+ 		## file for write operations
+ 		attribute filesystem {
+-			&quot;clicfs&quot; | &quot;ext2&quot; | &quot;ext3&quot; | &quot;ext4&quot; |
+-			&quot;reiserfs&quot; | &quot;squashfs&quot;   
++			&quot;btrfs&quot; | &quot;clicfs&quot; | &quot;ext2&quot; | &quot;ext3&quot; | &quot;ext4&quot; |
++			&quot;reiserfs&quot; | &quot;squashfs&quot;
+ 		}
+ 	k.type.fsreadonly.attribute =
+ 		## Specifies the filesystem for the read-only part of a split image
+ 		attribute fsreadonly {
+-			&quot;ext2&quot; | &quot;ext3&quot; | &quot;ext4&quot; | &quot;reiserfs&quot; | &quot;squashfs&quot;
++			&quot;btrfs&quot; | &quot;ext2&quot; | &quot;ext3&quot; | &quot;ext4&quot; |
++			&quot;reiserfs&quot; | &quot;squashfs&quot;
+ 		}
+ 	k.type.fsreadwrite.attribute =
+ 		## Specifies the filesystem for the read-write part of a split image
+ 		attribute fsreadwrite {
+-			&quot;ext2&quot; | &quot;ext3&quot; | &quot;ext4&quot; | &quot;reiserfs&quot;
++			&quot;btrfs&quot; | &quot;ext2&quot; | &quot;ext3&quot; | &quot;ext4&quot; | &quot;reiserfs&quot;
+ 		}
+ 	k.type.format.attribute =
+ 		## Specifies the format of the virtual disk.
+@@ -1380,7 +1381,7 @@ div {
+ 	k.type.image.attribute =
+ 		## Specifies the image type
+ 		attribute image {
+-			&quot;clicfs&quot; | &quot;cpio&quot; | &quot;ec2&quot; | &quot;ext2&quot; | &quot;ext3&quot; |
++			&quot;btrfs&quot; | &quot;clicfs&quot; | &quot;cpio&quot; | &quot;ec2&quot; | &quot;ext2&quot; | &quot;ext3&quot; |
+ 			&quot;ext4&quot; | &quot;iso&quot; | &quot;oem&quot; | &quot;product&quot; | &quot;pxe&quot; | &quot;reiserfs&quot; |
+ 			&quot;split&quot; | &quot;squashfs&quot; | &quot;usb&quot; | &quot;vmx&quot; | &quot;xen&quot;
+ 		}
+diff --git a/modules/KIWISchema.rng b/modules/KIWISchema.rng
+index 9fe765d..dbc8ec0 100644
+--- a/modules/KIWISchema.rng
++++ b/modules/KIWISchema.rng
+@@ -1861,6 +1861,7 @@ clicfs, ext2, ext3, ext4, reiserfs, or squashfs
+ clicfs is a fuse based compressed filesystem using a cow
+ file for write operations&lt;/a:documentation&gt;
+         &lt;choice&gt;
++          &lt;value&gt;btrfs&lt;/value&gt;
+           &lt;value&gt;clicfs&lt;/value&gt;
+           &lt;value&gt;ext2&lt;/value&gt;
+           &lt;value&gt;ext3&lt;/value&gt;
+@@ -1874,6 +1875,7 @@ file for write operations&lt;/a:documentation&gt;
+       &lt;attribute name=&quot;fsreadonly&quot;&gt;
+         &lt;a:documentation&gt;Specifies the filesystem for the read-only part of a split image&lt;/a:documentation&gt;
+         &lt;choice&gt;
++          &lt;value&gt;btrfs&lt;/value&gt;
+           &lt;value&gt;ext2&lt;/value&gt;
+           &lt;value&gt;ext3&lt;/value&gt;
+           &lt;value&gt;ext4&lt;/value&gt;
+@@ -1886,6 +1888,7 @@ file for write operations&lt;/a:documentation&gt;
+       &lt;attribute name=&quot;fsreadwrite&quot;&gt;
+         &lt;a:documentation&gt;Specifies the filesystem for the read-write part of a split image&lt;/a:documentation&gt;
+         &lt;choice&gt;
++          &lt;value&gt;btrfs&lt;/value&gt;
+           &lt;value&gt;ext2&lt;/value&gt;
+           &lt;value&gt;ext3&lt;/value&gt;
+           &lt;value&gt;ext4&lt;/value&gt;
+@@ -1925,6 +1928,7 @@ file for write operations&lt;/a:documentation&gt;
+       &lt;attribute name=&quot;image&quot;&gt;
+         &lt;a:documentation&gt;Specifies the image type&lt;/a:documentation&gt;
+         &lt;choice&gt;
++          &lt;value&gt;btrfs&lt;/value&gt;
+           &lt;value&gt;clicfs&lt;/value&gt;
+           &lt;value&gt;cpio&lt;/value&gt;
+           &lt;value&gt;ec2&lt;/value&gt;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 77283c9..d9c688e 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Fri Jul 16 15:01:09 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed Makefile boot image md5 creation time
++- added suport for the btrfs filesystem (bnc #596205)
++
++-------------------------------------------------------------------
+ Thu Jul 15 15:59:20 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v4.48
+diff --git a/system/boot/ix86/netboot/suse-11.3/config.xml b/system/boot/ix86/netboot/suse-11.3/config.xml
+index e2eca37..4c32c8b 100644
+--- a/system/boot/ix86/netboot/suse-11.3/config.xml
++++ b/system/boot/ix86/netboot/suse-11.3/config.xml
+@@ -35,6 +35,9 @@
+ 		&lt;file name=&quot;drivers/block/brd.ko&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/cciss.ko&quot;/&gt;
+ 		&lt;file name=&quot;net/packet/*&quot;/&gt;
++		&lt;file name=&quot;lib/zlib_deflate/zlib_deflate.ko&quot;/&gt;
++		&lt;file name=&quot;lib/libcrc32c.ko&quot;/&gt;
++		&lt;file name=&quot;fs/btrfs/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext4/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext2/*&quot;/&gt;
+@@ -162,6 +165,7 @@
+ 		&lt;package name=&quot;bind-utils&quot;/&gt;
+ 		&lt;package name=&quot;dhcpcd&quot;/&gt;
+ 		&lt;package name=&quot;e2fsprogs&quot;/&gt;
++		&lt;package name=&quot;btrfsprogs&quot;/&gt;
+ 		&lt;package name=&quot;file&quot;/&gt;
+ 		&lt;package name=&quot;hwinfo&quot;/&gt;
+ 		&lt;package name=&quot;module-init-tools&quot;/&gt;
+diff --git a/system/boot/ix86/netboot/suse-linuxrc b/system/boot/ix86/netboot/suse-linuxrc
+index 10f4f32..2ff7c39 100755
+--- a/system/boot/ix86/netboot/suse-linuxrc
++++ b/system/boot/ix86/netboot/suse-linuxrc
+@@ -874,15 +874,11 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 				updateLVMBootDeviceFstab /config $imageBootDevice
+ 			elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+ 				updateClicBootDeviceFstab /config $imageBootDevice
++			elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
++				updateBtrBootDeviceFstab /config $imageBootDevice
+ 			fi
+-			if ! test -z $COMBINED_IMAGE; then
+-				gnum=`echo $imageNextRootDevice | sed -e &quot;s/.*\([0-9]\)/\1/&quot;`
+-				gnum=`expr $gnum - 1`
+-				setupBootLoader \
+-					/mnt /config $gnum $imageNextRootDevice NET ${DISK}1
+-			else
+-				setupBootLoader /mnt /config 1 ${DISK}2 NET ${DISK}1
+-			fi
++			setupBootLoader /mnt /config $(($bootid - 1)) \
++				$imageRootDevice NET $imageSwapDevice
+ 			setupKernelModules /config
+ 		fi
+ 	fi
+diff --git a/system/boot/ix86/oemboot/suse-11.3/config.xml b/system/boot/ix86/oemboot/suse-11.3/config.xml
+index 04db990..b8ae9b5 100644
+--- a/system/boot/ix86/oemboot/suse-11.3/config.xml
++++ b/system/boot/ix86/oemboot/suse-11.3/config.xml
+@@ -36,6 +36,9 @@
+ 		&lt;file name=&quot;drivers/input/mouse/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/usb/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
++		&lt;file name=&quot;lib/zlib_deflate/zlib_deflate.ko&quot;/&gt;
++		&lt;file name=&quot;lib/libcrc32c.ko&quot;/&gt;
++		&lt;file name=&quot;fs/btrfs/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext4/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext2/*&quot;/&gt;
+@@ -105,6 +108,7 @@
+ 		&lt;package name=&quot;bind-utils&quot;/&gt;
+ 		&lt;package name=&quot;dhcpcd&quot;/&gt;
+ 		&lt;package name=&quot;e2fsprogs&quot;/&gt;
++		&lt;package name=&quot;btrfsprogs&quot;/&gt;
+ 		&lt;package name=&quot;file&quot;/&gt;
+ 		&lt;package name=&quot;hwinfo&quot;/&gt;
+ 		&lt;package name=&quot;module-init-tools&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index 39add3d..b7ce8e9 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -599,6 +599,8 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 		updateLVMBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+ 		updateClicBootDeviceFstab /config $imageBootDevice
++	elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
++		updateBtrBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
+ 		updateSyslinuxBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
+diff --git a/system/boot/ix86/usbboot/suse-11.3/config.xml b/system/boot/ix86/usbboot/suse-11.3/config.xml
+index 9a1d700..17f4d9a 100644
+--- a/system/boot/ix86/usbboot/suse-11.3/config.xml
++++ b/system/boot/ix86/usbboot/suse-11.3/config.xml
+@@ -34,6 +34,9 @@
+ 		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/loop.ko&quot;/&gt;
+ 		&lt;file name=&quot;net/packet/*&quot;/&gt;
++		&lt;file name=&quot;lib/zlib_deflate/zlib_deflate.ko&quot;/&gt;
++		&lt;file name=&quot;lib/libcrc32c.ko&quot;/&gt;
++		&lt;file name=&quot;fs/btrfs/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext4/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext2/*&quot;/&gt;
+@@ -88,6 +91,7 @@
+ 		&lt;package name=&quot;clicfs&quot;/&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;e2fsprogs&quot;/&gt;
++		&lt;package name=&quot;btrfsprogs&quot;/&gt;
+ 		&lt;package name=&quot;file&quot;/&gt;
+ 		&lt;package name=&quot;module-init-tools&quot;/&gt;
+ 		&lt;package name=&quot;pciutils&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-linuxrc b/system/boot/ix86/usbboot/suse-linuxrc
+index 3f853a6..2fe0a7d 100755
+--- a/system/boot/ix86/usbboot/suse-linuxrc
++++ b/system/boot/ix86/usbboot/suse-linuxrc
+@@ -243,6 +243,8 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 		updateLVMBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+ 		updateClicBootDeviceFstab /config $imageBootDevice
++	elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
++		updateBtrBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
+ 		updateSyslinuxBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
+@@ -254,19 +256,7 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	if [ ! -z &quot;$COMBINED_IMAGE&quot; ]; then
+ 		export KIWI_INITRD_PARAMS=&quot;COMBINED_IMAGE=local&quot;
+ 	fi
+-	bootid=0
+-	if [ ! -z &quot;$UNIONFS_CONFIG&quot; ] || [ ! -z &quot;$COMBINED_IMAGE&quot; ]; then
+-		bootid=1
+-	fi
+-	if \
+-		[ &quot;$loader&quot; = &quot;syslinux&quot; ]  ||\
+-		[ &quot;$loader&quot; = &quot;extlinux&quot; ]  ||\
+-		[ &quot;$haveClicFS&quot; = &quot;yes&quot; ]   ||\
+-		[ &quot;$haveLuks&quot; = &quot;yes&quot; ]
+-	then
+-		bootid=$(($bootid + 1))
+-	fi
+-	setupBootLoader /mnt /config $bootid $imageRootDevice USB
++	setupBootLoader /mnt /config $(($bootid - 1)) $imageRootDevice USB
+ 	setupKernelModules /config
+ fi
+ 
+diff --git a/system/boot/ix86/vmxboot/suse-11.3/config.xml b/system/boot/ix86/vmxboot/suse-11.3/config.xml
+index ba228b5..d4535b3 100644
+--- a/system/boot/ix86/vmxboot/suse-11.3/config.xml
++++ b/system/boot/ix86/vmxboot/suse-11.3/config.xml
+@@ -30,6 +30,9 @@
+ 		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/loop.ko&quot;/&gt;
+ 		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
++		&lt;file name=&quot;lib/zlib_deflate/zlib_deflate.ko&quot;/&gt;
++		&lt;file name=&quot;lib/libcrc32c.ko&quot;/&gt;
++		&lt;file name=&quot;fs/btrfs/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext4/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext2/*&quot;/&gt;
+@@ -85,6 +88,7 @@
+ 		&lt;package name=&quot;bind-utils&quot;/&gt;
+ 		&lt;package name=&quot;dhcpcd&quot;/&gt;
+ 		&lt;package name=&quot;e2fsprogs&quot;/&gt;
++		&lt;package name=&quot;btrfsprogs&quot;/&gt;
+ 		&lt;package name=&quot;file&quot;/&gt;
+ 		&lt;package name=&quot;hwinfo&quot;/&gt;
+ 		&lt;package name=&quot;module-init-tools&quot;/&gt;
+diff --git a/system/boot/ix86/vmxboot/suse-linuxrc b/system/boot/ix86/vmxboot/suse-linuxrc
+index a26a53f..c640107 100755
+--- a/system/boot/ix86/vmxboot/suse-linuxrc
++++ b/system/boot/ix86/vmxboot/suse-linuxrc
+@@ -243,6 +243,8 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 		updateLVMBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+ 		updateClicBootDeviceFstab /config $imageBootDevice
++	elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
++		updateBtrBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
+ 		updateSyslinuxBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
+@@ -254,19 +256,7 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	if [ ! -z &quot;$COMBINED_IMAGE&quot; ]; then
+ 		export KIWI_INITRD_PARAMS=&quot;COMBINED_IMAGE=local&quot;
+ 	fi
+-	bootid=0
+-	if [ ! -z &quot;$UNIONFS_CONFIG&quot; ] || [ ! -z &quot;$COMBINED_IMAGE&quot; ]; then
+-		bootid=1
+-	fi
+-	if \
+-		[ &quot;$loader&quot; = &quot;syslinux&quot; ]  ||\
+-		[ &quot;$loader&quot; = &quot;extlinux&quot; ]  ||\
+-		[ &quot;$haveClicFS&quot; = &quot;yes&quot; ]   ||\
+-		[ &quot;$haveLuks&quot; = &quot;yes&quot; ]
+-	then
+-		bootid=$(($bootid + 1))
+-	fi
+-	setupBootLoader /mnt /config $bootid $imageRootDevice VMX
++	setupBootLoader /mnt /config $(($bootid - 1)) $imageRootDevice VMX
+ 	setupKernelModules /config
+ fi
+ 
+diff --git a/system/boot/ix86/xenboot/suse-11.3/config.xml b/system/boot/ix86/xenboot/suse-11.3/config.xml
+index e6e42fd..bd7c580 100644
+--- a/system/boot/ix86/xenboot/suse-11.3/config.xml
++++ b/system/boot/ix86/xenboot/suse-11.3/config.xml
+@@ -22,6 +22,9 @@
+ 		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/loop.ko&quot;/&gt;
++		&lt;file name=&quot;lib/zlib_deflate/zlib_deflate.ko&quot;/&gt;
++		&lt;file name=&quot;lib/libcrc32c.ko&quot;/&gt;
++		&lt;file name=&quot;fs/btrfs/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext4/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext2/*&quot;/&gt;
+@@ -44,6 +47,7 @@
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;e2fsprogs&quot;/&gt;
++		&lt;package name=&quot;btrfsprogs&quot;/&gt;
+ 		&lt;package name=&quot;file&quot;/&gt;
+ 		&lt;package name=&quot;module-init-tools&quot;/&gt;
+ 		&lt;package name=&quot;pciutils&quot;/&gt;
+diff --git a/system/boot/ppc/netboot/suse-linuxrc b/system/boot/ppc/netboot/suse-linuxrc
+index 10f4f32..2ff7c39 100755
+--- a/system/boot/ppc/netboot/suse-linuxrc
++++ b/system/boot/ppc/netboot/suse-linuxrc
+@@ -874,15 +874,11 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 				updateLVMBootDeviceFstab /config $imageBootDevice
+ 			elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+ 				updateClicBootDeviceFstab /config $imageBootDevice
++			elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
++				updateBtrBootDeviceFstab /config $imageBootDevice
+ 			fi
+-			if ! test -z $COMBINED_IMAGE; then
+-				gnum=`echo $imageNextRootDevice | sed -e &quot;s/.*\([0-9]\)/\1/&quot;`
+-				gnum=`expr $gnum - 1`
+-				setupBootLoader \
+-					/mnt /config $gnum $imageNextRootDevice NET ${DISK}1
+-			else
+-				setupBootLoader /mnt /config 1 ${DISK}2 NET ${DISK}1
+-			fi
++			setupBootLoader /mnt /config $(($bootid - 1)) \
++				$imageRootDevice NET $imageSwapDevice
+ 			setupKernelModules /config
+ 		fi
+ 	fi
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002424.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0228e1a7730f43f48a7bc9511149da0a22493e8f
+</A></li>
+	<LI>Next message: <A HREF="002426.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. fa88b8c19403536dc04f31d55d8076d645fd38cc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2425">[ date ]</a>
+              <a href="thread.html#2425">[ thread ]</a>
+              <a href="subject.html#2425">[ subject ]</a>
+              <a href="author.html#2425">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

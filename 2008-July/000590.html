@@ -1,0 +1,483 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1504 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1504%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200807311259.m6VCxo8F023141%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000589.html">
+   <LINK REL="Next"  HREF="000591.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1504 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1504%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200807311259.m6VCxo8F023141%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1504 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jul 31 14:59:50 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000589.html">[Kiwi-devel] r1503 - kiwi-head/modules
+</A></li>
+        <LI>Next message: <A HREF="000591.html">[Kiwi-devel] r1505 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#590">[ date ]</a>
+              <a href="thread.html#590">[ thread ]</a>
+              <a href="subject.html#590">[ subject ]</a>
+              <a href="author.html#590">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-07-31 14:59:37 +0200 (Thu, 31 Jul 2008)
+New Revision: 1504
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIMigrate.pm
+   kiwi-head/modules/KIWIMigrate.txt
+   kiwi-head/modules/KIWISatSolver.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- improved migration code, makes use of patterns now and
+  checks with SaTSolver whether the package exists in the
+  solvables or not. I also added the possibility to add
+  repositories while calling kiwi --migrate (bnc #412215)
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-07-31 12:37:33 UTC (rev 1503)
++++ kiwi-head/kiwi.pl	2008-07-31 12:59:37 UTC (rev 1504)
+@@ -944,7 +944,8 @@
+ 	if (defined $Migrate) {
+ 		$kiwi -&gt; info (&quot;Starting system to image migration&quot;);
+ 		$migrate = new KIWIMigrate (
+-			$kiwi,$Destination,$Migrate,\@Exclude,$Report
++			$kiwi,$Destination,$Migrate,\@Exclude,$Report,
++			\@AddRepository,\@AddRepositoryType
+ 		);
+ 		if (! defined $migrate) {
+ 			my $code = kiwiExit (1); return $code;
+@@ -1345,7 +1346,8 @@
+ 	print &quot;     [ --base-root &lt;base-path&gt; ]\n&quot;;
+ 	print &quot;System to Image migration:\n&quot;;
+ 	print &quot;  kiwi -m | --migrate &lt;name&gt; --destdir &lt;destination-path&gt;\n&quot;;
+-	print &quot;     [ --exclude &lt;directory&gt; --exclude ... ]\n&quot;;
++	print &quot;     [ --exclude &lt;directory&gt; --exclude &lt;...&gt; ]\n&quot;;
++	print &quot;     [ --add-repo &lt;repo-path&gt; --add-repotype &lt;type&gt; ]\n&quot;;
+ 	print &quot;     [ --report ]\n&quot;;
+ 	print &quot;Image postprocessing modes:\n&quot;;
+ 	print &quot;  kiwi --bootstick &lt;initrd&gt; --bootstick-system &lt;systemImage&gt;\n&quot;;
+
+Modified: kiwi-head/modules/KIWIMigrate.pm
+===================================================================
+--- kiwi-head/modules/KIWIMigrate.pm	2008-07-31 12:37:33 UTC (rev 1503)
++++ kiwi-head/modules/KIWIMigrate.pm	2008-07-31 12:59:37 UTC (rev 1504)
+@@ -48,6 +48,8 @@
+ 	my $name = shift;
+ 	my $excl = shift;
+ 	my $demo = shift;
++	my $addr = shift;
++	my $addt = shift;
+ 	#==========================================
+ 	# Constructor setup
+ 	#------------------------------------------
+@@ -102,8 +104,21 @@
+ 	while (my $line = &lt;FD&gt;) {
+ 		next if $line =~ /^#/;
+ 		if ($line =~ /(.*)\s*=\s*(.*),(.*)/) {
+-			$OSSource{$1}{boot} = $2;
+-			$OSSource{$1}{src}  = $3;
++			my $source = $3;
++			my $product= $1;
++			my $boot = $2;
++			$OSSource{$product}{$source}{boot} = $boot;
++			$OSSource{$product}{$source}{type} = &quot;yast2&quot;;
++			if ((defined $addr) &amp;&amp; (defined $addt)) {
++				my @addrepo     = @{$addr};
++				my @addrepotype = @{$addt};
++				foreach (my $count=0;$count &lt;@addrepo; $count++) {
++					my $source= $addrepo[$count];
++					my $type  = $addrepotype[$count];
++					$OSSource{$product}{$source}{boot} = &quot;none&quot;;
++					$OSSource{$product}{$source}{type} = $type;
++				}
++			}
+ 		}
+ 	}
+ 	close FD;
+@@ -167,29 +182,37 @@
+ 	my $dest = $this-&gt;{dest};
+ 	my $name = $this-&gt;{name};
+ 	my $kiwi = $this-&gt;{kiwi};
++	my %osc  = %{$this-&gt;{source}};
+ 	#==========================================
+ 	# get operating system version
+ 	#------------------------------------------
+-	my $spec = $this -&gt; getOperatingSystemVersion();
+-	my @pacs = $this -&gt; getPackageList();
+-	my $boot = $this -&gt; {source} -&gt; {$spec} -&gt; {boot};
+-	my $src  = $this -&gt; {source} -&gt; {$spec} -&gt; {src};
+-	if (! defined $spec) {
++	my $product = $this -&gt; getOperatingSystemVersion();
++	if (! defined $product) {
+ 		$kiwi -&gt; error  (&quot;Couldn't find system version information&quot;);
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+ 	}
++	if (! defined $osc{$product}) {
++		$kiwi -&gt; error  (&quot;Couldn't find OS version: $product in migrate list&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	#==========================================
++	# find boot attribute value in OSSource
++	#------------------------------------------
++	my $boot;
++	foreach my $source (keys %{$osc{$product}} ) {
++		if ($osc{$product}{$source}{boot} ne &quot;none&quot;) {
++			$boot = $osc{$product}{$source}{boot};
++		}
++	}
++	my @pacs = $this -&gt; getPackageList ($product);
++	my $pats = $this -&gt; {patterns};
+ 	if (! @pacs) {
+ 		$kiwi -&gt; error  (&quot;Couldn't find installed packages&quot;);
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+ 	}
+-	if (! defined $boot) {
+-		$kiwi -&gt; warning (&quot;Couldn't find OS version: $spec in source list&quot;);
+-		$kiwi -&gt; skipped ();
+-		$boot = &quot;***UNKNOWN-PLEASE-SELECT***&quot;;
+-		$src  = &quot;***UNKNOWN-PLEASE-SELECT***&quot;;
+-	}
+ 	#==========================================
+ 	# create root directory
+ 	#------------------------------------------
+@@ -207,7 +230,7 @@
+ 	print FD &quot;\t&quot;.'&lt;description type=&quot;system&quot;&gt;'.&quot;\n&quot;;
+ 	print FD &quot;\t\t&quot;.'&lt;author&gt;***AUTHOR***&lt;/author&gt;'.&quot;\n&quot;;
+ 	print FD &quot;\t\t&quot;.'&lt;contact&gt;***MAIL***&lt;/contact&gt;'.&quot;\n&quot;;
+-	print FD &quot;\t\t&quot;.'&lt;specification&gt;'.$spec.'&lt;/specification&gt;'.&quot;\n&quot;;
++	print FD &quot;\t\t&quot;.'&lt;specification&gt;'.$product.'&lt;/specification&gt;'.&quot;\n&quot;;
+ 	print FD &quot;\t&quot;.'&lt;/description&gt;'.&quot;\n&quot;;
+ 	#==========================================
+ 	# &lt;preferences&gt;
+@@ -228,13 +251,21 @@
+ 	#==========================================
+ 	# &lt;repository&gt;
+ 	#------------------------------------------
+-	print FD &quot;\t&quot;.'&lt;repository type=&quot;yast2&quot;&gt;'.&quot;\n&quot;;
+-	print FD &quot;\t\t&quot;.'&lt;source path=&quot;'.$src.'&quot;/&gt;'.&quot;\n&quot;;
+-	print FD &quot;\t&quot;.'&lt;/repository&gt;'.&quot;\n&quot;;
++	foreach my $source (keys %{$osc{$product}} ) {
++		my $type = $osc{$product}{$source}{type};
++		print FD &quot;\t&quot;.'&lt;repository type=&quot;'.$type.'&quot;&gt;'.&quot;\n&quot;;
++		print FD &quot;\t\t&quot;.'&lt;source path=&quot;'.$source.'&quot;/&gt;'.&quot;\n&quot;;
++		print FD &quot;\t&quot;.'&lt;/repository&gt;'.&quot;\n&quot;;
++	}
+ 	#==========================================
+ 	# &lt;packages&gt;
+ 	#------------------------------------------
+ 	print FD &quot;\t&quot;.'&lt;packages type=&quot;image&quot;&gt;'.&quot;\n&quot;;
++	if (defined $pats) {
++		foreach my $pattern (@{$pats}) {
++			print FD &quot;\t\t&quot;.'&lt;opensusePattern name=&quot;'.$pattern.'&quot;/&gt;'.&quot;\n&quot;;
++		}
++	}
+ 	foreach my $pac (@pacs) {
+ 		print FD &quot;\t\t&quot;.'&lt;package name=&quot;'.$pac.'&quot;/&gt;'.&quot;\n&quot;;
+ 	}
+@@ -331,7 +362,7 @@
+ 	print FD '#!/bin/bash'.&quot;\n&quot;;
+ 	print FD 'test -f /.kconfig &amp;&amp; . /.kconfig'.&quot;\n&quot;;
+ 	print FD 'test -f /.profile &amp;&amp; . /.profile'.&quot;\n&quot;;
+-	print FD 'echo &quot;Configure image: [$name]...&quot;'.&quot;\n&quot;;
++	print FD 'echo &quot;Configure image: [$kiwi_iname]...&quot;'.&quot;\n&quot;;
+ 	foreach my $service (@result) {
+ 		print FD 'suseInsertService '.$service.&quot;\n&quot;;
+ 	}
+@@ -348,12 +379,98 @@
+ #------------------------------------------
+ sub getPackageList {
+ 	# ...
+-	# Find all packages installed on the system. This method
+-	# assume an RPM based system to build the package list for
+-	# the later image
++	# Find all packages installed on the system which doesn't
++	# belong to any of the installed patterns. This method
++	# requires a SUSE system based on zypper and rpm to work
++	# correctly
+ 	# ---
+-	my $this = shift;
++	my $this    = shift;
++	my $product = shift;
++	my $kiwi    = $this-&gt;{kiwi};
++	my %osc     = %{$this-&gt;{source}};
++	my @urllist = ();
++	#==========================================
++	# find all rpm's installed
++	#------------------------------------------
++	undef $this-&gt;{patterns};
+ 	my @list = qxx (&quot;rpm -qa --qf '%{NAME}\n'&quot;); chomp @list;
++	#==========================================
++	# create URL list to lookup solvables
++	#------------------------------------------
++	foreach my $source (keys %{$osc{$product}}) {
++		push (@urllist,$source);
++	}
++	#==========================================
++	# find all patterns and packs of patterns 
++	#------------------------------------------
++	if (@urllist) {
++		my @patlist = qxx (&quot;zypper patterns|grep ^i|cut -f2 -d'|'| tr -d ' '&quot;);
++		my $code = $? &gt;&gt; 8;
++		if ($code != 0) {
++			# /.../
++			# no installed patterns found, use at least the base
++			# pattern for the migration
++			# ----
++			push (@patlist,&quot;base&quot;);
++		}
++		chomp @patlist;
++		my $psolve = new KIWISatSolver (
++			$kiwi,\@patlist,\@urllist
++		);
++		my @result = ();
++		if (! defined $psolve) {
++			return sort @list;
++		}
++		# /.../
++		# solve the zypper pattern list into a package list and
++		# create a package list with packages _not_ part of the
++		# pattern list. patterns which does not exist in the base
++		# repository will be ignored.
++		# ----
++		my @packageList = $psolve -&gt; getPackages();
++		foreach my $installed (@list) {
++			my $inpattern = 0;
++			foreach my $p (@packageList) {
++				if ($installed eq $p) {
++					$inpattern = 1; last;
++				}
++			}
++			if (! $inpattern) {
++				push (@result,$installed);
++			}
++		}
++		# /.../
++		# store the pattern names for the later config.xml
++		# ----
++		$this-&gt;{patterns} = \@patlist;
++		# /.../
++		# walk through the non pattern based packages and solve
++		# them again. packages which are not part of the base
++		# repository will be ignored. This might be a problem
++		# if the package comes from a non base repository.
++		# The solved list is again checked with the pattern
++		# package list and the result is returned
++		# ----
++		my @rest = ();
++		my $repo = $psolve -&gt; getRepo();
++		my $pool = $psolve -&gt; getPool();
++		my $xsolve = new KIWISatSolver (
++			$kiwi,\@result,\@urllist,&quot;solve-packages&quot;,$repo,$pool
++		);
++		@result = $xsolve -&gt; getPackages();
++		foreach my $p (@result) {
++			my $inpattern = 0;
++			foreach my $tobeinstalled (@packageList) {
++				if ($tobeinstalled eq $p) {
++					$inpattern = 1; last;
++				}
++			}
++			if (! $inpattern) {
++				push (@rest,$p);
++			}
++		}
++		return sort @rest;
++	}
+ 	return sort @list;
+ }
+ 
+
+Modified: kiwi-head/modules/KIWIMigrate.txt
+===================================================================
+--- kiwi-head/modules/KIWIMigrate.txt	2008-07-31 12:37:33 UTC (rev 1503)
++++ kiwi-head/modules/KIWIMigrate.txt	2008-07-31 12:59:37 UTC (rev 1504)
+@@ -2,7 +2,8 @@
+ # migration table for distribution name to boot image name
+ # and possible source repository
+ # ----
+-SUSE-Linux-Enterprise-Server-10-SP1 = suse-SLES10-SP1,***SELECT***
++SUSE-Linux-Enterprise-Server-10-SP1=suse-SLES10,***SELECT***
++SUSE-Linux-Enterprise-Server-10-SP2=suse-SLES10,***SELECT***
+ SUSE-Linux-Enterprise-Server-10=suse-SLES10,***SELECT***
+ openSUSE-10.2=suse-10.2,<A HREF="http://download.opensuse.org/repositories/openSUSE:10.2/standard">http://download.opensuse.org/repositories/openSUSE:10.2/standard</A>
+ openSUSE-10.3=suse-10.3,<A HREF="http://download.opensuse.org/repositories/openSUSE:10.3/standard">http://download.opensuse.org/repositories/openSUSE:10.3/standard</A>
+
+Modified: kiwi-head/modules/KIWISatSolver.pm
+===================================================================
+--- kiwi-head/modules/KIWISatSolver.pm	2008-07-31 12:37:33 UTC (rev 1503)
++++ kiwi-head/modules/KIWISatSolver.pm	2008-07-31 12:59:37 UTC (rev 1504)
+@@ -67,19 +67,22 @@
+ 	my $kiwi    = shift;
+ 	my $pref    = shift;
+ 	my $urlref  = shift;
++	my $solvep  = shift;
++	my $repo    = shift;
++	my $pool    = shift;
+ 	#==========================================
+ 	# Constructor setup
+ 	#------------------------------------------
+ 	my $solvable; # sat solvable file name
+-	my $pool;     # sat pool object
+-	my $repo;     # sat repo object
+ 	my $solver;   # sat solver object
+ 	my $queue;    # sat job queue
+ 	my @solved;   # solve result
+ 	if (! defined $kiwi) {
+ 		$kiwi = new KIWILog(&quot;tiny&quot;);
+ 	}
+-	$kiwi -&gt; info (&quot;Setting up SaT solver...\n&quot;);
++	if ((! defined $repo) || (! defined $pool)) {
++		$kiwi -&gt; info (&quot;Setting up SaT solver...\n&quot;);
++	}
+ 	if (! $KIWISatSolver::haveSaT) {
+ 		$kiwi -&gt; error (&quot;--&gt; No SaT plugin installed&quot;);
+ 		$kiwi -&gt; failed ();
+@@ -98,26 +101,31 @@
+ 	#==========================================
+ 	# Create and cache sat solvable
+ 	#------------------------------------------
+-	$solvable = KIWIXML::getInstSourceSatSolvable ($kiwi,$urlref);
+-	if (! defined $solvable) {
+-		return undef;
++	if ((! defined $repo) || (! defined $pool)) {
++		$solvable = KIWIXML::getInstSourceSatSolvable ($kiwi,$urlref);
++		if (! defined $solvable) {
++			return undef;
++		}
++		#==========================================
++		# Create SaT repository and job queue
++		#------------------------------------------
++		if (! open (FD,$solvable)) {
++			$kiwi -&gt; error  (&quot;--&gt; Couldn't open solvable: $!&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		$pool = new SaT::_Pool;
++		$repo = $pool -&gt; createRepo('repo');
++		$repo -&gt; addSolvable (*FD); close FD;
+ 	}
+-	#==========================================
+-	# Create SaT repository and job queue
+-	#------------------------------------------
+-	if (! open (FD,$solvable)) {
+-		$kiwi -&gt; error  (&quot;--&gt; Couldn't open solvable: $!&quot;);
+-		$kiwi -&gt; failed ();
+-		return undef;
+-	}
+-	$pool = new SaT::_Pool;
+-	$repo = $pool -&gt; createRepo('repo');
+-	$repo -&gt; addSolvable (*FD); close FD;
+ 	$solver = new SaT::Solver ($pool);
+ 	$pool -&gt; createWhatProvides();
+ 	$queue = new SaT::Queue;
+ 	foreach my $p (@{$pref}) {
+-		my $name = &quot;pattern:&quot;.$p;
++		my $name = $p;
++		if (! defined $solvep) {
++			$name = &quot;pattern:&quot;.$p;
++		}
+ 		my $id = $pool -&gt; selectSolvable ($repo,$name);
+ 		if (! $id) {
+ 			$kiwi -&gt; warning (&quot;--&gt; Failed to queue job: $name&quot;);
+@@ -148,12 +156,35 @@
+ 	$this-&gt;{plist}   = $pref;
+ 	$this-&gt;{queue}   = $queue;
+ 	$this-&gt;{repo}    = $repo;
++	$this-&gt;{pool}    = $pool;
+ 	$this-&gt;{solver}  = $solver;
+ 	$this-&gt;{result}  = \@solved;
+ 	return $this;
+ }
+ 
+ #==========================================
++# getRepo
++#------------------------------------------
++sub getRepo {
++	# /.../
++	# return satsolver repo object
++	# ----
++	my $this = shift;
++	return $this-&gt;{repo};
++}
++
++#==========================================
++# getPool
++#------------------------------------------
++sub getPool {
++	# /.../
++	# return satsolver pool object
++	# ----
++	my $this = shift;
++	return $this-&gt;{pool};
++}
++
++#==========================================
+ # getPackages
+ #------------------------------------------
+ sub getPackages {
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-07-31 12:37:33 UTC (rev 1503)
++++ kiwi-head/rpm/kiwi.changes	2008-07-31 12:59:37 UTC (rev 1504)
+@@ -3,6 +3,10 @@
+ 
+ - v2.64
+ - increased boot timeout for lilo configuration
++- improved migration code, makes use of patterns now and
++  checks with SaTSolver whether the package exists in the
++  solvables or not. I also added the possibility to add
++  repositories while calling kiwi --migrate (bnc #412215)
+ 
+ -------------------------------------------------------------------
+ Tue Jul 29 18:03:24 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000589.html">[Kiwi-devel] r1503 - kiwi-head/modules
+</A></li>
+	<LI>Next message: <A HREF="000591.html">[Kiwi-devel] r1505 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#590">[ date ]</a>
+              <a href="thread.html#590">[ thread ]</a>
+              <a href="subject.html#590">[ subject ]</a>
+              <a href="author.html#590">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

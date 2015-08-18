@@ -1,0 +1,136 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1417 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1417%20-%20kiwi-head/modules&In-Reply-To=%3C200806271022.m5RAMIiL023825%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000506.html">
+   <LINK REL="Next"  HREF="000508.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1417 - kiwi-head/modules</H1>
+    <B>jcborn at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1417%20-%20kiwi-head/modules&In-Reply-To=%3C200806271022.m5RAMIiL023825%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1417 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Fri Jun 27 12:22:18 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000506.html">[Kiwi-devel] [SVN:KIWI-Team] r1416 - in kiwi-head: . rpm
+</A></li>
+        <LI>Next message: <A HREF="000508.html">[Kiwi-devel] [SVN:KIWI-Team] r1418 - in kiwi-head: . rpm	system/boot/xenboot/suse-10.1 system/boot/xenboot/suse-10.2	system/boot/xenboot/suse-10.3 system/boot/xenboot/suse-11.0	system/boot/xenboot/suse-SLED10 system/boot/xenboot/suse-SLES10
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#507">[ date ]</a>
+              <a href="thread.html#507">[ thread ]</a>
+              <a href="subject.html#507">[ subject ]</a>
+              <a href="author.html#507">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: Fri Jun 27 12:22:16 2008
+New Revision: 1417
+
+Modified:
+   kiwi-head/modules/KIWICollect.pm
+   kiwi-head/modules/KIWIRepoMetaHandler.pm
+
+Log:
+- fixed wrong access to ProductData
+- fixed regexp in RepoMetaHandler to match .*Plugin[.]pm only
+
+
+Modified: kiwi-head/modules/KIWICollect.pm
+==============================================================================
+--- kiwi-head/modules/KIWICollect.pm	(original)
++++ kiwi-head/modules/KIWICollect.pm	Fri Jun 27 12:22:16 2008
+@@ -290,20 +290,14 @@
+   if($this-&gt;{m_debug}) {
+     open(DUMP, &quot;&gt;&quot;, &quot;$this-&gt;{m_basedir}/productdata.pl&quot;);
+     print DUMP &quot;# PRODUCTINFO:&quot;;
+-    print DUMP Dumper($this-&gt;{m_proddata}-&gt;{m_prodinfo});
++    print DUMP Dumper($this-&gt;{m_proddata}-&gt;getSet('prodinfo'));
+     print DUMP &quot;# PRODUCTVARS:&quot;;
+-    print DUMP Dumper($this-&gt;{m_proddata}-&gt;{m_prodvars});
++    print DUMP Dumper($this-&gt;{m_proddata}-&gt;getSet('prodvars'));
+     print DUMP &quot;# PRODUCTOPTIONS:&quot;;
+-    print DUMP Dumper($this-&gt;{m_proddata}-&gt;{m_prodopts});
++    print DUMP Dumper($this-&gt;{m_proddata}-&gt;getSet('prodopts'));
+     close(DUMP);
+   }
+ 
+-  ### THIS IS ONLY FIRST SHOT! TODO FIXME
+-  ## set env vars according to &quot;productinfo&quot; elements:
+-  #while(my ($name,$value) = each(%{$this-&gt;{m_prodvars}})) {
+-  #  $ENV{$name} = $value;
+-  #}
+-
+   $this-&gt;{m_united} = &quot;$this-&gt;{m_basedir}/main&quot;;
+   $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}&quot;} = 1;
+   my $mediumname = $this-&gt;{m_proddata}-&gt;getVar(&quot;MEDIUM_NAME&quot;);
+@@ -1496,8 +1490,8 @@
+   my $this = shift;
+ 
+ 
+-  $this-&gt;{m_metacreator}-&gt;loadPlugins(&quot;/usr/share/kiwi/modules/plugins/&quot;);
+-  $this-&gt;{m_metacreator}-&gt;mediaName($this-&gt;{m_prodvars}-&gt;{'MEDIUM_NAME'});
++  $this-&gt;{m_metacreator}-&gt;loadPlugins(&quot;/usr/share/kiwi/modules&quot;);
++  $this-&gt;{m_metacreator}-&gt;mediaName($this-&gt;{m_proddata}-&gt;getVar('MEDIUM_NAME'));
+   # testhack: set the plugin ready:
+   my $p = $this-&gt;{m_metacreator}-&gt;getPlugin(1);
+   if(defined($p)) {
+
+Modified: kiwi-head/modules/KIWIRepoMetaHandler.pm
+==============================================================================
+--- kiwi-head/modules/KIWIRepoMetaHandler.pm	(original)
++++ kiwi-head/modules/KIWIRepoMetaHandler.pm	Fri Jun 27 12:22:16 2008
+@@ -187,7 +187,7 @@
+   foreach my $p(@plugins) {
+     chomp $p;
+     next if(-d &quot;$p&quot;);
+-    next if($p !~ m{.*[.]pm});
++    next if($p !~ m{.*Plugin[.]pm});
+ 
+     my $loadsuccess = $this-&gt;loadPlugin(&quot;$dir/$p&quot;);
+     if($loadsuccess == 1) {
+@@ -224,7 +224,7 @@
+   $file =~ m{(.*)/(.*)([.]pm)$};
+   my $plugin = $2;
+   if(not defined($plugin)) {
+-    $this-&gt;{m_collect}-&gt;error(&quot;loadPlugin: something in regexp broken: $file =~ m{(.*)/(.*)([.]pm)$}...?&quot;);
++    $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;loadPlugin: something in regexp broken: $file =~ m{(.*)/(.*)([.]pm)$}...?&quot;);
+     return $retval;
+   }
+ 
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000506.html">[Kiwi-devel] [SVN:KIWI-Team] r1416 - in kiwi-head: . rpm
+</A></li>
+	<LI>Next message: <A HREF="000508.html">[Kiwi-devel] [SVN:KIWI-Team] r1418 - in kiwi-head: . rpm	system/boot/xenboot/suse-10.1 system/boot/xenboot/suse-10.2	system/boot/xenboot/suse-10.3 system/boot/xenboot/suse-11.0	system/boot/xenboot/suse-SLED10 system/boot/xenboot/suse-SLES10
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#507">[ date ]</a>
+              <a href="thread.html#507">[ thread ]</a>
+              <a href="subject.html#507">[ subject ]</a>
+              <a href="author.html#507">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

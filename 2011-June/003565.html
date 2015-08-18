@@ -1,0 +1,159 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. abe4f8b90f16934ce69c22e96e7de41e719ab6e4
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20abe4f8b90f16934ce69c22e96e7de41e719ab6e4&In-Reply-To=%3C20110627100508.74C7D482950%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003564.html">
+   <LINK REL="Next"  HREF="003567.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. abe4f8b90f16934ce69c22e96e7de41e719ab6e4</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20abe4f8b90f16934ce69c22e96e7de41e719ab6e4&In-Reply-To=%3C20110627100508.74C7D482950%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. abe4f8b90f16934ce69c22e96e7de41e719ab6e4">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Jun 27 12:05:08 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003564.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. dabbd1bf6485ec1f829bf51035fe1fed421716a0
+</A></li>
+        <LI>Next message: <A HREF="003567.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 67f992c837051b57e310a7eb45528f4a4116f3d3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3565">[ date ]</a>
+              <a href="thread.html#3565">[ thread ]</a>
+              <a href="subject.html#3565">[ subject ]</a>
+              <a href="author.html#3565">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  abe4f8b90f16934ce69c22e96e7de41e719ab6e4 (commit)
+      from  dabbd1bf6485ec1f829bf51035fe1fed421716a0 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit abe4f8b90f16934ce69c22e96e7de41e719ab6e4
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Jun 27 12:00:38 2011 +0200
+
+    - added support for pxe buffered write on destination device in
+      fetchFile() function used for netboot images. By default a
+      chunk size of 4k is used
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 839f57f..a49c52d 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -5000,6 +5000,10 @@ function fetchFile {
+ 	local izip=$3
+ 	local host=$4
+ 	local type=$5
++	local chunk=$6
++	if test -z &quot;$chunk&quot;;then
++		chunk=4k
++	fi
+ 	if test -z &quot;$path&quot;; then
+ 		systemException &quot;No path specified&quot; &quot;reboot&quot;
+ 	fi
+@@ -5024,27 +5028,30 @@ function fetchFile {
+ 		&quot;http&quot;)
+ 			if test &quot;$izip&quot; = &quot;compressed&quot;; then
+ 				curl -f <A HREF="http://$host/$path">http://$host/$path</A> 2&gt;$TRANSFER_ERRORS_FILE |\
+-					gzip -d &gt; $dest 2&gt;&gt;$TRANSFER_ERRORS_FILE
++					gzip -d 2&gt;&gt;$TRANSFER_ERRORS_FILE | dd bs=$chunk of=$dest
+ 			else
+-				curl -f <A HREF="http://$host/$path">http://$host/$path</A> &gt; $dest 2&gt; $TRANSFER_ERRORS_FILE
++				curl -f <A HREF="http://$host/$path">http://$host/$path</A> 2&gt; $TRANSFER_ERRORS_FILE |\
++					dd bs=$chunk of=$dest
+ 			fi
+ 			loadCode=$?
+ 			;;
+ 		&quot;https&quot;)
+ 			if test &quot;$izip&quot; = &quot;compressed&quot;; then
+ 				curl -f -k <A HREF="https://$host/$path">https://$host/$path</A> 2&gt;$TRANSFER_ERRORS_FILE |\
+-					gzip -d &gt; $dest 2&gt;&gt;$TRANSFER_ERRORS_FILE
++					gzip -d 2&gt;&gt;$TRANSFER_ERRORS_FILE | dd bs=$chunk of=$dest
+ 			else
+-				curl -f -k <A HREF="https://$host/$path">https://$host/$path</A> &gt; $dest 2&gt; $TRANSFER_ERRORS_FILE
++				curl -f -k <A HREF="https://$host/$path">https://$host/$path</A> 2&gt; $TRANSFER_ERRORS_FILE |\
++					dd bs=$chunk of=$dest
+ 			fi
+ 			loadCode=$?
+ 			;;
+ 		&quot;ftp&quot;)
+ 			if test &quot;$izip&quot; = &quot;compressed&quot;; then
+ 				curl <A HREF="ftp://$host/$path">ftp://$host/$path</A> 2&gt;$TRANSFER_ERRORS_FILE |\
+-					gzip -d &gt; $dest 2&gt;&gt;$TRANSFER_ERRORS_FILE
++					gzip -d 2&gt;&gt;$TRANSFER_ERRORS_FILE | dd bs=$chunk of=$dest
+ 			else
+-				curl <A HREF="ftp://$host/$path">ftp://$host/$path</A> &gt; $dest 2&gt; $TRANSFER_ERRORS_FILE
++				curl <A HREF="ftp://$host/$path">ftp://$host/$path</A> 2&gt; $TRANSFER_ERRORS_FILE |\
++					dd bs=$chunk of=$dest
+ 			fi
+ 			loadCode=$?
+ 			;;
+@@ -5063,13 +5070,14 @@ function fetchFile {
+ 				# atftp is disabled because it doesn't work with pipes
+ 				busybox tftp \
+ 					-b $imageBlkSize -g -r $path \
+-					-l &gt;(gzip -d &gt; $dest 2&gt;&gt;$TRANSFER_ERRORS_FILE) \
++					-l &gt;(gzip -d 2&gt;&gt;$TRANSFER_ERRORS_FILE | dd bs=$chunk of=$dest) \
+ 					$host 2&gt;&gt;$TRANSFER_ERRORS_FILE
+ 			else
+ 				atftp \
+ 					--option &quot;$multicast_atftp&quot;  \
+ 					--option &quot;blksize $imageBlkSize&quot; \
+-					-g -r $path -l $dest $host &amp;&gt; $TRANSFER_ERRORS_FILE
++					-g -r $path -l &gt;(dd bs=$chunk of=$dest) \
++					$host &amp;&gt; $TRANSFER_ERRORS_FILE
+ 			fi
+ 			loadCode=$?
+ 			;;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003564.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. dabbd1bf6485ec1f829bf51035fe1fed421716a0
+</A></li>
+	<LI>Next message: <A HREF="003567.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 67f992c837051b57e310a7eb45528f4a4116f3d3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3565">[ date ]</a>
+              <a href="thread.html#3565">[ thread ]</a>
+              <a href="subject.html#3565">[ subject ]</a>
+              <a href="author.html#3565">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

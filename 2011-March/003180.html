@@ -1,0 +1,592 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, ppc,	updated. 232600037008f520fbd430178b8fa1e5a2f64a71
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20ppc%2C%0A%09updated.%20232600037008f520fbd430178b8fa1e5a2f64a71&In-Reply-To=%3C20110311143941.E791E481391%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003179.html">
+   <LINK REL="Next"  HREF="003182.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, ppc,	updated. 232600037008f520fbd430178b8fa1e5a2f64a71</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20ppc%2C%0A%09updated.%20232600037008f520fbd430178b8fa1e5a2f64a71&In-Reply-To=%3C20110311143941.E791E481391%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, ppc,	updated. 232600037008f520fbd430178b8fa1e5a2f64a71">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Mar 11 15:39:41 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003179.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e69d8b01fe944e9763e5479eac2df333b09ec9ce
+</A></li>
+        <LI>Next message: <A HREF="003182.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 64e511b4fe5f8fca4b10beaa4f3fa866fd6c80ff
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3180">[ date ]</a>
+              <a href="thread.html#3180">[ thread ]</a>
+              <a href="subject.html#3180">[ subject ]</a>
+              <a href="author.html#3180">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, ppc has been updated
+       via  232600037008f520fbd430178b8fa1e5a2f64a71 (commit)
+       via  e69d8b01fe944e9763e5479eac2df333b09ec9ce (commit)
+       via  3ad951af77e72d938b1344af803dbf2b1227d67d (commit)
+      from  c065b95167335aad991d48a6ee82308cdb8483bb (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 232600037008f520fbd430178b8fa1e5a2f64a71
+Merge: c065b95 e69d8b0
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Mar 11 15:39:29 2011 +0100
+
+    Merge remote branch 'origin/master' into ppc
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 61ea5aa..d94e4a4 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -882,6 +882,7 @@ function setupSUSEInitrd {
+ 		systemIntegrity=unknown
+ 		bootLoaderOK=0
+ 	fi
++	resetBootBind
+ }
+ #======================================
+ # callSUSEInitrdScripts
+@@ -7073,6 +7074,142 @@ function resetSnapshotMap {
+ 	unset snapshotMap
+ }
+ #======================================
++# resetBootBind
++#--------------------------------------
++function resetBootBind {
++	# /.../
++	# remove the bind mount boot setup and replace with a
++	# symbolic link to make the suse kernel update process
++	# to work correctly
++	# ----
++	local bootdir
++	#======================================
++	# find bind boot dir
++	#--------------------------------------
++	for i in lvmboot btrboot clicboot xfsboot luksboot syslboot;do
++		if [ -d /$i ];then
++			bootdir=$i
++			break
++		fi
++	done
++	if [ -z &quot;$bootdir&quot; ];then
++		return
++	fi
++	#======================================
++	# reset bind mount to standard boot dir
++	#--------------------------------------
++	umount /boot
++	mv /$bootdir/boot /$bootdir/tmp
++	mv /$bootdir/tmp/* /$bootdir
++	rmdir /$bootdir/tmp
++	umount /$bootdir
++	rmdir /$bootdir
++	#======================================
++	# update fstab entry
++	#--------------------------------------
++	cat /etc/fstab | grep -v bind &gt; /etc/fstab.new
++	mv /etc/fstab.new /etc/fstab
++	cat /etc/fstab | sed -e s@/$bootdir@/boot@ &gt; /etc/fstab.new
++	mv /etc/fstab.new /etc/fstab
++	#======================================
++	# mount boot again
++	#--------------------------------------
++	mount $imageBootDevice /boot
++	#======================================
++	# check for syslinux requirements
++	#--------------------------------------	
++	if [ &quot;$loader&quot; = &quot;syslinux&quot; ];then
++		# /.../
++		# if syslinux is used we need to make sure that the
++		# filename on the boot partition is correct 8+3
++		# we also have to move the kernel and initrd to /boot
++		# on the boot partition. This is normally done by the
++		# boot -&gt; . link but we can't create links on fat
++		# ----
++		IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
++			if test -z &quot;$i&quot;;then
++				continue
++			fi
++			kernel=`echo $i | cut -f1 -d:`
++			initrd=`echo $i | cut -f2 -d:`
++			mkdir -p /boot/boot
++			mv /boot/$kernel /boot/boot/linux.1
++			mv /boot/$initrd /boot/boot/initrd.1
++			break
++		done
++		IFS=$IFS_ORIG
++	fi
++}
++#======================================
++# setupKernelLinks
++#--------------------------------------
++function setupKernelLinks {
++	# /.../
++	# check kernel names and links to kernel and initrd
++	# according to the different boot-up situations
++	# ----
++	#======================================
++	# mount boot partition of required
++	#--------------------------------------
++	local mountCalled=no
++	if [ -e &quot;$imageRWDevice&quot; ] &amp;&amp; blkid $imageRWDevice;then
++		kiwiMount $imageRWDevice &quot;/mnt&quot;
++		mountCalled=yes
++	fi
++	#======================================
++	# Change to boot directory
++	#--------------------------------------
++	pushd /mnt/boot &gt;/dev/null
++	#======================================
++	# remove garbage if possible 
++	#--------------------------------------
++	if [ $loader = &quot;syslinux&quot; ] || [ $loader = &quot;extlinux&quot; ];then
++		rm -rf grub
++	fi
++	#======================================
++	# setup if overlay filesystem is used
++	#--------------------------------------
++	if [ &quot;$OEM_KIWI_INITRD&quot; = &quot;yes&quot; ] || isFSTypeReadOnly;then
++		# /.../
++		# we are using a special root setup based on an overlay
++		# filesystem. In this case we can't use the SuSE Linux
++		# initrd but must stick to the kiwi boot system.
++		# ----
++		IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
++			if test -z &quot;$i&quot;;then
++				continue
++			fi
++			kernel=`echo $i | cut -f1 -d:`
++			initrd=`echo $i | cut -f2 -d:`
++			break
++		done
++		IFS=$IFS_ORIG
++		if [ &quot;$loader&quot; = &quot;syslinux&quot; ];then
++			rm -f $initrd &amp;&amp; mv initrd.vmx initrd.1
++			rm -f $kernel &amp;&amp; mv linux.vmx  linux.1
++		else
++			rm -f $initrd &amp;&amp; ln -s initrd.vmx $initrd
++			rm -f $kernel &amp;&amp; ln -s linux.vmx  $kernel
++		fi
++	fi	
++	#======================================
++	# make sure boot =&gt; . link exists
++	#--------------------------------------
++	if [ ! $loader = &quot;syslinux&quot; ] &amp;&amp; [ ! -e boot ];then
++		ln -s . boot
++	fi
++	#======================================
++	# umount boot partition if required
++	#--------------------------------------
++	popd &gt;/dev/null
++	if [ &quot;$mountCalled&quot; = &quot;yes&quot; ];then
++		umount /mnt
++	fi
++}
++
++#FIXME
++
++#======================================
+ # initialize
+ #--------------------------------------
+ function initialize {
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index 092bb26..0577c91 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -553,39 +553,7 @@ fi
+ # 18) setup ird/kernel links for union
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then 
+-	if [ &quot;$OEM_KIWI_INITRD&quot; = &quot;yes&quot; ] || isFSTypeReadOnly;then
+-		# /.../
+-		# we are using a special root setup with aufs. In this case
+-		# we can't use the SuSE Linux initrd but must stick to the
+-		# kiwi boot system.
+-		# ----
+-		mountCalled=no
+-		if [ -e &quot;$imageRWDevice&quot; ] &amp;&amp; blkid $imageRWDevice;then
+-			kiwiMount $imageRWDevice &quot;/mnt&quot;
+-			mountCalled=yes
+-		fi
+-		pushd /mnt/boot &gt;/dev/null
+-		IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
+-			if test -z &quot;$i&quot;;then
+-				continue
+-			fi
+-			kernel=`echo $i | cut -f1 -d:`
+-			initrd=`echo $i | cut -f2 -d:`
+-			if [ &quot;$loader&quot; = &quot;syslinux&quot; ];then
+-				rm -f $initrd &amp;&amp; mv initrd.vmx initrd.1
+-				rm -f $kernel &amp;&amp; mv linux.vmx  linux.1
+-			else
+-				rm -f $initrd &amp;&amp; ln -s initrd.vmx $initrd
+-				rm -f $kernel &amp;&amp; ln -s linux.vmx  $kernel
+-			fi
+-			break
+-		done
+-		IFS=$IFS_ORIG
+-		popd &gt;/dev/null
+-		if [ &quot;$mountCalled&quot; = &quot;yes&quot; ];then
+-			umount /mnt
+-		fi
+-	fi
++	setupKernelLinks
+ fi
+ 
+ #======================================
+diff --git a/system/boot/ix86/vmxboot/suse-linuxrc b/system/boot/ix86/vmxboot/suse-linuxrc
+index bc2128a..62e92f2 100755
+--- a/system/boot/ix86/vmxboot/suse-linuxrc
++++ b/system/boot/ix86/vmxboot/suse-linuxrc
+@@ -202,39 +202,7 @@ fi
+ # 14) setup ird/kernel links for union
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+-	if isFSTypeReadOnly;then
+-		# /.../
+-		# we are using a special root setup with aufs. In this case
+-		# we can't use the SuSE Linux initrd but must stick to the
+-		# kiwi boot system.
+-		# ----
+-		mountCalled=no
+-		if [ -e &quot;$imageRWDevice&quot; ] &amp;&amp; blkid $imageRWDevice;then
+-			kiwiMount $imageRWDevice &quot;/mnt&quot;
+-			mountCalled=yes
+-		fi
+-		pushd /mnt/boot &gt;/dev/null
+-		IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
+-			if test -z &quot;$i&quot;;then
+-				continue
+-			fi
+-			kernel=`echo $i | cut -f1 -d:`
+-			initrd=`echo $i | cut -f2 -d:`
+-			if [ &quot;$loader&quot; = &quot;syslinux&quot; ];then
+-				rm -f $initrd &amp;&amp; mv initrd.vmx initrd.1
+-				rm -f $kernel &amp;&amp; mv linux.vmx  linux.1
+-			else
+-				rm -f $initrd &amp;&amp; ln -s initrd.vmx $initrd
+-				rm -f $kernel &amp;&amp; ln -s linux.vmx  $kernel
+-			fi
+-			break
+-		done
+-		IFS=$IFS_ORIG
+-		popd &gt;/dev/null
+-		if [ &quot;$mountCalled&quot; = &quot;yes&quot; ];then
+-			umount /mnt
+-		fi
+-	fi
++	setupKernelLinks
+ fi
+ 
+ #======================================
+diff --git a/system/boot/s390/oemboot/suse-dump b/system/boot/s390/oemboot/suse-dump
+index a389cd1..11eb409 100755
+--- a/system/boot/s390/oemboot/suse-dump
++++ b/system/boot/s390/oemboot/suse-dump
+@@ -331,12 +331,13 @@ function OEMInstall {
+ 				count=0
+ 				for i in /dev/mapper/${loop}*;do
+ 					psize=`partitionSize $i`
++					psize=$((psize / 1024))
+ 					partid=$(partitionID /dev/$loop $(nd $i))
+ 					partname=Root
+ 					if [ $reqpart -eq 2 ] &amp;&amp; [ $count = 0 ];then
+ 						partname=Boot
+ 					fi
+-					echo &quot;* $partname partition requires at least $psize KB&quot; \
++					echo &quot;* $partname partition requires at least $psize MB&quot; \
+ 						&gt;&gt; $info
+ 					echo &quot;  Partition Type: 0x$partid&quot; &gt;&gt; $info
+ 					count=$((count + 1))
+diff --git a/system/boot/s390/oemboot/suse-linuxrc b/system/boot/s390/oemboot/suse-linuxrc
+index 542443d..b021b78 100755
+--- a/system/boot/s390/oemboot/suse-linuxrc
++++ b/system/boot/s390/oemboot/suse-linuxrc
+@@ -85,6 +85,9 @@ function setupInitialDeviceNames {
+ 			export imageRootDevice=/dev/$VGROUP/LVRoot
+ 		fi
+ 		export imageRWDevice=/dev/$VGROUP/LVRoot
++		if [ ! -z &quot;$kiwi_ramonly&quot; ];then
++			export imageRWDevice=/dev/ram1
++		fi
+ 		export imageRODevice=/dev/$VGROUP/LVComp
+ 		export imageIOWRDevice=$imageRWDevice
+ 		export imageBootDevice=$(ddn $imageDiskDevice 1)
+@@ -554,34 +557,7 @@ fi
+ # 18) setup ird/kernel links for union
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then 
+-	if [ &quot;$OEM_KIWI_INITRD&quot; = &quot;yes&quot; ] || isFSTypeReadOnly;then
+-		# /.../
+-		# we are using a special root setup with aufs. In this case
+-		# we can't use the SuSE Linux initrd but must stick to the
+-		# kiwi boot system.
+-		# ----
+-		mountCalled=no
+-		if [ -e &quot;$imageRWDevice&quot; ];then
+-			kiwiMount $imageRWDevice &quot;/mnt&quot;
+-			mountCalled=yes
+-		fi
+-		pushd /mnt/boot &gt;/dev/null
+-		IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
+-			if test -z &quot;$i&quot;;then
+-				continue
+-			fi
+-			kernel=`echo $i | cut -f1 -d:`
+-			initrd=`echo $i | cut -f2 -d:`
+-			rm -f $initrd &amp;&amp; ln -s initrd.vmx $initrd
+-			rm -f $kernel &amp;&amp; ln -s linux.vmx  $kernel
+-			break
+-		done
+-		IFS=$IFS_ORIG
+-		popd &gt;/dev/null
+-		if [ &quot;$mountCalled&quot; = &quot;yes&quot; ];then
+-			umount /mnt
+-		fi
+-	fi
++	setupKernelLinks
+ fi
+ 
+ #======================================
+diff --git a/system/boot/s390/oemboot/suse-preinit b/system/boot/s390/oemboot/suse-preinit
+index c5a0aec..920b9c4 100755
+--- a/system/boot/s390/oemboot/suse-preinit
++++ b/system/boot/s390/oemboot/suse-preinit
+@@ -77,41 +77,14 @@ else
+ fi
+ 
+ #======================================
+-# 8) Check FAT requires on syslinux
+-#--------------------------------------
+-if [ &quot;$loader&quot; = &quot;syslinux&quot; ];then
+-	# /.../
+-	# if syslinux is used we need to make sure that the
+-	# filename on the boot partition is correct 8+3
+-	# ----
+-	count=1
+-	IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
+-		if test -z &quot;$i&quot;;then
+-			continue
+-		fi
+-		kernel=`echo $i | cut -f1 -d:`
+-		initrd=`echo $i | cut -f2 -d:`
+-		mv /boot/$kernel /boot/linux.$count
+-		mv /boot/$initrd /boot/initrd.$count
+-		running=$(uname -r)
+-		rlinux=vmlinuz-$running
+-		rinitrd=initrd-$running
+-		ln -s /boot/linux.$count  /boot/$rlinux
+-		ln -s /boot/initrd.$count /boot/$rinitrd
+-		count=`expr $count + 1`
+-	done
+-	IFS=$IFS_ORIG
+-fi
+-
+-#======================================
+-# 9) Install boot loader if ok
++# 8) Install boot loader if ok
+ #--------------------------------------
+ if [ $bootLoaderOK = 1 ];then
+ 	installBootLoader
+ fi
+ 
+ #======================================
+-# 10) copy recovery related files
++# 9) copy recovery related files
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ] &amp;&amp; [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ 	IFS=$IFS_ORIG
+@@ -146,7 +119,7 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ] &amp;&amp; [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ fi
+ 
+ #======================================
+-# 11) create /etc/ImagePackages
++# 10) create /etc/ImagePackages
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	if [ -x /bin/rpm ];then
+@@ -156,17 +129,17 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ fi
+ 
+ #======================================
+-# 12) setup console
++# 11) setup console
+ #--------------------------------------
+ setupConsole
+ 
+ #======================================
+-# 13) Run user script
++# 12) Run user script
+ #--------------------------------------
+ runHook preCallInit
+ 
+ #======================================
+-# 14) kill udev
++# 13) kill udev
+ #--------------------------------------
+ udevSystemStop
+ umountSystemFilesystems
+diff --git a/system/boot/s390/oemboot/suse-repart b/system/boot/s390/oemboot/suse-repart
+index 00554fa..fa8e68e 100755
+--- a/system/boot/s390/oemboot/suse-repart
++++ b/system/boot/s390/oemboot/suse-repart
+@@ -335,6 +335,10 @@ function OEMRepartLVM {
+ 	# p2: ( LVM  )  +luks
+ 	# -------------------------------------
+ 	#======================================
++	# check for boot partition
++	#--------------------------------------
++	createBootDeviceData 1
++	#======================================
+ 	# setup initial boot device ID
+ 	#--------------------------------------
+ 	export bootid=1
+diff --git a/system/boot/s390/vmxboot/suse-linuxrc b/system/boot/s390/vmxboot/suse-linuxrc
+index f89bf46..5cc1d1d 100755
+--- a/system/boot/s390/vmxboot/suse-linuxrc
++++ b/system/boot/s390/vmxboot/suse-linuxrc
+@@ -206,34 +206,7 @@ fi
+ # 14) setup ird/kernel links for union
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+-	if isFSTypeReadOnly;then
+-		# /.../
+-		# we are using a special root setup with aufs. In this case
+-		# we can't use the SuSE Linux initrd but must stick to the
+-		# kiwi boot system.
+-		# ----
+-		mountCalled=no
+-		if [ -e &quot;$imageRWDevice&quot; ];then
+-			kiwiMount $imageRWDevice &quot;/mnt&quot;
+-			mountCalled=yes
+-		fi
+-		pushd /mnt/boot &gt;/dev/null
+-		IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
+-			if test -z &quot;$i&quot;;then
+-				continue
+-			fi
+-			kernel=`echo $i | cut -f1 -d:`
+-			initrd=`echo $i | cut -f2 -d:`
+-			rm -f $initrd &amp;&amp; ln -s initrd.vmx $initrd
+-			rm -f $kernel &amp;&amp; ln -s linux.vmx  $kernel
+-			break
+-		done
+-		IFS=$IFS_ORIG
+-		popd &gt;/dev/null
+-		if [ &quot;$mountCalled&quot; = &quot;yes&quot; ];then
+-			umount /mnt
+-		fi
+-	fi
++	setupKernelLinks
+ fi
+ 
+ #======================================
+diff --git a/system/boot/s390/vmxboot/suse-preinit b/system/boot/s390/vmxboot/suse-preinit
+index 7443892..ffbbee3 100755
+--- a/system/boot/s390/vmxboot/suse-preinit
++++ b/system/boot/s390/vmxboot/suse-preinit
+@@ -74,46 +74,19 @@ if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+ fi
+ 
+ #======================================
+-# 9) Check FAT requires on syslinux
+-#--------------------------------------
+-if [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
+-	# /.../
+-	# if syslinux is used we need to make sure that the
+-	# filename on the boot partition is correct 8+3
+-	# ----
+-	count=1
+-	IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
+-		if test -z &quot;$i&quot;;then
+-			continue
+-		fi
+-		kernel=`echo $i | cut -f1 -d:`
+-		initrd=`echo $i | cut -f2 -d:`
+-		mv /boot/$kernel /boot/linux.$count
+-		mv /boot/$initrd /boot/initrd.$count
+-		running=$(uname -r)
+-		rlinux=vmlinuz-$running
+-		rinitrd=initrd-$running
+-		ln -s /boot/linux.$count  /boot/$rlinux
+-		ln -s /boot/initrd.$count /boot/$rinitrd
+-		count=`expr $count + 1`
+-	done
+-	IFS=$IFS_ORIG
+-fi
+-
+-#======================================
+-# 10) Install boot loader if ok
++# 9) Install boot loader if ok
+ #--------------------------------------
+ if [ $bootLoaderOK = 1 ];then
+ 	installBootLoader
+ fi
+ 
+ #======================================
+-# 11) setup console
++# 10) setup console
+ #--------------------------------------
+ setupConsole
+ 
+ #======================================
+-# 12) kill udev
++# 11) kill udev
+ #--------------------------------------
+ udevSystemStop
+ umountSystemFilesystems
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003179.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e69d8b01fe944e9763e5479eac2df333b09ec9ce
+</A></li>
+	<LI>Next message: <A HREF="003182.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 64e511b4fe5f8fca4b10beaa4f3fa866fd6c80ff
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3180">[ date ]</a>
+              <a href="thread.html#3180">[ thread ]</a>
+              <a href="subject.html#3180">[ subject ]</a>
+              <a href="author.html#3180">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

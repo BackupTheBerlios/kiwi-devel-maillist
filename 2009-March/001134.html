@@ -1,0 +1,213 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b96b6b17ef8b48a39a40e204876cc0b10175699e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b96b6b17ef8b48a39a40e204876cc0b10175699e&In-Reply-To=%3C200903241430.n2OEUDYW013936%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001133.html">
+   <LINK REL="Next"  HREF="001137.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b96b6b17ef8b48a39a40e204876cc0b10175699e</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b96b6b17ef8b48a39a40e204876cc0b10175699e&In-Reply-To=%3C200903241430.n2OEUDYW013936%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b96b6b17ef8b48a39a40e204876cc0b10175699e">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Mar 24 15:30:13 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001133.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4eed181555f34db9f52fe43cca18f97422a8d13b
+</A></li>
+        <LI>Next message: <A HREF="001137.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 705367cb393c4bbb76404fb9768114942c3ee75e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1134">[ date ]</a>
+              <a href="thread.html#1134">[ thread ]</a>
+              <a href="subject.html#1134">[ subject ]</a>
+              <a href="author.html#1134">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  b96b6b17ef8b48a39a40e204876cc0b10175699e (commit)
+      from  4eed181555f34db9f52fe43cca18f97422a8d13b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b96b6b17ef8b48a39a40e204876cc0b10175699e
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Mar 24 15:30:03 2009 +0100
+
+    - add --dest-dir check when --build runs
+    - update template descriptions
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index e4d89cd..2c6aedd 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -257,6 +257,25 @@ sub main {
+ 	# Prepare and Create in one step
+ 	#----------------------------------------
+ 	if (defined $Build) {
++		#==========================================
++		# Check if destdir exists or not 
++		#------------------------------------------
++		if (! -d $Destination) {
++			my $prefix = $kiwi -&gt; getPrefix (1);
++			my $answer = &quot;unknown&quot;;
++			$kiwi -&gt; info (&quot;Destination: $Destination doesn't exist\n&quot;);
++			while ($answer !~ /^yes$|^no$/) {
++				print STDERR $prefix,
++					&quot;Would you like kiwi to create it [yes/no] ? &quot;;
++				chomp ($answer = &lt;&gt;);
++			}
++			if ($answer eq &quot;yes&quot;) {
++				qxx (&quot;mkdir -p $Destination&quot;);
++			}
++		}
++		#==========================================
++		# Setup prepare 
++		#------------------------------------------
+ 		$main::Prepare = $Build;
+ 		$main::RootTree= $Destination.&quot;/image-root&quot;;
+ 		$main::Survive = &quot;yes&quot;;
+@@ -266,6 +285,9 @@ sub main {
+ 			$main::Survive = &quot;default&quot;;
+ 			my $code = kiwiExit (1); return $code;
+ 		}
++		#==========================================
++		# Setup create 
++		#------------------------------------------
+ 		undef $main::Prepare;
+ 		undef $main::ForceNewRoot;
+ 		$main::Survive = &quot;default&quot;;
+diff --git a/modules/KIWIURL.pm b/modules/KIWIURL.pm
+index b99ecd6..366fe78 100644
+--- a/modules/KIWIURL.pm
++++ b/modules/KIWIURL.pm
+@@ -395,7 +395,13 @@ sub openSUSEpath {
+ 	my @responses = ();
+ 	foreach my $url (@urllist) {
+ 		my $request = HTTP::Request-&gt;new (GET =&gt; $url);
+-		my $response= $browser -&gt; request  ( $request );
++		my $response;
++		eval {
++			$response= $browser -&gt; request  ( $request );
++		};
++		if ($@) {
++			return undef;
++		}
+ 		my $title   = $response-&gt; title ();
+ 		if ((defined $title) &amp;&amp; ($title !~ /not found/i)) {
+ 			my $repourl = $url;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index c2b21f8..6722f09 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -13,6 +13,8 @@ Mon Mar 23 10:28:31 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ - removed KIWICollect_local.pm and also the --instsource-local
+   option from the code base. This module is no longer maintained
+   and all code related to this path went into KIWICollect.pm
++- add --dest-dir check when --build runs
++- update template descriptions
+ 
+ -------------------------------------------------------------------
+ Wed Mar 18 12:28:01 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+diff --git a/template/suse-11.1-JeOS/config.sh b/template/suse-11.1-JeOS/config.sh
+index f88326b..172205d 100755
+--- a/template/suse-11.1-JeOS/config.sh
++++ b/template/suse-11.1-JeOS/config.sh
+@@ -63,8 +63,6 @@ zypper ar $baseRepo $baseName
+ # Remove unneeded packages
+ #--------------------------------------
+ rpm -qa | grep yast | xargs rpm -e --nodeps
+-rpm -qa | grep perl | xargs rpm -e --nodeps
+-rpm -qa | grep cracklib | xargs rpm -e --nodeps
+ 
+ #======================================
+ # Umount kernel filesystems
+diff --git a/template/suse-11.1-JeOS/config.xml b/template/suse-11.1-JeOS/config.xml
+index 3da8ee4..b191249 100644
+--- a/template/suse-11.1-JeOS/config.xml
++++ b/template/suse-11.1-JeOS/config.xml
+@@ -48,7 +48,7 @@
+ 	&lt;/users&gt;
+ 	&lt;!-- Package Repositories --&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="opensuse://11.1/repo/oss/">opensuse://11.1/repo/oss/</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.1/repo/oss">opensuse://11.1/repo/oss</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;!-- Packages and Patterns --&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+diff --git a/template/suse-SLE10-JeOS/config.sh b/template/suse-SLE10-JeOS/config.sh
+index fb24888..330200f 100755
+--- a/template/suse-SLE10-JeOS/config.sh
++++ b/template/suse-SLE10-JeOS/config.sh
+@@ -63,8 +63,6 @@ zypper sa $baseRepo $baseName
+ # Remove unneeded packages
+ #--------------------------------------
+ rpm -qa | grep yast | xargs rpm -e --nodeps
+-rpm -qa | grep perl | xargs rpm -e --nodeps
+-rpm -qa | grep cracklib | xargs rpm -e --nodeps
+ 
+ #======================================
+ # Umount kernel filesystems
+diff --git a/template/suse-SLE11-JeOS/config.sh b/template/suse-SLE11-JeOS/config.sh
+index f88326b..172205d 100755
+--- a/template/suse-SLE11-JeOS/config.sh
++++ b/template/suse-SLE11-JeOS/config.sh
+@@ -63,8 +63,6 @@ zypper ar $baseRepo $baseName
+ # Remove unneeded packages
+ #--------------------------------------
+ rpm -qa | grep yast | xargs rpm -e --nodeps
+-rpm -qa | grep perl | xargs rpm -e --nodeps
+-rpm -qa | grep cracklib | xargs rpm -e --nodeps
+ 
+ #======================================
+ # Umount kernel filesystems
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001133.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4eed181555f34db9f52fe43cca18f97422a8d13b
+</A></li>
+	<LI>Next message: <A HREF="001137.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 705367cb393c4bbb76404fb9768114942c3ee75e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1134">[ date ]</a>
+              <a href="thread.html#1134">[ thread ]</a>
+              <a href="subject.html#1134">[ subject ]</a>
+              <a href="author.html#1134">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,122 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1756 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1756%20-%0A%09kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules&In-Reply-To=%3C200811131702.mADH2rs3020208%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000835.html">
+   <LINK REL="Next"  HREF="000837.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1756 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules</H1>
+    <B>adrians at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1756%20-%0A%09kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules&In-Reply-To=%3C200811131702.mADH2rs3020208%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1756 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules">adrians at mail.berlios.de
+       </A><BR>
+    <I>Thu Nov 13 18:02:53 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000835.html">[Kiwi-devel] r1755 - in kiwi-head: modules rpm tools/cdtool
+</A></li>
+        <LI>Next message: <A HREF="000837.html">[Kiwi-devel] r1757 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#836">[ date ]</a>
+              <a href="thread.html#836">[ thread ]</a>
+              <a href="subject.html#836">[ subject ]</a>
+              <a href="author.html#836">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: adrians
+Date: 2008-11-13 18:02:52 +0100 (Thu, 13 Nov 2008)
+New Revision: 1756
+
+Modified:
+   kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect_local.pm
+Log:
+* fix handling of addarch, this must not use substring searches to
+  detect duplicate architectures.
+* cleaned up removearch routine from mls
+
+
+Modified: kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect_local.pm
+===================================================================
+--- kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect_local.pm	2008-11-13 15:25:50 UTC (rev 1755)
++++ kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect_local.pm	2008-11-13 17:02:52 UTC (rev 1756)
+@@ -1499,8 +1499,6 @@
+   my $ret = 0;
+ 
+   return $ret if(not defined($packName));
+-
+-  my @omits = ();
+   if(defined($packOptions-&gt;{'arch'})) {
+     # Check if this is a rule for this platform
+     $packOptions-&gt;{'arch'} =~ s{,\s*,}{,}g;
+@@ -1536,7 +1534,7 @@
+   push @archs, $this-&gt;{m_archlist}-&gt;headList();
+ 
+   if(defined($packOptions-&gt;{'addarch'})) {
+-    if(not(grep(/$packOptions-&gt;{'addarch'}/, @archs))) {
++    if(not(grep($packOptions-&gt;{'addarch'} eq $_, @archs))) {
+       $packOptions-&gt;{'addarch'} =~ s{,\s*,}{,}g;
+       $packOptions-&gt;{'addarch'} =~ s{,\s*}{,}g;
+       $packOptions-&gt;{'addarch'} =~ s{,\s*$}{};
+@@ -1544,23 +1542,13 @@
+       push @archs, split(/,\s*/, $packOptions-&gt;{'addarch'});
+     }
+   }
+-
+   if(defined($packOptions-&gt;{'removearch'})) {
+     $packOptions-&gt;{'removearch'} =~ s{,\s*,}{,}g;
+     $packOptions-&gt;{'removearch'} =~ s{,\s*}{,}g;
+     $packOptions-&gt;{'removearch'} =~ s{,\s*$}{};
+     $packOptions-&gt;{'removearch'} =~ s{^\s*,}{};
+-    @omits = split(/,\s*/, $packOptions-&gt;{'removearch'});
+-    my @rl;
+-    foreach my $x(@omits) {
+-      push @rl, grep(/$x/, @archs);
+-    }
+-    if(@rl) {
+-      my %h = map { $_ =&gt; 1 } @archs;
+-      my @cleared = grep delete($h{$_}), @rl;
+-      @archs = ();
+-      @archs = keys(%h);
+-    }
++    my %omits = map {$_ =&gt; 1} split(/,\s*/, $packOptions-&gt;{'removearch'});
++    @archs = grep {!$omits{$_}} @archs;
+   }
+   
+   return @archs;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000835.html">[Kiwi-devel] r1755 - in kiwi-head: modules rpm tools/cdtool
+</A></li>
+	<LI>Next message: <A HREF="000837.html">[Kiwi-devel] r1757 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#836">[ date ]</a>
+              <a href="thread.html#836">[ thread ]</a>
+              <a href="subject.html#836">[ subject ]</a>
+              <a href="author.html#836">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

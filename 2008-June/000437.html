@@ -1,0 +1,259 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1347 - in	kiwi-branches/KIWI-238-SuSE-10-1-Devel: modules rpm tests/ldd	tests/lsb-cmdchk tests/rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1347%20-%20in%0A%09kiwi-branches/KIWI-238-SuSE-10-1-Devel%3A%20modules%20rpm%20tests/ldd%0A%09tests/lsb-cmdchk%20tests/rpm&In-Reply-To=%3C200806171543.m5HFhxgq010407%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000436.html">
+   <LINK REL="Next"  HREF="000438.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1347 - in	kiwi-branches/KIWI-238-SuSE-10-1-Devel: modules rpm tests/ldd	tests/lsb-cmdchk tests/rpm</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1347%20-%20in%0A%09kiwi-branches/KIWI-238-SuSE-10-1-Devel%3A%20modules%20rpm%20tests/ldd%0A%09tests/lsb-cmdchk%20tests/rpm&In-Reply-To=%3C200806171543.m5HFhxgq010407%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1347 - in	kiwi-branches/KIWI-238-SuSE-10-1-Devel: modules rpm tests/ldd	tests/lsb-cmdchk tests/rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jun 17 17:43:59 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000436.html">[Kiwi-devel] [SVN:KIWI-Team] r1346 - in kiwi-head: rpm
+</A></li>
+        <LI>Next message: <A HREF="000438.html">[Kiwi-devel] [SVN:KIWI-Team] r1348 - in kiwi-head: . rpm tests/ldd	tests/lsb-cmdchk tests/rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#437">[ date ]</a>
+              <a href="thread.html#437">[ thread ]</a>
+              <a href="subject.html#437">[ subject ]</a>
+              <a href="author.html#437">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: Tue Jun 17 17:43:49 2008
+New Revision: 1347
+
+Modified:
+   kiwi-branches/KIWI-238-SuSE-10-1-Devel/kiwi.pl
+   kiwi-branches/KIWI-238-SuSE-10-1-Devel/modules/KIWITest.pm
+   kiwi-branches/KIWI-238-SuSE-10-1-Devel/rpm/kiwi.changes
+   kiwi-branches/KIWI-238-SuSE-10-1-Devel/tests/ldd/test-case.xml
+   kiwi-branches/KIWI-238-SuSE-10-1-Devel/tests/lsb-cmdchk/test-case.xml
+   kiwi-branches/KIWI-238-SuSE-10-1-Devel/tests/rpm/test-case.xml
+
+Log:
+
+- added testsuite patches by Pavel Nemec (bnc #400817)
+
+
+
+Modified: kiwi-branches/KIWI-238-SuSE-10-1-Devel/kiwi.pl
+==============================================================================
+--- kiwi-branches/KIWI-238-SuSE-10-1-Devel/kiwi.pl	(original)
++++ kiwi-branches/KIWI-238-SuSE-10-1-Devel/kiwi.pl	Tue Jun 17 17:43:49 2008
+@@ -823,13 +823,8 @@
+ 				$result_failed +=1;
+ 				my @outputArray = @{$test -&gt; getAllResults()};
+ 				$kiwi -&gt; warning (&quot;Error message : \n&quot;);
+-				foreach my $scriptResult (@outputArray) {
+-					my $cmd    = $scriptResult -&gt; getCommand();
+-					my $txtmsg = $scriptResult -&gt; getMessage();
+-					my $errno  = $scriptResult -&gt; getErrorState();
+-					$txtmsg    = &quot;      &quot;.$txtmsg.&quot;\n&quot;;
+-					$kiwi -&gt; note ($txtmsg);
+-				}
++				my $txtmsg=$test-&gt;getOverallMessage();
++				$kiwi -&gt; note($txtmsg);
+ 			}
+ 		}
+ 		#==========================================
+
+Modified: kiwi-branches/KIWI-238-SuSE-10-1-Devel/modules/KIWITest.pm
+==============================================================================
+--- kiwi-branches/KIWI-238-SuSE-10-1-Devel/modules/KIWITest.pm	(original)
++++ kiwi-branches/KIWI-238-SuSE-10-1-Devel/modules/KIWITest.pm	Tue Jun 17 17:43:49 2008
+@@ -206,56 +206,61 @@
+ 	my $cmd;
+ 	my $errvalue;	
+ 	my @results=();
++	my $errorMessage=&quot;&quot;;
+ 	my $result=KIWITestResult-&gt;new();  #one result for all requirements
+ 	my @reqs= $self-&gt;{XML_ROOT_NODE} -&gt; getChildrenByTagName ('requirements')
+ 		-&gt; get_node(1) -&gt; getChildrenByTagName ('req');
+ 	foreach my $req (@reqs) {
+ 		my $type=$req-&gt;getAttribute('type');
+ 		my $place=$req-&gt;getAttribute('place');
+-		my $reqrelpathname=$req-&gt;textContent;
+-		my $reqpathname;
++		my $reqRelPathName=$req-&gt;textContent;
++		my $reqPathName;
++		my $isOK=&quot;true&quot;; # true if test pass, false if not
+ 		my $manager = $self-&gt;{MANAGER};
+ 		if ($place eq 'extern') {
+ 			$manager -&gt; switchToLocal();
+-			$reqpathname=$reqrelpathname;
++			$reqPathName=$reqRelPathName;
+ 			$errvalue=1;
+ 		} elsif ($place eq 'intern') { 
+ 			$manager -&gt; switchToChroot();
+-			$reqpathname=trimpath($self-&gt;{CHROOT}.&quot;/&quot;.$reqrelpathname);
++			$reqPathName=trimpath($self-&gt;{CHROOT}.&quot;/&quot;.$reqRelPathName);
+ 			$errvalue=2;
+ 		} 
+-		my $ok=0;
+-		if  ($type eq 'file') {
+-			#test file existence (link, file (bin or plain)
+-			if (-f $reqpathname) {$ok=1;}
+-			if (-l $reqpathname) {$ok=2;}
+-		} elsif ($type eq 'directory') {
+-			# test directory existence
+-			if (-d $reqpathname) {$ok=3;}
+-		
+-		} elsif ($type eq 'package') {
+-			# test if rpm package is present in chroot
+-			my $manager = $self-&gt;{MANAGER};
+-			if (! $manager -&gt; setupPackageInfo ( $reqrelpathname )) {
+-				# package is installed...
+-				$ok = 4;
++		else{
++			$errorMessage=&quot;unknown place: &quot;.$place.&quot;, check test description: &quot;.$self-&gt;{XML_FILE};
++			$isOK=&quot;false&quot;;
++		}
++		if($isOK eq &quot;true&quot;){
++			if  ($type eq 'file') {
++				#test file existence (link, file (bin or plain)
++				if ((!-f $reqPathName) || (! -l $reqPathName)) {
++					$errorMessage=&quot;file is missing: &quot;.$reqPathName;
++					$isOK=&quot;false&quot;;
++				}
++			} elsif ($type eq 'directory') {
++				# test directory existence
++				if ( ! -d $reqPathName) {
++					$errorMessage=&quot;directory is missing: &quot;.$reqPathName;
++					$isOK=&quot;false&quot;;
++				}
++			} elsif ($type eq 'package') {
++				# test if rpm package is present in chroot
++				my $manager = $self-&gt;{MANAGER};
++				if ($manager -&gt; setupPackageInfo ( $reqRelPathName )) {
++					$errorMessage=&quot;rpm package is missing: &quot;.$reqRelPathName;
++					$isOK=&quot;false&quot;;
++				}
++			}
++			else{
++				$errorMessage=&quot;wrong type of requirements: &quot;.$type.&quot;, check test description: &quot;.$self-&gt;{XML_FILE};
++				$isOK=&quot;false&quot;;
+ 			}
+ 		}
+ 				
+-		if ($ok==0) {
++		if ($isOK eq &quot;false&quot;) {
+ 			my $result=KIWITestResult-&gt;new();
+-			$cmd=&quot;requirements test of '$reqpathname'&quot;; 
+-			$result-&gt;setCommand($cmd);
+-			my $info;  #different message format for different requirement types
+-			if ($type eq 'package') {
+-				$info=sprintf(&quot;\&quot;$reqrelpathname\&quot;  ($place%s) &quot;,
+-					($place eq 'intern') ? &quot;, in \&quot;$self-&gt;{CHROOT}\&quot;&quot; : ''
+-				);
+-			} else {
+-				$info=qq(&quot;$reqpathname&quot;);
+-			}
+-			$output=sprintf(&quot;missing %-10s  $info&quot;,$type );
+-			$result-&gt;setMessage($output);
++			$result-&gt;setCommand(&quot;requirements test of &quot;.$reqRelPathName);
++			$result-&gt;setMessage($errorMessage);
+ 			$result-&gt;setErrorState($errvalue);
+ 			$self-&gt;{TEST_RESULT_STATUS}=1;
+ 			@results=(@results,$result);
+
+Modified: kiwi-branches/KIWI-238-SuSE-10-1-Devel/rpm/kiwi.changes
+==============================================================================
+--- kiwi-branches/KIWI-238-SuSE-10-1-Devel/rpm/kiwi.changes	(original)
++++ kiwi-branches/KIWI-238-SuSE-10-1-Devel/rpm/kiwi.changes	Tue Jun 17 17:43:49 2008
+@@ -1,4 +1,9 @@
+ -------------------------------------------------------------------
++Tue Jun 17 16:56:33 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- added testsuite patches by Pavel Nemec (bnc #400817)
++
++-------------------------------------------------------------------
+ Mon Jun 16 11:32:07 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - integrate kiwi and kiwi2 into one common version: The agreed solution
+
+Modified: kiwi-branches/KIWI-238-SuSE-10-1-Devel/tests/ldd/test-case.xml
+==============================================================================
+--- kiwi-branches/KIWI-238-SuSE-10-1-Devel/tests/ldd/test-case.xml	(original)
++++ kiwi-branches/KIWI-238-SuSE-10-1-Devel/tests/ldd/test-case.xml	Tue Jun 17 17:43:49 2008
+@@ -6,7 +6,7 @@
+ 	xsi:noNamespaceSchemaLocation=&quot;/usr/share/kiwi/tests/test_case.xsd&quot;&gt;
+ 	
+ 	&lt;requirements&gt;
+-		&lt;req type=&quot;file&quot;&gt;/usr/bin/ldd&lt;/req&gt;
++		&lt;req type=&quot;file&quot; place=&quot;intern&quot;&gt;/usr/bin/ldd&lt;/req&gt;
+ 	&lt;/requirements&gt;
+ 	&lt;test type=&quot;binary&quot; place=&quot;intern&quot;&gt;
+ 		&lt;file&gt;ldd_check.sh&lt;/file&gt;
+
+Modified: kiwi-branches/KIWI-238-SuSE-10-1-Devel/tests/lsb-cmdchk/test-case.xml
+==============================================================================
+--- kiwi-branches/KIWI-238-SuSE-10-1-Devel/tests/lsb-cmdchk/test-case.xml	(original)
++++ kiwi-branches/KIWI-238-SuSE-10-1-Devel/tests/lsb-cmdchk/test-case.xml	Tue Jun 17 17:43:49 2008
+@@ -6,7 +6,7 @@
+ 	xsi:noNamespaceSchemaLocation=&quot;/usr/share/kiwi/tests/test_case.xsd&quot;&gt;
+ 	
+ 	&lt;requirements&gt;
+-		&lt;req type=&quot;package&quot;&gt;lsb-cmdchk&lt;/req&gt;
++		&lt;req type=&quot;package&quot; place=&quot;intern&quot;&gt;lsb-cmdchk&lt;/req&gt;
+ 	&lt;/requirements&gt;
+ 	&lt;test type=&quot;binary&quot; place=&quot;intern&quot;&gt;
+ 		&lt;file&gt;lsb-cmdchk.sh&lt;/file&gt;
+
+Modified: kiwi-branches/KIWI-238-SuSE-10-1-Devel/tests/rpm/test-case.xml
+==============================================================================
+--- kiwi-branches/KIWI-238-SuSE-10-1-Devel/tests/rpm/test-case.xml	(original)
++++ kiwi-branches/KIWI-238-SuSE-10-1-Devel/tests/rpm/test-case.xml	Tue Jun 17 17:43:49 2008
+@@ -6,9 +6,9 @@
+ 	xsi:noNamespaceSchemaLocation=&quot;/usr/share/kiwi/tests/test_case.xsd&quot;&gt;
+ 	
+ 	&lt;requirements&gt;
+-		&lt;req type=&quot;directory&quot;&gt;/var/lib/rpm&lt;/req&gt;
+-		&lt;req type=&quot;file&quot;&gt;/var/lib/rpm/__db.000&lt;/req&gt;
+-		&lt;req type=&quot;file&quot;&gt;/var/lib/rpm/Packages&lt;/req&gt;
++		&lt;req type=&quot;directory&quot; place=&quot;intern&quot;&gt;/var/lib/rpm&lt;/req&gt;
++		&lt;req type=&quot;file&quot;      place=&quot;intern&quot;&gt;/var/lib/rpm/__db.000&lt;/req&gt;
++		&lt;req type=&quot;file&quot;      place=&quot;intern&quot;&gt;/var/lib/rpm/Packages&lt;/req&gt;
+ 	&lt;/requirements&gt;
+ 	&lt;test type=&quot;binary&quot;  place=&quot;extern&quot;&gt;
+ 		&lt;file&gt;rpm.sh&lt;/file&gt;
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000436.html">[Kiwi-devel] [SVN:KIWI-Team] r1346 - in kiwi-head: rpm
+</A></li>
+	<LI>Next message: <A HREF="000438.html">[Kiwi-devel] [SVN:KIWI-Team] r1348 - in kiwi-head: . rpm tests/ldd	tests/lsb-cmdchk tests/rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#437">[ date ]</a>
+              <a href="thread.html#437">[ thread ]</a>
+              <a href="subject.html#437">[ subject ]</a>
+              <a href="author.html#437">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

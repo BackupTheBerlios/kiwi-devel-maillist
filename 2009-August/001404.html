@@ -1,0 +1,228 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 012c514311e2152686ec75c1cf910ec77af4e492
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20012c514311e2152686ec75c1cf910ec77af4e492&In-Reply-To=%3C200908111634.n7BGY7OO022851%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001403.html">
+   <LINK REL="Next"  HREF="001405.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 012c514311e2152686ec75c1cf910ec77af4e492</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20012c514311e2152686ec75c1cf910ec77af4e492&In-Reply-To=%3C200908111634.n7BGY7OO022851%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 012c514311e2152686ec75c1cf910ec77af4e492">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Aug 11 18:34:07 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001403.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3bc95a82d2fb3405e5cf6a098a6af751d95538f2
+</A></li>
+        <LI>Next message: <A HREF="001405.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 05cffa76c192078eb79c57181c7405040ba0958c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1404">[ date ]</a>
+              <a href="thread.html#1404">[ thread ]</a>
+              <a href="subject.html#1404">[ subject ]</a>
+              <a href="author.html#1404">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  012c514311e2152686ec75c1cf910ec77af4e492 (commit)
+      from  3bc95a82d2fb3405e5cf6a098a6af751d95538f2 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 012c514311e2152686ec75c1cf910ec77af4e492
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Aug 11 18:33:51 2009 +0200
+
+    - v3.74
+    - use resize2fs -M if possible ( &gt;= v1.41 )
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 6e83c41..19f8cb9 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -44,7 +44,7 @@ use KIWITest;
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.73&quot;;
++our $Version       = &quot;3.74&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index c374c9e..2551f62 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -292,40 +292,58 @@ sub createImageClicFS {
+ 	#==========================================  
+ 	# Resize to minimum  
+ 	#------------------------------------------
++	my $rver= qxx (
++		&quot;resize2fs --version 2&gt;&amp;1 | head -n 1 | cut -f2 -d ' ' | cut -f1-2 -d.&quot;
++	); chomp $rver;
+ 	my $dfs = &quot;/sbin/debugfs&quot;;
+ 	my $req = &quot;-R 'show_super_stats -h'&quot;;
+ 	my $bcn = &quot;'^Block count:'&quot;;
+ 	my $bfr = &quot;'^Free blocks:'&quot;;
+ 	my $src = &quot;$this-&gt;{imageDest}/fsdata.ext3&quot;;
+ 	my $blocks = 0;
+-	$data = qxx (
+-		&quot;$dfs $req $src 2&gt;/dev/null | grep $bcn | sed -e 's,.*: *,,'&quot;
+-	);
+-	$code = $? &gt;&gt; 8;
+-	if ($code != 0) {
+-		$kiwi -&gt; error  (&quot;debugfs: block count request failed: $data&quot;);
+-		$kiwi -&gt; failed ();
+-		return undef;
+-	}
+-	chomp $data;
+-	$blocks = $data;  
+-	$data = qxx (
+-		&quot;$dfs $req $src 2&gt;/dev/null | grep $bfr | sed -e 's,.*: *,,'&quot;
+-	);
+-	$code = $? &gt;&gt; 8;
+-	if ($code != 0) {
+-		$kiwi -&gt; error  (&quot;debugfs: free blocks request failed: $data&quot;);
+-		$kiwi -&gt; failed ();
+-		return undef;
+-	}  
+-	$kiwi -&gt; info (&quot;clicfs: blocks count=$blocks free=$data&quot;);
+-	$blocks = $blocks - $data;  
+-	$data = qxx (&quot;/sbin/resize2fs $this-&gt;{imageDest}/fsdata.ext3 $blocks 2&gt;&amp;1&quot;);
+-	$code = $? &gt;&gt; 8;
+-	if ($code != 0) {
+-		$kiwi -&gt; error  (&quot;Failed to resize ext3 container: $data&quot;);
+-		$kiwi -&gt; failed ();
+-		return undef;
++	$kiwi -&gt; loginfo (&quot;Using resize2fs version: $rver\n&quot;);
++	if ($rver &gt;= 1.41) {
++		$data = qxx (
++			&quot;resize2fs $this-&gt;{imageDest}/fsdata.ext3 -M 2&gt;&amp;1&quot;
++		);
++		$code = $? &gt;&gt; 8;
++		if ($code != 0) {
++			$kiwi -&gt; error  (&quot;Failed to resize ext3 container: $data&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++	} else {
++		$data = qxx (
++			&quot;$dfs $req $src 2&gt;/dev/null | grep $bcn | sed -e 's,.*: *,,'&quot;
++		);
++		$code = $? &gt;&gt; 8;
++		if ($code != 0) {
++			$kiwi -&gt; error  (&quot;debugfs: block count request failed: $data&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		chomp $data;
++		$blocks = $data;  
++		$data = qxx (
++			&quot;$dfs $req $src 2&gt;/dev/null | grep $bfr | sed -e 's,.*: *,,'&quot;
++		);
++		$code = $? &gt;&gt; 8;
++		if ($code != 0) {
++			$kiwi -&gt; error  (&quot;debugfs: free blocks request failed: $data&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}  
++		$kiwi -&gt; info (&quot;clicfs: blocks count=$blocks free=$data&quot;);
++		$blocks = $blocks - $data;  
++		$data = qxx (
++			&quot;resize2fs $this-&gt;{imageDest}/fsdata.ext3 $blocks 2&gt;&amp;1&quot;
++		);
++		$code = $? &gt;&gt; 8;
++		if ($code != 0) {
++			$kiwi -&gt; error  (&quot;Failed to resize ext3 container: $data&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
+ 	}
+ 	#==========================================
+ 	# Create clicfs filesystem from ext3
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index c888a19..3e391a6 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Tue Aug 11 18:33:29 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.74
++- use resize2fs -M if possible ( &gt;= v1.41 )
++
++-------------------------------------------------------------------
+ Tue Aug 11 11:51:12 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.73
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index 1461a72..d1f8c0e 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.73)
++# spec file for package kiwi (Version 3.74)
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -46,7 +46,7 @@ Requires:       satsolver-tools
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.73
++Version:        3.74
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001403.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3bc95a82d2fb3405e5cf6a098a6af751d95538f2
+</A></li>
+	<LI>Next message: <A HREF="001405.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 05cffa76c192078eb79c57181c7405040ba0958c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1404">[ date ]</a>
+              <a href="thread.html#1404">[ thread ]</a>
+              <a href="subject.html#1404">[ subject ]</a>
+              <a href="author.html#1404">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

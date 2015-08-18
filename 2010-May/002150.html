@@ -1,0 +1,172 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7406261c365c687ac92cf6e6f2c7aefb9867b5c1
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%207406261c365c687ac92cf6e6f2c7aefb9867b5c1&In-Reply-To=%3C201005041534.o44FYb6I005237%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002149.html">
+   <LINK REL="Next"  HREF="002151.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7406261c365c687ac92cf6e6f2c7aefb9867b5c1</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%207406261c365c687ac92cf6e6f2c7aefb9867b5c1&In-Reply-To=%3C201005041534.o44FYb6I005237%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7406261c365c687ac92cf6e6f2c7aefb9867b5c1">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue May  4 17:34:37 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002149.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3ebe2eec9dbc126808c5dde1cd76ffb2fc5bb690
+</A></li>
+        <LI>Next message: <A HREF="002151.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 361b6042d8a9ed3bd9527ef9e9ab0cc58cc48578
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2150">[ date ]</a>
+              <a href="thread.html#2150">[ thread ]</a>
+              <a href="subject.html#2150">[ subject ]</a>
+              <a href="author.html#2150">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  7406261c365c687ac92cf6e6f2c7aefb9867b5c1 (commit)
+      from  3ebe2eec9dbc126808c5dde1cd76ffb2fc5bb690 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 7406261c365c687ac92cf6e6f2c7aefb9867b5c1
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue May 4 17:33:10 2010 +0200
+
+    - preserve timestamps of source tarballs if not change has
+      happened. I'm still searching for a way to preserve timestamps
+      of symlinks (cp -a has a bug and does not preserve it)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/.archive b/.archive
+index a9eb603..6b746e4 100755
+--- a/.archive
++++ b/.archive
+@@ -11,20 +11,24 @@
+ #===========================================
+ # make tarball from the current source tree
+ #-------------------------------------------
+-./.version &gt; .revision
++rev_new=$(./.version)
++rev_old=$(cat ./.revision)
++if [ ! $rev_new = $rev_old ];then
++	echo $rev_new &gt; .revision
++fi
+ find -type d | grep .git | xargs rm -rf
+ find -name &quot;*.swp&quot; | xargs rm -f
+-mv rpm/kiwi.changes doc/ChangeLog
+-mkdir ../system
+-mv system/*repo ../system
+-mv doc ..
++
++tar -cjf ../kiwi-docu.tar.bz2 doc
++tar -cjf ../kiwi-repo.tar.bz2 system/*repo
++
+ rm -rf rpm/
++rm -rf doc/
++rm -rf system/*repo
+ 
+ cd ..
+-tar -cjf kiwi-docu.tar.bz2 doc
+-tar -cjf kiwi-repo.tar.bz2 system
+ tar -cjf kiwi.tar.bz2 kiwi/
+-mv kiwi.tar.bz2 kiwi/
++
++mv kiwi.tar.bz2      kiwi/
+ mv kiwi-repo.tar.bz2 kiwi/
+-rm -rf system
+-rm -rf doc
++mv kiwi-docu.tar.bz2 kiwi/
+diff --git a/.doit b/.doit
+index add4f2d..8ad3972 100755
+--- a/.doit
++++ b/.doit
+@@ -81,7 +81,7 @@ sub checkout {
+ #
+ 	my $pacdir = repoup (@_);
+ 	chdir $pacdir;
+-	qx( cp kiwi/rpm/* . );
++	qx( cp -a -p kiwi/rpm/* . );
+ 	chdir &quot;./kiwi&quot;;
+ 	qx (./.archive);
+ 	chdir $pacdir;
+@@ -112,9 +112,7 @@ sub repoup {
+ 	# pack up local source
+ 	#-------------------------------------------
+ 	print &quot;Checkout source level [local]...\n&quot;;
+-	chdir $parent
+-		|| die &quot;Could not change dir: $parent:$!&quot;;
+-	qx (mkdir -p $tmpdir/kiwi &amp;&amp; cp -a . $tmpdir/kiwi);
++	qx( cp -a -p $parent/ $tmpdir );
+ 	chdir $tmpdir
+ 		|| die &quot;Could not create temp dir: $!&quot;;
+ 	return $tmpdir;
+diff --git a/.revision b/.revision
+new file mode 100644
+index 0000000..a9d03eb
+--- /dev/null
++++ b/.revision
+@@ -0,0 +1 @@
++3ebe2eec9dbc126808c5dde1cd76ffb2fc5bb690
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index 689c29c..5bec668 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -382,7 +382,6 @@ rm -rf $RPM_BUILD_ROOT
+ %doc %{_defaultdocdir}/kiwi/COPYING
+ %doc %{_defaultdocdir}/kiwi/examples
+ %doc %{_defaultdocdir}/kiwi/kiwi.pdf
+-%doc %{_defaultdocdir}/kiwi/ChangeLog
+ %doc %{_defaultdocdir}/kiwi/schema
+ #=================================================
+ # KIWI instsource...      
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002149.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3ebe2eec9dbc126808c5dde1cd76ffb2fc5bb690
+</A></li>
+	<LI>Next message: <A HREF="002151.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 361b6042d8a9ed3bd9527ef9e9ab0cc58cc48578
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2150">[ date ]</a>
+              <a href="thread.html#2150">[ thread ]</a>
+              <a href="subject.html#2150">[ subject ]</a>
+              <a href="author.html#2150">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

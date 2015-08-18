@@ -1,0 +1,409 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1537 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1537%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200809010814.m818EkK9018217%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="000626.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1537 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1537%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200809010814.m818EkK9018217%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1537 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Sep  1 10:14:46 CEST 2008</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="000626.html">[Kiwi-devel] Patch to support openSUSE Products
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#625">[ date ]</a>
+              <a href="thread.html#625">[ thread ]</a>
+              <a href="subject.html#625">[ subject ]</a>
+              <a href="author.html#625">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-09-01 10:14:37 +0200 (Mon, 01 Sep 2008)
+New Revision: 1537
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/modules/KIWIImage.pm
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/modules/KIWILog.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+Log:
+
+- v2.72
+- don't open a network log port by default, option required
+- don't use filesystem options by default, provided options
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-08-28 14:23:42 UTC (rev 1536)
++++ kiwi-head/kiwi.pl	2008-09-01 08:14:37 UTC (rev 1537)
+@@ -43,7 +43,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;2.71&quot;;
++our $Version       = &quot;2.72&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+ our $ConfigFile    = &quot;$ENV{'HOME'}/.kiwirc&quot;;
+ our $ConfigName    = &quot;config.xml&quot;;
+@@ -76,7 +76,7 @@
+ our $LogServerPort;    # configurable log server port
+ our $Gzip;             # configurable gzip command
+ if (! defined $LogServerPort) {
+-	$LogServerPort = 9000;
++	$LogServerPort = &quot;off&quot;;
+ }
+ if (! defined $Gzip) {
+ 	$Gzip = &quot;gzip -9&quot;;
+@@ -183,6 +183,9 @@
+ our $CreatePassword;        # create crypted password
+ our $ISOCheck;              # create checkmedia boot entry
+ our $PackageManager;        # package manager to use for this image
++our $FSBlockSize;           # filesystem block size
++our $FSInodeSize;           # filesystem inode size
++our $FSJournalSize;         # filesystem journal size
+ our $kiwi;                  # global logging handler object
+ 
+ #============================================
+@@ -1198,6 +1201,9 @@
+ 		&quot;prechroot-call=s&quot;      =&gt; \$PreChrootCall,
+ 		&quot;list-xmlinfo|x=s&quot;      =&gt; \$listXMLInfo,
+ 		&quot;compress=s&quot;            =&gt; \$Compress,
++		&quot;fs-blocksize=i&quot;        =&gt; \$FSBlockSize,
++		&quot;fs-journalsize=i&quot;      =&gt; \$FSJournalSize,
++		&quot;fs-inodesize=i&quot;        =&gt; \$FSInodeSize,
+ 		&quot;help|h&quot;                =&gt; \&amp;usage,
+ 		&quot;&lt;&gt;&quot;                    =&gt; \&amp;usage
+ 	);
+@@ -1500,10 +1506,25 @@
+ 	print &quot;    If additional name is omitted default set of tests will be\n&quot;;
+ 	print &quot;    used. Otherwise only provided tests will be executed\n&quot;;
+ 	print &quot;\n&quot;;
+-	print &quot;  [ --package-manager &lt;smart|zypper&gt;\n&quot;;
++	print &quot;  [ --package-manager &lt;smart|zypper&gt; ]\n&quot;;
+ 	print &quot;    set the package manager to use for this image. If set it\n&quot;;
+ 	print &quot;    will temporarly overwrite the value set in the xml\n&quot;;
+ 	print &quot;    description\n&quot;;
++	print &quot;\n&quot;;
++	print &quot;  [ --fs-blocksize &lt;number&gt; ]\n&quot;;
++	print &quot;    When calling kiwi in creation mode this option will set\n&quot;;
++	print &quot;    the block size in bytes. For ISO images with the old style\n&quot;;
++	print &quot;    ramdisk setup a blocksize of 4096 bytes is required\n&quot;;
++	print &quot;\n&quot;;
++	print &quot;  [ --fs-journalsize &lt;number&gt; ]\n&quot;;
++	print &quot;    When calling kiwi in creation mode this option will set\n&quot;;
++	print &quot;    the journal size in mega bytes for ext[23] based filesystems\n&quot;;
++	print &quot;    and in blocks if the reiser filesystem is used\n&quot;; 
++	print &quot;\n&quot;;
++	print &quot;  [ --fs-inodesize &lt;number&gt; ]\n&quot;;
++	print &quot;    When calling kiwi in creation mode this option will set\n&quot;;
++	print &quot;    the inode size in bytes. This option has no effect if the\n&quot;;
++	print &quot;    reiser filesystem is used\n&quot;;
+ 	print &quot;--\n&quot;;
+ 	version();
+ }
+@@ -1853,6 +1874,52 @@
+ }
+ 
+ #==========================================
++# checkFSOptions
++#------------------------------------------
++sub checkFSOptions {
++	# /.../
++	# checks the $FS* option values and build an option
++	# string for the relevant filesystems
++	# ---
++	my %result = ();
++	foreach my $fs (keys %KnownFS) {
++		my $blocksize;   # block size in bytes
++		my $journalsize; # journal size in MB (ext) or blocks (reiser)
++		my $inodesize;   # inode size in bytes (ext only)
++		SWITCH: for ($fs) {
++			#==========================================
++			# EXT2 and EXT3
++			#------------------------------------------
++			/ext[32]/   &amp;&amp; do {
++				if ($FSBlockSize)   {$blocksize   = &quot;-b $FSBlockSize&quot;}
++				if ($FSInodeSize)   {$inodesize   = &quot;-I $FSInodeSize&quot;}
++				if ($FSJournalSize) {$journalsize = &quot;-J size=$FSJournalSize&quot;}
++				last SWITCH;
++			};
++			#==========================================
++			# reiserfs
++			#------------------------------------------
++			/reiserfs/  &amp;&amp; do {
++				if ($FSBlockSize)   {$blocksize   = &quot;-b $FSBlockSize&quot;}
++				if ($FSJournalSize) {$journalsize = &quot;-s $FSJournalSize&quot;}
++				last SWITCH;
++			};
++			# no options for this filesystem...
++		};
++		if (defined $inodesize) {
++			$result{$fs} .= $inodesize.&quot; &quot;;
++		}
++		if (defined $blocksize) {
++			$result{$fs} .= $blocksize.&quot; &quot;;
++		}
++		if (defined $journalsize) {
++			$result{$fs} .= $journalsize.&quot; &quot;;
++		}
++	}
++	return %result;
++}
++
++#==========================================
+ # checkFileSystem
+ #------------------------------------------
+ sub checkFileSystem {
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2008-08-28 14:23:42 UTC (rev 1536)
++++ kiwi-head/modules/KIWIBoot.pm	2008-09-01 08:14:37 UTC (rev 1537)
+@@ -785,7 +785,9 @@
+ 			$kiwi -&gt; done();
+ 		} elsif ($syszip) {
+ 			$kiwi -&gt; info (&quot;Creating ext3 read/write filesystem&quot;);
+-			my $fsopts = &quot;-I 128 -O dir_index -b 4096 -j -J size=4 -q -F&quot;;
++			my %FSopts = main::checkFSOptions();
++			my $fsopts = $FSopts{ext3};
++			$fsopts.= &quot;-j -F&quot;;
+ 			$status = qxx (&quot;/sbin/mke2fs $fsopts $stick'2' 2&gt;&amp;1&quot;);
+ 			$result = $? &gt;&gt; 8;
+ 			if ($result != 0) {
+@@ -802,25 +804,30 @@
+ 		#==========================================
+ 		# Create fs on system image partition
+ 		#------------------------------------------
++		my %FSopts = main::checkFSOptions();
+ 		SWITCH: for ($FSTypeRO) {
+ 			/^ext2/     &amp;&amp; do {
+ 				$kiwi -&gt; info (&quot;Creating ext2 root filesystem&quot;);
+-				my $fsopts = &quot;-I 128 -q -F&quot;;
++				my $fsopts = $FSopts{ext2};
++				$fsopts.= &quot;-F&quot;;
+ 				$status = qxx (&quot;/sbin/mke2fs $fsopts $stick'1' 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+ 			};
+ 			/^ext3/     &amp;&amp; do {
+ 				$kiwi -&gt; info (&quot;Creating ext3 root filesystem&quot;);
+-				my $fsopts = &quot;-I 128 -O dir_index -b 4096 -j -J size=4 -q -F&quot;;
++				my $fsopts = $FSopts{ext3};
++				$fsopts.= &quot;-j -F&quot;;
+ 				$status = qxx (&quot;/sbin/mke2fs $fsopts $stick'1' 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+ 			};
+ 			/^reiserfs/ &amp;&amp; do {
+ 				$kiwi -&gt; info (&quot;Creating reiserfs root filesystem&quot;);
++				my $fsopts = $FSopts{reiserfs};
++				$fsopts.= &quot;-f&quot;;
+ 				$status = qxx (
+-					&quot;/sbin/mkreiserfs -q -f -s 513 -b 4096 $stick'1' 2&gt;&amp;1&quot;
++					&quot;/sbin/mkreiserfs $fsopts $stick'1' 2&gt;&amp;1&quot;
+ 				);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+@@ -1429,8 +1436,11 @@
+ 	#------------------------------------------
+ 	foreach my $root ($boot,$data) {
+ 		next if ! defined $root;
+-		$kiwi -&gt; info (&quot;Creating filesystem on $root partition&quot;);
+-		$status = qxx ( &quot;/sbin/mke2fs -I 128 -j -q $root 2&gt;&amp;1&quot; );
++		$kiwi -&gt; info (&quot;Creating ext3 filesystem on $root partition&quot;);
++		my %FSopts = main::checkFSOptions();
++		my $fsopts = $FSopts{ext3};
++		$fsopts.= &quot;-j&quot;;
++		$status = qxx ( &quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot; );
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; failed ();
+@@ -1860,25 +1870,30 @@
+ 		#==========================================
+ 		# Create fs on system image partition
+ 		#------------------------------------------
++		my %FSopts = main::checkFSOptions();
+ 		SWITCH: for ($FSTypeRO) {
+ 			/^ext2/     &amp;&amp; do {
+ 				$kiwi -&gt; info (&quot;Creating ext2 root filesystem&quot;);
+-				my $fsopts = &quot;-I 128 -q -F&quot;;
++				my $fsopts = $FSopts{ext2};
++				$fsopts.= &quot;-F&quot;;
+ 				$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+ 			};
+ 			/^ext3/     &amp;&amp; do {
+ 				$kiwi -&gt; info (&quot;Creating ext3 root filesystem&quot;);
+-				my $fsopts = &quot;-I 128 -O dir_index -b 4096 -j -J size=4 -q -F&quot;;
++				my $fsopts = $FSopts{ext3};
++				$fsopts.= &quot;-j -F&quot;;
+ 				$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+ 			};
+ 			/^reiserfs/ &amp;&amp; do {
+ 				$kiwi -&gt; info (&quot;Creating reiserfs root filesystem&quot;);
++				my $fsopts = $FSopts{reiserfs};
++				$fsopts.= &quot;-f&quot;;
+ 				$status = qxx (
+-					&quot;/sbin/mkreiserfs -q -f -s 513 -b 4096 $root 2&gt;&amp;1&quot;
++					&quot;/sbin/mkreiserfs $fsopts $root 2&gt;&amp;1&quot;
+ 				);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+@@ -1934,7 +1949,10 @@
+ 		$root = &quot;/dev/mapper&quot;.$dmap.&quot;p2&quot;;
+ 		if (! $haveSplit) {
+ 			$kiwi -&gt; info (&quot;Creating ext2 read-write filesystem&quot;);
+-			$status = qxx (&quot;/sbin/mke2fs -I 128 -q -F $root 2&gt;&amp;1&quot;);
++			my %FSopts = main::checkFSOptions();
++			my $fsopts = $FSopts{ext2};
++			$fsopts.= &quot;-F&quot;;
++			$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
+ 			$result = $? &gt;&gt; 8;
+ 			if ($result != 0) {
+ 				$kiwi -&gt; failed ();
+
+Modified: kiwi-head/modules/KIWIImage.pm
+===================================================================
+--- kiwi-head/modules/KIWIImage.pm	2008-08-28 14:23:42 UTC (rev 1536)
++++ kiwi-head/modules/KIWIImage.pm	2008-09-01 08:14:37 UTC (rev 1537)
+@@ -3083,16 +3083,16 @@
+ 	my $kiwi    = $this-&gt;{kiwi};
+ 	my $imageTree = $this-&gt;{imageTree};
+ 	my $imageDest = $this-&gt;{imageDest};
++	my $fsopts;
+ 	if (! defined $tree) {
+ 		$tree = $imageTree;
+ 	}
+-	my $fsopts;
+-	my $fileCount = int ( qxx (&quot;find $tree | wc -l&quot;) );
+-	my $nodeCount = $fileCount * 2;
++	my %FSopts = main::checkFSOptions();
+ 	if (defined $journal) {
+-		$fsopts=&quot;-I 128 -O dir_index -b 4096 -j -J size=4 -q -F -N $nodeCount&quot;;
+-	} else {  
+-		$fsopts=&quot;-I 128 -b 4096 -q -F -N $nodeCount&quot;;
++		$fsopts = $FSopts{ext3};
++		$fsopts.=&quot;-j&quot;;
++	} else {
++		$fsopts = $FSopts{ext2};
+ 	}
+ 	my $data = qxx (&quot;/sbin/mke2fs $fsopts $imageDest/$name 2&gt;&amp;1&quot;);
+ 	my $code = $? &gt;&gt; 8;
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-08-28 14:23:42 UTC (rev 1536)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-09-01 08:14:37 UTC (rev 1537)
+@@ -2416,8 +2416,7 @@
+ 					! mount $rwDevice $rwDir &gt;/dev/null
+ 				then
+ 					Echo &quot;Creating filesystem for RW data on $rwDevice...&quot;
+-					fsopts=&quot;-I 128 -O dir_index -b 4096 -j -J size=4 -q -F&quot;
+-					if ! mke2fs $fsopts $rwDevice &gt;/dev/null;then
++					if ! mke2fs -j $rwDevice &gt;/dev/null;then
+ 						Echo &quot;Failed to create ext3 filesystem&quot;
+ 						return 1
+ 					fi
+
+Modified: kiwi-head/modules/KIWILog.pm
+===================================================================
+--- kiwi-head/modules/KIWILog.pm	2008-08-28 14:23:42 UTC (rev 1536)
++++ kiwi-head/modules/KIWILog.pm	2008-09-01 08:14:37 UTC (rev 1537)
+@@ -95,7 +95,9 @@
+ 	#==========================================
+ 	# Create Log Server on $LogServerPort
+ 	#------------------------------------------
+-	$this -&gt; setLogServer();
++	if ($main::LogServerPort ne &quot;off&quot;) {
++		$this -&gt; setLogServer();
++	}
+ 	return $this;
+ }
+ 
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-08-28 14:23:42 UTC (rev 1536)
++++ kiwi-head/rpm/kiwi.changes	2008-09-01 08:14:37 UTC (rev 1537)
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Fri Aug 29 18:08:59 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v2.72
++- don't open a network log port by default, option required
++- don't use filesystem options by default, provided options
++
++-------------------------------------------------------------------
+ Wed Aug 27 18:04:12 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.71
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-08-28 14:23:42 UTC (rev 1536)
++++ kiwi-head/rpm/kiwi.spec	2008-09-01 08:14:37 UTC (rev 1537)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 2.71
++# spec file for package kiwi (Version 2.72
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        2.71
++Version:        2.72
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="000626.html">[Kiwi-devel] Patch to support openSUSE Products
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#625">[ date ]</a>
+              <a href="thread.html#625">[ thread ]</a>
+              <a href="subject.html#625">[ subject ]</a>
+              <a href="author.html#625">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,137 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. b76fcea748b02066a954436e80eb170a652dc6fa
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20b76fcea748b02066a954436e80eb170a652dc6fa&In-Reply-To=%3C20110322100831.6F1794804A1%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003233.html">
+   <LINK REL="Next"  HREF="003235.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. b76fcea748b02066a954436e80eb170a652dc6fa</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20b76fcea748b02066a954436e80eb170a652dc6fa&In-Reply-To=%3C20110322100831.6F1794804A1%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. b76fcea748b02066a954436e80eb170a652dc6fa">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Mar 22 11:08:30 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003233.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a65d7d7eb8780e42462df6b18429a9c93622efce
+</A></li>
+        <LI>Next message: <A HREF="003235.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4c0dbabe52edd5da25069676731a5ab6124c2589
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3234">[ date ]</a>
+              <a href="thread.html#3234">[ thread ]</a>
+              <a href="subject.html#3234">[ subject ]</a>
+              <a href="author.html#3234">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-374-SuSE-11-1-SLE-SP-Devel has been updated
+       via  b76fcea748b02066a954436e80eb170a652dc6fa (commit)
+      from  4cec8da288b7037d2763bae60baa5e641780aa16 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b76fcea748b02066a954436e80eb170a652dc6fa
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Mar 21 15:41:19 2011 +0100
+
+    - added suseStripFirmware() which removes all firmware files
+      which are not referenced by any module (bnc #681234)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 7d6fdd3..7712d13 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -1248,6 +1248,35 @@ function suseSetupProductInformation {
+ }
+ 
+ #======================================
++# suseStripFirmware
++#--------------------------------------
++function suseStripFirmware {
++	# /.../
++	# check all kernel modules if they require a firmware and
++	# strip out all firmware files which are not referenced
++	# by a kernel module
++	# ----
++	local ifs=$IFS
++	local base=/lib/modules
++	local name
++	local bmdir
++	local IFS=&quot;
++	&quot;
++	mkdir -p /lib/firmware-required
++	for i in $(find $base -name &quot;*.ko&quot; | xargs modinfo | grep ^firmware);do
++		IFS=$ifs
++		name=$(echo $(echo $i | cut -f2 -d:))
++		if [ -e /lib/firmware/$name ];then
++			bmdir=$(dirname $name)
++			mkdir -p /lib/firmware-required/$bmdir
++			mv /lib/firmware/$name /lib/firmware-required/$bmdir
++		fi
++	done
++	rm -rf /lib/firmware
++	mv /lib/firmware-required /lib/firmware
++}
++
++#======================================
+ # suseStripKernel
+ #--------------------------------------
+ function suseStripKernel {
+@@ -1414,6 +1443,7 @@ function suseStripKernel {
+ 			popd
+ 		done
+ 	done
++	suseStripFirmware
+ }
+ 
+ #======================================
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003233.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a65d7d7eb8780e42462df6b18429a9c93622efce
+</A></li>
+	<LI>Next message: <A HREF="003235.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4c0dbabe52edd5da25069676731a5ab6124c2589
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3234">[ date ]</a>
+              <a href="thread.html#3234">[ thread ]</a>
+              <a href="subject.html#3234">[ subject ]</a>
+              <a href="author.html#3234">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,168 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bc21bca81c77f4490157612de5e3c7ab59ab70e9
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20bc21bca81c77f4490157612de5e3c7ab59ab70e9&In-Reply-To=%3C200910121000.n9CA00Bp011309%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001528.html">
+   <LINK REL="Next"  HREF="001517.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bc21bca81c77f4490157612de5e3c7ab59ab70e9</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20bc21bca81c77f4490157612de5e3c7ab59ab70e9&In-Reply-To=%3C200910121000.n9CA00Bp011309%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bc21bca81c77f4490157612de5e3c7ab59ab70e9">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Oct 12 12:00:00 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001528.html">[Kiwi-devel] a timing issue for usbstick detection
+</A></li>
+        <LI>Next message: <A HREF="001517.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a6a411cfe2ecd289012a348ce89df5ce6973875d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1509">[ date ]</a>
+              <a href="thread.html#1509">[ thread ]</a>
+              <a href="subject.html#1509">[ subject ]</a>
+              <a href="author.html#1509">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  bc21bca81c77f4490157612de5e3c7ab59ab70e9 (commit)
+      from  fb1b1e4eea360d9a744703a55d2ac7c66f92a8b7 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit bc21bca81c77f4490157612de5e3c7ab59ab70e9
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Oct 12 11:59:48 2009 +0200
+
+    - fixed hwclock and timezone setup (bnc #546096)
+    - fixed 11.2 JeOS template, no kernel-*-base anymore
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 9691074..b2c665d 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -347,11 +347,15 @@ function suseConfig {
+ 	#--------------------------------------
+ 	if [ ! -z &quot;$kiwi_timezone&quot; ];then
+ 		if [ -f /usr/share/zoneinfo/$kiwi_timezone ];then
+-			mv /usr/share/zoneinfo/$kiwi_timezone /etc/localtime
++			cp /usr/share/zoneinfo/$kiwi_timezone /etc/localtime
+ 			cat /etc/sysconfig/clock |\
+ 				sed -e s&quot;@TIMEZONE=\&quot;.*\&quot;@TIMEZONE=\&quot;$kiwi_timezone\&quot;@&quot; \
+ 			&gt; etc/sysconfig/clock.new
+ 			mv etc/sysconfig/clock.new etc/sysconfig/clock
++			cat /etc/sysconfig/clock |\
++				sed -e s&quot;@HWCLOCK=\&quot;.*\&quot;@HWCLOCK=\&quot;-u\&quot;@&quot; \
++			&gt; etc/sysconfig/clock.new
++			mv etc/sysconfig/clock.new etc/sysconfig/clock
+ 		else
+ 			echo &quot;timezone: $kiwi_timezone not found&quot;
+ 		fi
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 80f2886..2ff14a4 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -2243,16 +2243,16 @@ sub getImageConfig {
+ 		my $oemreboot= $element -&gt; getElementsByTagName (&quot;oem-reboot&quot;);
+ 		my $oemreco  = $element -&gt; getElementsByTagName (&quot;oem-recovery&quot;);
+ 		my $oemrecoid= $element -&gt; getElementsByTagName (&quot;oem-recoveryID&quot;);
+-		if (defined $keytable) {
++		if ((defined $keytable) &amp;&amp; (&quot;$keytable&quot; ne &quot;&quot;)) {
+ 			$result{kiwi_keytable} = $keytable;
+ 		}
+-		if (defined $timezone) {
++		if ((defined $timezone) &amp;&amp; (&quot;$timezone&quot; ne &quot;&quot;)) {
+ 			$result{kiwi_timezone} = $timezone;
+ 		}
+-		if (defined $language) {
++		if ((defined $language) &amp;&amp; (&quot;$language&quot; ne &quot;&quot;)) {
+ 			$result{kiwi_language} = $language;
+ 		}
+-		if (defined $boottheme) {
++		if ((defined $boottheme) &amp;&amp; (&quot;$boottheme&quot; ne &quot;&quot;)) {
+ 			$result{kiwi_boottheme}= $boottheme;
+ 		}
+ 		if ((defined $oemswap) &amp;&amp; (&quot;$oemswap&quot; eq &quot;false&quot;)) {
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index c1ceaa4..587c816 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Mon Oct 12 10:59:31 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed hwclock and timezone setup (bnc #546096)
++- fixed 11.2 JeOS template, no kernel-*-base anymore
++
++-------------------------------------------------------------------
+ Thu Oct  8 14:18:52 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - deactivate backup MBR at 0x800 (bnc #539505)
+diff --git a/template/suse-11.2-JeOS/config.xml b/template/suse-11.2-JeOS/config.xml
+index cd0be7f..b6e4c7b 100644
+--- a/template/suse-11.2-JeOS/config.xml
++++ b/template/suse-11.2-JeOS/config.xml
+@@ -56,13 +56,11 @@
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
+-		&lt;package name=&quot;kernel-xen-base&quot; replaces=&quot;kernel-default-base&quot;/&gt;
+ 		&lt;package name=&quot;xen-tools-domU&quot; replaces=&quot;&quot;/&gt;
+ 		&lt;package name=&quot;xen&quot; replaces=&quot;&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;vmxFlavour&quot;&gt;
+ 		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
+-		&lt;package name=&quot;kernel-default-base&quot; replaces=&quot;kernel-xen-base&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001528.html">[Kiwi-devel] a timing issue for usbstick detection
+</A></li>
+	<LI>Next message: <A HREF="001517.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a6a411cfe2ecd289012a348ce89df5ce6973875d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1509">[ date ]</a>
+              <a href="thread.html#1509">[ thread ]</a>
+              <a href="subject.html#1509">[ subject ]</a>
+              <a href="author.html#1509">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

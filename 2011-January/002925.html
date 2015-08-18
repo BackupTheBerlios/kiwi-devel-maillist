@@ -1,0 +1,3363 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 45f9dd074dc0931dfbda0fb2e27c14731a5cfd35
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2045f9dd074dc0931dfbda0fb2e27c14731a5cfd35&In-Reply-To=%3C20110103180756.C1D7448019D%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="002926.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 45f9dd074dc0931dfbda0fb2e27c14731a5cfd35</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2045f9dd074dc0931dfbda0fb2e27c14731a5cfd35&In-Reply-To=%3C20110103180756.C1D7448019D%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 45f9dd074dc0931dfbda0fb2e27c14731a5cfd35">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Jan  3 19:07:56 CET 2011</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="002926.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e6e4752e34f3690db6f4dfe0c276739dc420961e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2925">[ date ]</a>
+              <a href="thread.html#2925">[ thread ]</a>
+              <a href="subject.html#2925">[ subject ]</a>
+              <a href="author.html#2925">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  45f9dd074dc0931dfbda0fb2e27c14731a5cfd35 (commit)
+       via  f2ad455c3294a3c87e0a24f7e37d0fc657fd3c93 (commit)
+      from  18d685207a2c5df109851a1761e6299c844411d5 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 45f9dd074dc0931dfbda0fb2e27c14731a5cfd35
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Jan 3 18:25:27 2011 +0100
+
+    - cleanup netboot code. moved some functions into the KIWILinuxRC.sh
+      pool and fixed bootloader setup when using clicfs images
+
+commit f2ad455c3294a3c87e0a24f7e37d0fc657fd3c93
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Jan 3 17:31:22 2011 +0100
+
+    - removed old and unmaintained ppc code
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index fe46be1..3e3d23b 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -3239,6 +3239,30 @@ function probeNetworkCard {
+ 	networkModule=`echo $networkModule`
+ }
+ #======================================
++# loadNetworkCard
++#--------------------------------------
++function loadNetworkCard {
++	# /.../
++	# load network module found by probeNetworkCard()
++	# ----
++	local loaded=0
++	probeNetworkCard
++	IFS=&quot;:&quot; ; for i in $networkModule;do
++		if [ ! -z &quot;$i&quot; ];then
++			modprobe $i 2&gt;/dev/null
++			if [ $? = 0 ];then
++				loaded=1
++			fi
++		fi
++	done
++	IFS=$IFS_ORIG
++	if [ $loaded = 0 ];then
++		systemException \
++			&quot;Network module: Failed to load network module !&quot; \
++		&quot;reboot&quot;
++	fi
++}
++#======================================
+ # setupNetwork
+ #--------------------------------------
+ function setupNetwork {
+@@ -3335,6 +3359,18 @@ function setupNetwork {
+ 	DHCPCHADDR=`echo $DHCPCHADDR | tr a-z A-Z`
+ }
+ #======================================
++# releaseNetwork
++#--------------------------------------
++function releaseNetwork {
++	# /.../
++	# release network setup by dhcpcd and free the lease
++	# Do that only for _non_ network root devices
++	# ----
++	if [ -z &quot;$NFSROOT&quot; ] &amp;&amp; [ -z &quot;$NBDROOT&quot; ] &amp;&amp; [ -z &quot;$AOEROOT&quot; ];then
++		dhcpcd -p -k $PXE_IFACE
++	fi
++}
++#======================================
+ # updateNeeded
+ #--------------------------------------
+ function updateNeeded {
+@@ -3732,26 +3768,6 @@ function includeKernelParameters {
+ 	fi
+ }
+ #======================================
+-# checkServer
+-#--------------------------------------
+-function checkServer {
+-	# /.../
+-	# check the kernel commandline parameter kiwiserver.
+-	# If it exists its contents will be used as
+-	# server address stored in the SERVER variabe
+-	# ----
+-	if [ ! -z $kiwiserver ];then
+-		Echo &quot;Found server in kernel cmdline&quot;
+-		SERVER=$kiwiserver
+-	fi
+-	if [ ! -z $kiwiservertype ]; then
+-		Echo &quot;Found server type in kernel cmdline&quot;
+-		SERVERTYPE=$kiwiservertype
+-	else
+-		SERVERTYPE=tftp
+-	fi
+-}
+-#======================================
+ # umountSystem
+ #--------------------------------------
+ function umountSystem {
+@@ -6294,6 +6310,146 @@ function restoreLVMPhysicalVolumes {
+ 	done
+ }
+ #======================================
++# pxeNotifyNewImage
++#--------------------------------------
++function pxeNotifyNewImage {
++	# /.../
++	# upload image name and version information to
++	# the pxe boot server
++	# ----
++	local count=0
++	local field=0
++	IFS=&quot;,&quot; ; for i in $IMAGE;do
++		count=$(($count + 1))
++		field=0
++		IFS=&quot;;&quot; ; for n in $i;do
++			case $field in
++				0) field=1 ;;
++				1) imageName=$n   ; field=2 ;;
++				2) imageVersion=$n; field=3
++			esac
++		done
++		Echo &quot;Notify of new image: image/$imageName&quot;
++		echo &quot;image/$imageName&quot; &gt; bootversion.$DHCPCHADDR
++		echo &quot;$imageVersion&quot;   &gt;&gt; bootversion.$DHCPCHADDR
++		putFile bootversion.$DHCPCHADDR upload/bootversion.$DHCPCHADDR
++		rm -f bootversion.$DHCPCHADDR
++	done
++}
++#======================================
++# pxeCheckServer
++#--------------------------------------
++function pxeCheckServer {
++	# /.../
++	# check the kernel commandline parameter kiwiserver.
++	# If it exists its contents will be used as
++	# server address stored in the SERVER variabe
++	# ----
++	if [ ! -z $kiwiserver ];then
++		Echo &quot;Found server in kernel cmdline&quot;
++		SERVER=$kiwiserver
++	fi
++	if [ ! -z $kiwiservertype ]; then
++		Echo &quot;Found server type in kernel cmdline&quot;
++		SERVERTYPE=$kiwiservertype
++	else
++		SERVERTYPE=tftp
++	fi
++}
++#======================================
++# pxeSetupDownloadServer
++#--------------------------------------
++function pxeSetupDownloadServer {
++	# /.../
++	# the pxe image system requires a server which stores
++	# the image files. This function setup the SERVER variable
++	# pointing to that server using the following heuristic:
++	# ----
++	# 1) check for $kiwiserver from cmdline
++	# 2) try tftp.$DOMAIN whereas $DOMAIN is from dhcpcd-info
++	# 3) try address of DHCP server if no servertype or tftp is used
++	# 4) fail if no location was found
++	# ----
++	pxeCheckServer
++	if [ -z &quot;$SERVER&quot; ];then
++		SERVER=tftp.$DOMAIN
++	fi
++	Echo &quot;Checking Server name: $SERVER&quot;
++	if ! ping -c 1 $SERVER &gt;/dev/null 2&gt;&amp;1;then
++		Echo &quot;Server: $SERVER not found&quot;
++		if [ -z &quot;$SERVERTYPE&quot; ] || [ &quot;$SERVERTYPE&quot; = &quot;tftp&quot; ]; then
++			if [ ! -z &quot;$DHCPSIADDR&quot; ];then
++				Echo &quot;Using: $DHCPSIADDR from dhcpcd-info&quot;
++				SERVER=$DHCPSIADDR
++			elif [ ! -z &quot;$DHCPSID&quot; ];then
++				Echo &quot;Using: $DHCPSID from dhcpcd-info&quot;
++				SERVER=$DHCPSID
++			else
++				systemException \
++					&quot;Can't assign SERVER IP/name... fatal !&quot; \
++				&quot;reboot&quot;
++			fi
++		fi
++	fi
++}
++#======================================
++# pxeSetupSystemAliasName
++#--------------------------------------
++function pxeSetupSystemAliasName {
++	# /.../
++	# Ask for an alias name if NAME from config.&lt;MAC&gt;
++	# contains a number. If the number is -1 the system will
++	# ask for ever for this name otherwhise the number sets
++	# a timeout how long to wait for input of this data
++	# ----
++	if test $NAME -ne 0;then
++		if test $NAME -eq -1;then
++			Echo -n &quot;Enter Alias Name for this system: &quot; &amp;&amp; \
++			read SYSALIAS
++		else
++			Echo -n &quot;Enter Alias Name [timeout in $NAME sec]: &quot; &amp;&amp; \
++			read -t $NAME SYSALIAS
++		fi
++	fi
++}
++#======================================
++# pxeSetupSystemHWInfoFile
++#--------------------------------------
++function pxeSetupSystemHWInfoFile {
++	# /.../
++	# calls hwinfo and stores the information into a file
++	# suffixed by the hardware address of the network card
++	# NOTE: it's required to have the dhcp info file sourced
++	# before this function is called
++	# ----
++	hwinfo --all --log=hwinfo.$DHCPCHADDR &gt;/dev/null
++}
++#======================================
++# pxeSetupSystemHWTypeFile
++#--------------------------------------
++function pxeSetupSystemHWTypeFile {
++	# /.../
++	# collects information about the alias name the
++	# architecture the BIOS version and more and stores
++	# that into a file suffixed by the hardware address of the
++	# network card. Obtaining the BIOS information requires
++	# the posbios tool to be installed in the initrd
++	# ----
++	echo &quot;NCNAME=$SYSALIAS&quot;   &gt;&gt; hwtype.$DHCPCHADDR
++	echo &quot;CRNAME=$SYSALIAS&quot;   &gt;&gt; hwtype.$DHCPCHADDR
++	echo &quot;IPADDR=$IPADDR&quot;     &gt;&gt; hwtype.$DHCPCHADDR
++	echo &quot;ARCHITECTURE=$ARCH&quot; &gt;&gt; hwtype.$DHCPCHADDR
++	#========================================
++	# Try to get BIOS data if tools are there
++	#----------------------------------------
++	if [ -f /sbin/posbios ];then
++		HWBIOS=`/sbin/posbios -b`
++		echo &quot;HWBIOS=$HWBIOS&quot; &gt;&gt; hwtype.$DHCPCHADDR
++		HWTYPE=`/sbin/posbios -ms`
++		echo &quot;HWTYPE=$HWTYPE&quot; &gt;&gt; hwtype.$DHCPCHADDR
++	fi
++}
++#======================================
+ # pxeSizeToMB
+ #--------------------------------------
+ function pxeSizeToMB {
+@@ -6527,6 +6683,19 @@ function setupConsole {
+ 	fi
+ }
+ #======================================
++# cleanPartitionTable
++#--------------------------------------
++function cleanPartitionTable {
++	# /.../
++	# remove partition table and create a new msdos
++	# table label if parted is in use
++	# ----
++	dd if=/dev/zero of=$imageDiskDevice bs=512 count=1 &gt;/dev/null
++	if [ $PARTITIONER = &quot;parted&quot; ];then
++		parted -s $imageDiskDevice mklabel msdos
++	fi
++}
++#======================================
+ # initialize
+ #--------------------------------------
+ function initialize {
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index 3b52dcf..4fc7249 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -223,7 +223,7 @@ Authors:
+     Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+ %endif
+ 
+-%ifarch %ix86 x86_64 ppc ppc64
++%ifarch %ix86 x86_64
+ 
+ %package -n kiwi-desc-netboot
+ License:        GPLv2+
+@@ -478,7 +478,7 @@ rm -rf $RPM_BUILD_ROOT
+ %{_datadir}/kiwi/image/usbboot/suse*
+ %endif
+ 
+-%ifarch %ix86 x86_64 ppc ppc64
++%ifarch %ix86 x86_64
+ 
+ %files -n kiwi-desc-netboot
+ %defattr(-, root, root)
+diff --git a/system/boot/ix86/netboot/suse-linuxrc b/system/boot/ix86/netboot/suse-linuxrc
+index 92f8cea..f266468 100755
+--- a/system/boot/ix86/netboot/suse-linuxrc
++++ b/system/boot/ix86/netboot/suse-linuxrc
+@@ -21,6 +21,7 @@
+ #--------------------------------------
+ export PATH=&quot;/sbin:/bin:/usr/sbin:/usr/bin&quot;
+ export IFS_ORIG=$IFS
++export input=/part.input
+ export ARCH=`arch`
+ export DEBUG=0
+ 
+@@ -43,6 +44,8 @@ export NAME=0
+ #--------------------------------------
+ export SYSTEM_INTEGRITY
+ export SYSTEM_MD5STATUS
++export systemIntegrity=&quot;unknown&quot;
++export haveDisk=0
+ 
+ #======================================
+ # Exports (clicfs usage)
+@@ -57,69 +60,10 @@ export kiwi_hybridpersistent=yes
+ initialize
+ 
+ #======================================
+-# setupSystemAliasName
+-#--------------------------------------
+-function setupSystemAliasName {
+-	# /.../
+-	# Ask for an alias name if NAME from config.&lt;MAC&gt; 
+-	# contains a number. If the number is -1 the system will
+-	# ask for ever for this name otherwhise the number sets
+-	# a timeout how long to wait for input of this data
+-	# ----
+-	if test $NAME -ne 0;then
+-		if test $NAME -eq -1;then
+-			Echo -n &quot;Enter Alias Name for this system: &quot; &amp;&amp; \
+-			read SYSALIAS
+-		else
+-			Echo -n &quot;Enter Alias Name [timeout in $NAME sec]: &quot; &amp;&amp; \
+-			read -t $NAME SYSALIAS
+-		fi
+-	fi
+-}
+-
+-#======================================
+-# setupSystemHWInfoFile
+-#--------------------------------------
+-function setupSystemHWInfoFile {
+-	# /.../
+-	# calls hwinfo and stores the information into a file
+-	# suffixed by the hardware address of the network card
+-	# ----
+-	hwinfo --all --log=hwinfo.$DHCPCHADDR &gt;/dev/null
+-}
+-
+-#======================================
+-# setupSystemHWTypeFile
+-#--------------------------------------
+-function setupSystemHWTypeFile {
+-	# /.../
+-	# collects information about the alias name the
+-	# architecture the BIOS version and more and stores
+-	# that into a file suffixed by the hardware address of the
+-	# network card. The information is uploaded to the pxe
+-	# boot server and used to create a machine config.&lt;MAC&gt; 
+-	# from the ldap directory
+-	# ----
+-	echo &quot;NCNAME=$SYSALIAS&quot;   &gt;&gt; hwtype.$DHCPCHADDR
+-	echo &quot;CRNAME=$SYSALIAS&quot;   &gt;&gt; hwtype.$DHCPCHADDR
+-	echo &quot;IPADDR=$IPADDR&quot;     &gt;&gt; hwtype.$DHCPCHADDR
+-	echo &quot;ARCHITECTURE=$ARCH&quot; &gt;&gt; hwtype.$DHCPCHADDR
+-	#========================================
+-	# Try to get BIOS data if tools are there
+-	#----------------------------------------
+-	if [ -f /sbin/posbios ];then
+-		HWBIOS=`/sbin/posbios -b`
+-		echo &quot;HWBIOS=$HWBIOS&quot; &gt;&gt; hwtype.$DHCPCHADDR
+-		HWTYPE=`/sbin/posbios -ms`
+-		echo &quot;HWTYPE=$HWTYPE&quot; &gt;&gt; hwtype.$DHCPCHADDR
+-	fi
+-}
+-
+-#======================================
+ # Beautify Startup
+ #--------------------------------------
+-echo &quot;Loading KIWI Boot-System...&quot;
+-echo &quot;---------------------------&quot;
++echo &quot;Loading KIWI PXE Boot-System...&quot;
++echo &quot;-------------------------------&quot;
+ 
+ #======================================
+ # Update library path
+@@ -166,26 +110,10 @@ errorLogStart
+ openKernelConsole
+ 
+ #======================================
+-# 6) Obtain/load network module
++# 6) probe/load network module
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	loaded=0
+-	probeNetworkCard
+-	IFS=&quot;:&quot;
+-	for i in $networkModule;do
+-		if [ ! -z $i ];then
+-			modprobe $i 2&gt;/dev/null
+-			if test $? = 0;then
+-				loaded=1
+-			fi
+-		fi
+-	done
+-	IFS=$IFS_ORIG
+-	if test $loaded = 0;then
+-		systemException \
+-			&quot;Network module: Failed to load network module !&quot; \
+-		&quot;reboot&quot;
+-	fi
++	loadNetworkCard
+ fi
+ 
+ #======================================
+@@ -201,27 +129,7 @@ runHook postnetwork
+ # 8) get TFTP Server IP/name
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	checkServer
+-	if [ -z $SERVER ];then
+-		SERVER=tftp.$DOMAIN
+-	fi
+-	Echo &quot;Checking Server name: $SERVER&quot;
+-	if ! ping -c 1 $SERVER &gt;/dev/null 2&gt;&amp;1;then
+-		Echo &quot;Server: $SERVER not found&quot;
+-		if [ -z &quot;$SERVERTYPE&quot; ] || [ &quot;$SERVERTYPE&quot; = &quot;tftp&quot; ]; then
+-			if [ ! -z &quot;$DHCPSIADDR&quot; ];then
+-				Echo &quot;Using: $DHCPSIADDR from dhcpcd-info&quot;
+-				SERVER=$DHCPSIADDR
+-			elif [ ! -z &quot;$DHCPSID&quot; ];then
+-				Echo &quot;Using: $DHCPSID from dhcpcd-info&quot;
+-				SERVER=$DHCPSID
+-			else
+-				systemException \
+-					&quot;Can't assign SERVER IP/name... fatal !&quot; \
+-				&quot;reboot&quot;
+-			fi
+-		fi
+-	fi
++	pxeSetupDownloadServer
+ fi
+ 
+ #======================================
+@@ -284,9 +192,9 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 		# Register new network client
+ 		#--------------------------------------
+ 		Echo &quot;Registering new network client...&quot;
+-		setupSystemAliasName
+-		setupSystemHWInfoFile
+-		setupSystemHWTypeFile
++		pxeSetupSystemAliasName
++		pxeSetupSystemHWInfoFile
++		pxeSetupSystemHWTypeFile
+ 		#======================================
+ 		# Put files on the boot server
+ 		#--------------------------------------
+@@ -322,8 +230,8 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	#--------------------------------------
+ 	if [ $NEWIP -eq 1 ];then
+ 		Echo &quot;Outdated IP address, notify new client setup...&quot;
+-		setupSystemAliasName
+-		setupSystemHWTypeFile
++		pxeSetupSystemAliasName
++		pxeSetupSystemHWTypeFile
+ 		putFile hwtype.$DHCPCHADDR upload/hwtype.$DHCPCHADDR
+ 		echo
+ 		Echo &quot;Notified: $DHCPCHADDR&quot;
+@@ -356,41 +264,41 @@ runHook preprobe
+ probeDevices &quot;skipUSB&quot;
+ runHook postprobe
+ 
+-export systemIntegrity=&quot;unknown&quot;
+ #======================================
+-# 11) Is this a diskful station
++# 11) Check for diskful station
+ #--------------------------------------
+ if \
+ 	[ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; \
+-	[ ! -z &quot;$PART&quot; ]       &amp;&amp; \
++	([ ! -z &quot;$PART&quot; ] || [ ! -z &quot;$IMAGE&quot; ]) &amp;&amp; \
+ 	[ -z &quot;$NFSROOT&quot; ]      &amp;&amp; \
+ 	[ -z &quot;$NBDROOT&quot; ]      &amp;&amp; \
+ 	[ -z &quot;$AOEROOT&quot; ]
+ then
+-	#======================================
+-	# Check for installed system
+-	#--------------------------------------
+-	count=0
+-	IFS=&quot;,&quot; ; for i in $IMAGE;do
+-	case $count in
+-	0) {
++	if ! waitForStorageDevice $DISK;then
++		systemException \
++			&quot;Disk $DISK doesn't appear... fatal !&quot; \
++		&quot;reboot&quot;
++	fi
++	export haveDisk=1
++	export imageDiskDevice=$DISK
++fi
++
++#======================================
++# 12) Check for installed system
++#--------------------------------------
++if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ $haveDisk = &quot;1&quot; ];then
++	IMAGE_FIRST=$(echo $IMAGE | cut -f1 -d,)
++	for i in $IMAGE_FIRST;do
+ 		field=0
+ 		IFS=&quot;;&quot; ; for n in $i;do
+-		case $field in
+-			0) imageDevice=$n ; field=1 ;;
+-			1) imageName=$n   ; field=2 ;;
+-			2) imageVersion=$n; field=3
+-		esac
++			case $field in
++				0) imageDevice=$n ; field=1 ;;
++				1) imageName=$n   ; field=2 ;;
++				2) imageVersion=$n; field=3
++			esac
+ 		done
+-		count=1
+-		if ! waitForStorageDevice $DISK;then
+-			systemException \
+-				&quot;Disk $DISK doesn't appear... fatal !&quot; \
+-			&quot;reboot&quot;
+-		fi
+-		export imageDiskDevice=$DISK
+ 		updateNeeded initialize
+-		if linuxPartition $DISK;then
++		if linuxPartition $imageDiskDevice;then
+ 			if mountSystem $imageDevice;then
+ 				updateNeeded
+ 				umountSystem
+@@ -408,52 +316,41 @@ then
+ 		else
+ 			systemIntegrity=&quot;clean&quot;
+ 		fi
+-	}
+-	;;
+-	*)
+-		# handle other images here...
+-	;;
+-	esac
+ 	done
++fi
++
++#======================================
++# 13) Create ptable on diskful system
++#--------------------------------------
++if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ];then
++	runHook prepartition
+ 	#======================================
+-	# Evaluate PART partition information
++	# Create partition table
+ 	#--------------------------------------
+-	if test $systemIntegrity = &quot;clean&quot;;then
+-		runHook prepartition
+-		Echo &quot;Creating partition table...&quot;
+-		#======================================
+-		# Create partition table if needed
+-		#--------------------------------------
+-		input=/part.input
+-		imageDiskDevice=$DISK
+-		dd if=/dev/zero of=$DISK bs=512 count=1 &gt;/dev/null &amp;&amp; \
+-			parted -s $DISK mklabel msdos
+-		createPartitionerInput $(pxePartitionInput)
+-		callPartitioner $input
+-		#======================================
+-		# Setup swap space if required
+-		#--------------------------------------
+-		export imageSwapDevice=$(pxeSwapDevice)
+-		if [ ! -z &quot;$imageSwapDevice&quot; ];then
+-			if ! mkswap $imageSwapDevice 1&gt;&amp;2;then
+-				systemException &quot;Failed to create swap signature&quot; &quot;reboot&quot;
+-			fi
++	Echo &quot;Creating partition table...&quot;
++	cleanPartitionTable
++	createPartitionerInput $(pxePartitionInput)
++	callPartitioner $input
++	#======================================
++	# Setup swap space if requested
++	#--------------------------------------
++	export imageSwapDevice=$(pxeSwapDevice)
++	if [ ! -z &quot;$imageSwapDevice&quot; ];then
++		if ! mkswap $imageSwapDevice 1&gt;&amp;2;then
++			systemException &quot;Failed to create swap signature&quot; &quot;reboot&quot;
+ 		fi
+-		runHook postpartition
+ 	fi
++	runHook postpartition
+ fi
+ 
+ #======================================
+-# 12) Download network client image
++# 14) Setup root device environment
+ #--------------------------------------
+ runHook predownload
+-if \
+-	[ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; \
+-	([ ! -z &quot;$PART&quot; ] || [ ! -z &quot;$IMAGE&quot; ]) &amp;&amp; \
+-	[ -z &quot;$NFSROOT&quot; ]      &amp;&amp; \
+-	[ -z &quot;$NBDROOT&quot; ]      &amp;&amp; \
+-	[ -z &quot;$AOEROOT&quot; ]
+-then
++if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ $haveDisk = &quot;1&quot; ];then
++	#======================================
++	# 14.1) Download network client image
++	#--------------------------------------
+ 	count=0
+ 	IFS=&quot;,&quot; ; for i in $IMAGE;do
+ 		imageZipped=&quot;uncompressed&quot;
+@@ -476,6 +373,10 @@ then
+ 		if [ $count = 2 ];then
+ 			imageNextRootDevice=$imageDevice
+ 		fi
++		# /.../
++		# start download only if installed system is different
++		# from the image on the pxe boot server
++		# ---
+ 		if test `getSystemIntegrity $count` = &quot;fine&quot;;then
+ 			continue
+ 		fi
+@@ -566,7 +467,7 @@ then
+ 	done
+ else
+ 	#======================================
+-	# 12.1) Check for local boot
++	# 14.2) Check for local boot
+ 	#--------------------------------------
+ 	if [ $LOCAL_BOOT = &quot;yes&quot; ];then
+ 		imageDisk=$(dn $root)
+@@ -582,7 +483,7 @@ else
+ 		fi
+ 	fi
+ 	#======================================
+-	# 12.2) Check for NFS root
++	# 14.3) Check for NFS root
+ 	#--------------------------------------
+ 	if [ ! -z &quot;$NFSROOT&quot; ];then
+ 		IFS=&quot;,&quot; ; for i in $NFSROOT;do
+@@ -610,7 +511,7 @@ else
+ 		export FSTYPE=nfs
+ 	fi
+ 	#======================================
+-	# 12.3) Check for NBD root
++	# 14.4) Check for NBD root
+ 	#--------------------------------------
+ 	if [ ! -z &quot;$NBDROOT&quot; ];then
+ 		if ! modprobe nbd;then
+@@ -716,7 +617,7 @@ else
+ 		systemIntegrity=&quot;clean&quot;
+ 	fi
+ 	#======================================
+-	# 12.4) Check for AOE root
++	# 14.5) Check for AOE root
+ 	#--------------------------------------
+ 	if [ ! -z &quot;$AOEROOT&quot; ];then
+ 		aoeRODevice=`echo $AOEROOT | cut -d , -f 1`
+@@ -757,19 +658,7 @@ fi
+ runHook postdownload
+ 
+ #======================================
+-# 13) Check for RELOAD_CONFIG
+-#--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	if test ! -z $DISK;then
+-	if test ! -z $RELOAD_CONFIG;then
+-		systemIntegrity_save=$systemIntegrity
+-		systemIntegrity=&quot;clean&quot;
+-	fi
+-	fi
+-fi
+-
+-#======================================
+-# 14) Mount OS image to /mnt
++# 15) Mount OS image to /mnt
+ #--------------------------------------
+ runHook premount
+ if ! mountSystem;then
+@@ -779,14 +668,14 @@ validateRootTree
+ runHook postmount
+ 
+ #======================================
+-# 15) Import fixed configuration files
++# 16) Import fixed configuration files
+ #--------------------------------------
+ runHook preconfig
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
++if [ $LOCAL_BOOT = &quot;no&quot; ] || [ ! -z &quot;$RELOAD_CONFIG&quot; ];then
+ 	mkdir -p /config
+-	#======================================
+-	# Get files from CONF, VENDOR_CONF
+-	#--------------------------------------
++	#=======================================
++	# 16.1) Get files from CONF, VENDOR_CONF
++	#---------------------------------------
+ 	IFS=&quot;,&quot; ; for i in $CONF $VENDOR_CONF;do
+ 		field=0
+ 		IFS=&quot;;&quot; ; for n in $i;do
+@@ -803,21 +692,21 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 		fetchFile $configSource /config/$configDest uncomp $configServer
+ 	done
+ 	IFS=$IFS_ORIG
+-	#======================================
+-	# Check for KIWI_INITRD
+-	#--------------------------------------
+-	if test $systemIntegrity = &quot;clean&quot;;then
+-		if [ ! -z $KIWI_INITRD ];then
++	#=======================================
++	# 16.2) Check for KIWI_INITRD
++	#---------------------------------------
++	if [ $haveDisk = &quot;1&quot; ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ];then
++		if [ ! -z &quot;$KIWI_INITRD&quot; ];then
+ 			Echo &quot;Import KIWI initrd file: $KIWI_INITRD&quot;
+ 			rm -f /mnt/boot/initrd* &amp;&amp; mkdir -p /mnt/boot &gt;/dev/null 2&gt;&amp;1
+ 			fetchFile $KIWI_INITRD /mnt/boot/initrd.kiwi
+-			if [ ! -z $KIWI_KERNEL ];then
++			if [ ! -z &quot;$KIWI_KERNEL&quot; ];then
+ 				Echo &quot;Import KIWI kernel file: $KIWI_KERNEL&quot;
+ 				rm -f /mnt/boot/linux*
+ 				fetchFile $KIWI_KERNEL /mnt/boot/linux.kiwi
+ 			fi
+ 			KIWI_INITRD_PARAMS=&quot;IMAGE=local&quot;
+-			if [ ! -z $COMBINED_IMAGE ]; then
++			if [ ! -z &quot;$COMBINED_IMAGE&quot; ]; then
+ 				SPLIT=&quot;COMBINED_IMAGE=$COMBINED_IMAGE&quot;
+ 				KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS $SPLIT&quot;
+ 			fi
+@@ -832,80 +721,38 @@ fi
+ runHook postconfig
+ 
+ #======================================
+-# 16) check filesystem and kernels
++# 17) check filesystem and kernels
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	if test $systemIntegrity = &quot;clean&quot;;then
+-		if [ &quot;$FSTYPE&quot; != &quot;nfs&quot; ];then
+-			probeFileSystem $imageRootDevice
+-		fi
+-		kernelList /mnt
+-	fi
+-fi
+-
+-#======================================
+-# 17) make initrd available on unionfs
+-#--------------------------------------
+-if \
+-	[ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; \
+-	[ ! -z &quot;$PART&quot; ]       &amp;&amp; \
+-	[ -z &quot;$NFSROOT&quot; ]      &amp;&amp; \
+-	[ -z &quot;$NBDROOT&quot; ]      &amp;&amp; \
+-	[ -z &quot;$AOEROOT&quot; ]
+-then
+-	if test ! -z &quot;$UNIONFS_CONFIG&quot; &amp;&amp; test $systemIntegrity = &quot;clean&quot;;then
+-		# /.../
+-		# we are using a special root setup with aufs or clicfs. In this
+-		# case we can't use the SuSE Linux initrd but must stick to the
+-		# kiwi boot system.
+-		# ----
+-		pushd $imageBootDevice &amp;&gt;/dev/null
+-		IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
+-			if test -z &quot;$i&quot;;then
+-				continue
+-			fi
+-			kernel=`echo $i | cut -f1 -d:`
+-			initrd=`echo $i | cut -f2 -d:`
+-			if [ ! -f initrd.kiwi ] &amp;&amp; [ ! -f linux.kiwi ];then
+-				Echo &quot;WARNING: can't find kiwi initrd/linux !&quot;
+-				Echo -b &quot;local boot will not work, maybe you forgot&quot;
+-				Echo -b &quot;to add KIWI_INITRD and KIWI_KERNEL in config.&lt;MAC&gt; ?&quot;
+-				break
+-			fi
+-			rm -f $initrd &amp;&amp; ln -s initrd.kiwi $initrd
+-			rm -f $kernel &amp;&amp; ln -s linux.kiwi  $kernel
+-			export bootLoaderOK=1
+-			break
+-		done
+-		IFS=$IFS_ORIG
+-		popd &gt;/dev/null
++if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ];then
++	if [ &quot;$FSTYPE&quot; != &quot;nfs&quot; ];then
++		probeFileSystem $imageRootDevice
+ 	fi
++	kernelList /mnt
+ fi
+ 
+ #======================================
+ # 18) Create system dependant files
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	if test $systemIntegrity = &quot;clean&quot;;then
+-		setupDefaultPXENetwork /config
+-		setupDefaultFstab /config
+-		updateRootDeviceFstab /config &quot;$imageRootDevice&quot;
+-		if test ! -z $DISK;then
+-			updateSwapDeviceFstab /config ${DISK}1
+-			updateOtherDeviceFstab /config
+-			if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
+-				updateLVMBootDeviceFstab /config $imageBootDevice
+-			elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+-				updateClicBootDeviceFstab /config $imageBootDevice
+-			elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
+-				updateBtrBootDeviceFstab /config $imageBootDevice
+-			elif [ &quot;$haveXFS&quot; = &quot;yes&quot; ];then
+-				updateXfsBootDeviceFstab /config $imageBootDevice
+-			fi
+-			setupBootLoader /mnt /config $(($bootid - 1)) \
+-				$imageRootDevice NET $imageSwapDevice
+-			setupKernelModules /config
+-		fi
++if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ];then
++	mkdir -p /config
++	setupDefaultPXENetwork /config
++	setupDefaultFstab /config
++	updateRootDeviceFstab /config &quot;$imageRootDevice&quot;
++	if test ! -z $DISK;then
++		updateSwapDeviceFstab /config ${DISK}1
++		updateOtherDeviceFstab /config
++		if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
++			updateLVMBootDeviceFstab /config $imageBootDevice
++		elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
++			updateClicBootDeviceFstab /config $imageBootDevice
++		elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
++			updateBtrBootDeviceFstab /config $imageBootDevice
++		elif [ &quot;$haveXFS&quot; = &quot;yes&quot; ];then
++			updateXfsBootDeviceFstab /config $imageBootDevice
++		fi
++		setupBootLoader /mnt /config $(($bootid - 1)) \
++			$imageRootDevice NET $imageSwapDevice
++		setupKernelModules /config
+ 	fi
+ fi
+ 
+@@ -913,42 +760,16 @@ fi
+ # 19) If image is new, notify
+ #--------------------------------------
+ runHook prenotify
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	if test $systemIntegrity = &quot;clean&quot;; then
+-		count=0
+-		IFS=&quot;,&quot; ; for i in $IMAGE;do
+-			count=$(($count + 1))
+-			field=0
+-			IFS=&quot;;&quot; ; for n in $i;do
+-			case $field in
+-				0) field=1 ;;
+-				1) imageName=$n   ; field=2 ;;
+-				2) imageVersion=$n; field=3 ;;
+-				3) imageServer=$n ; field=4 ;;
+-				4) imageBlkSize=$n; field=5 ;;
+-				5) imageZipped=$n ;
+-			esac
+-			done
+-			Echo &quot;Notify of new image: image/$imageName&quot;
+-			echo &quot;image/$imageName&quot; &gt; bootversion.$DHCPCHADDR
+-			echo &quot;$imageVersion&quot;   &gt;&gt; bootversion.$DHCPCHADDR
+-			putFile bootversion.$DHCPCHADDR upload/bootversion.$DHCPCHADDR
+-			rm -f bootversion.$DHCPCHADDR
+-		done
+-	fi
++if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ];then
++	pxeNotifyNewImage
+ fi
+ runHook postnotify
+ 
+ #======================================
+ # 20) send DHCP_RELEASE, reset cache
+ #--------------------------------------
+-if \
+-	[ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; \
+-	[ -z &quot;$NFSROOT&quot; ]      &amp;&amp; \
+-	[ -z &quot;$NBDROOT&quot; ]      &amp;&amp; \
+-	[ -z &quot;$AOEROOT&quot; ]
+-then
+-	dhcpcd -p -k $PXE_IFACE
++if [ $LOCAL_BOOT = &quot;no&quot; ];then
++	releaseNetwork
+ fi
+ 
+ #======================================
+@@ -972,13 +793,11 @@ umountSystemFilesystems
+ #======================================
+ # 24) copy initrd files to image
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	if test $systemIntegrity = &quot;clean&quot;;then
+-		if canWrite /mnt;then
+-			importBranding
+-			cp /preinit /mnt
+-			cp /include /mnt
+-		fi
++if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ];then
++	if canWrite /mnt;then
++		importBranding
++		cp /preinit /mnt
++		cp /include /mnt
+ 	fi
+ fi
+ 
+@@ -988,13 +807,13 @@ fi
+ kernelCheck /mnt
+ 
+ #======================================
+-# 26 kill boot shell
++# 26) kill boot shell
+ #--------------------------------------
+ killShell
+ killBlogD
+ 
+ #======================================
+-# 27 Activate new root
++# 27) Activate new root
+ #--------------------------------------
+ runHook preactivate
+ activateImage
+diff --git a/system/boot/ix86/netboot/suse-preinit b/system/boot/ix86/netboot/suse-preinit
+index b53d50d..5bb5e1b 100755
+--- a/system/boot/ix86/netboot/suse-preinit
++++ b/system/boot/ix86/netboot/suse-preinit
+@@ -35,12 +35,8 @@ fi
+ #======================================
+ # 3) start udev
+ #--------------------------------------
+-if [ ! -z $DISK ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ]; then
+-	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+-		mountSystemFilesystems
+-		udevSystemStart
+-	fi
+-fi
++mountSystemFilesystems
++udevSystemStart
+ 
+ #======================================
+ # 4) update mount table
+@@ -55,7 +51,7 @@ createFramebufferDevices
+ #======================================
+ # 6) create initrd on diskful
+ #--------------------------------------
+-if [ ! -z &quot;$DISK&quot; ] &amp;&amp; [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ]; then
++if [ ! -z &quot;$imageDiskDevice&quot; ] &amp;&amp; [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ]; then
+ 	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+ 		#======================================
+ 		# use distro initrd via mkinitrd
+@@ -65,17 +61,34 @@ if [ ! -z &quot;$DISK&quot; ] &amp;&amp; [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ]; then
+ 		#======================================
+ 		# use kiwi initrd downloaded before
+ 		#--------------------------------------
+-		:
++		pushd /boot &amp;&gt;/dev/null
++		IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
++			if test -z &quot;$i&quot;;then
++				continue
++			fi
++			kernel=`echo $i | cut -f1 -d:`
++			initrd=`echo $i | cut -f2 -d:`
++			if [ ! -f initrd.kiwi ] &amp;&amp; [ ! -f linux.kiwi ];then
++				Echo &quot;WARNING: can't find kiwi initrd/linux !&quot;
++				Echo -b &quot;local boot will not work, maybe you forgot&quot;
++				Echo -b &quot;to add KIWI_INITRD and KIWI_KERNEL in config.&lt;MAC&gt; ?&quot;
++				break
++			fi
++			rm -f $initrd &amp;&amp; ln -s initrd.kiwi $initrd
++			rm -f $kernel &amp;&amp; ln -s linux.kiwi  $kernel
++			bootLoaderOK=1
++			break
++		done
++		IFS=$IFS_ORIG
++		popd &gt;/dev/null
+ 	fi
+ fi
+ 
+ #======================================
+ # 7) Install boot loader on diskful
+ #--------------------------------------
+-if [ ! -z &quot;$DISK&quot; ] &amp;&amp; [ &quot;$bootLoaderOK&quot; = 1 ];then
+-	if test $systemIntegrity = &quot;clean&quot;;then
+-		installBootLoader
+-	fi
++if [ &quot;$bootLoaderOK&quot; = 1 ];then
++	installBootLoader
+ fi
+ 
+ #======================================
+@@ -89,18 +102,9 @@ if [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ];then
+ fi
+ 
+ #======================================
+-# 9) Reset systemIntegrity
++# 9) check for valid mount points
+ #--------------------------------------
+-if [ ! -z &quot;$DISK&quot; ];then
+-	if test ! -z $RELOAD_CONFIG;then
+-		systemIntegrity=$systemIntegrity_save
+-	fi
+-fi
+-
+-#======================================
+-# 10) check for valid mount points 
+-#--------------------------------------
+-if [ ! -z &quot;$DISK&quot; ];then
++if [ ! -z &quot;$imageDiskDevice&quot; ];then
+ 	IFS=&quot;:&quot; ; for i in $PART_MOUNT;do
+ 	if [ ! -z &quot;$i&quot; ] &amp;&amp; [ ! -e &quot;$i&quot; ] &amp;&amp; [ ! &quot;$i&quot; = &quot;x&quot; ];then
+ 		mkdir -p $i
+@@ -109,9 +113,9 @@ if [ ! -z &quot;$DISK&quot; ];then
+ fi
+ 
+ #======================================
+-# 11) Update /etc/ImageVersion files
++# 10) Update /etc/ImageVersion files
+ #--------------------------------------
+-if [ ! -z &quot;$DISK&quot; ];then
++if [ ! -z &quot;$imageDiskDevice&quot; ];then
+ 	count=0
+ 	IFS=&quot;,&quot; ; for i in $IMAGE;do
+ 		count=$(($count + 1))
+@@ -120,10 +124,7 @@ if [ ! -z &quot;$DISK&quot; ];then
+ 		case $field in
+ 			0) field=1 ;;
+ 			1) imageName=$n   ; field=2 ;;
+-			2) imageVersion=$n; field=3 ;;
+-			3) imageServer=$n ; field=4 ;;
+-			4) imageBlkSize=$n; field=5 ;;
+-			5) imageZipped=$n ;
++			2) imageVersion=$n; field=3
+ 		esac
+ 		done
+ 		atversion=&quot;$imageName-$imageVersion&quot;
+@@ -136,7 +137,7 @@ if [ ! -z &quot;$DISK&quot; ];then
+ fi
+ 
+ #======================================
+-# 12) setup network for nfs boot
++# 11) setup network for nfs boot
+ #--------------------------------------
+ if [ ! -z &quot;$NFSROOT&quot; ];then
+ 	mount -t proc  proc    /proc
+@@ -150,16 +151,12 @@ if [ ! -z &quot;$NFSROOT&quot; ];then
+ fi
+ 
+ #======================================
+-# 13) setup console
++# 12) setup console
+ #--------------------------------------
+ setupConsole
+ 
+ #======================================
+-# 14) kill udev
++# 13) kill udev
+ #--------------------------------------
+-if [ ! -z &quot;$DISK&quot; ] &amp;&amp; [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ]; then
+-	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+-		udevSystemStop
+-		umountSystemFilesystems
+-	fi
+-fi
++udevSystemStop
++umountSystemFilesystems
+diff --git a/system/boot/ppc/netboot/README b/system/boot/ppc/netboot/README
+deleted file mode 100644
+index a7feee1..0000000
+--- a/system/boot/ppc/netboot/README
++++ /dev/null
+@@ -1,9 +0,0 @@
+-#/.../
+-# kiwi netboot descriptions
+-# The boot images here are used for deploying a system image over
+-# the network using the PXE protocol. Access to the image is gained
+-# by various methods like:
+-# * installation on system disk
+-# * installation to system main memory
+-# * nbd root mount of the system (network block device)
+-# * nfs root mount of the system
+diff --git a/system/boot/ppc/netboot/suse-11.1/config.xml b/system/boot/ppc/netboot/suse-11.1/config.xml
+deleted file mode 100644
+index a42c840..0000000
+--- a/system/boot/ppc/netboot/suse-11.1/config.xml
++++ /dev/null
+@@ -1,284 +0,0 @@
+-&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;initrd-netboot-suse-11.1&quot;&gt;
+-	&lt;description type=&quot;boot&quot;&gt;
+-		&lt;author&gt;Marcus Schaefer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;boot/initrd image used for PXE&lt;/specification&gt;
+-	&lt;/description&gt;
+-	&lt;preferences&gt;
+-		&lt;type image=&quot;cpio&quot; bootprofile=&quot;default&quot;/&gt;
+-		&lt;version&gt;2.1.1&lt;/version&gt;
+-		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+-		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+-	&lt;/preferences&gt;
+-	&lt;profiles&gt;
+-		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
+-		&lt;profile name=&quot;diskless&quot; description=&quot;Booting diskless thin clients&quot;/&gt;
+-		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+-		&lt;profile name=&quot;pae&quot; description=&quot;KERNEL: pae&quot;/&gt;
+-	&lt;/profiles&gt;
+-	&lt;drivers type=&quot;usbdrivers&quot; profiles=&quot;default,xen,pae&quot;&gt;
+-		&lt;file name=&quot;usb/host/ehci-hcd.ko&quot;/&gt;
+-		&lt;file name=&quot;usb/host/uhci-hcd.ko&quot;/&gt;
+-		&lt;file name=&quot;usb/core/usbcore.ko&quot;/&gt;
+-		&lt;file name=&quot;usb/storage/usb-storage.ko&quot;/&gt;
+-	&lt;/drivers&gt;
+-	&lt;drivers type=&quot;drivers&quot; profiles=&quot;default,xen,pae&quot;&gt;
+-		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/hid/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/loop.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/brd.ko&quot;/&gt;
+-		&lt;file name=&quot;net/packet/*&quot;/&gt;
+-		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+-		&lt;file name=&quot;fs/ext2/*&quot;/&gt;
+-		&lt;file name=&quot;fs/binfmt_aout.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/binfmt_misc.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/mbcache.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/quota_v1.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/quota_v2.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/jbd/*&quot;/&gt;
+-		&lt;file name=&quot;fs/fat/*&quot;/&gt;
+-		&lt;file name=&quot;fs/vfat/*&quot;/&gt;
+-		&lt;file name=&quot;fs/hfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/exportfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/squashfs/*&quot;/&gt;
+-		&lt;file name=&quot;updates/aufs.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/reiserfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/nfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/fuse/*&quot;/&gt;
+-		&lt;file name=&quot;net/sunrpc/*&quot;/&gt;
+-		&lt;file name=&quot;fs/lockd/*&quot;/&gt;
+-		&lt;file name=&quot;fs/nfs_common/*&quot;/&gt;
+-		&lt;file name=&quot;net/ipv6/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/ata/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/scsi/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/message/fusion/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/nbd.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/aoe/aoe.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/parport/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/char/lp.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
+-	&lt;/drivers&gt;
+-	&lt;drivers type=&quot;drivers&quot; profiles=&quot;diskless&quot;&gt;
+-		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/brd.ko&quot;/&gt;
+-		&lt;file name=&quot;net/packet/*&quot;/&gt;
+-		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+-		&lt;file name=&quot;fs/ext2/*&quot;/&gt;
+-		&lt;file name=&quot;fs/mbcache.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/exportfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/squashfs/*&quot;/&gt;
+-		&lt;file name=&quot;updates/aufs.ko&quot;/&gt;
+-		&lt;file name=&quot;weak-updates/aufs.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/nfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/lockd/*&quot;/&gt;
+-		&lt;file name=&quot;net/sunrpc/*&quot;/&gt;
+-		&lt;file name=&quot;fs/nfs_common/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/message/fusion/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/nbd.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/aoe/aoe.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/3c59x.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/8139cp.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/8139too.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/8390.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/atlx/atl2.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/b44.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/bnx2.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/defxx.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/dl2k.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/e100.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/e1000/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/epic100.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/eql.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/fealnx.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/forcedeth.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/hp100.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/mii.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/myri10ge&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/natsemi.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/ne2k-pci.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/netconsole.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/ns83820.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/pcnet32.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/qla3xxx.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/r8169.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/s2io.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/sis900.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/skge.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/slhc.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/starfire.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/sundance.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/sungem.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/sungem_phy.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/sunhme.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/tg3.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/tlan.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/tulip/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/via-rhine.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/via-velocity.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/yellowfin.ko&quot;/&gt;
+-	&lt;/drivers&gt;
+-	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+-		&lt;source path=&quot;/image/CDs/full-i386&quot;/&gt;
+-	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;std&quot;&gt;
+-		&lt;package name=&quot;kernel-default&quot;/&gt;
+-		&lt;package name=&quot;kernel-default-base&quot;/&gt;
+-		&lt;package name=&quot;kernel-default-extra&quot;/&gt;
+-		&lt;package name=&quot;aufs-kmp-default&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;pae&quot;&gt;
+-		&lt;package name=&quot;kernel-pae&quot;/&gt;
+-		&lt;package name=&quot;kernel-pae-base&quot;/&gt;
+-		&lt;package name=&quot;kernel-pae-extra&quot;/&gt;
+-		&lt;package name=&quot;aufs-kmp-pae&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xen&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot;/&gt;
+-		&lt;package name=&quot;kernel-xen-base&quot;/&gt;
+-		&lt;package name=&quot;kernel-xen-extra&quot;/&gt;
+-		&lt;package name=&quot;aufs-kmp-xen&quot;/&gt;
+-		&lt;package name=&quot;xen&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;default,xen,pae&quot;&gt;
+-		&lt;package name=&quot;curl&quot;/&gt;
+-		&lt;package name=&quot;psmisc&quot;/&gt;
+-		&lt;package name=&quot;iputils&quot;/&gt;
+-		&lt;package name=&quot;atftp&quot;/&gt;
+-		&lt;package name=&quot;bind-libs&quot;/&gt;
+-		&lt;package name=&quot;bind-utils&quot;/&gt;
+-		&lt;package name=&quot;dhcpcd&quot;/&gt;
+-		&lt;package name=&quot;e2fsprogs&quot;/&gt;
+-		&lt;package name=&quot;file&quot;/&gt;
+-		&lt;package name=&quot;hwinfo&quot;/&gt;
+-		&lt;package name=&quot;module-init-tools&quot;/&gt;
+-		&lt;package name=&quot;net-tools&quot;/&gt;
+-		&lt;package name=&quot;netcfg&quot;/&gt;
+-		&lt;package name=&quot;parted&quot;/&gt;
+-		&lt;package name=&quot;reiserfs&quot;/&gt;
+-		&lt;package name=&quot;util-linux&quot;/&gt;
+-		&lt;package name=&quot;diffutils&quot;/&gt;
+-		&lt;package name=&quot;procps&quot;/&gt;
+-		&lt;package name=&quot;lvm2&quot;/&gt;
+-		&lt;package name=&quot;gfxboot&quot;/&gt;
+-		&lt;package name=&quot;gfxboot-devel&quot;/&gt;
+-		&lt;package name=&quot;fribidi&quot;/&gt;
+-		&lt;package name=&quot;make&quot;/&gt;
+-		&lt;package name=&quot;nbd&quot;/&gt;
+-		&lt;package name=&quot;nfs-client&quot;/&gt;
+-		&lt;package name=&quot;bootsplash&quot;/&gt;
+-		&lt;package name=&quot;bootsplash-branding-openSUSE&quot;/&gt;
+-		&lt;package name=&quot;tar&quot;/&gt;
+-		&lt;package name=&quot;cromfs&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;diskless&quot;&gt;
+-		&lt;package name=&quot;iputils&quot;/&gt;
+-		&lt;package name=&quot;atftp&quot;/&gt;
+-		&lt;package name=&quot;dhcpcd&quot;/&gt;
+-		&lt;package name=&quot;file&quot;/&gt;
+-		&lt;package name=&quot;hwinfo&quot;/&gt;
+-		&lt;package name=&quot;module-init-tools&quot;/&gt;
+-		&lt;package name=&quot;net-tools&quot;/&gt;
+-		&lt;package name=&quot;netcfg&quot;/&gt;
+-		&lt;package name=&quot;util-linux&quot;/&gt;
+-		&lt;package name=&quot;diffutils&quot;/&gt;
+-		&lt;package name=&quot;procps&quot;/&gt;
+-		&lt;package name=&quot;fribidi&quot;/&gt;
+-		&lt;package name=&quot;nbd&quot;/&gt;
+-		&lt;package name=&quot;nfs-client&quot;/&gt;
+-		&lt;package name=&quot;tar&quot;/&gt;
+-		&lt;package name=&quot;gfxboot&quot;/&gt;
+-		&lt;package name=&quot;gfxboot-devel&quot;/&gt;
+-		&lt;package name=&quot;bootsplash&quot;/&gt;
+-		&lt;package name=&quot;bootsplash-branding-openSUSE&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot;&gt;
+-		&lt;package name=&quot;filesystem&quot;/&gt;
+-		&lt;package name=&quot;glibc&quot;/&gt;
+-		&lt;package name=&quot;glibc-locale&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;delete&quot; profiles=&quot;default,xen,diskless,pae&quot;&gt;
+-		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+-		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+-		&lt;package name=&quot;PolicyKit&quot;/&gt;
+-		&lt;package name=&quot;audit-libs&quot;/&gt;
+-		&lt;package name=&quot;blocxx&quot;/&gt;
+-		&lt;package name=&quot;cpio&quot;/&gt;
+-		&lt;package name=&quot;cyrus-sasl&quot;/&gt;
+-		&lt;package name=&quot;db&quot;/&gt;
+-		&lt;package name=&quot;diffutils&quot;/&gt;
+-		&lt;package name=&quot;expat&quot;/&gt;
+-		&lt;package name=&quot;fillup&quot;/&gt;
+-		&lt;package name=&quot;gawk&quot;/&gt;
+-		&lt;package name=&quot;gdbm&quot;/&gt;
+-		&lt;package name=&quot;glib2&quot;/&gt;
+-		&lt;package name=&quot;glibc-locale&quot;/&gt;
+-		&lt;package name=&quot;gnome-filesystem&quot;/&gt;
+-		&lt;package name=&quot;gpg&quot;/&gt;
+-		&lt;package name=&quot;info&quot;/&gt;
+-		&lt;package name=&quot;insserv&quot;/&gt;
+-		&lt;package name=&quot;iproute2&quot;/&gt;
+-		&lt;package name=&quot;irqbalance&quot;/&gt;
+-		&lt;package name=&quot;libxcrypt&quot;/&gt;
+-		&lt;package name=&quot;libxml2&quot;/&gt;
+-		&lt;package name=&quot;libzio&quot;/&gt;
+-		&lt;package name=&quot;limal&quot;/&gt;
+-		&lt;package name=&quot;limal-bootloader&quot;/&gt;
+-		&lt;package name=&quot;limal-perl&quot;/&gt;
+-		&lt;package name=&quot;logrotate&quot;/&gt;
+-		&lt;package name=&quot;mdadm&quot;/&gt;
+-		&lt;package name=&quot;mingetty&quot;/&gt;
+-		&lt;package name=&quot;openSUSE-release&quot;/&gt;
+-		&lt;package name=&quot;openldap2-client&quot;/&gt;
+-		&lt;package name=&quot;openslp&quot;/&gt;
+-		&lt;package name=&quot;pam&quot;/&gt;
+-		&lt;package name=&quot;pam-modules&quot;/&gt;
+-		&lt;package name=&quot;pcre&quot;/&gt;
+-		&lt;package name=&quot;perl&quot;/&gt;
+-		&lt;package name=&quot;perl-Bootloader&quot;/&gt;
+-		&lt;package name=&quot;perl-gettext&quot;/&gt;
+-		&lt;package name=&quot;permissions&quot;/&gt;
+-		&lt;package name=&quot;pm-utils&quot;/&gt;
+-		&lt;package name=&quot;pmtools&quot;/&gt;
+-		&lt;package name=&quot;suse-build-key&quot;/&gt;
+-		&lt;package name=&quot;gfxboot&quot;/&gt;
+-		&lt;package name=&quot;gfxboot-devel&quot;/&gt;
+-		&lt;package name=&quot;fribidi&quot;/&gt;
+-		&lt;package name=&quot;make&quot;/&gt;
+-		&lt;package name=&quot;bootsplash-branding-openSUSE&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;delete&quot; profiles=&quot;diskless&quot;&gt;
+-		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+-		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-libxcb&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-libX11&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-libXau&quot;/&gt;
+-		&lt;package name=&quot;openldap2-client&quot;/&gt;
+-		&lt;package name=&quot;pam-modules&quot;/&gt;
+-		&lt;package name=&quot;openslp&quot;/&gt;
+-		&lt;package name=&quot;perl-HTML-Tagset&quot;/&gt;
+-		&lt;package name=&quot;perl&quot;/&gt;
+-		&lt;package name=&quot;gfxboot&quot;/&gt;
+-		&lt;package name=&quot;gfxboot-devel&quot;/&gt;
+-		&lt;package name=&quot;perl-gettext&quot;/&gt;
+-		&lt;package name=&quot;setserial&quot;/&gt;
+-		&lt;package name=&quot;bundle-lang-common-zh&quot;/&gt;
+-		&lt;package name=&quot;libjpeg&quot;/&gt;
+-		&lt;package name=&quot;libtiff3&quot;/&gt;
+-		&lt;package name=&quot;libmng&quot;/&gt;
+-		&lt;package name=&quot;liblcms&quot;/&gt;
+-		&lt;package name=&quot;make&quot;/&gt;
+-		&lt;package name=&quot;pciutils&quot;/&gt;
+-		&lt;package name=&quot;krb5&quot;/&gt;
+-		&lt;package name=&quot;openldap2-client&quot;/&gt;
+-		&lt;package name=&quot;cyrus-sasl&quot;/&gt;
+-		&lt;package name=&quot;pam-modules&quot;/&gt;
+-		&lt;package name=&quot;pam-config&quot;/&gt;
+-		&lt;package name=&quot;PolicyKit&quot;/&gt;
+-	&lt;/packages&gt;
+-&lt;/image&gt;
+diff --git a/system/boot/ppc/netboot/suse-11.1/images.sh b/system/boot/ppc/netboot/suse-11.1/images.sh
+deleted file mode 100755
+index 2826e31..0000000
+--- a/system/boot/ppc/netboot/suse-11.1/images.sh
++++ /dev/null
+@@ -1,33 +0,0 @@
+-#!/bin/sh
+-test -f /.kconfig &amp;&amp; . /.kconfig
+-test -f /.profile &amp;&amp; . /.profile
+-
+-echo &quot;Configure image: [$kiwi_iname]...&quot;
+-
+-#==========================================
+-# remove unneded kernel files
+-#------------------------------------------
+-suseStripKernel
+-
+-#==========================================
+-# setup gfxboot
+-#------------------------------------------
+-suseGFXBoot openSUSE lilo
+-
+-#==========================================
+-# remove unneeded packages
+-#------------------------------------------
+-rpm -e --nodeps --noscripts \
+-	$(rpm -q `baseGetPackagesForDeletion` | grep -v &quot;is not installed&quot;)
+-
+-#==========================================
+-# remove unneeded files
+-#------------------------------------------
+-suseStripInitrd
+-
+-#==========================================
+-# umount /proc
+-#------------------------------------------
+-umount /proc &amp;&gt;/dev/null
+-
+-exit 0
+diff --git a/system/boot/ppc/netboot/suse-11.1/root/etc/modprobe.conf.local b/system/boot/ppc/netboot/suse-11.1/root/etc/modprobe.conf.local
+deleted file mode 100644
+index 3d59b05..0000000
+--- a/system/boot/ppc/netboot/suse-11.1/root/etc/modprobe.conf.local
++++ /dev/null
+@@ -1 +0,0 @@
+-options brd rd_size=512000
+diff --git a/system/boot/ppc/netboot/suse-11.1/root/include b/system/boot/ppc/netboot/suse-11.1/root/include
+deleted file mode 120000
+index 022370d..0000000
+--- a/system/boot/ppc/netboot/suse-11.1/root/include
++++ /dev/null
+@@ -1 +0,0 @@
+-/usr/share/kiwi/modules/KIWILinuxRC.sh
+\ No newline at end of file
+diff --git a/system/boot/ppc/netboot/suse-11.1/root/linuxrc b/system/boot/ppc/netboot/suse-11.1/root/linuxrc
+deleted file mode 120000
+index 060fc40..0000000
+--- a/system/boot/ppc/netboot/suse-11.1/root/linuxrc
++++ /dev/null
+@@ -1 +0,0 @@
+-../../suse-linuxrc
+\ No newline at end of file
+diff --git a/system/boot/ppc/netboot/suse-11.1/root/preinit b/system/boot/ppc/netboot/suse-11.1/root/preinit
+deleted file mode 120000
+index d93326c..0000000
+--- a/system/boot/ppc/netboot/suse-11.1/root/preinit
++++ /dev/null
+@@ -1 +0,0 @@
+-../../suse-preinit
+\ No newline at end of file
+diff --git a/system/boot/ppc/netboot/suse-11.2/config.xml b/system/boot/ppc/netboot/suse-11.2/config.xml
+deleted file mode 100644
+index 2ecba07..0000000
+--- a/system/boot/ppc/netboot/suse-11.2/config.xml
++++ /dev/null
+@@ -1,273 +0,0 @@
+-&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;initrd-netboot-suse-11.2&quot;&gt;
+-	&lt;description type=&quot;boot&quot;&gt;
+-		&lt;author&gt;Marcus Schaefer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;boot/initrd image used for PXE&lt;/specification&gt;
+-	&lt;/description&gt;
+-	&lt;preferences&gt;
+-		&lt;type image=&quot;cpio&quot; bootprofile=&quot;default&quot;/&gt;
+-		&lt;version&gt;2.1.1&lt;/version&gt;
+-		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+-		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+-	&lt;/preferences&gt;
+-	&lt;profiles&gt;
+-		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
+-		&lt;profile name=&quot;diskless&quot; description=&quot;Booting diskless thin clients&quot;/&gt;
+-		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+-		&lt;profile name=&quot;pae&quot; description=&quot;KERNEL: pae&quot;/&gt;
+-	&lt;/profiles&gt;
+-	&lt;drivers type=&quot;usbdrivers&quot; profiles=&quot;default,xen,pae&quot;&gt;
+-		&lt;file name=&quot;usb/host/ehci-hcd.ko&quot;/&gt;
+-		&lt;file name=&quot;usb/host/uhci-hcd.ko&quot;/&gt;
+-		&lt;file name=&quot;usb/core/usbcore.ko&quot;/&gt;
+-		&lt;file name=&quot;usb/storage/usb-storage.ko&quot;/&gt;
+-	&lt;/drivers&gt;
+-	&lt;drivers type=&quot;drivers&quot; profiles=&quot;default,xen,pae&quot;&gt;
+-		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/hid/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/loop.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/brd.ko&quot;/&gt;
+-		&lt;file name=&quot;net/packet/*&quot;/&gt;
+-		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+-		&lt;file name=&quot;fs/ext2/*&quot;/&gt;
+-		&lt;file name=&quot;fs/binfmt_aout.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/binfmt_misc.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/mbcache.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/quota_v1.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/quota_v2.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/jbd/*&quot;/&gt;
+-		&lt;file name=&quot;fs/fat/*&quot;/&gt;
+-		&lt;file name=&quot;fs/vfat/*&quot;/&gt;
+-		&lt;file name=&quot;fs/hfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/exportfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/squashfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/reiserfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/nfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/fuse/*&quot;/&gt;
+-		&lt;file name=&quot;net/sunrpc/*&quot;/&gt;
+-		&lt;file name=&quot;fs/lockd/*&quot;/&gt;
+-		&lt;file name=&quot;fs/nfs_common/*&quot;/&gt;
+-		&lt;file name=&quot;net/ipv6/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/ata/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/scsi/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/message/fusion/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/nbd.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/aoe/aoe.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/parport/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/char/lp.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
+-		&lt;file name=&quot;lib/crc-t10dif.ko&quot;/&gt;
+-	&lt;/drivers&gt;
+-	&lt;drivers type=&quot;drivers&quot; profiles=&quot;diskless&quot;&gt;
+-		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/brd.ko&quot;/&gt;
+-		&lt;file name=&quot;net/packet/*&quot;/&gt;
+-		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+-		&lt;file name=&quot;fs/ext2/*&quot;/&gt;
+-		&lt;file name=&quot;fs/mbcache.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/exportfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/squashfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/nfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/lockd/*&quot;/&gt;
+-		&lt;file name=&quot;net/sunrpc/*&quot;/&gt;
+-		&lt;file name=&quot;fs/nfs_common/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/message/fusion/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/nbd.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/aoe/aoe.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/3c59x.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/8139cp.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/8139too.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/8390.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/atlx/atl2.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/b44.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/bnx2.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/defxx.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/dl2k.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/e100.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/e1000/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/epic100.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/eql.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/fealnx.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/forcedeth.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/hp100.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/mii.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/myri10ge&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/natsemi.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/ne2k-pci.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/netconsole.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/ns83820.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/pcnet32.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/qla3xxx.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/r8169.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/s2io.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/sis900.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/skge.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/slhc.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/starfire.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/sundance.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/sungem.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/sungem_phy.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/sunhme.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/tg3.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/tlan.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/tulip/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/via-rhine.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/via-velocity.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/yellowfin.ko&quot;/&gt;
+-	&lt;/drivers&gt;
+-	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+-		&lt;source path=&quot;/image/CDs/full-i386&quot;/&gt;
+-	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;std&quot;&gt;
+-		&lt;package name=&quot;kernel-default&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;pae&quot;&gt;
+-		&lt;package name=&quot;kernel-pae&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xen&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot;/&gt;
+-		&lt;package name=&quot;xen&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;default,xen,pae&quot;&gt;
+-		&lt;package name=&quot;curl&quot;/&gt;
+-		&lt;package name=&quot;psmisc&quot;/&gt;
+-		&lt;package name=&quot;iputils&quot;/&gt;
+-		&lt;package name=&quot;atftp&quot;/&gt;
+-		&lt;package name=&quot;bind-libs&quot;/&gt;
+-		&lt;package name=&quot;bind-utils&quot;/&gt;
+-		&lt;package name=&quot;dhcpcd&quot;/&gt;
+-		&lt;package name=&quot;e2fsprogs&quot;/&gt;
+-		&lt;package name=&quot;file&quot;/&gt;
+-		&lt;package name=&quot;hwinfo&quot;/&gt;
+-		&lt;package name=&quot;module-init-tools&quot;/&gt;
+-		&lt;package name=&quot;net-tools&quot;/&gt;
+-		&lt;package name=&quot;netcfg&quot;/&gt;
+-		&lt;package name=&quot;parted&quot;/&gt;
+-		&lt;package name=&quot;reiserfs&quot;/&gt;
+-		&lt;package name=&quot;util-linux&quot;/&gt;
+-		&lt;package name=&quot;diffutils&quot;/&gt;
+-		&lt;package name=&quot;procps&quot;/&gt;
+-		&lt;package name=&quot;lvm2&quot;/&gt;
+-		&lt;package name=&quot;gfxboot&quot;/&gt;
+-		&lt;package name=&quot;gfxboot-devel&quot;/&gt;
+-		&lt;package name=&quot;fribidi&quot;/&gt;
+-		&lt;package name=&quot;make&quot;/&gt;
+-		&lt;package name=&quot;nbd&quot;/&gt;
+-		&lt;package name=&quot;nfs-client&quot;/&gt;
+-		&lt;package name=&quot;bootsplash&quot;/&gt;
+-		&lt;package name=&quot;bootsplash-branding-openSUSE&quot;/&gt;
+-		&lt;package name=&quot;tar&quot;/&gt;
+-		&lt;package name=&quot;cromfs&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;diskless&quot;&gt;
+-		&lt;package name=&quot;iputils&quot;/&gt;
+-		&lt;package name=&quot;atftp&quot;/&gt;
+-		&lt;package name=&quot;dhcpcd&quot;/&gt;
+-		&lt;package name=&quot;file&quot;/&gt;
+-		&lt;package name=&quot;hwinfo&quot;/&gt;
+-		&lt;package name=&quot;module-init-tools&quot;/&gt;
+-		&lt;package name=&quot;net-tools&quot;/&gt;
+-		&lt;package name=&quot;netcfg&quot;/&gt;
+-		&lt;package name=&quot;util-linux&quot;/&gt;
+-		&lt;package name=&quot;diffutils&quot;/&gt;
+-		&lt;package name=&quot;procps&quot;/&gt;
+-		&lt;package name=&quot;fribidi&quot;/&gt;
+-		&lt;package name=&quot;nbd&quot;/&gt;
+-		&lt;package name=&quot;nfs-client&quot;/&gt;
+-		&lt;package name=&quot;tar&quot;/&gt;
+-		&lt;package name=&quot;gfxboot&quot;/&gt;
+-		&lt;package name=&quot;gfxboot-devel&quot;/&gt;
+-		&lt;package name=&quot;bootsplash&quot;/&gt;
+-		&lt;package name=&quot;bootsplash-branding-openSUSE&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot;&gt;
+-		&lt;package name=&quot;filesystem&quot;/&gt;
+-		&lt;package name=&quot;glibc&quot;/&gt;
+-		&lt;package name=&quot;glibc-locale&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;delete&quot; profiles=&quot;default,xen,diskless,pae&quot;&gt;
+-		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+-		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+-		&lt;package name=&quot;PolicyKit&quot;/&gt;
+-		&lt;package name=&quot;audit-libs&quot;/&gt;
+-		&lt;package name=&quot;blocxx&quot;/&gt;
+-		&lt;package name=&quot;cpio&quot;/&gt;
+-		&lt;package name=&quot;cyrus-sasl&quot;/&gt;
+-		&lt;package name=&quot;db&quot;/&gt;
+-		&lt;package name=&quot;diffutils&quot;/&gt;
+-		&lt;package name=&quot;expat&quot;/&gt;
+-		&lt;package name=&quot;fillup&quot;/&gt;
+-		&lt;package name=&quot;gawk&quot;/&gt;
+-		&lt;package name=&quot;gdbm&quot;/&gt;
+-		&lt;package name=&quot;glib2&quot;/&gt;
+-		&lt;package name=&quot;glibc-locale&quot;/&gt;
+-		&lt;package name=&quot;gnome-filesystem&quot;/&gt;
+-		&lt;package name=&quot;gpg&quot;/&gt;
+-		&lt;package name=&quot;info&quot;/&gt;
+-		&lt;package name=&quot;insserv&quot;/&gt;
+-		&lt;package name=&quot;iproute2&quot;/&gt;
+-		&lt;package name=&quot;irqbalance&quot;/&gt;
+-		&lt;package name=&quot;libxcrypt&quot;/&gt;
+-		&lt;package name=&quot;libxml2&quot;/&gt;
+-		&lt;package name=&quot;libzio&quot;/&gt;
+-		&lt;package name=&quot;limal&quot;/&gt;
+-		&lt;package name=&quot;limal-bootloader&quot;/&gt;
+-		&lt;package name=&quot;limal-perl&quot;/&gt;
+-		&lt;package name=&quot;logrotate&quot;/&gt;
+-		&lt;package name=&quot;mdadm&quot;/&gt;
+-		&lt;package name=&quot;mingetty&quot;/&gt;
+-		&lt;package name=&quot;openSUSE-release&quot;/&gt;
+-		&lt;package name=&quot;openldap2-client&quot;/&gt;
+-		&lt;package name=&quot;openslp&quot;/&gt;
+-		&lt;package name=&quot;pam&quot;/&gt;
+-		&lt;package name=&quot;pam-modules&quot;/&gt;
+-		&lt;package name=&quot;pcre&quot;/&gt;
+-		&lt;package name=&quot;perl&quot;/&gt;
+-		&lt;package name=&quot;perl-Bootloader&quot;/&gt;
+-		&lt;package name=&quot;perl-gettext&quot;/&gt;
+-		&lt;package name=&quot;permissions&quot;/&gt;
+-		&lt;package name=&quot;pm-utils&quot;/&gt;
+-		&lt;package name=&quot;pmtools&quot;/&gt;
+-		&lt;package name=&quot;suse-build-key&quot;/&gt;
+-		&lt;package name=&quot;gfxboot&quot;/&gt;
+-		&lt;package name=&quot;gfxboot-devel&quot;/&gt;
+-		&lt;package name=&quot;fribidi&quot;/&gt;
+-		&lt;package name=&quot;make&quot;/&gt;
+-		&lt;package name=&quot;bootsplash-branding-openSUSE&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;delete&quot; profiles=&quot;diskless&quot;&gt;
+-		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+-		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-libxcb&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-libX11&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-libXau&quot;/&gt;
+-		&lt;package name=&quot;openldap2-client&quot;/&gt;
+-		&lt;package name=&quot;pam-modules&quot;/&gt;
+-		&lt;package name=&quot;openslp&quot;/&gt;
+-		&lt;package name=&quot;perl-HTML-Tagset&quot;/&gt;
+-		&lt;package name=&quot;perl&quot;/&gt;
+-		&lt;package name=&quot;gfxboot&quot;/&gt;
+-		&lt;package name=&quot;gfxboot-devel&quot;/&gt;
+-		&lt;package name=&quot;perl-gettext&quot;/&gt;
+-		&lt;package name=&quot;setserial&quot;/&gt;
+-		&lt;package name=&quot;bundle-lang-common-zh&quot;/&gt;
+-		&lt;package name=&quot;libjpeg&quot;/&gt;
+-		&lt;package name=&quot;libtiff3&quot;/&gt;
+-		&lt;package name=&quot;libmng&quot;/&gt;
+-		&lt;package name=&quot;liblcms&quot;/&gt;
+-		&lt;package name=&quot;make&quot;/&gt;
+-		&lt;package name=&quot;pciutils&quot;/&gt;
+-		&lt;package name=&quot;krb5&quot;/&gt;
+-		&lt;package name=&quot;openldap2-client&quot;/&gt;
+-		&lt;package name=&quot;cyrus-sasl&quot;/&gt;
+-		&lt;package name=&quot;pam-modules&quot;/&gt;
+-		&lt;package name=&quot;pam-config&quot;/&gt;
+-		&lt;package name=&quot;PolicyKit&quot;/&gt;
+-	&lt;/packages&gt;
+-&lt;/image&gt;
+diff --git a/system/boot/ppc/netboot/suse-11.2/images.sh b/system/boot/ppc/netboot/suse-11.2/images.sh
+deleted file mode 100755
+index 2826e31..0000000
+--- a/system/boot/ppc/netboot/suse-11.2/images.sh
++++ /dev/null
+@@ -1,33 +0,0 @@
+-#!/bin/sh
+-test -f /.kconfig &amp;&amp; . /.kconfig
+-test -f /.profile &amp;&amp; . /.profile
+-
+-echo &quot;Configure image: [$kiwi_iname]...&quot;
+-
+-#==========================================
+-# remove unneded kernel files
+-#------------------------------------------
+-suseStripKernel
+-
+-#==========================================
+-# setup gfxboot
+-#------------------------------------------
+-suseGFXBoot openSUSE lilo
+-
+-#==========================================
+-# remove unneeded packages
+-#------------------------------------------
+-rpm -e --nodeps --noscripts \
+-	$(rpm -q `baseGetPackagesForDeletion` | grep -v &quot;is not installed&quot;)
+-
+-#==========================================
+-# remove unneeded files
+-#------------------------------------------
+-suseStripInitrd
+-
+-#==========================================
+-# umount /proc
+-#------------------------------------------
+-umount /proc &amp;&gt;/dev/null
+-
+-exit 0
+diff --git a/system/boot/ppc/netboot/suse-11.2/root/etc/modprobe.conf.local b/system/boot/ppc/netboot/suse-11.2/root/etc/modprobe.conf.local
+deleted file mode 100644
+index 3d59b05..0000000
+--- a/system/boot/ppc/netboot/suse-11.2/root/etc/modprobe.conf.local
++++ /dev/null
+@@ -1 +0,0 @@
+-options brd rd_size=512000
+diff --git a/system/boot/ppc/netboot/suse-11.2/root/include b/system/boot/ppc/netboot/suse-11.2/root/include
+deleted file mode 120000
+index 022370d..0000000
+--- a/system/boot/ppc/netboot/suse-11.2/root/include
++++ /dev/null
+@@ -1 +0,0 @@
+-/usr/share/kiwi/modules/KIWILinuxRC.sh
+\ No newline at end of file
+diff --git a/system/boot/ppc/netboot/suse-11.2/root/linuxrc b/system/boot/ppc/netboot/suse-11.2/root/linuxrc
+deleted file mode 120000
+index 060fc40..0000000
+--- a/system/boot/ppc/netboot/suse-11.2/root/linuxrc
++++ /dev/null
+@@ -1 +0,0 @@
+-../../suse-linuxrc
+\ No newline at end of file
+diff --git a/system/boot/ppc/netboot/suse-11.2/root/preinit b/system/boot/ppc/netboot/suse-11.2/root/preinit
+deleted file mode 120000
+index d93326c..0000000
+--- a/system/boot/ppc/netboot/suse-11.2/root/preinit
++++ /dev/null
+@@ -1 +0,0 @@
+-../../suse-preinit
+\ No newline at end of file
+diff --git a/system/boot/ppc/netboot/suse-11.3/config.xml b/system/boot/ppc/netboot/suse-11.3/config.xml
+deleted file mode 100644
+index 1849f20..0000000
+--- a/system/boot/ppc/netboot/suse-11.3/config.xml
++++ /dev/null
+@@ -1,273 +0,0 @@
+-&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;initrd-netboot-suse-11.3&quot;&gt;
+-	&lt;description type=&quot;boot&quot;&gt;
+-		&lt;author&gt;Marcus Schaefer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;boot/initrd image used for PXE&lt;/specification&gt;
+-	&lt;/description&gt;
+-	&lt;preferences&gt;
+-		&lt;type image=&quot;cpio&quot; bootprofile=&quot;default&quot;/&gt;
+-		&lt;version&gt;2.1.1&lt;/version&gt;
+-		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+-		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+-	&lt;/preferences&gt;
+-	&lt;profiles&gt;
+-		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
+-		&lt;profile name=&quot;diskless&quot; description=&quot;Booting diskless thin clients&quot;/&gt;
+-		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+-		&lt;profile name=&quot;pae&quot; description=&quot;KERNEL: pae&quot;/&gt;
+-	&lt;/profiles&gt;
+-	&lt;drivers type=&quot;usbdrivers&quot; profiles=&quot;default,xen,pae&quot;&gt;
+-		&lt;file name=&quot;usb/host/ehci-hcd.ko&quot;/&gt;
+-		&lt;file name=&quot;usb/host/uhci-hcd.ko&quot;/&gt;
+-		&lt;file name=&quot;usb/core/usbcore.ko&quot;/&gt;
+-		&lt;file name=&quot;usb/storage/usb-storage.ko&quot;/&gt;
+-	&lt;/drivers&gt;
+-	&lt;drivers type=&quot;drivers&quot; profiles=&quot;default,xen,pae&quot;&gt;
+-		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/hid/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/loop.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/brd.ko&quot;/&gt;
+-		&lt;file name=&quot;net/packet/*&quot;/&gt;
+-		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+-		&lt;file name=&quot;fs/ext2/*&quot;/&gt;
+-		&lt;file name=&quot;fs/binfmt_aout.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/binfmt_misc.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/mbcache.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/quota_v1.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/quota_v2.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/jbd/*&quot;/&gt;
+-		&lt;file name=&quot;fs/fat/*&quot;/&gt;
+-		&lt;file name=&quot;fs/vfat/*&quot;/&gt;
+-		&lt;file name=&quot;fs/hfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/exportfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/squashfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/reiserfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/nfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/fuse/*&quot;/&gt;
+-		&lt;file name=&quot;net/sunrpc/*&quot;/&gt;
+-		&lt;file name=&quot;fs/lockd/*&quot;/&gt;
+-		&lt;file name=&quot;fs/nfs_common/*&quot;/&gt;
+-		&lt;file name=&quot;net/ipv6/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/ata/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/scsi/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/message/fusion/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/nbd.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/aoe/aoe.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/parport/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/char/lp.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
+-		&lt;file name=&quot;lib/crc-t10dif.ko&quot;/&gt;
+-	&lt;/drivers&gt;
+-	&lt;drivers type=&quot;drivers&quot; profiles=&quot;diskless&quot;&gt;
+-		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/brd.ko&quot;/&gt;
+-		&lt;file name=&quot;net/packet/*&quot;/&gt;
+-		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+-		&lt;file name=&quot;fs/ext2/*&quot;/&gt;
+-		&lt;file name=&quot;fs/mbcache.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/exportfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/squashfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/nfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/lockd/*&quot;/&gt;
+-		&lt;file name=&quot;net/sunrpc/*&quot;/&gt;
+-		&lt;file name=&quot;fs/nfs_common/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/message/fusion/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/nbd.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/aoe/aoe.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/3c59x.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/8139cp.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/8139too.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/8390.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/atlx/atl2.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/b44.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/bnx2.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/defxx.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/dl2k.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/e100.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/e1000/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/epic100.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/eql.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/fealnx.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/forcedeth.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/hp100.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/mii.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/myri10ge&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/natsemi.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/ne2k-pci.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/netconsole.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/ns83820.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/pcnet32.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/qla3xxx.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/r8169.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/s2io.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/sis900.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/skge.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/slhc.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/starfire.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/sundance.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/sungem.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/sungem_phy.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/sunhme.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/tg3.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/tlan.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/tulip/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/via-rhine.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/via-velocity.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/yellowfin.ko&quot;/&gt;
+-	&lt;/drivers&gt;
+-	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+-		&lt;source path=&quot;/image/CDs/full-i386&quot;/&gt;
+-	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;std&quot;&gt;
+-		&lt;package name=&quot;kernel-default&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;pae&quot;&gt;
+-		&lt;package name=&quot;kernel-pae&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xen&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot;/&gt;
+-		&lt;package name=&quot;xen&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;default,xen,pae&quot;&gt;
+-		&lt;package name=&quot;curl&quot;/&gt;
+-		&lt;package name=&quot;psmisc&quot;/&gt;
+-		&lt;package name=&quot;iputils&quot;/&gt;
+-		&lt;package name=&quot;atftp&quot;/&gt;
+-		&lt;package name=&quot;bind-libs&quot;/&gt;
+-		&lt;package name=&quot;bind-utils&quot;/&gt;
+-		&lt;package name=&quot;dhcpcd&quot;/&gt;
+-		&lt;package name=&quot;e2fsprogs&quot;/&gt;
+-		&lt;package name=&quot;file&quot;/&gt;
+-		&lt;package name=&quot;hwinfo&quot;/&gt;
+-		&lt;package name=&quot;module-init-tools&quot;/&gt;
+-		&lt;package name=&quot;net-tools&quot;/&gt;
+-		&lt;package name=&quot;netcfg&quot;/&gt;
+-		&lt;package name=&quot;parted&quot;/&gt;
+-		&lt;package name=&quot;reiserfs&quot;/&gt;
+-		&lt;package name=&quot;util-linux&quot;/&gt;
+-		&lt;package name=&quot;diffutils&quot;/&gt;
+-		&lt;package name=&quot;procps&quot;/&gt;
+-		&lt;package name=&quot;lvm2&quot;/&gt;
+-		&lt;package name=&quot;gfxboot&quot;/&gt;
+-		&lt;package name=&quot;gfxboot-devel&quot;/&gt;
+-		&lt;package name=&quot;fribidi&quot;/&gt;
+-		&lt;package name=&quot;make&quot;/&gt;
+-		&lt;package name=&quot;nbd&quot;/&gt;
+-		&lt;package name=&quot;nfs-client&quot;/&gt;
+-		&lt;package name=&quot;bootsplash&quot;/&gt;
+-		&lt;package name=&quot;bootsplash-branding-openSUSE&quot;/&gt;
+-		&lt;package name=&quot;tar&quot;/&gt;
+-		&lt;package name=&quot;cromfs&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;diskless&quot;&gt;
+-		&lt;package name=&quot;iputils&quot;/&gt;
+-		&lt;package name=&quot;atftp&quot;/&gt;
+-		&lt;package name=&quot;dhcpcd&quot;/&gt;
+-		&lt;package name=&quot;file&quot;/&gt;
+-		&lt;package name=&quot;hwinfo&quot;/&gt;
+-		&lt;package name=&quot;module-init-tools&quot;/&gt;
+-		&lt;package name=&quot;net-tools&quot;/&gt;
+-		&lt;package name=&quot;netcfg&quot;/&gt;
+-		&lt;package name=&quot;util-linux&quot;/&gt;
+-		&lt;package name=&quot;diffutils&quot;/&gt;
+-		&lt;package name=&quot;procps&quot;/&gt;
+-		&lt;package name=&quot;fribidi&quot;/&gt;
+-		&lt;package name=&quot;nbd&quot;/&gt;
+-		&lt;package name=&quot;nfs-client&quot;/&gt;
+-		&lt;package name=&quot;tar&quot;/&gt;
+-		&lt;package name=&quot;gfxboot&quot;/&gt;
+-		&lt;package name=&quot;gfxboot-devel&quot;/&gt;
+-		&lt;package name=&quot;bootsplash&quot;/&gt;
+-		&lt;package name=&quot;bootsplash-branding-openSUSE&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot;&gt;
+-		&lt;package name=&quot;filesystem&quot;/&gt;
+-		&lt;package name=&quot;glibc&quot;/&gt;
+-		&lt;package name=&quot;glibc-locale&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;delete&quot; profiles=&quot;default,xen,diskless,pae&quot;&gt;
+-		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+-		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+-		&lt;package name=&quot;PolicyKit&quot;/&gt;
+-		&lt;package name=&quot;audit-libs&quot;/&gt;
+-		&lt;package name=&quot;blocxx&quot;/&gt;
+-		&lt;package name=&quot;cpio&quot;/&gt;
+-		&lt;package name=&quot;cyrus-sasl&quot;/&gt;
+-		&lt;package name=&quot;db&quot;/&gt;
+-		&lt;package name=&quot;diffutils&quot;/&gt;
+-		&lt;package name=&quot;expat&quot;/&gt;
+-		&lt;package name=&quot;fillup&quot;/&gt;
+-		&lt;package name=&quot;gawk&quot;/&gt;
+-		&lt;package name=&quot;gdbm&quot;/&gt;
+-		&lt;package name=&quot;glib2&quot;/&gt;
+-		&lt;package name=&quot;glibc-locale&quot;/&gt;
+-		&lt;package name=&quot;gnome-filesystem&quot;/&gt;
+-		&lt;package name=&quot;gpg&quot;/&gt;
+-		&lt;package name=&quot;info&quot;/&gt;
+-		&lt;package name=&quot;insserv&quot;/&gt;
+-		&lt;package name=&quot;iproute2&quot;/&gt;
+-		&lt;package name=&quot;irqbalance&quot;/&gt;
+-		&lt;package name=&quot;libxcrypt&quot;/&gt;
+-		&lt;package name=&quot;libxml2&quot;/&gt;
+-		&lt;package name=&quot;libzio&quot;/&gt;
+-		&lt;package name=&quot;limal&quot;/&gt;
+-		&lt;package name=&quot;limal-bootloader&quot;/&gt;
+-		&lt;package name=&quot;limal-perl&quot;/&gt;
+-		&lt;package name=&quot;logrotate&quot;/&gt;
+-		&lt;package name=&quot;mdadm&quot;/&gt;
+-		&lt;package name=&quot;mingetty&quot;/&gt;
+-		&lt;package name=&quot;openSUSE-release&quot;/&gt;
+-		&lt;package name=&quot;openldap2-client&quot;/&gt;
+-		&lt;package name=&quot;openslp&quot;/&gt;
+-		&lt;package name=&quot;pam&quot;/&gt;
+-		&lt;package name=&quot;pam-modules&quot;/&gt;
+-		&lt;package name=&quot;pcre&quot;/&gt;
+-		&lt;package name=&quot;perl&quot;/&gt;
+-		&lt;package name=&quot;perl-Bootloader&quot;/&gt;
+-		&lt;package name=&quot;perl-gettext&quot;/&gt;
+-		&lt;package name=&quot;permissions&quot;/&gt;
+-		&lt;package name=&quot;pm-utils&quot;/&gt;
+-		&lt;package name=&quot;pmtools&quot;/&gt;
+-		&lt;package name=&quot;suse-build-key&quot;/&gt;
+-		&lt;package name=&quot;gfxboot&quot;/&gt;
+-		&lt;package name=&quot;gfxboot-devel&quot;/&gt;
+-		&lt;package name=&quot;fribidi&quot;/&gt;
+-		&lt;package name=&quot;make&quot;/&gt;
+-		&lt;package name=&quot;bootsplash-branding-openSUSE&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;delete&quot; profiles=&quot;diskless&quot;&gt;
+-		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+-		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-libxcb&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-libX11&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-libXau&quot;/&gt;
+-		&lt;package name=&quot;openldap2-client&quot;/&gt;
+-		&lt;package name=&quot;pam-modules&quot;/&gt;
+-		&lt;package name=&quot;openslp&quot;/&gt;
+-		&lt;package name=&quot;perl-HTML-Tagset&quot;/&gt;
+-		&lt;package name=&quot;perl&quot;/&gt;
+-		&lt;package name=&quot;gfxboot&quot;/&gt;
+-		&lt;package name=&quot;gfxboot-devel&quot;/&gt;
+-		&lt;package name=&quot;perl-gettext&quot;/&gt;
+-		&lt;package name=&quot;setserial&quot;/&gt;
+-		&lt;package name=&quot;bundle-lang-common-zh&quot;/&gt;
+-		&lt;package name=&quot;libjpeg&quot;/&gt;
+-		&lt;package name=&quot;libtiff3&quot;/&gt;
+-		&lt;package name=&quot;libmng&quot;/&gt;
+-		&lt;package name=&quot;liblcms&quot;/&gt;
+-		&lt;package name=&quot;make&quot;/&gt;
+-		&lt;package name=&quot;pciutils&quot;/&gt;
+-		&lt;package name=&quot;krb5&quot;/&gt;
+-		&lt;package name=&quot;openldap2-client&quot;/&gt;
+-		&lt;package name=&quot;cyrus-sasl&quot;/&gt;
+-		&lt;package name=&quot;pam-modules&quot;/&gt;
+-		&lt;package name=&quot;pam-config&quot;/&gt;
+-		&lt;package name=&quot;PolicyKit&quot;/&gt;
+-	&lt;/packages&gt;
+-&lt;/image&gt;
+diff --git a/system/boot/ppc/netboot/suse-11.3/images.sh b/system/boot/ppc/netboot/suse-11.3/images.sh
+deleted file mode 100755
+index 2826e31..0000000
+--- a/system/boot/ppc/netboot/suse-11.3/images.sh
++++ /dev/null
+@@ -1,33 +0,0 @@
+-#!/bin/sh
+-test -f /.kconfig &amp;&amp; . /.kconfig
+-test -f /.profile &amp;&amp; . /.profile
+-
+-echo &quot;Configure image: [$kiwi_iname]...&quot;
+-
+-#==========================================
+-# remove unneded kernel files
+-#------------------------------------------
+-suseStripKernel
+-
+-#==========================================
+-# setup gfxboot
+-#------------------------------------------
+-suseGFXBoot openSUSE lilo
+-
+-#==========================================
+-# remove unneeded packages
+-#------------------------------------------
+-rpm -e --nodeps --noscripts \
+-	$(rpm -q `baseGetPackagesForDeletion` | grep -v &quot;is not installed&quot;)
+-
+-#==========================================
+-# remove unneeded files
+-#------------------------------------------
+-suseStripInitrd
+-
+-#==========================================
+-# umount /proc
+-#------------------------------------------
+-umount /proc &amp;&gt;/dev/null
+-
+-exit 0
+diff --git a/system/boot/ppc/netboot/suse-11.3/root/etc/modprobe.conf.local b/system/boot/ppc/netboot/suse-11.3/root/etc/modprobe.conf.local
+deleted file mode 100644
+index 3d59b05..0000000
+--- a/system/boot/ppc/netboot/suse-11.3/root/etc/modprobe.conf.local
++++ /dev/null
+@@ -1 +0,0 @@
+-options brd rd_size=512000
+diff --git a/system/boot/ppc/netboot/suse-11.3/root/include b/system/boot/ppc/netboot/suse-11.3/root/include
+deleted file mode 120000
+index 022370d..0000000
+--- a/system/boot/ppc/netboot/suse-11.3/root/include
++++ /dev/null
+@@ -1 +0,0 @@
+-/usr/share/kiwi/modules/KIWILinuxRC.sh
+\ No newline at end of file
+diff --git a/system/boot/ppc/netboot/suse-11.3/root/linuxrc b/system/boot/ppc/netboot/suse-11.3/root/linuxrc
+deleted file mode 120000
+index 060fc40..0000000
+--- a/system/boot/ppc/netboot/suse-11.3/root/linuxrc
++++ /dev/null
+@@ -1 +0,0 @@
+-../../suse-linuxrc
+\ No newline at end of file
+diff --git a/system/boot/ppc/netboot/suse-11.3/root/preinit b/system/boot/ppc/netboot/suse-11.3/root/preinit
+deleted file mode 120000
+index d93326c..0000000
+--- a/system/boot/ppc/netboot/suse-11.3/root/preinit
++++ /dev/null
+@@ -1 +0,0 @@
+-../../suse-preinit
+\ No newline at end of file
+diff --git a/system/boot/ppc/netboot/suse-linuxrc b/system/boot/ppc/netboot/suse-linuxrc
+deleted file mode 100755
+index 97af146..0000000
+--- a/system/boot/ppc/netboot/suse-linuxrc
++++ /dev/null
+@@ -1,988 +0,0 @@
+-#!/bin/bash
+-#================
+-# FILE          : linuxrc
+-#----------------
+-# PROJECT       : OpenSuSE KIWI Image System
+-# COPYRIGHT     : (c) 2006 SUSE LINUX Products GmbH. All rights reserved
+-#               :
+-# AUTHOR        : Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>&gt;
+-#               :
+-# BELONGS TO    : Operating System images
+-#               :
+-# DESCRIPTION   : This file is changed to become the real
+-#               : linuxrc script which is used to prepare the
+-#               : operating system for the main image
+-#               :
+-#               :
+-# STATUS        : BETA
+-#----------------
+-#======================================
+-# Exports (General)
+-#--------------------------------------
+-export PATH=&quot;/sbin:/bin:/usr/sbin:/usr/bin&quot;
+-export IFS_ORIG=$IFS
+-export ARCH=`arch`
+-export DEBUG=0
+-
+-#======================================
+-# Exports (Booting)
+-#--------------------------------------
+-export DOMURD_MODULES=&quot;xennet xenblk&quot;
+-export INITRD_MODULES=&quot;&quot;
+-export LOCAL_BOOT=&quot;no&quot;
+-export KERNEL_LIST
+-
+-#======================================
+-# Exports (Alias)
+-#--------------------------------------
+-export SYSALIAS=&quot;undefined&quot;
+-export NAME=0
+-
+-#======================================
+-# Exports (Status)
+-#--------------------------------------
+-export SYSTEM_INTEGRITY
+-export SYSTEM_MD5STATUS
+-
+-#======================================
+-# Exports (clicfs usage)
+-#--------------------------------------
+-export kiwi_hybrid=yes
+-export kiwi_hybridpersistent=yes
+-
+-#======================================
+-# Functions
+-#--------------------------------------
+-. /include
+-initialize
+-
+-#======================================
+-# setupSystemAliasName
+-#--------------------------------------
+-function setupSystemAliasName {
+-	# /.../
+-	# Ask for an alias name if NAME from config.&lt;MAC&gt; 
+-	# contains a number. If the number is -1 the system will
+-	# ask for ever for this name otherwhise the number sets
+-	# a timeout how long to wait for input of this data
+-	# ----
+-	if test $NAME -ne 0;then
+-		if test $NAME -eq -1;then
+-			Echo -n &quot;Enter Alias Name for this system: &quot; &amp;&amp; \
+-			read SYSALIAS
+-		else
+-			Echo -n &quot;Enter Alias Name [timeout in $NAME sec]: &quot; &amp;&amp; \
+-			read -t $NAME SYSALIAS
+-		fi
+-	fi
+-}
+-
+-#======================================
+-# setupSystemHWInfoFile
+-#--------------------------------------
+-function setupSystemHWInfoFile {
+-	# /.../
+-	# calls hwinfo and stores the information into a file
+-	# suffixed by the hardware address of the network card
+-	# ----
+-	hwinfo --all --log=hwinfo.$DHCPCHADDR &gt;/dev/null
+-}
+-
+-#======================================
+-# setupSystemHWTypeFile
+-#--------------------------------------
+-function setupSystemHWTypeFile {
+-	# /.../
+-	# collects information about the alias name the
+-	# architecture the BIOS version and more and stores
+-	# that into a file suffixed by the hardware address of the
+-	# network card. The information is uploaded to the pxe
+-	# boot server and used to create a machine config.&lt;MAC&gt; 
+-	# from the ldap directory
+-	# ----
+-	echo &quot;NCNAME=$SYSALIAS&quot;   &gt;&gt; hwtype.$DHCPCHADDR
+-	echo &quot;CRNAME=$SYSALIAS&quot;   &gt;&gt; hwtype.$DHCPCHADDR
+-	echo &quot;IPADDR=$IPADDR&quot;     &gt;&gt; hwtype.$DHCPCHADDR
+-	echo &quot;ARCHITECTURE=$ARCH&quot; &gt;&gt; hwtype.$DHCPCHADDR
+-	#========================================
+-	# Try to get BIOS data if tools are there
+-	#----------------------------------------
+-	if [ -f /sbin/posbios ];then
+-		HWBIOS=`/sbin/posbios -b`
+-		echo &quot;HWBIOS=$HWBIOS&quot; &gt;&gt; hwtype.$DHCPCHADDR
+-		HWTYPE=`/sbin/posbios -ms`
+-		echo &quot;HWTYPE=$HWTYPE&quot; &gt;&gt; hwtype.$DHCPCHADDR
+-	fi
+-}
+-
+-#======================================
+-# Beautify Startup
+-#--------------------------------------
+-echo &quot;Loading KIWI Boot-System...&quot;
+-echo &quot;---------------------------&quot;
+-
+-#======================================
+-# Update library path
+-#--------------------------------------
+-ldconfig
+-
+-#======================================
+-# 1) Mounting local file systems
+-#--------------------------------------
+-mountSystemFilesystems &amp;&gt;/dev/null
+-closeKernelConsole
+-
+-#======================================
+-# 2) Prepare module load support 
+-#--------------------------------------
+-touch /etc/modules.conf
+-touch /lib/modules/*/modules.dep
+-runHook init
+-
+-#======================================
+-# 3) run udevd
+-#--------------------------------------
+-udevStart
+-
+-#======================================
+-# 4) Include proc/cmdline information
+-#--------------------------------------
+-includeKernelParameters
+-if [ ! -z $IMAGE ];then
+-	# /.../
+-	# if the image information is already in place at this stage
+-	# it comes from the cmdline data which means we are not booting
+-	# from the network but want to boot the local system
+-	# ----
+-	LOCAL_BOOT=&quot;yes&quot;
+-fi
+-
+-#======================================
+-# 5) start boot shell
+-#--------------------------------------
+-startBlogD
+-startShell
+-errorLogStart
+-openKernelConsole
+-
+-#======================================
+-# 6) Obtain/load network module
+-#--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	loaded=0
+-	probeNetworkCard
+-	IFS=&quot;:&quot;
+-	for i in $networkModule;do
+-		if [ ! -z $i ];then
+-			modprobe $i 2&gt;/dev/null
+-			if test $? = 0;then
+-				loaded=1
+-			fi
+-		fi
+-	done
+-	IFS=$IFS_ORIG
+-	if test $loaded = 0;then
+-		systemException \
+-			&quot;Network module: Failed to load network module !&quot; \
+-		&quot;reboot&quot;
+-	fi
+-fi
+-
+-#======================================
+-# 7) Setup network interface and DNS
+-#--------------------------------------
+-runHook prenetwork
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	setupNetwork
+-fi
+-runHook postnetwork
+-
+-#======================================
+-# 8) get TFTP Server IP/name
+-#--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	checkServer
+-	if [ -z $SERVER ];then
+-		SERVER=tftp.$DOMAIN
+-	fi
+-	Echo &quot;Checking Server name: $SERVER&quot;
+-	if ! ping -c 1 $SERVER &gt;/dev/null 2&gt;&amp;1;then
+-		Echo &quot;Server: $SERVER not found&quot;
+-		if [ -z &quot;$SERVERTYPE&quot; ] || [ &quot;$SERVERTYPE&quot; = &quot;tftp&quot; ]; then
+-			if [ ! -z &quot;$DHCPSIADDR&quot; ];then
+-				Echo &quot;Using: $DHCPSIADDR from dhcpcd-info&quot;
+-				SERVER=$DHCPSIADDR
+-			elif [ ! -z &quot;$DHCPSID&quot; ];then
+-				Echo &quot;Using: $DHCPSID from dhcpcd-info&quot;
+-				SERVER=$DHCPSID
+-			else
+-				systemException \
+-					&quot;Can't assign SERVER IP/name... fatal !&quot; \
+-				&quot;reboot&quot;
+-			fi
+-		fi
+-	fi
+-fi
+-
+-#======================================
+-# 9) Load configuration
+-#--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	CONFIG=/etc/config.netclient
+-	#======================================
+-	# Store possible values set by cmdline
+-	#--------------------------------------
+-	unset ALLOW_CMDLINE_OVERWRITE
+-	if [ ! -z &quot;$NBDROOT&quot; ];then
+-		KLIST[0]=&quot;NBDROOT=$NBDROOT&quot;;
+-	fi
+-	#======================================
+-	# Connection/access check for SERVER
+-	#--------------------------------------
+-	Echo &quot;Checking for config file: config.$DHCPCHADDR&quot;
+-	fetchFile KIWI/config.$DHCPCHADDR $CONFIG
+-	#======================================
+-	# Check alternative config names
+-	#--------------------------------------
+-	if [ ! -s $CONFIG ];then
+-		searchAlternativeConfig
+-	fi
+-	#======================================
+-	# try to import configuration
+-	#--------------------------------------
+-	IMPORTED=0
+-	if [ -s $CONFIG ] ;then
+-		importFile &lt; $CONFIG
+-		IMPORTED=1
+-	fi
+-	#========================================
+-	# Compare current IP and IP from config 
+-	#----------------------------------------
+-	NEWIP=0
+-	if [ ! -z &quot;$WORKSTATION_LDAP_IP&quot; ]; then
+-		WSNR=`echo $WORKSTATION_LDAP_IP | sed -r -e 's/(^|\.)0*/\1/g'`
+-		IPNR=`echo $IPADDR | sed -r -e 's/(^|\.)0*/\1/g'`
+-		if [ &quot;$WSNR&quot; != &quot;$IPNR&quot; ];then 
+-			NEWIP=1
+-		fi
+-	fi
+-	#======================================
+-	# No config found register new client
+-	#--------------------------------------
+-	if [ ! -s $CONFIG ];then
+-		#======================================
+-		# Register new network client
+-		#--------------------------------------
+-		Echo &quot;Registering new network client...&quot;
+-		setupSystemAliasName
+-		setupSystemHWInfoFile
+-		setupSystemHWTypeFile
+-		#======================================
+-		# Put files on the boot server
+-		#--------------------------------------
+-		putFile hwtype.$DHCPCHADDR upload/hwtype.$DHCPCHADDR
+-		putFile hwinfo.$DHCPCHADDR upload/hwinfo.$DHCPCHADDR
+-		echo
+-		Echo &quot;Registered as: $DHCPCHADDR&quot;
+-		Echo &quot;Waiting for configuration...&quot;
+-		sleep 60
+-		#======================================
+-		# Wait for configuration (reload)
+-		#--------------------------------------
+-		while test ! -s $CONFIG;do
+-			Echo &quot;Lookup network client config file again...&quot;
+-			Echo &quot;Checking for config file: config.$DHCPCHADDR&quot;
+-			dhcpcd -n $PXE_IFACE
+-			fetchFile KIWI/config.$DHCPCHADDR $CONFIG
+-			if test ! -s $CONFIG;then
+-				searchAlternativeConfig
+-			fi
+-			test -s $CONFIG || {
+-				Echo &quot;Couldn't get image configuration&quot;
+-				Echo &quot;sleeping [60 sec]...&quot;
+-				sleep 60
+-			}
+-		done
+-	fi
+-	#======================================
+-	# Config found but DHCP IP setup change
+-	#--------------------------------------
+-	if [ $NEWIP -eq 1 ];then
+-		Echo &quot;Outdated IP address, notify new client setup...&quot;
+-		setupSystemAliasName
+-		setupSystemHWTypeFile
+-		putFile hwtype.$DHCPCHADDR upload/hwtype.$DHCPCHADDR
+-		echo
+-		Echo &quot;Notified: $DHCPCHADDR&quot;
+-	fi
+-	#======================================
+-	# import latest configuration
+-	#--------------------------------------
+-	if [ $IMPORTED -eq 0 ];then
+-		importFile &lt; $CONFIG
+-		IMPORTED=1
+-	fi
+-	#======================================
+-	# restore values from cmdline
+-	#--------------------------------------
+-	if [ ! -z &quot;$ALLOW_CMDLINE_OVERWRITE&quot; ];then
+-		for i in ${KLIST[@]};do
+-			eval export \&quot;$i\&quot;
+-		done
+-	fi
+-fi
+-
+-#======================================
+-# 10) Load Device modules
+-#--------------------------------------
+-runHook preprobe
+-probeDevices &quot;skipUSB&quot;
+-runHook postprobe
+-
+-export systemIntegrity=&quot;unknown&quot;
+-#======================================
+-# 11) Is this a diskful station
+-#--------------------------------------
+-if \
+-	[ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; \
+-	[ ! -z &quot;$PART&quot; ]       &amp;&amp; \
+-	[ -z &quot;$NFSROOT&quot; ]      &amp;&amp; \
+-	[ -z &quot;$NBDROOT&quot; ]      &amp;&amp; \
+-	[ -z &quot;$AOEROOT&quot; ]
+-then
+-	#======================================
+-	# Check for installed system
+-	#--------------------------------------
+-	count=0
+-	IFS=&quot;,&quot; ; for i in $IMAGE;do
+-	case $count in
+-	0) {
+-		field=0
+-		IFS=&quot;;&quot; ; for n in $i;do
+-		case $field in
+-			0) imageDevice=$n ; field=1 ;;
+-			1) imageName=$n   ; field=2 ;;
+-			2) imageVersion=$n; field=3
+-		esac
+-		done
+-		count=1
+-		if ! waitForStorageDevice $DISK;then
+-			systemException \
+-				&quot;Disk $DISK doesn't appear... fatal !&quot; \
+-			&quot;reboot&quot;
+-		fi
+-		export imageDiskDevice=$DISK
+-		updateNeeded initialize
+-		if linuxPartition $DISK;then
+-			if mountSystem $imageDevice;then
+-				updateNeeded
+-				umountSystem
+-				systemIntegrity=`getSystemIntegrity 1`
+-				if [ $systemIntegrity = &quot;fine&quot; ];then
+-					Echo &quot;Base system is up to date, activating disk system...&quot;
+-				fi
+-			else
+-				Echo -b &quot;On-disk Image mount attempt failed,&quot;
+-				Echo -b &quot;Image Update for image [ $imageName ] needed&quot;
+-				umountSystem
+-				RELOAD_IMAGE=&quot;yes&quot;
+-				systemIntegrity=&quot;clean&quot;
+-			fi
+-		else
+-			systemIntegrity=&quot;clean&quot;
+-		fi
+-	}
+-	;;
+-	*)
+-		# handle other images here...
+-	;;
+-	esac
+-	done
+-	#======================================
+-	# Evaluate PART partition information
+-	#--------------------------------------
+-	if test $systemIntegrity = &quot;clean&quot;;then
+-		runHook prepartition
+-		Echo &quot;Creating partition table...&quot;
+-		#======================================
+-		# Create partition table if needed
+-		#--------------------------------------
+-		input=/part.input
+-		imageDiskDevice=$DISK
+-		dd if=/dev/zero of=$DISK bs=512 count=1 &gt;/dev/null &amp;&amp; \
+-			parted -s $DISK mklabel msdos
+-		createPartitionerInput $(pxePartitionInput)
+-		callPartitioner $input
+-		#======================================
+-		# Setup swap space if required
+-		#--------------------------------------
+-		export imageSwapDevice=$(pxeSwapDevice)
+-		if [ ! -z &quot;$imageSwapDevice&quot; ];then
+-			if ! mkswap $imageSwapDevice 1&gt;&amp;2;then
+-				systemException &quot;Failed to create swap signature&quot; &quot;reboot&quot;
+-			fi
+-		fi
+-		runHook postpartition
+-	fi
+-fi
+-
+-#======================================
+-# 12) Download network client image
+-#--------------------------------------
+-runHook predownload
+-if \
+-	[ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; \
+-	([ ! -z &quot;$PART&quot; ] || [ ! -z &quot;$IMAGE&quot; ]) &amp;&amp; \
+-	[ -z &quot;$NFSROOT&quot; ]      &amp;&amp; \
+-	[ -z &quot;$NBDROOT&quot; ]      &amp;&amp; \
+-	[ -z &quot;$AOEROOT&quot; ]
+-then
+-	count=0
+-	IFS=&quot;,&quot; ; for i in $IMAGE;do
+-		imageZipped=&quot;uncompressed&quot;
+-		count=$(($count + 1))
+-		field=0
+-		IFS=&quot;;&quot; ; for n in $i;do
+-		case $field in
+-			0) imageDevice=$n ; field=1 ;;
+-			1) imageName=$n   ; field=2 ;;
+-			2) imageVersion=$n; field=3 ;;
+-			3) imageServer=$n ; field=4 ;;
+-			4) imageBlkSize=$n; field=5 ;;
+-			5) imageZipped=$n ;
+-		esac
+-		done
+-		if [ $count = 1 ];then
+-			imageRootDevice=$imageDevice
+-			imageRootName=$imageName
+-		fi
+-		if [ $count = 2 ];then
+-			imageNextRootDevice=$imageDevice
+-		fi
+-		if test `getSystemIntegrity $count` = &quot;fine&quot;;then
+-			continue
+-		fi
+-		imageName=&quot;image/$imageName-$imageVersion&quot;
+-		imageMD5s=&quot;$imageName.md5&quot;
+-		[ -z &quot;$imageServer&quot; ]  &amp;&amp; imageServer=$SERVER
+-		[ -z &quot;$imageBlkSize&quot; ] &amp;&amp; imageBlkSize=8192
+-		while true;do
+-			# /.../
+-			# get image md5sum to be able to check for the size
+-			# requirements if we are loading into RAM
+-			# ---
+-			fetchFile $imageMD5s /etc/image.md5 uncomp $imageServer
+-			if test $loadCode != 0 || ! loadOK &quot;$loadStatus&quot;; then
+-				systemException \
+-					&quot;Download of $imageMD5s failed: $loadStatus&quot; \
+-				&quot;reboot&quot;
+-			fi
+-			IFS=&quot; &quot;
+-			read sum1 blocks blocksize zblocks zblocksize &lt; /etc/image.md5
+-			if ! validateSize;then
+-				systemException \
+-					&quot;Not enough space available for this image&quot; \
+-				&quot;reboot&quot;
+-			fi
+-			# /.../
+-			# now load the image into the imageDevice
+-			# ---
+-			multicast_old=$multicast
+-			multicast=&quot;enable&quot;
+-			if test &quot;$imageZipped&quot; = &quot;compressed&quot;; then
+-				Echo &quot;Compressed image found: Disable multicast download&quot;
+-				multicast=&quot;disable&quot;
+-			fi
+-			Echo &quot;Loading $imageName [$imageDevice BS:$imageBlkSize Byte]...&quot;
+-			fetchFile $imageName $imageDevice $imageZipped $imageServer
+-			multicast=$multicast_old
+-			if test $loadCode != 0 || ! loadOK &quot;$loadStatus&quot;;then
+-				systemException \
+-					&quot;Download of $imageName failed: $loadStatus&quot; \
+-				&quot;reboot&quot;
+-			fi
+-			# /.../
+-			# check the md5sum of the downloaded data records
+-			# ----
+-			Echo &quot;Download complete, checking data...&quot;
+-			dd if=$imageDevice bs=1024 2&gt;/dev/null |\
+-				head --bytes=$((blocks * blocksize)) |\
+-				md5sum - &gt; /etc/ireal.md5
+-			read sum2 dumy &lt; /etc/ireal.md5
+-			if test $sum1 = $sum2;then
+-				Echo &quot;Image checksum test: fine :-)&quot;
+-				break
+-			fi
+-			Echo &quot;Image checksum test failed:&quot;
+-			Echo &quot;Possible reasons:&quot;
+-			echo 
+-			Echo -b &quot;1) Physical ethernet connection lost:&quot;
+-			Echo -b &quot;   please check cable&quot;
+-			echo
+-			Echo -b &quot;2) Data corruption while loading the image:&quot;
+-			Echo -b &quot;   will give it a new try...&quot;
+-			echo
+-			Echo -b &quot;3) wrong checksum file created for the image:&quot;
+-			Echo -b &quot;   check with the md5sum command if the image on the&quot;
+-			Echo -b &quot;   TFTP server provides the same md5 sum as included&quot;
+-			Echo -b &quot;   within the appropriate .md5 file for this image&quot;
+-			echo
+-			if test -z $DISK;then
+-			Echo -b &quot;4) ramdisk size is too small for the image:&quot;
+-			Echo -b &quot;   check the ramdisk_size parameter of the PXE&quot;
+-			Echo -b &quot;   configuration file on the TFTP server&quot;
+-			else
+-			Echo -b &quot;4) partition size is too small for the image:&quot;
+-			Echo -b &quot;   check the PART line in the image config file on the&quot;
+-			Echo -b &quot;   TFTP server&quot;
+-			fi
+-			echo
+-			Echo &quot;Retry to load image...&quot;
+-			sleep 15
+-		done
+-		if test ! -z $DISK;then
+-			probeFileSystem $imageDevice
+-			resizeFilesystem $imageDevice
+-		fi
+-		rm -f /etc/ireal.md5
+-		rm -f /etc/image.md5
+-	done
+-else
+-	#======================================
+-	# 12.1) Check for local boot
+-	#--------------------------------------
+-	if [ $LOCAL_BOOT = &quot;yes&quot; ];then
+-		imageDisk=$(dn $root)
+-		imageDevice=$(ddn $imageDisk 2)
+-		imageRootDevice=$imageDevice
+-		imageRootName=&quot;Local-System&quot;
+-		if [ ! -z &quot;$UNIONFS_CONFIG&quot; ];then
+-			unionFST=$UNIONFS_CONFIG
+-			setupUnionFS $(ddn $imageDisk 3) $(ddn $imageDisk 2) $unionFST
+-		fi
+-		if [ ! -z &quot;$COMBINED_IMAGE&quot; ];then
+-			imageNextRootDevice=$(ddn $imageDisk 3)
+-		fi
+-	fi
+-	#======================================
+-	# 12.2) Check for NFS root
+-	#--------------------------------------
+-	if [ ! -z &quot;$NFSROOT&quot; ];then
+-		IFS=&quot;,&quot; ; for i in $NFSROOT;do
+-			field=0
+-			IFS=&quot;;&quot; ; for n in $i;do
+-			case $field in
+-				0) nfsRootServer=$n ; field=1 ;;
+-				1) nfsRootDevice=$n ; field=2
+-			esac
+-			done
+-		done
+-		for m in nfs lockd sunrpc;do
+-			modprobe -i $m
+-		done
+-		if [ -z &quot;$nfsRootServer&quot; ];then
+-			nfsRootServer=$SERVER
+-		fi
+-		Echo &quot;Mounting NFS root system: $nfsRootServer:$nfsRootDevice...&quot;
+-		imageRootDevice=&quot;-o nolock,rw $nfsRootServer:$nfsRootDevice&quot;
+-		if [ ! -z &quot;$COMBINED_IMAGE&quot; ] || [ ! -z &quot;$UNIONFS_CONFIG&quot; ];then
+-			imageRootDevice=&quot;-o nolock,ro $nfsRootServer:$nfsRootDevice&quot;
+-		fi
+-		imageRootName=&quot;NFSRoot-System&quot;
+-		systemIntegrity=&quot;clean&quot;
+-		export FSTYPE=nfs
+-	fi
+-	#======================================
+-	# 12.3) Check for NBD root
+-	#--------------------------------------
+-	if [ ! -z &quot;$NBDROOT&quot; ];then
+-		if ! modprobe nbd;then
+-			systemException &quot;Failed to load network blk device module&quot; &quot;reboot&quot;
+-		fi
+-		IFS=&quot;,&quot; ; for i in $NBDROOT;do
+-			field=0
+-			IFS=&quot;;&quot; ; for n in $i;do
+-			case $field in
+-				0) nbdServer=$n     ; field=1 ;;
+-				1) nbdPort=$n       ; field=2 ;;
+-				2) nbdDevice=$n     ; field=3 ;;
+-				3) nbdswapPort=$n   ; field=4 ;;
+-				4) nbdswapDevice=$n ; field=5 ;;
+-				5) nbdwritePort=$n  ; field=6 ;;
+-				6) nbdwriteDevice=$n; field=7
+-			esac
+-			done
+-		done
+-		if [ -z &quot;$nbdServer&quot; ];then
+-			nbdServer=$SERVER
+-		fi
+-		if [ -z &quot;$nbdDevice&quot; ];then
+-			nbdDevice=&quot;/dev/nbd0&quot;
+-		fi
+-		if [ -z &quot;$nbdswapDevice&quot; ];then
+-			nbdswapDevice=&quot;/dev/nbd1&quot;
+-		fi
+-		if [ -z &quot;$nbdPort&quot; ];then
+-			nbdPort=&quot;2000&quot;
+-		fi
+-		if [ -z &quot;$nbdwriteDevice&quot; ];then
+-			nbdwriteDevice=&quot;/dev/ram1&quot;
+-		fi
+-		waitForBlockDevice $nbdDevice
+-		if [ ! -b $nbdDevice ];then
+-			systemException &quot;Device $nbdDevice doesn't appear&quot; &quot;reboot&quot;
+-		fi
+-		if [ ! -z &quot;$nbdwritePort&quot; ];then
+-			waitForBlockDevice $nbdwriteDevice
+-			if [ ! -b $nbdwriteDevice ];then
+-				systemException &quot;Device $nbdwriteDevice doesn't appear&quot; &quot;reboot&quot;
+-			fi
+-		fi
+-		if [ ! -z &quot;$nbdswapPort&quot; ];then
+-			waitForBlockDevice $nbdswapPort
+-			if [ ! -b $nbdswapDevice ];then
+-				systemException &quot;Device $nbdswapDevice doesn't appear&quot; &quot;reboot&quot;
+-			fi
+-		fi
+-		# /.../
+-		# try to get swap from the server if we dont have
+-		# enough ram (less than 62MB)
+-		# ----
+-		if [ ! -z &quot;$nbdswapPort&quot; ];then
+-			min_ram=63488
+-			real_ram=$(cat /proc/meminfo |grep MemTotal|tr -d &quot; [a-z][A-Z]:&quot;)
+-			if [ ${real_ram} -lt ${min_ram} ];then
+-				Echo &quot;NBD: memory is below required 62M&quot;
+-				Echo &quot;NBD: swap: $nbdServer $nbdswapPort [$nbdswapDevice]&quot;
+-				if ! nbd-client $nbdServer $nbdswapPort $nbdswapDevice -persist
+-				then
+-					systemException \
+-						&quot;Failed to setup $nbdswapDevice device&quot; \
+-					&quot;reboot&quot;
+-				fi
+-				Echo &quot;NBD: Waiting for server to create swap space...&quot;; sleep 3
+-				swapon $nbdswapDevice || true
+-			fi
+-		fi
+-		# /.../
+-		# try to mount a remote read/write location based on NBD
+-		# this is then overlayed via $unionFST
+-		# ----
+-		if [ ! -z &quot;$nbdwritePort&quot; ];then
+-			Echo &quot;NBD: read/write $nbdServer $nbdwritePort [$nbdwriteDevice]...&quot;
+-			if ! nbd-client $nbdServer $nbdwritePort $nbdwriteDevice -persist
+-			then
+-				systemException \
+-					&quot;Failed to setup $nbdwriteDevice device&quot; \
+-				&quot;reboot&quot;
+-			fi
+-		fi
+-		# /.../
+-		# mount basic root filesystem exported via NBD
+-		# ----
+-		Echo &quot;Mounting NBD root system: $nbdServer $nbdPort [$nbdDevice]...&quot;
+-		if ! nbd-client $nbdServer $nbdPort $nbdDevice -persist;then
+-			systemException &quot;Failed to setup $nbdDevice device&quot; &quot;reboot&quot;
+-		fi
+-		# /.../
+-		# setup union if basic root filesystem is read-only
+-		# ----
+-		imageRootDevice=$nbdDevice
+-		probeFileSystem $imageRootDevice
+-		Echo &quot;Filesystem of remote root system is: $FSTYPE&quot;
+-		if [ -z &quot;$COMBINED_IMAGE&quot; ];then
+-			if isFSTypeReadOnly;then
+-				setupUnionFS &quot;$nbdwriteDevice&quot; &quot;$imageRootDevice&quot; $unionFST
+-			fi
+-		fi
+-		imageRootName=&quot;NBDRoot-System&quot;
+-		systemIntegrity=&quot;clean&quot;
+-	fi
+-	#======================================
+-	# 12.4) Check for AOE root
+-	#--------------------------------------
+-	if [ ! -z &quot;$AOEROOT&quot; ];then
+-		aoeRODevice=`echo $AOEROOT | cut -d , -f 1`
+-		aoeRWDevice=`echo $AOEROOT | cut -d , -f 2`
+-		if [ -z &quot;$aoeRWDevice&quot; ] || [ &quot;$aoeRODevice&quot; = &quot;$aoeRWDevice&quot; ];then
+-			aoeRWDevice=/dev/ram1
+-		fi
+-		if ! modprobe aoe;then
+-			systemException &quot;Failed to load AoE module&quot; &quot;reboot&quot;
+-		fi
+-		waitForBlockDevice $aoeRODevice
+-		if [ ! -b $aoeRODevice ];then
+-			systemException &quot;Device $aoeRODevice doesn't appear&quot; &quot;reboot&quot;
+-		fi
+-		# /.../
+-		# check ram space, if we don't have more than 62MB
+-		# we can't use Ata over Ethernet and reboot
+-		# ----
+-		min_ram=63488
+-		real_ram=$(cat /proc/meminfo |grep MemTotal|tr -d &quot; [a-z][A-Z]:&quot;)
+-		if [ ${real_ram} -lt ${min_ram} ];then
+-			Echo &quot;AoE: memory is below required 62M&quot;
+-			systemException &quot;Not enough ram&quot; &quot;reboot&quot;
+-		fi
+-		Echo &quot;Mounting AoE root system: $aoeRODevice...&quot;
+-		imageRootDevice=$aoeRODevice
+-		probeFileSystem $imageRootDevice
+-		Echo &quot;Filesystem of remote root system is: $FSTYPE&quot;
+-		if [ -z &quot;$COMBINED_IMAGE&quot; ];then
+-			if isFSTypeReadOnly;then
+-				setupUnionFS &quot;$aoeRWDevice&quot; &quot;$imageRootDevice&quot; $unionFST
+-			fi
+-		fi
+-		imageRootName=&quot;AOERoot-System&quot;
+-		systemIntegrity=&quot;clean&quot;
+-	fi
+-fi
+-runHook postdownload
+-
+-#======================================
+-# 13) Check for RELOAD_CONFIG
+-#--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	if test ! -z $DISK;then
+-	if test ! -z $RELOAD_CONFIG;then
+-		systemIntegrity_save=$systemIntegrity
+-		systemIntegrity=&quot;clean&quot;
+-	fi
+-	fi
+-fi
+-
+-#======================================
+-# 14) Mount OS image to /mnt
+-#--------------------------------------
+-runHook premount
+-if ! mountSystem;then
+-	systemException &quot;Failed to mount root filesystem&quot; &quot;reboot&quot;
+-fi
+-validateRootTree
+-runHook postmount
+-
+-#======================================
+-# 15) Import fixed configuration files
+-#--------------------------------------
+-runHook preconfig
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	mkdir -p /config
+-	#======================================
+-	# Get files from CONF value
+-	#--------------------------------------
+-	IFS=&quot;,&quot; ; for i in $CONF;do
+-		field=0
+-		IFS=&quot;;&quot; ; for n in $i;do
+-		case $field in
+-			0) configSource=$n ; field=1 ;;
+-			1) configDest=$n   ; field=2 ;;
+-			2) configServer=$n ; field=3 ;;
+-			3) configBlkSize=$n;
+-		esac
+-		done
+-		Echo &quot;Import configuration file: $configDest&quot;
+-		dirs=`dirname  $configDest`
+-		mkdir -p /config/$dirs
+-		fetchFile $configSource /config/$configDest uncomp $configServer
+-	done
+-	IFS=$IFS_ORIG
+-	if test $systemIntegrity = &quot;clean&quot;;then
+-		#======================================
+-		# Check for KIWI_INITRD
+-		#--------------------------------------
+-		if [ ! -z $KIWI_INITRD ];then
+-			Echo &quot;Import KIWI initrd file: $KIWI_INITRD&quot;
+-			rm -f /mnt/boot/initrd* &amp;&amp; mkdir -p /mnt/boot &gt;/dev/null 2&gt;&amp;1
+-			fetchFile $KIWI_INITRD /mnt/boot/initrd.kiwi
+-			if [ ! -z $KIWI_KERNEL ];then
+-				Echo &quot;Import KIWI kernel file: $KIWI_KERNEL&quot;
+-				rm -f /mnt/boot/linux*
+-				fetchFile $KIWI_KERNEL /mnt/boot/linux.kiwi
+-			fi
+-			KIWI_INITRD_PARAMS=&quot;IMAGE=local&quot;
+-			if [ ! -z $COMBINED_IMAGE ]; then
+-				SPLIT=&quot;COMBINED_IMAGE=$COMBINED_IMAGE&quot;
+-				KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS $SPLIT&quot;
+-			fi
+-		fi
+-		if [ ! -z &quot;$UNIONFS_CONFIG&quot; ]; then
+-			unionFST=`echo $UNIONFS_CONFIG | cut -d , -f 3`
+-			UNIONED=&quot;UNIONFS_CONFIG=$unionFST&quot;
+-			KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS $UNIONED&quot;
+-		fi
+-	fi
+-fi
+-runHook postconfig
+-
+-#======================================
+-# 16) check filesystem and kernels
+-#--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	if test $systemIntegrity = &quot;clean&quot;;then
+-		if [ &quot;$FSTYPE&quot; != &quot;nfs&quot; ];then
+-			probeFileSystem $imageRootDevice
+-		fi
+-		kernelList /mnt
+-	fi
+-fi
+-
+-#======================================
+-# 17) make initrd available on unionfs
+-#--------------------------------------
+-if \
+-	[ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; \
+-	[ ! -z &quot;$PART&quot; ]       &amp;&amp; \
+-	[ -z &quot;$NFSROOT&quot; ]      &amp;&amp; \
+-	[ -z &quot;$NBDROOT&quot; ]      &amp;&amp; \
+-	[ -z &quot;$AOEROOT&quot; ]
+-then
+-	if test ! -z &quot;$UNIONFS_CONFIG&quot; &amp;&amp; test $systemIntegrity = &quot;clean&quot;;then
+-		# /.../
+-		# we are using a special root setup with aufs or clicfs. In this
+-		# case we can't use the SuSE Linux initrd but must stick to the
+-		# kiwi boot system.
+-		# ----
+-		pushd $imageBootDevice &amp;&gt;/dev/null
+-		IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
+-			if test -z &quot;$i&quot;;then
+-				continue
+-			fi
+-			kernel=`echo $i | cut -f1 -d:`
+-			initrd=`echo $i | cut -f2 -d:`
+-			if [ ! -f initrd.kiwi ] &amp;&amp; [ ! -f linux.kiwi ];then
+-				Echo &quot;WARNING: can't find kiwi initrd/linux !&quot;
+-				Echo -b &quot;local boot will not work, maybe you forgot&quot;
+-				Echo -b &quot;to add KIWI_INITRD and KIWI_KERNEL in config.&lt;MAC&gt; ?&quot;
+-				break
+-			fi
+-			rm -f $initrd &amp;&amp; ln -s initrd.kiwi $initrd
+-			rm -f $kernel &amp;&amp; ln -s linux.kiwi  $kernel
+-			export bootLoaderOK=1
+-			break
+-		done
+-		IFS=$IFS_ORIG
+-		popd &gt;/dev/null
+-	fi
+-fi
+-
+-#======================================
+-# 18) Create system dependant files
+-#--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	if test $systemIntegrity = &quot;clean&quot;;then
+-		setupDefaultPXENetwork /config
+-		setupDefaultFstab /config
+-		updateRootDeviceFstab /config &quot;$imageRootDevice&quot;
+-		if test ! -z $DISK;then
+-			updateSwapDeviceFstab /config ${DISK}1
+-			updateOtherDeviceFstab /config
+-			if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
+-				updateLVMBootDeviceFstab /config $imageBootDevice
+-			elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+-				updateClicBootDeviceFstab /config $imageBootDevice
+-			elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
+-				updateBtrBootDeviceFstab /config $imageBootDevice
+-			elif [ &quot;$haveXFS&quot; = &quot;yes&quot; ];then
+-				updateXfsBootDeviceFstab /config $imageBootDevice
+-			fi
+-			setupBootLoader /mnt /config $(($bootid - 1)) \
+-				$imageRootDevice NET $imageSwapDevice
+-			setupKernelModules /config
+-		fi
+-	fi
+-fi
+-
+-#======================================
+-# 19) If image is new, notify
+-#--------------------------------------
+-runHook prenotify
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	if test $systemIntegrity = &quot;clean&quot;; then
+-		count=0
+-		IFS=&quot;,&quot; ; for i in $IMAGE;do
+-			count=$(($count + 1))
+-			field=0
+-			IFS=&quot;;&quot; ; for n in $i;do
+-			case $field in
+-				0) field=1 ;;
+-				1) imageName=$n   ; field=2 ;;
+-				2) imageVersion=$n; field=3 ;;
+-				3) imageServer=$n ; field=4 ;;
+-				4) imageBlkSize=$n; field=5 ;;
+-				5) imageZipped=$n ;
+-			esac
+-			done
+-			Echo &quot;Notify of new image: image/$imageName&quot;
+-			echo &quot;image/$imageName&quot; &gt; bootversion.$DHCPCHADDR
+-			echo &quot;$imageVersion&quot;   &gt;&gt; bootversion.$DHCPCHADDR
+-			putFile bootversion.$DHCPCHADDR upload/bootversion.$DHCPCHADDR
+-			rm -f bootversion.$DHCPCHADDR
+-		done
+-	fi
+-fi
+-runHook postnotify
+-
+-#======================================
+-# 20) send DHCP_RELEASE, reset cache
+-#--------------------------------------
+-if \
+-	[ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; \
+-	[ -z &quot;$NFSROOT&quot; ]      &amp;&amp; \
+-	[ -z &quot;$NBDROOT&quot; ]      &amp;&amp; \
+-	[ -z &quot;$AOEROOT&quot; ]
+-then
+-	dhcpcd -p -k $PXE_IFACE
+-fi
+-
+-#======================================
+-# 21) copy system dependant files
+-#--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	setupConfigFiles
+-fi
+-
+-#======================================
+-# 22) update system dependant files
+-#--------------------------------------
+-setupInittab /mnt
+-
+-echo 256 &gt; /proc/sys/kernel/real-root-dev
+-#======================================
+-# 23) umount system filesystems
+-#--------------------------------------
+-umountSystemFilesystems
+-
+-#======================================
+-# 24) copy initrd files to image
+-#--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	if test $systemIntegrity = &quot;clean&quot;;then
+-		if canWrite /mnt;then
+-			importBranding
+-			cp /preinit /mnt
+-			cp /include /mnt
+-		fi
+-	fi
+-fi
+-
+-#======================================
+-# 25) check if reboot is required
+-#--------------------------------------
+-kernelCheck /mnt
+-
+-#======================================
+-# 26 kill boot shell
+-#--------------------------------------
+-killShell
+-killBlogD
+-
+-#======================================
+-# 27 Activate new root
+-#--------------------------------------
+-runHook preactivate
+-activateImage
+-
+-#======================================
+-# 28) Unmount initrd / system init
+-#--------------------------------------
+-bootImage $@
+diff --git a/system/boot/ppc/netboot/suse-preinit b/system/boot/ppc/netboot/suse-preinit
+deleted file mode 100755
+index 66b6f2b..0000000
+--- a/system/boot/ppc/netboot/suse-preinit
++++ /dev/null
+@@ -1,160 +0,0 @@
+-#!/bin/bash
+-#================
+-# FILE          : preinit
+-#----------------
+-# PROJECT       : OpenSuSE KIWI Image System
+-# COPYRIGHT     : (c) 2006 SUSE LINUX Products GmbH. All rights reserved
+-#               :
+-# AUTHOR        : Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>&gt;
+-#               :
+-# BELONGS TO    : Operating System images
+-#               :
+-# DESCRIPTION   : This file is called after the image root
+-#               : has changed by the linuxrc script
+-#               :
+-# STATUS        : BETA
+-#----------------
+-#======================================
+-# Functions
+-#--------------------------------------
+-. /include
+-
+-#======================================
+-# 1) start error log
+-#--------------------------------------
+-errorLogStart
+-Echo &quot;Calling pre-init stage in system image&quot;
+-
+-#======================================
+-# 2) check for LOCAL_BOOT
+-#--------------------------------------
+-if [ $LOCAL_BOOT = &quot;yes&quot; ];then
+-	exit 0
+-fi
+-
+-#======================================
+-# 3) start udev
+-#--------------------------------------
+-if [ ! -z $DISK ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ]; then
+-	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+-		mountSystemFilesystems
+-		udevSystemStart
+-	fi
+-fi
+-
+-#======================================
+-# 4) update mount table
+-#--------------------------------------
+-updateMTAB
+-
+-#======================================
+-# 5) create framebuffer devices
+-#--------------------------------------
+-createFramebufferDevices
+-
+-#======================================
+-# 6) create initrd on diskful
+-#--------------------------------------
+-if [ ! -z &quot;$DISK&quot; ] &amp;&amp; [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ]; then
+-	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+-		#======================================
+-		# use distro initrd via mkinitrd
+-		#--------------------------------------
+-		setupSUSEInitrd
+-	else
+-		#======================================
+-		# use kiwi initrd downloaded before
+-		#--------------------------------------
+-		:
+-	fi
+-fi
+-
+-#======================================
+-# 7) Install boot loader on diskful
+-#--------------------------------------
+-if [ ! -z &quot;$DISK&quot; ] &amp;&amp; [ &quot;$bootLoaderOK&quot; = 1 ];then
+-	if test $systemIntegrity = &quot;clean&quot;;then
+-		installBootLoader
+-	fi
+-fi
+-
+-#======================================
+-# 8) create /etc/ImagePackages
+-#--------------------------------------
+-if [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ];then
+-	if [ -x /bin/rpm ];then
+-		Echo &quot;Creating initial image package info file&quot;
+-		rpm -qa --last &gt; /etc/ImagePackages
+-	fi
+-fi
+-
+-#======================================
+-# 9) Reset systemIntegrity
+-#--------------------------------------
+-if [ ! -z &quot;$DISK&quot; ];then
+-	if test ! -z $RELOAD_CONFIG;then
+-		systemIntegrity=$systemIntegrity_save
+-	fi
+-fi
+-
+-#======================================
+-# 10) check for valid mount points 
+-#--------------------------------------
+-if [ ! -z &quot;$DISK&quot; ];then
+-	IFS=&quot;:&quot; ; for i in $PART_MOUNT;do
+-	if [ ! -z &quot;$i&quot; ] &amp;&amp; [ ! -e &quot;$i&quot; ] &amp;&amp; [ ! &quot;$i&quot; = &quot;x&quot; ];then
+-		mkdir -p $i
+-	fi
+-	done
+-fi
+-
+-#======================================
+-# 11) Update /etc/ImageVersion files
+-#--------------------------------------
+-if [ ! -z &quot;$DISK&quot; ];then
+-	count=0
+-	IFS=&quot;,&quot; ; for i in $IMAGE;do
+-		count=$(($count + 1))
+-		field=0
+-		IFS=&quot;;&quot; ; for n in $i;do
+-		case $field in
+-			0) field=1 ;;
+-			1) imageName=$n   ; field=2 ;;
+-			2) imageVersion=$n; field=3 ;;
+-			3) imageServer=$n ; field=4 ;;
+-			4) imageBlkSize=$n; field=5 ;;
+-			5) imageZipped=$n ;
+-		esac
+-		done
+-		atversion=&quot;$imageName-$imageVersion&quot;
+-		versionFile=&quot;/etc/ImageVersion-$atversion&quot;
+-		md5sum=`getSystemMD5Status $count`
+-		if test `getSystemIntegrity $count` = &quot;clean&quot;;then
+-			echo &quot;$atversion $md5sum&quot; &gt; $versionFile
+-		fi
+-	done
+-fi
+-
+-#======================================
+-# 12) setup network for nfs boot
+-#--------------------------------------
+-if [ ! -z &quot;$NFSROOT&quot; ];then
+-	mount -t proc  proc    /proc
+-	mount -t sysfs sysfs   /sys
+-	mount -t devpts devpts /dev/pts
+-	if [ -x /etc/init.d/portmap ];then
+-		/etc/init.d/portmap start
+-	elif [ -x /etc/init.d/rpcbind ];then
+-		/etc/init.d/rpcbind start
+-	fi
+-fi
+-
+-#======================================
+-# 13) kill udev
+-#--------------------------------------
+-if [ ! -z &quot;$DISK&quot; ] &amp;&amp; [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ]; then
+-	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+-		udevSystemStop
+-		umountSystemFilesystems
+-	fi
+-fi
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="002926.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e6e4752e34f3690db6f4dfe0c276739dc420961e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2925">[ date ]</a>
+              <a href="thread.html#2925">[ thread ]</a>
+              <a href="subject.html#2925">[ subject ]</a>
+              <a href="author.html#2925">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

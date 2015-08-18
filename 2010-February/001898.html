@@ -1,0 +1,148 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 9a65fd7699ec5df01d0a549c7226fe4a2f3af18c
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%209a65fd7699ec5df01d0a549c7226fe4a2f3af18c&In-Reply-To=%3C201002111627.o1BGRD0n009118%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001897.html">
+   <LINK REL="Next"  HREF="001899.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 9a65fd7699ec5df01d0a549c7226fe4a2f3af18c</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%209a65fd7699ec5df01d0a549c7226fe4a2f3af18c&In-Reply-To=%3C201002111627.o1BGRD0n009118%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 9a65fd7699ec5df01d0a549c7226fe4a2f3af18c">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Feb 11 17:27:13 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001897.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0c033f5ed5c0eec03bac3268c8175a10c475feaa
+</A></li>
+        <LI>Next message: <A HREF="001899.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 321308a1025118776615f2c45b86b43874f8ea17
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1898">[ date ]</a>
+              <a href="thread.html#1898">[ thread ]</a>
+              <a href="subject.html#1898">[ subject ]</a>
+              <a href="author.html#1898">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-374-SuSE-11-1-SLE-SP-Devel has been updated
+       via  9a65fd7699ec5df01d0a549c7226fe4a2f3af18c (commit)
+      from  7e7c527bcc7054a32fdf0baacf818d33150384dc (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 9a65fd7699ec5df01d0a549c7226fe4a2f3af18c
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Feb 11 17:27:03 2010 +0100
+
+    - make setupSplash() to operate in a temp dir (bnc #579134)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 3af6a79..09d5d80 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -3105,13 +3105,24 @@ sub setupSplash {
+ 	my $this   = shift;
+ 	my $kiwi   = $this-&gt;{kiwi};
+ 	my $initrd = $this-&gt;{initrd};
+-	my $spldir = $initrd.&quot;_&quot;.$$.&quot;.splash&quot;;
+-	my $irddir = &quot;$spldir/initrd&quot;;
+ 	my $zipped = 0;
+ 	my $newird;
+-	my $status;
+ 	my $result;
+ 	#==========================================
++	# create temp dir for operations
++	#------------------------------------------
++	$kiwi -&gt; info (&quot;Setting up splash screen...&quot;);
++	my $spldir = qxx (&quot;mktemp -q -d /tmp/kiwisplash.XXXXXX&quot;);
++	my $status = $? &gt;&gt; 8;
++	if ($status != 0) {
++		$kiwi -&gt; skipped ();
++		$kiwi -&gt; warning  (&quot;Failed to create splash directory: $!&quot;);
++		$kiwi -&gt; skipped ();
++		return $initrd;
++	}
++	chomp $spldir;
++	my $irddir = &quot;$spldir/initrd&quot;;
++	#==========================================
+ 	# check if compressed and setup splash.gz
+ 	#------------------------------------------
+ 	if ($initrd =~ /\.gz$/) {
+@@ -3122,13 +3133,6 @@ sub setupSplash {
+ 	} else {
+ 		$newird = $initrd.&quot;.splash.gz&quot;;
+ 	}
+-	$kiwi -&gt; info (&quot;Setting up splash screen...&quot;);
+-	if (! mkdir $spldir) {
+-		$kiwi -&gt; skipped ();
+-		$kiwi -&gt; warning (&quot;Failed to create splash directory&quot;);
+-		$kiwi -&gt; skipped ();
+-		return $initrd;
+-	}
+ 	#==========================================
+ 	# unpack initrd files
+ 	#------------------------------------------
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 9ecaf4e..76b9412 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,9 @@
+ -------------------------------------------------------------------
++Thu Feb 11 17:24:33 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- make setupSplash() to operate in a temp dir (bnc #579134)
++
++-------------------------------------------------------------------
+ Thu Feb 11 12:54:49 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed name resolution inside chroot if curl backend is used
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001897.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0c033f5ed5c0eec03bac3268c8175a10c475feaa
+</A></li>
+	<LI>Next message: <A HREF="001899.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 321308a1025118776615f2c45b86b43874f8ea17
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1898">[ date ]</a>
+              <a href="thread.html#1898">[ thread ]</a>
+              <a href="subject.html#1898">[ subject ]</a>
+              <a href="author.html#1898">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

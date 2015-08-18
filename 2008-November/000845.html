@@ -1,0 +1,266 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1762 - in kiwi-head: modules rpm tools/cdtool
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1762%20-%20in%20kiwi-head%3A%20modules%20rpm%20tools/cdtool&In-Reply-To=%3C200811171424.mAHEOJ8j003223%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000844.html">
+   <LINK REL="Next"  HREF="000846.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1762 - in kiwi-head: modules rpm tools/cdtool</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1762%20-%20in%20kiwi-head%3A%20modules%20rpm%20tools/cdtool&In-Reply-To=%3C200811171424.mAHEOJ8j003223%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1762 - in kiwi-head: modules rpm tools/cdtool">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Nov 17 15:24:19 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000844.html">[Kiwi-devel] r1761 - in kiwi-head: modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000846.html">[Kiwi-devel] r1763 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#845">[ date ]</a>
+              <a href="thread.html#845">[ thread ]</a>
+              <a href="subject.html#845">[ subject ]</a>
+              <a href="author.html#845">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-11-17 15:24:14 +0100 (Mon, 17 Nov 2008)
+New Revision: 1762
+
+Modified:
+   kiwi-head/modules/KIWICollect_local.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/tools/cdtool/suse-isolinux
+Log:
+
+- include inst-source branch changes from autobuild team (r1761):
+  * removed false copy statement (wrong targetdir)
+  * fix handling of addarch, this must not use substring searches to
+    detect duplicate architectures.
+
+
+
+Modified: kiwi-head/modules/KIWICollect_local.pm
+===================================================================
+--- kiwi-head/modules/KIWICollect_local.pm	2008-11-17 13:48:12 UTC (rev 1761)
++++ kiwi-head/modules/KIWICollect_local.pm	2008-11-17 14:24:14 UTC (rev 1762)
+@@ -1108,12 +1108,13 @@
+ 	  else {
+             $this-&gt;logMsg(&quot;W&quot;, &quot;No CD1 directory on $packPointer-&gt;{name}&quot;);
+           }
+-          for my $sub(&quot;usr&quot;, &quot;etc&quot;) {
+-            if(-d &quot;$tmp/$sub&quot;) {
+-              qx(cp -r $tmp/$sub $this-&gt;{m_basesubdir}-&gt;{$medium});
+-            }
++          #for my $sub(&quot;usr&quot;, &quot;etc&quot;) {
++            #if(-d &quot;$tmp/$sub&quot;) {
++            #  qx(cp -r $tmp/$sub $this-&gt;{m_basesubdir}-&gt;{$medium});
++            #}
+ 	    if(-f &quot;$tmp/usr/share/mini-iso-rmlist&quot;) {
+ 	      if(!open(RMLIST, &quot;$tmp/usr/share/mini-iso-rmlist&quot;)) {
++		$this-&gt;logMsg(&quot;W&quot;, &quot;cant open &lt;$tmp/usr/share/mini-iso-rmlist&gt;&quot;);
+ 	      }
+ 	      else {
+ 		my @rmfiles = &lt;RMLIST&gt;;
+@@ -1122,7 +1123,7 @@
+ 		close RMLIST;
+ 	      }
+ 	    }
+-          }
++          #}
+           ## copy content of CD2 ... CD&lt;i&gt; subdirs if exists:
+           for(2..10) {
+             if(-d &quot;$tmp/CD$_&quot; and defined $this-&gt;{m_basesubdir}-&gt;{$_}) {
+@@ -1499,8 +1500,6 @@
+   my $ret = 0;
+ 
+   return $ret if(not defined($packName));
+-
+-  my @omits = ();
+   if(defined($packOptions-&gt;{'arch'})) {
+     # Check if this is a rule for this platform
+     $packOptions-&gt;{'arch'} =~ s{,\s*,}{,}g;
+@@ -1536,7 +1535,7 @@
+   push @archs, $this-&gt;{m_archlist}-&gt;headList();
+ 
+   if(defined($packOptions-&gt;{'addarch'})) {
+-    if(not(grep(/$packOptions-&gt;{'addarch'}/, @archs))) {
++    if(not(grep($packOptions-&gt;{'addarch'} eq $_, @archs))) {
+       $packOptions-&gt;{'addarch'} =~ s{,\s*,}{,}g;
+       $packOptions-&gt;{'addarch'} =~ s{,\s*}{,}g;
+       $packOptions-&gt;{'addarch'} =~ s{,\s*$}{};
+@@ -1544,23 +1543,13 @@
+       push @archs, split(/,\s*/, $packOptions-&gt;{'addarch'});
+     }
+   }
+-
+   if(defined($packOptions-&gt;{'removearch'})) {
+     $packOptions-&gt;{'removearch'} =~ s{,\s*,}{,}g;
+     $packOptions-&gt;{'removearch'} =~ s{,\s*}{,}g;
+     $packOptions-&gt;{'removearch'} =~ s{,\s*$}{};
+     $packOptions-&gt;{'removearch'} =~ s{^\s*,}{};
+-    @omits = split(/,\s*/, $packOptions-&gt;{'removearch'});
+-    my @rl;
+-    foreach my $x(@omits) {
+-      push @rl, grep(/$x/, @archs);
+-    }
+-    if(@rl) {
+-      my %h = map { $_ =&gt; 1 } @archs;
+-      my @cleared = grep delete($h{$_}), @rl;
+-      @archs = ();
+-      @archs = keys(%h);
+-    }
++    my %omits = map {$_ =&gt; 1} split(/,\s*/, $packOptions-&gt;{'removearch'});
++    @archs = grep {!$omits{$_}} @archs;
+   }
+   
+   return @archs;
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-11-17 13:48:12 UTC (rev 1761)
++++ kiwi-head/rpm/kiwi.changes	2008-11-17 14:24:14 UTC (rev 1762)
+@@ -9,20 +9,26 @@
+ - changed examples default source path to point to network
+ - update documentation, added chapter how to create a local
+   SUSE installation source and reference it for the examples
++- include inst-source branch changes from autobuild team (r1761):
++  * removed false copy statement (wrong targetdir)
++  * fix handling of addarch, this must not use substring searches to
++    detect duplicate architectures.
+ 
+ -------------------------------------------------------------------
+ Thu Nov 13 16:24:40 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">jcborn at suse.de</A>
+ 
+-- suse-isolinux: call parameters appear in logfile now
+-- suse-isolinux: fixed missing test for ppc specialities
++- include inst-source branch changes from autobuild team (r1753):
++  * suse-isolinux: call parameters appear in logfile now
++  * suse-isolinux: fixed missing test for ppc specialities
+ 
+ -------------------------------------------------------------------
+ Thu Nov 13 16:24:21 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">adrian at suse.de</A>
+ 
+-- fix handling of additional architectures not part of fallback list.
+-- Disable version require handling until bugs are solved.
+-- remove obsolete code
+-- a bit more debug output
++- include inst-source branch changes from autobuild team (r1753):
++  * fix handling of additional architectures not part of fallback list.
++  * Disable version require handling until bugs are solved.
++  * remove obsolete code
++  * a bit more debug output
+ 
+ -------------------------------------------------------------------
+ Wed Nov 12 08:23:35 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+Modified: kiwi-head/tools/cdtool/suse-isolinux
+===================================================================
+--- kiwi-head/tools/cdtool/suse-isolinux	2008-11-17 13:48:12 UTC (rev 1761)
++++ kiwi-head/tools/cdtool/suse-isolinux	2008-11-17 14:24:14 UTC (rev 1762)
+@@ -135,7 +135,43 @@
+ 			  echo not a blocker but should be fixed
+ 			  fi
+ 		  fi
+-		  PARAMS=&quot;$PARAMS -hfs-volid -&quot;
++		  if test -f $SOURCE/content ; then
++			for i in $SOURCE/media.? ; do
++			  if test -d $i ; then
++				number=${i##*.}
++			  fi
++			  break
++			done
++			name=&quot;`awk '/^(NAME|PRODUCT)[[:blank:]]/ { print $2 }' $SOURCE/content`&quot;
++			version=&quot;`awk '/^VERSION[[:blank:]]/ { print $2 }' $SOURCE/content`&quot;
++			if test -n &quot;$name&quot; ; then
++			  hfsvolid=&quot;$name&quot;
++			fi
++			if test -n &quot;$version&quot; ; then
++			  hfsvolid=&quot;$hfsvolid $version&quot;
++			fi
++			if test -n &quot;$hfsvolid&quot; ; then
++			  if test -n &quot;$number&quot; ; then
++				hfsvolid=&quot;`echo $hfsvolid | cut -b -25` $number&quot;
++			  fi
++			else
++			  i=$SOURCE/media.1/build
++			  if test -f $i ; then
++				hfsvolid=&quot;`awk '{
++			  l=length($0);
++			  if (l&gt;27)
++				l=l-27;
++			  else
++				l=0;
++				printf(&quot;%s&quot;, substr($0,l))
++				}' $i`&quot;
++			  else
++				hfsvolid=${SOURCE##*/}
++			  fi
++			fi
++		  fi
++		  hfsvolid=`echo $hfsvolid | tr ' ' '-'`
++		  PARAMS=&quot;$PARAMS -hfs-volid $hfsvolid&quot;
+ 		else
+ 			if [ -d $SOURCE/etc ] ; then
+ 				echo found $SOURCE/etc. put it at the beginning of iso image.
+@@ -178,7 +214,6 @@
+ 		APPID=&quot;$APPID.0#0&quot;
+ 	fi
+ 	APPID=`echo $APPID | tr &quot; &quot; -`
+-	test -n &quot;$APPID&quot; &amp;&amp; PARAMS=&quot;$PARAMS -A $APPID&quot;
+ 
+ 	if test -f $SOURCE/content ; then
+ 		MEDIANUMBER=1
+@@ -188,6 +223,7 @@
+ 			MEDIANUMBER=${MEDIADIR##$SOURCE/media.}
+ 		done
+ 		VOL=&quot;0$MEDIANUMBER&quot;
++                APPID=`sed -n -e &quot;s/^LABEL[ ]*\(.*\)/\1/p&quot; &quot;$SOURCE/content&quot; | sed -e &quot;s/ /-/g&quot;`
+ 	elif test -f $SOURCE/.S.u.S.E-disk-* ; then
+ 		BASE=`basename $SOURCE/.S.u.S.E-disk-*`
+ 		VOL=`echo $BASE | cut -c 16-17`
+@@ -229,6 +265,7 @@
+ 			PARAMS=&quot;$PARAMS -V $VOL&quot;
+ 		fi
+ 	fi
++	test -n &quot;$APPID&quot; &amp;&amp; PARAMS=&quot;$PARAMS -A $APPID&quot;
+ fi
+ 
+ if [ -f $SOURCE/$BOOT_ISOLINUX/isolinux.bin ] ; then
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000844.html">[Kiwi-devel] r1761 - in kiwi-head: modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000846.html">[Kiwi-devel] r1763 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#845">[ date ]</a>
+              <a href="thread.html#845">[ thread ]</a>
+              <a href="subject.html#845">[ subject ]</a>
+              <a href="author.html#845">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

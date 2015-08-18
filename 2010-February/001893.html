@@ -1,0 +1,194 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8e0fe843b3a8325f4812f8039ef528aa1ea2e7da
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%208e0fe843b3a8325f4812f8039ef528aa1ea2e7da&In-Reply-To=%3C201002101757.o1AHviov001344%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001892.html">
+   <LINK REL="Next"  HREF="001894.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8e0fe843b3a8325f4812f8039ef528aa1ea2e7da</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%208e0fe843b3a8325f4812f8039ef528aa1ea2e7da&In-Reply-To=%3C201002101757.o1AHviov001344%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8e0fe843b3a8325f4812f8039ef528aa1ea2e7da">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Feb 10 18:57:44 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001892.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. eaf0d05cb15ff119dbd5f599a2c8d8f359d5c52a
+</A></li>
+        <LI>Next message: <A HREF="001894.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8bdf341d317af9a97c90982473b9071b9e683c39
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1893">[ date ]</a>
+              <a href="thread.html#1893">[ thread ]</a>
+              <a href="subject.html#1893">[ subject ]</a>
+              <a href="author.html#1893">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  8e0fe843b3a8325f4812f8039ef528aa1ea2e7da (commit)
+      from  eaf0d05cb15ff119dbd5f599a2c8d8f359d5c52a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 8e0fe843b3a8325f4812f8039ef528aa1ea2e7da
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Feb 10 18:57:05 2010 +0100
+
+    - migration: fixed file find function
+    - migration: fixed broken link search / removal
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIMigrate.pm b/modules/KIWIMigrate.pm
+index 573c89c..9f59db9 100644
+--- a/modules/KIWIMigrate.pm
++++ b/modules/KIWIMigrate.pm
+@@ -622,7 +622,7 @@ sub setPrepareConfigSkript {
+ 			$kiwi -&gt; skipped ();
+ 			next;
+ 		}
+-		print FD &quot;zypper ar &quot;.$url.&quot; \\\n\t&quot;.$alias.&quot;\n&quot;;
++		print FD &quot;zypper ar \\\n\t\&quot;&quot;.$url.&quot;\&quot; \\\n\t\&quot;&quot;.$alias.&quot;\&quot;\n&quot;;
+ 	}
+ 	print FD 'suseConfig'.&quot;\n&quot;;
+ 	print FD 'baseCleanMount'.&quot;\n&quot;;
+@@ -909,7 +909,9 @@ sub setSystemOverlayFiles {
+ 		my $filehash = shift;
+ 		my $mount    = shift;
+ 		return sub {
+-			if (! -d $File::Find::name) {
++			if (((-l $File::Find::name) &amp;&amp; (-e $File::Find::name)) ||
++				(! -d $File::Find::name))
++			{
+ 				my $expr = quotemeta $mount;
+ 				my $file = $File::Find::name; $file =~ s/$expr//;
+ 				my $dirn = $File::Find::dir;  $dirn =~ s/$expr//;
+@@ -925,7 +927,7 @@ sub setSystemOverlayFiles {
+ 		%result = %{$cdata-&gt;{result}};
+ 	} else {
+ 		my $wref = generateWanted (\%result,$root);
+-		find ({ wanted =&gt; $wref, follow =&gt; 0 }, $root );
++		find ({ wanted =&gt; $wref }, $root );
+ 		$cdata-&gt;{result} = \%result;
+ 	}
+ 	$kiwi -&gt; done ();
+@@ -1057,12 +1059,6 @@ sub setSystemOverlayFiles {
+ 		}
+ 	}
+ 	#==========================================
+-	# Cleanup symbolic links
+-	#------------------------------------------
+-	$kiwi -&gt; info (&quot;Cleaning symlinks...&quot;);
+-	$this -&gt; checkBrokenLinks();
+-	$kiwi -&gt; done();
+-	#==========================================
+ 	# Create modified files tree
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Creating modified files tree...&quot;);
+@@ -1074,6 +1070,12 @@ sub setSystemOverlayFiles {
+ 	}
+ 	$kiwi -&gt; done();
+ 	#==========================================
++	# Cleanup symbolic links
++	#------------------------------------------
++	$kiwi -&gt; info (&quot;Cleaning symlinks...&quot;);
++	$this -&gt; checkBrokenLinks();
++	$kiwi -&gt; done();
++	#==========================================
+ 	# Remove empty directories
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Removing empty directories...&quot;);
+@@ -1252,22 +1254,35 @@ sub checkBrokenLinks {
+ 	my $this = shift;
+ 	my $dest = $this-&gt;{dest};
+ 	my $kiwi = $this-&gt;{kiwi};
+-	my @link = qxx (&quot;find $dest/root-nopackage -type l&quot;);
++	my @base = (&quot;root-nopackage&quot;,&quot;root-modified&quot;);
++	my @link = ();
++	#==========================================
++	# search links in overlay subtrees
++	#------------------------------------------
++	foreach my $root (@base) {
++		my @list = qxx (&quot;find $dest/$root -type l&quot;);
++		push @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">link, at list</A>;
++	}
+ 	my $returnok = 1;
+-	my $dir;
+-	my $name;
+-	my $suffix;
++	#==========================================
++	# check link targets
++	#------------------------------------------
+ 	foreach my $linkfile (@link) {
+ 		chomp $linkfile;
+ 		my $ref = readlink ($linkfile);
+ 		if ($ref !~ /^\//) {
+-			($name,$dir,$suffix) = fileparse ($linkfile);
+-			$dir.= &quot;/&quot;;
+-		} else {
+-			$dir = $dest.&quot;/root-nopackage&quot;;
++			my ($name,$dir,$suffix) = fileparse ($linkfile);
++			$dir =~ s/$dest\/root-.*?\///;
++			$ref = $dir.&quot;/&quot;.$ref;
++		}
++		my $remove = 1;
++		foreach my $root (@base) {
++			if (-e &quot;$dest/$root/$ref&quot;) {
++				$remove = 0; last;
++			}
+ 		}
+-		if (! -e $dir.$ref) {
+-			$kiwi -&gt; loginfo (&quot;Broken link: $linkfile -&gt; $ref [ REMOVED ]&quot;);
++		if ($remove) {
++			$kiwi -&gt; loginfo (&quot;Broken link: $linkfile [ REMOVED ]&quot;);
+ 			unlink $linkfile;
+ 			$returnok = 0;
+ 		}
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001892.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. eaf0d05cb15ff119dbd5f599a2c8d8f359d5c52a
+</A></li>
+	<LI>Next message: <A HREF="001894.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8bdf341d317af9a97c90982473b9071b9e683c39
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1893">[ date ]</a>
+              <a href="thread.html#1893">[ thread ]</a>
+              <a href="subject.html#1893">[ subject ]</a>
+              <a href="author.html#1893">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

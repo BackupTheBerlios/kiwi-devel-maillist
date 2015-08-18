@@ -1,0 +1,496 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1461 - in kiwi-head: modules modules/plugins rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1461%20-%20in%20kiwi-head%3A%20modules%20modules/plugins%20rpm&In-Reply-To=%3C200807151352.m6FDqD4D019429%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000545.html">
+   <LINK REL="Next"  HREF="000569.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1461 - in kiwi-head: modules modules/plugins rpm</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1461%20-%20in%20kiwi-head%3A%20modules%20modules/plugins%20rpm&In-Reply-To=%3C200807151352.m6FDqD4D019429%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1461 - in kiwi-head: modules modules/plugins rpm">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Tue Jul 15 15:52:13 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000545.html">[Kiwi-devel] r1460 - kiwi-head/modules
+</A></li>
+        <LI>Next message: <A HREF="000569.html">[Kiwi-devel] r1462 - kiwi-head/doc/schema
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#546">[ date ]</a>
+              <a href="thread.html#546">[ thread ]</a>
+              <a href="subject.html#546">[ subject ]</a>
+              <a href="author.html#546">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2008-07-15 15:52:11 +0200 (Tue, 15 Jul 2008)
+New Revision: 1461
+
+Modified:
+   kiwi-head/modules/KIWICollect.pm
+   kiwi-head/modules/KIWIScheme.rnc
+   kiwi-head/modules/KIWIScheme.rng
+   kiwi-head/modules/KIWIXML.pm
+   kiwi-head/modules/plugins/KIWIPatternsPlugin.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+- introduction of new attribute &quot;local&quot; (values boolean) in &lt;instrepo&gt;
+  element. Tells kiwi to use link instead of lwp-download (much faster)
+  For OBS scenario local trees will be used.
+- fixed KIWIPatternsPlugin: use the correct subdir name in case of
+  single subdir trees
+- also some cosmetic changes (removed commented dead code)
+
+
+Modified: kiwi-head/modules/KIWICollect.pm
+===================================================================
+--- kiwi-head/modules/KIWICollect.pm	2008-07-15 13:34:23 UTC (rev 1460)
++++ kiwi-head/modules/KIWICollect.pm	2008-07-15 13:52:11 UTC (rev 1461)
+@@ -250,6 +250,8 @@
+     print DUMP $this-&gt;{m_archlist}-&gt;dumpList();
+     close(DUMP);
+   }
++  #cleanup the wasted memory in KIWIXML:
++  $this-&gt;{m_xml}-&gt;clearPackageAttributes();
+ 
+   ## repository information
+   %{$this-&gt;{m_repos}}	      = $this-&gt;{m_xml}-&gt;getInstSourceRepository();
+@@ -289,7 +291,6 @@
+   $this-&gt;{m_proddata}-&gt;addSet(&quot;ProductOption stuff&quot;, {$this-&gt;{m_xml}-&gt;getInstSourceProductOption()}, &quot;prodopts&quot;);
+   $this-&gt;{m_proddata}-&gt;_expand(); #once should be it, now--
+ 
+-  # this breaks &quot;private&quot; access, only used for DEBUG! This is not an example!!!
+   if($this-&gt;{m_debug}) {
+     open(DUMP, &quot;&gt;&quot;, &quot;$this-&gt;{m_basedir}/productdata.pl&quot;);
+     print DUMP &quot;# PRODUCTINFO:&quot;;
+@@ -309,13 +310,27 @@
+     return undef;
+   }
+ 
+-  foreach my $n($this-&gt;getMediaNumbers()) {
+-    $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/$mediumname$n&quot;} = 1;
+-    $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/$mediumname$n/suse&quot;} = 1;
+-    $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/$mediumname$n/script&quot;} = 1;
+-    $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/$mediumname$n/temp&quot;} = 1;
+-    $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/$mediumname$n/media.$n&quot;} = 1;
+-    $this-&gt;{m_basesubdir}-&gt;{$n} = &quot;$this-&gt;{m_united}/$mediumname$n&quot;;
++  my @media = $this-&gt;getMediaNumbers();
++  my $mult = $this-&gt;{m_proddata}-&gt;getVar(&quot;MULTIPLE_MEDIA&quot;);
++  my $dirext = undef;
++  if($mult eq &quot;no&quot;) {
++    if(scalar(@media) == 1) { 
++      $dirext = 1;#&quot;$this-&gt;{m_united}/$mediumname&quot;;
++    }
++    else {
++      # this means the config says multiple_media=no BUT defines a &quot;medium=&lt;number&gt;&quot; somewhere!
++      $this-&gt;{m_logger}-&gt;warning(&quot;[ERROR] You want a single medium distro but specified medium=... for some packages\n\tIgnoring the MULTIPLE_MEDIA=no flag!&quot;);
++    }
++  }
++  foreach my $n(@media) {
++    my $dirbase = &quot;$this-&gt;{m_united}/$mediumname&quot;;
++    $dirbase .= &quot;$n&quot; if not defined($dirext);
++    $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase&quot;} = 1;
++    $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/suse&quot;} = 1;
++    $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/script&quot;} = 1;
++    $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/temp&quot;} = 1;
++    $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/media.$n&quot;} = 1;
++    $this-&gt;{m_basesubdir}-&gt;{$n} = &quot;$dirbase&quot;;
+     $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_basesubdir}-&gt;{$n}&quot;} = 1;
+   }
+   
+@@ -800,12 +815,13 @@
+ 
+       ## THEMING
+       $this-&gt;{m_logger}-&gt;info(&quot;[INFO] Handling theming for package $metapack\n&quot;);
+-      $this-&gt;{m_logger}-&gt;info(&quot;\ttarget theme $this-&gt;{m_prodvars}-&gt;{PRODUCT_THEME}\n&quot;);
+       my $thema = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_THEME&quot;);
+       if(not defined($thema)) {
+ 	$this-&gt;{m_logger}-&gt;error(&quot;[ERROR] unpackMetapackages: PRODUCT_THEME undefined!&quot;);
+ 	die;# TODO clean solution
+       }
++      $this-&gt;{m_logger}-&gt;info(&quot;\ttarget theme $thema\n&quot;);
++
+       if(-d &quot;$tmp/SuSE&quot;) {
+ 	if(not opendir(TD, &quot;$tmp/SuSE&quot;)) {
+ 	  $this-&gt;{m_logger}-&gt;warning(&quot;[WARNING] [unpackMetapackages] Can't open theme directory for reading!\nSkipping themes for package $metapack\n&quot;);
+@@ -1085,8 +1101,8 @@
+ 
+   # step1: download all and query headers!
+   # sort by prio??
+-  #REPO:foreach my $repo(keys(%list)) {
+   REPO:foreach my $repo(sort {$this-&gt;{m_repos}-&gt;{$a}-&gt;{priority} &lt; $this-&gt;{m_repos}-&gt;{$b}-&gt;{priority}} keys(%list)) {
++    my $localrepo = $this-&gt;{m_repos}-&gt;{$repo}-&gt;{islocal};
+     my $r_tmp = $list{$repo};
+     DIR:foreach my $dir(keys(%{$r_tmp})) {
+       my $r_tmp2 = $r_tmp-&gt;{$dir};
+@@ -1095,17 +1111,16 @@
+       my $fullpath = &quot;$this-&gt;{m_repos}-&gt;{$repo}-&gt;{'basedir'}/$r_tmp2-&gt;{'subdir'}&quot;;
+       $this-&gt;{m_dirlist}-&gt;{&quot;$fullpath&quot;} = 1;
+       $this-&gt;createDirectoryStructure();
+-      #if(! -d $fullpath) {
+-      #  if(!mkpath($fullpath, { mode =&gt; umask })) {
+-      #    $this-&gt;{m_logger}-&gt;error(&quot;[ERROR] [fetchFileFrom] cannot create subdirectory $fullpath\n&quot;);
+-      #    die &quot;Cannot create subdirectories, something's broken!&quot;;
+-      #  }
+-      #}
+ 
+       $this-&gt;{m_logger}-&gt;info(&quot;[INFO] [fetchFileFrom] downloading $pack from $r_tmp2-&gt;{'uri'} to dir $fullpath&quot;);
+       $r_tmp2-&gt;{'uri'} =~ m{.*/(.*)$};
+       my $file = $1;
+-      $this-&gt;{m_xml}-&gt;getInstSourceFile($r_tmp2-&gt;{'uri'}, $fullpath);
++      if(defined($localrepo) and ($localrepo eq &quot;true&quot; or $localrepo eq &quot;1&quot;)) {
++	link $r_tmp2-&gt;{'uri'}, &quot;$fullpath/$file&quot;;
++      }
++      else{
++	$this-&gt;{m_xml}-&gt;getInstSourceFile($r_tmp2-&gt;{'uri'}, $fullpath);
++      }
+       my %flags = RPMQ::rpmq_many(&quot;$fullpath/$file&quot;, 'NAME', 'VERSION', 'RELEASE', 'ARCH', 'SOURCE', 'SOURCERPM');
+ 
+       if(! %flags) {
+@@ -1119,7 +1134,6 @@
+ 	#   SOURCE contains (none) for regular rpms and the name of the tarball file for source rpms
+ 	#   SOURCERPM contains the name of the resp. source rpm or (none) for source rpms themselves.
+ 	#---------------------------------
+-	#my $ext = &quot;$tmppath/$flags{'NAME'}-&gt;[0]-$flags{'VERSION'}-&gt;[0]-$flags{'RELEASE'}-&gt;[0]&quot;;
+ 	my $ext;
+ 	if( !$flags{'SOURCERPM'} or $flags{'SOURCERPM'}-&gt;[0] eq 'none') {
+ 	  # we deal with a source rpm...
+@@ -1138,11 +1152,6 @@
+ 	if(! -d $tmppath) {
+ 	  $this-&gt;{m_dirlist}-&gt;{&quot;$tmppath&quot;} = 1;
+ 	  $this-&gt;createDirectoryStructure();
+-	  #if(!mkpath($tmppath, { mode =&gt; umask } )) {
+-	  #  $this-&gt;{m_logger}-&gt;error(&quot;[ERROR] [fetchFileFrom] cannot create subdirectory $tmppath\n&quot;);
+-	  #  # TODO clean exit (code 3); continuing doesn't make sense
+-	  #  die &quot;Cannot create subdirectories, something's broken!&quot;;
+-	  #}
+ 	}
+ 
+ 	my $newname = &quot;$tmppath/$flags{'NAME'}-&gt;[0]-$flags{'VERSION'}-&gt;[0]-$flags{'RELEASE'}-&gt;[0].$ext&quot;;
+@@ -1220,91 +1229,6 @@
+ 
+ 
+ #==========================================
+-# getArchList
+-#------------------------------------------
+-#sub getArchList
+-#{
+-#  my $this = shift;
+-#  
+-#  my @erg = ();
+-#  #my @archs = @{$this-&gt;{m_archlist}};
+-#
+-#  foreach(@{$this-&gt;{m_archlist}}) {
+-#    if(m{i\d+}) {
+-#      push @erg, $this-&gt;getArchListByName('intel', $_);
+-#    }
+-#    elsif(m{ia.+}) {
+-#      push @erg, $this-&gt;getArchListByName('ia', $_);
+-#    }
+-#    elsif(m{ppc}) {
+-#      push @erg, $this-&gt;getArchListByName('ppc', $_);
+-#    }
+-#    elsif(m{ppc64}) {
+-#      push @erg, $this-&gt;getArchListByName('ppc64', $_);
+-#    }
+-#    elsif(m{hppa}) {
+-#      push @erg, $this-&gt;getArchListByName('hp', $_);
+-#    }
+-#    elsif(m{x\d+}) {
+-#      push @erg, $this-&gt;getArchListByName('amd', $_);
+-#    }
+-#    elsif(m{s\d+.*}) {
+-#      push @erg, $this-&gt;getArchListByName('s390', $_);
+-#    }
+-#  }
+-#  return KIWIUtil::unify(@erg);
+-#}
+-## /getArchList
+-
+-
+-
+-#
+-#sub getArchListByName
+-#{
+-#  my $this = shift;
+-#  my $arch = shift;# or die(&quot;No arch given!&quot;);
+-#  # missing pars warning hook:
+-#  if(not defined($arch)) {
+-#    $this-&gt;{m_logger}-&gt;warning(&quot;[WARNING] [getArchByName] undefined parameter \$arch&quot;);
+-#    return undef; # no harm, but also no result
+-#  }
+-#
+-#  my @orig;
+-#  if($arch =~ m{i\d+}) {
+-#    @orig = @{$this-&gt;{m_fpath}-&gt;{'intel'}};
+-#  }
+-#  elsif($arch =~ m{ia.+}) {
+-#    @orig = @{$this-&gt;{m_fpath}-&gt;{'ia'}};
+-#  }
+-#  elsif($arch =~ m{ppc}) {
+-#   @orig = @{$this-&gt;{m_fpath}-&gt;{'ppc'}};
+-#  }
+-#  elsif($arch =~ m{ppc64}) {
+-#   @orig = @{$this-&gt;{m_fpath}-&gt;{'ppc64'}};
+-#  }
+-#  elsif($arch =~ m{hppa}) {
+-#   @orig = @{$this-&gt;{m_fpath}-&gt;{'hp'}};
+-#  }
+-#  elsif($arch =~ m{x\d+}) {
+-#   @orig = @{$this-&gt;{m_fpath}-&gt;{'amd'}};
+-#  }
+-#  elsif($arch =~ m{s\d+.*}) {
+-#   @orig = @{$this-&gt;{m_fpath}-&gt;{'s390'}};
+-#  }
+-#
+-#  my $index = 0;
+-#  for($index=0; $index&lt;$#orig; $index++) {
+-#    if($orig[$index] eq $arch) {
+-#      last;
+-#    }
+-#  }
+-#  return @orig[$index .. $#orig];
+-#}
+-## /getArchListByName
+-
+-
+-
+-#==========================================
+ # dumpPackageList
+ #------------------------------------------
+ sub dumpPackageList
+@@ -1453,34 +1377,35 @@
+ # returns:
+ #   list of available architectures
+ #------------------------------------------
+-sub hasArch
+-{
+-  my $this = shift;
+-  my $p = shift;
++## TODO move this functionality to the KIWIPackage class TODO
++#sub hasArch
++#{
++#  my $this = shift;
++#  my $p = shift;
++#
++#  my @r = ();
++#  my $pinfo = $this-&gt;{m_packages}-&gt;{$p};
++#  if(!$pinfo) {
++#    $pinfo = $this-&gt;{m_metapackages}-&gt;{$p};
++#    if(!$pinfo) {
++#      $this-&gt;{m_logger}-&gt;warning(&quot;[WARNING] [hasArch] package $p not found in any package list&quot;);
++#      return undef;
++#    }
++#  }
++#
++#  # figure out the reqired architectures:
++#  if(!@{$pinfo}) { # if the ref is an empty list
++#    @r = $this-&gt;{m_archlist};
++#  }
++#  else {
++#    
++#  }
++#
++#  return @r;
++#}
++#
+ 
+-  my @r = ();
+-  my $pinfo = $this-&gt;{m_packages}-&gt;{$p};
+-  if(!$pinfo) {
+-    $pinfo = $this-&gt;{m_metapackages}-&gt;{$p};
+-    if(!$pinfo) {
+-      $this-&gt;{m_logger}-&gt;warning(&quot;[WARNING] [hasArch] package $p not found in any package list&quot;);
+-      return undef;
+-    }
+-  }
+ 
+-  # figure out the reqired architectures:
+-  if(!@{$pinfo}) { # if the ref is an empty list
+-    @r = $this-&gt;{m_archlist};
+-  }
+-  else {
+-    
+-  }
+-
+-  return @r;
+-}
+-
+-
+-
+ #==========================================
+ # createMetadata
+ #------------------------------------------
+
+Modified: kiwi-head/modules/KIWIScheme.rnc
+===================================================================
+--- kiwi-head/modules/KIWIScheme.rnc	2008-07-15 13:34:23 UTC (rev 1460)
++++ kiwi-head/modules/KIWIScheme.rnc	2008-07-15 13:52:11 UTC (rev 1461)
+@@ -344,17 +344,26 @@
+ 		attribute priority { text }
+ 	k.instrepo.username.attribute = k.username.attribute
+ 	k.instrepo.pwd.attribute = k.pwd.attribute
++	k.instrepo.local.attribute =
++		attribute local { xsd:boolean }
+ 	k.instrepo.attlist =
+ 		k.instrepo.name.attribute &amp;
+ 		k.instrepo.priority.attribute &amp;
+ 		k.instrepo.username.attribute? &amp;
+-		k.instrepo.pwd.attribute?
++		k.instrepo.pwd.attribute? &amp;
++		k.instrepo.local.attribute?
+ 	k.instrepo =
+ 		## Name of a Installation Repository
+ 		[
+ 		db:para [
+ 			&quot;Name of a repository which is used to create an\x{a}&quot; ~
+-			&quot;installation source&quot;
++			&quot;installation source\x{a}&quot;~
++			&quot;The Priority specifies the order the repositories are\x{a}&quot;~
++			&quot;layered when looking for a package.\x{a}&quot;~
++			&quot;Username and pwd are the credentials for ftp access.\x{a}&quot;~
++			&quot;The local attribute tells kiwi to use hardlinks instead of\x{a}&quot;~
++			&quot;downloads in case the source and destination trees are on\x{a}&quot;~
++			&quot;the same machine.&quot;
+ 		]
+ 		]
+ 		element instrepo {
+
+Modified: kiwi-head/modules/KIWIScheme.rng
+===================================================================
+--- kiwi-head/modules/KIWIScheme.rng	2008-07-15 13:34:23 UTC (rev 1460)
++++ kiwi-head/modules/KIWIScheme.rng	2008-07-15 13:52:11 UTC (rev 1461)
+@@ -494,6 +494,11 @@
+     &lt;define name=&quot;k.instrepo.pwd.attribute&quot;&gt;
+       &lt;ref name=&quot;k.pwd.attribute&quot;/&gt;
+     &lt;/define&gt;
++    &lt;define name=&quot;k.instrepo.local.attribute&quot;&gt;
++      &lt;attribute name=&quot;local&quot;&gt;
++        &lt;data type=&quot;boolean&quot;/&gt;
++      &lt;/attribute&gt;
++    &lt;/define&gt;
+     &lt;define name=&quot;k.instrepo.attlist&quot;&gt;
+       &lt;interleave&gt;
+         &lt;ref name=&quot;k.instrepo.name.attribute&quot;/&gt;
+@@ -504,13 +509,22 @@
+         &lt;optional&gt;
+           &lt;ref name=&quot;k.instrepo.pwd.attribute&quot;/&gt;
+         &lt;/optional&gt;
++        &lt;optional&gt;
++          &lt;ref name=&quot;k.instrepo.local.attribute&quot;/&gt;
++        &lt;/optional&gt;
+       &lt;/interleave&gt;
+     &lt;/define&gt;
+     &lt;define name=&quot;k.instrepo&quot;&gt;
+       &lt;element name=&quot;instrepo&quot;&gt;
+         &lt;a:documentation&gt;Name of a Installation Repository&lt;/a:documentation&gt;
+         &lt;db:para&gt;Name of a repository which is used to create an
+-installation source&lt;/db:para&gt;
++installation source
++The Priority specifies the order the repositories are
++layered when looking for a package.
++Username and pwd are the credentials for ftp access.
++The local attribute tells kiwi to use hardlinks instead of
++downloads in case the source and destination trees are on
++the same machine.&lt;/db:para&gt;
+         &lt;ref name=&quot;k.instrepo.attlist&quot;/&gt;
+         &lt;ref name=&quot;k.source&quot;/&gt;
+       &lt;/element&gt;
+
+Modified: kiwi-head/modules/KIWIXML.pm
+===================================================================
+--- kiwi-head/modules/KIWIXML.pm	2008-07-15 13:34:23 UTC (rev 1460)
++++ kiwi-head/modules/KIWIXML.pm	2008-07-15 13:52:11 UTC (rev 1461)
+@@ -1429,6 +1429,7 @@
+ 		my $name = $element -&gt; getAttribute(&quot;name&quot;);
+ 		my $user = $element -&gt; getAttribute(&quot;username&quot;);
+ 		my $pwd  = $element -&gt; getAttribute(&quot;pwd&quot;);
++		my $islocal  = $element -&gt; getAttribute(&quot;local&quot;);
+ 		my $stag = $element -&gt; getElementsByTagName (&quot;source&quot;) -&gt; get_node(1);
+ 		my $source = $this -&gt; resolveLink ( $stag -&gt; getAttribute (&quot;path&quot;) );
+ 		if (! defined $name) {
+@@ -1436,6 +1437,7 @@
+ 		}
+ 		$result{$name}{source}   = $source;
+ 		$result{$name}{priority} = $prio;
++		$result{$name}{islocal} = $islocal;
+ 		if (defined $user) {
+ 			$result{$name}{user} = $user.&quot;:&quot;.$pwd;
+ 		}
+
+Modified: kiwi-head/modules/plugins/KIWIPatternsPlugin.pm
+===================================================================
+--- kiwi-head/modules/plugins/KIWIPatternsPlugin.pm	2008-07-15 13:34:23 UTC (rev 1460)
++++ kiwi-head/modules/plugins/KIWIPatternsPlugin.pm	2008-07-15 13:52:11 UTC (rev 1461)
+@@ -57,8 +57,13 @@
+     return $retval;
+   }
+ 
++  my $dirname = $this-&gt;{m_handler}-&gt;baseurl().&quot;/&quot;.$this-&gt;{m_handler}-&gt;mediaName();
++  my $mult = $this-&gt;handler()-&gt;collect()-&gt;productData()-&gt;getVar(&quot;MULTIPLE_MEDIA&quot;);
++  if( $mult ne &quot;no&quot;) {
++    $dirname .= $this-&gt;{m_media}-&gt;[0];
++  }
++  $dirname .= &quot;/&quot;.$this-&gt;{m_requireddirs}-&gt;[0];
+ 
+-  my $dirname = $this-&gt;{m_handler}-&gt;baseurl().&quot;/&quot;.$this-&gt;{m_handler}-&gt;mediaName().$this-&gt;{m_media}-&gt;[0].&quot;/&quot;.$this-&gt;{m_requireddirs}-&gt;[0];
+   if(!open(PAT, &quot;&gt;&quot;, &quot;$dirname/patterns&quot;)) {
+     die &quot;Cannot create $dirname/patterns!&quot;;
+   }
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-07-15 13:34:23 UTC (rev 1460)
++++ kiwi-head/rpm/kiwi.changes	2008-07-15 13:52:11 UTC (rev 1461)
+@@ -1,4 +1,13 @@
+ -------------------------------------------------------------------
++Tue Jul 15 15:38:58 CEST 2008
++
++- introduction of new attribute &quot;local&quot; (values boolean) in &lt;instrepo&gt;
++  element. Tells kiwi to use link instead of lwp-download (much faster)
++  For OBS scenario local trees will be used.
++- fixed KIWIPatternsPlugin: use the correct subdir name in case of single
++  subdir trees
++
++-------------------------------------------------------------------
+ Mon Jul 14 11:30:50 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.58
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000545.html">[Kiwi-devel] r1460 - kiwi-head/modules
+</A></li>
+	<LI>Next message: <A HREF="000569.html">[Kiwi-devel] r1462 - kiwi-head/doc/schema
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#546">[ date ]</a>
+              <a href="thread.html#546">[ thread ]</a>
+              <a href="subject.html#546">[ subject ]</a>
+              <a href="author.html#546">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

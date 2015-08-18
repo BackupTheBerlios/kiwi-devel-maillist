@@ -1,0 +1,272 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. e9a29655dafd4817abc2a6097d52abdda802f59b
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-301-SuSE-11-1-Devel%2C%0A%09updated.%20e9a29655dafd4817abc2a6097d52abdda802f59b&In-Reply-To=%3C200905271457.n4REv6pD025377%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001263.html">
+   <LINK REL="Next"  HREF="001265.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. e9a29655dafd4817abc2a6097d52abdda802f59b</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-301-SuSE-11-1-Devel%2C%0A%09updated.%20e9a29655dafd4817abc2a6097d52abdda802f59b&In-Reply-To=%3C200905271457.n4REv6pD025377%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. e9a29655dafd4817abc2a6097d52abdda802f59b">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed May 27 16:57:06 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001263.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. cff6e775cf5ae9e3aad0e5afaa210983d505480d
+</A></li>
+        <LI>Next message: <A HREF="001265.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4ca43682ed0dbe02bb44c938fd6ead5c056992df
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1264">[ date ]</a>
+              <a href="thread.html#1264">[ thread ]</a>
+              <a href="subject.html#1264">[ subject ]</a>
+              <a href="author.html#1264">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-301-SuSE-11-1-Devel has been updated
+       via  e9a29655dafd4817abc2a6097d52abdda802f59b (commit)
+      from  cff6e775cf5ae9e3aad0e5afaa210983d505480d (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit e9a29655dafd4817abc2a6097d52abdda802f59b
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed May 27 16:54:49 2009 +0200
+
+    - fixed OEM recovery, don't check mbr id (bnc #503653)
+    - set inode count for system partition only (bnc #495135)
+    - don't run path generation for <A HREF="iso://">iso://</A> and <A HREF="file://">file://</A> paths
+      if zypper is used (bnc #498437)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 6cce779..b989850 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -1917,7 +1917,6 @@ sub checkFSOptions {
+ 		my $blocksize;   # block size in bytes
+ 		my $journalsize; # journal size in MB (ext) or blocks (reiser)
+ 		my $inodesize;   # inode size in bytes (ext only)
+-		my $numinodes;   # maximum number of inodes (ext only)
+ 		my $fsfeature;   # filesystem features (ext only)
+ 		SWITCH: for ($fs) {
+ 			#==========================================
+@@ -1927,7 +1926,6 @@ sub checkFSOptions {
+ 				if ($FSBlockSize)   {$blocksize   = &quot;-b $FSBlockSize&quot;}
+ 				if ($FSInodeSize)   {$inodesize   = &quot;-I $FSInodeSize&quot;}
+ 				if ($FSJournalSize) {$journalsize = &quot;-J size=$FSJournalSize&quot;}
+- 				if ($FSNumInodes)   {$numinodes   = &quot;-N $FSNumInodes&quot;}
+ 				$fsfeature = &quot;-O resize_inode&quot;;
+ 				last SWITCH;
+ 			};
+@@ -1950,9 +1948,6 @@ sub checkFSOptions {
+ 		if (defined $journalsize) {
+ 			$result{$fs} .= $journalsize.&quot; &quot;;
+ 		}
+-		if (defined $numinodes) {
+-			$result{$fs} .= $numinodes.&quot; &quot;;
+-		}
+ 		if (defined $fsfeature) {
+ 			$result{$fs} .= $fsfeature.&quot; &quot;;
+ 		}
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 9c64f54..608bb2a 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -312,14 +312,17 @@ sub new {
+ 			#------------------------------------------
+ 			$systemInodes = qxx (&quot;find $system | wc -l&quot;);
+ 			$systemInodes *= 2;
+-			if ((defined $main::FSNumInodes) &amp;&amp;
+-				($main::FSNumInodes &lt; $systemInodes)
+-			) {
+-				$kiwi -&gt; warning (&quot;Specified Inode count might be too small\n&quot;);
+-				$kiwi -&gt; warning (&quot;Copying of files to image could fail !\n&quot;);
+-			}
+-			if (! defined $main::FSNumInodes) {
+-				$main::FSNumInodes = $systemInodes;
++			$this-&gt;{inodes} = $systemInodes;
++			if (defined $main::FSNumInodes) {
++				$this-&gt;{inodes} = $main::FSNumInodes;
++				if ($main::FSNumInodes &lt; $systemInodes) {
++					$kiwi -&gt; warning (
++						&quot;Specified Inode count might be too small\n&quot;
++					);
++					$kiwi -&gt; warning (
++						&quot;Copying of files to image could fail !\n&quot;
++					);
++				}
+ 			}
+ 			if ($systemSXML eq &quot;auto&quot;) {
+ 				$systemSXML = 0;
+@@ -956,6 +959,9 @@ sub setupBootStick {
+ 				$kiwi -&gt; info (&quot;Creating ext2 root filesystem&quot;);
+ 				my $fsopts = $FSopts{ext2};
+ 				$fsopts.= &quot;-F&quot;;
++				if ($this-&gt;{inodes}) {
++					$fsopts.= &quot; -N $this-&gt;{inodes}&quot;;
++				}
+ 				$status = qxx (&quot;/sbin/mke2fs $fsopts $deviceMap{1} 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+@@ -964,6 +970,9 @@ sub setupBootStick {
+ 				$kiwi -&gt; info (&quot;Creating ext3 root filesystem&quot;);
+ 				my $fsopts = $FSopts{ext3};
+ 				$fsopts.= &quot;-j -F&quot;;
++				if ($this-&gt;{inodes}) {
++					$fsopts.= &quot; -N $this-&gt;{inodes}&quot;;
++				}
+ 				$status = qxx (&quot;/sbin/mke2fs $fsopts $deviceMap{1} 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+@@ -1709,6 +1718,9 @@ sub setupInstallStick {
+ 		my %FSopts = main::checkFSOptions();
+ 		my $fsopts = $FSopts{ext3};
+ 		$fsopts.= &quot;-j&quot;;
++		if (($root eq $data) &amp;&amp; ($this-&gt;{inodes})) {
++			$fsopts.= &quot; -N $this-&gt;{inodes}&quot;;
++		}
+ 		$status = qxx ( &quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot; );
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+@@ -2224,6 +2236,9 @@ sub setupBootDisk {
+ 				$kiwi -&gt; info (&quot;Creating ext2 root filesystem&quot;);
+ 				my $fsopts = $FSopts{ext2};
+ 				$fsopts.= &quot;-F&quot;;
++				if ($this-&gt;{inodes}) {
++					$fsopts.= &quot; -N $this-&gt;{inodes}&quot;;
++				}
+ 				$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+@@ -2232,6 +2247,9 @@ sub setupBootDisk {
+ 				$kiwi -&gt; info (&quot;Creating ext3 root filesystem&quot;);
+ 				my $fsopts = $FSopts{ext3};
+ 				$fsopts.= &quot;-j -F&quot;;
++				if ($this-&gt;{inodes}) {
++					$fsopts.= &quot; -N $this-&gt;{inodes}&quot;;
++				}
+ 				$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+diff --git a/modules/KIWIURL.pm b/modules/KIWIURL.pm
+index 9007c2b..9894fed 100644
+--- a/modules/KIWIURL.pm
++++ b/modules/KIWIURL.pm
+@@ -96,13 +96,15 @@ sub normalizePath {
+ 	if (defined $path) {
+ 		return $path;
+ 	}
+-	$path = $this -&gt; isoPath ($module);
+-	if (defined $path) {
+-		return $path;
+-	}
+-	$path = $this -&gt; filePath ($module);
+-	if (defined $path) {
+-		return $path;
++	if ($main::PackageManager ne &quot;zypper&quot;) {
++		$path = $this -&gt; isoPath ($module);
++		if (defined $path) {
++			return $path;
++		}
++		$path = $this -&gt; filePath ($module);
++		if (defined $path) {
++			return $path;
++		}
+ 	}
+ 	return $module;
+ }
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 1339241..1a05e66 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,12 @@
+ -------------------------------------------------------------------
++Wed May 27 15:54:06 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed OEM recovery, don't check mbr id (bnc #503653)
++- set inode count for system partition only (bnc #495135)
++- don't run path generation for <A HREF="iso://">iso://</A> and <A HREF="file://">file://</A> paths
++  if zypper is used (bnc #498437)
++
++-------------------------------------------------------------------
+ Tue May 26 17:24:21 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed oem format=&quot;iso&quot; install mode (bnc #506983)
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index 8d2769c..56d4551 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -111,7 +111,12 @@ fi
+ # 8) Search boot device...
+ #--------------------------------------
+ Echo &quot;Searching for boot device...&quot;
+-export imageDiskDevice=`searchBIOSBootDevice`
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
++	export imageDiskDevice=`searchBIOSBootDevice`
++else
++	export imageDiskDevice=`getDiskDevice $root | tr -d [0-9]+`
++fi
++Echo &quot;Found boot device: $imageDiskDevice&quot;
+ 
+ #======================================
+ # 9) Get filesystem type and boot ID
+@@ -403,7 +408,7 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 		export OEM_BOOT_TITLE=&quot;OEM&quot;
+ 	fi
+ 	if [ ! -z $OEM_RECOVERY ];then
+-		OEM_RECOVERY=$imageRecoveryDevice
++		OEM_RECOVERY=$imageRootDevice
+ 	fi
+ 	setupBootLoader \
+ 		/mnt /config $bootid $imageRootDevice \
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001263.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. cff6e775cf5ae9e3aad0e5afaa210983d505480d
+</A></li>
+	<LI>Next message: <A HREF="001265.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4ca43682ed0dbe02bb44c938fd6ead5c056992df
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1264">[ date ]</a>
+              <a href="thread.html#1264">[ thread ]</a>
+              <a href="subject.html#1264">[ subject ]</a>
+              <a href="author.html#1264">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,441 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 9ec69264c789d7e4f74fb076fe18ca4d45b2005c
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%209ec69264c789d7e4f74fb076fe18ca4d45b2005c&In-Reply-To=%3C201002261727.o1QHRbr6000336%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001957.html">
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 9ec69264c789d7e4f74fb076fe18ca4d45b2005c</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%209ec69264c789d7e4f74fb076fe18ca4d45b2005c&In-Reply-To=%3C201002261727.o1QHRbr6000336%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 9ec69264c789d7e4f74fb076fe18ca4d45b2005c">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Feb 26 18:27:37 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001957.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5ad59c2481815a91bf1924b62e0eb94fa70f3ab7
+</A></li>
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1958">[ date ]</a>
+              <a href="thread.html#1958">[ thread ]</a>
+              <a href="subject.html#1958">[ subject ]</a>
+              <a href="author.html#1958">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-374-SuSE-11-1-SLE-SP-Devel has been updated
+       via  9ec69264c789d7e4f74fb076fe18ca4d45b2005c (commit)
+      from  aedb430d4dd682ed5932ff6f84b907d93a9ebc4f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 9ec69264c789d7e4f74fb076fe18ca4d45b2005c
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Feb 26 18:27:27 2010 +0100
+
+    - fixed getSize() function. The size of the inodes are
+      part of the size calculation now
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index da34d3a..e77abe1 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -1338,6 +1338,12 @@ sub init {
+ 	if (! defined $FSInodeRatio) {
+ 		$FSInodeRatio = 16384;
+ 	}
++	#========================================
++	# set default inode size for ext2/3
++	#----------------------------------------
++	if (! defined $FSInodeSize) {
++		$FSInodeSize = 256;
++	}
+ 	#==========================================
+ 	# non root task: Create crypted password
+ 	#------------------------------------------
+@@ -2380,7 +2386,9 @@ sub checkFSOptions {
+ 			#------------------------------------------
+ 			/ext[432]/   &amp;&amp; do {
+ 				if ($FSBlockSize)   {$blocksize   = &quot;-b $FSBlockSize&quot;}
+-				if ($FSInodeSize)   {$inodesize   = &quot;-I $FSInodeSize&quot;}
++				if (($FSInodeSize) &amp;&amp; ($FSInodeSize != 256)) {
++					$inodesize = &quot;-I $FSInodeSize&quot;
++				}
+ 				if ($FSInodeRatio)  {$inoderatio  = &quot;-i $FSInodeRatio&quot;}
+ 				if ($FSJournalSize) {$journalsize = &quot;-J size=$FSJournalSize&quot;}
+ 				if ($FSMaxMountCount) {
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 09d5d80..60e4249 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -280,72 +280,87 @@ sub new {
+ 		}
+ 	}
+ 	#==========================================
+-	# setup virtual disk size
+-	#------------------------------------------
+-	if ((! defined $vmsize) &amp;&amp; (defined $system)) {
+-		my $kernelSize   = -s $kernel; # the kernel
+-		my $initrdSize   = -s $initrd; # the boot image
+-		my $systemSXML   = 1; # system size set by XML file
+-		my $systemSize   = 0; # the system image size in bytes
+-		my $minInodes    = 0; # the number of inodes the system uses * 2
+-		my $defaultInodes= 0; # the number of inodes determined by FSInodeRatio
+-		# /.../
+-		# Note: In case of a split system the vmsize value will
+-		# be increased according to the size of the split portion
+-		# This happens within the function which requires it but
+-		# not at the following code
+-		# ----
++	# Setup disk size and inode count
++	#------------------------------------------
++	if (defined $system) {
++		my $sizeBytes;
++		my $minInodes;
++		my $sizeXMLBytes = 0;
++		my $cmdlBytes    = 0;
++		my $spare        = 1.3;
++		#==========================================
++		# Calculate minimum size of the system
++		#------------------------------------------
+ 		if (-d $system) {
+-			#==========================================
+-			# Find size on a per file basis first
+-			#------------------------------------------
+-			$systemSXML = $xml -&gt; getImageSizeBytes();
+-			$systemSize = qxx (
+-				&quot;du -s --block-size=1 $system | cut -f1&quot;
+-			);
+-			chomp $systemSize;
+-			#==========================================
+-			# Calculate required inode count
+-			#------------------------------------------
++			# System is specified as a directory...
+ 			$minInodes = qxx (&quot;find $system | wc -l&quot;);
+-			$minInodes *= 2;
+-			if ($systemSXML eq &quot;auto&quot;) {
+-				$systemSXML = 0;
+-				$this-&gt;{inodes} = $minInodes;
+-			} else {
+-				$defaultInodes  = $systemSXML / $main::FSInodeRatio;
+-				$this-&gt;{inodes} = 
+-					$minInodes &gt; $defaultInodes ? $minInodes : $defaultInodes;
+-			}
++			$sizeBytes = qxx (&quot;du -s --block-size=1 $system | cut -f1&quot;);
++			chomp $sizeBytes;
++			$sizeBytes+= $minInodes * $main::FSInodeSize;
++			$sizeBytes*= $spare;
+ 		} else {
+-			$systemSXML = $xml -&gt; getImageSizeBytes();
+-			$systemSize = -s $system;
+-			if ($systemSXML eq &quot;auto&quot;) {
+-				$systemSXML = 0;
+-			}
++			# system is specified as a file...
++			$sizeBytes = -s $system;
+ 		}
+-		if ($syszip) {
+-			$vmsize = $kernelSize + $initrdSize + $syszip;
++		#==========================================
++		# Decide for a size prefer 1)cmdline 2)XML
++		#------------------------------------------
++		my $sizeXMLAddBytes = $xml -&gt; getImageSizeAdditiveBytes();
++		if ($sizeXMLAddBytes) {
++			$sizeXMLBytes = $sizeBytes + $sizeXMLAddBytes;
+ 		} else {
+-			$vmsize = $kernelSize + $initrdSize + $systemSize;
++			$sizeXMLBytes = $xml -&gt; getImageSizeBytes();
++		}
++		if ($vmsize =~ /^(\d+)([MG])$/i) {
++			my $value= $1;
++			my $unit = $2;
++			if ($unit eq &quot;G&quot;) {
++				# convert GB to MB...
++				$value *= 1024;
++			}
++			# convert MB to Byte
++			$cmdlBytes = $value * 1048576;
+ 		}
+-		if (($systemSXML) &amp;&amp; ($systemSXML &gt; $vmsize)) {
+-			# use the size information from the XML configuration
+-			$vmsize = $systemSXML;
+-		} else {
+-			# use the calculated value plus 20% free space 
+-			$vmsize+= $vmsize * 0.20;
+-			# check if additive size was specified
+-			$vmsize+= $xml -&gt; getImageSizeAdditiveBytes();
++		if ($cmdlBytes &gt; $sizeBytes) {
++			$sizeBytes = $cmdlBytes;
++		} elsif ($sizeXMLBytes &gt; $sizeBytes) {
++			$sizeBytes = $sizeXMLBytes;
++		}
++		#==========================================
++		# Sum up system + kernel + initrd
++		#------------------------------------------
++		# /.../
++		# if system is a split system the vmsize will be
++		# adapted within the image creation function accordingly
++		# ----
++		my $kernelSize = -s $kernel;
++		my $initrdSize = -s $initrd;
++		$vmsize = $kernelSize + $initrdSize + $sizeBytes;
++		#==========================================
++		# Calculate required inode count for root
++		#------------------------------------------
++		if (-d $system) {
++			# /.../
++			# if the system is a directory the root filesystem
++			# will be created during the image creation. In this
++			# case we need to create the inode count
++			# ----
++			$this-&gt;{inodes} = int ($sizeBytes / $main::FSInodeRatio);
++			$kiwi -&gt; loginfo (
++				&quot;Using &quot;.$this-&gt;{inodes}.&quot; for the root filesystem\n&quot;
++			);
+ 		}
++		#==========================================
++		# Create vmsize MB string and vmmbyte value
++		#------------------------------------------
+ 		$vmsize  = $vmsize / 1048576;
+ 		$vmsize  = sprintf (&quot;%.0f&quot;, $vmsize);
+ 		$vmmbyte = $vmsize;
+ 		$vmsize  = $vmsize.&quot;M&quot;;
+-	} elsif (defined $system) {
+-		$vmmbyte = $vmsize / 1048576;
++		$kiwi -&gt; loginfo (
++			&quot;Starting with disk size: $vmsize\n&quot;
++		);
+ 	}
+-	$kiwi -&gt; loginfo (&quot;Starting with disk size: $vmsize\n&quot;);
+ 	#==========================================
+ 	# round compressed image size
+ 	#------------------------------------------
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 5de53b1..b5fb04f 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -802,7 +802,7 @@ sub createImageCPIO {
+ 	#==========================================
+ 	# PRE filesystem setup
+ 	#------------------------------------------
+-	my $name = $this -&gt; preImage (&quot;haveExtend&quot;);
++	my $name = $this -&gt; preImage (&quot;haveExtend&quot;,&quot;quiet&quot;);
+ 	if (! defined $name) {
+ 		return undef;
+ 	}
+@@ -1483,7 +1483,7 @@ sub createImageLiveCD {
+ 		# Count disk space for RW extend
+ 		#------------------------------------------
+ 		$kiwi -&gt; info (&quot;Computing disk space...&quot;);
+-		my ($mbytesreal,$mbytesrw,$xmlsize) = $this -&gt; getSize ($imageTree);
++		my ($mbytesrw,$xmlsize) = $this -&gt; getSize ($imageTree);
+ 		$kiwi -&gt; done ();
+ 
+ 		#==========================================
+@@ -2261,7 +2261,6 @@ sub createImageSplit {
+ 	my $ok;
+ 	my $imageTreeRW;
+ 	my $imageTreeTmp;
+-	my $mbytesreal;
+ 	my $mbytesro;
+ 	my $mbytesrw;
+ 	my $xmlsize;
+@@ -2555,9 +2554,9 @@ sub createImageSplit {
+ 	# Count disk space for extends
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Computing disk space...&quot;);
+-	($mbytesreal,$mbytesro,$xmlsize) = $this -&gt; getSize ($imageTree);
++	($mbytesro,$xmlsize) = $this -&gt; getSize ($imageTree);
+ 	if (defined $this-&gt;{imageTreeRW}) {
+-		($mbytesreal,$mbytesrw,$xmlsize) = $this -&gt; getSize ($imageTreeRW);
++		($mbytesrw,$xmlsize) = $this -&gt; getSize ($imageTreeRW);
+ 	}
+ 	$kiwi -&gt; done ();
+ 	if (defined $this-&gt;{imageTreeRW}) {
+@@ -3024,6 +3023,7 @@ sub preImage {
+ 	# ---
+ 	my $this = shift;
+ 	my $haveExtend = shift;
++	my $quiet= shift;
+ 	#==========================================
+ 	# Get image creation date and name
+ 	#------------------------------------------
+@@ -3034,7 +3034,7 @@ sub preImage {
+ 	#==========================================
+ 	# Call images.sh script
+ 	#------------------------------------------
+-	my $mBytes = $this -&gt; setupLogicalExtend (undef,$name);
++	my $mBytes = $this -&gt; setupLogicalExtend ($quiet,$name);
+ 	if (! defined $mBytes) {
+ 		return undef;
+ 	}
+@@ -3538,9 +3538,9 @@ sub setupLogicalExtend {
+ 	# Calculate needed space
+ 	#------------------------------------------
+ 	$this -&gt; cleanKernelFSMount();
+-	my ($mbytesreal,$mbytes,$xmlsize) = $this -&gt; getSize ($imageTree);
++	my ($mbytes,$xmlsize) = $this -&gt; getSize ($imageTree);
+ 	if (! defined $quiet) {
+-		$kiwi -&gt; info (&quot;Image requires &quot;.$mbytesreal.&quot;M, got $xmlsize&quot;);
++		$kiwi -&gt; info (&quot;Image requires &quot;.$mbytes.&quot;M, got $xmlsize&quot;);
+ 		$kiwi -&gt; done ();
+ 		$kiwi -&gt; info (&quot;Suggested Image size: $mbytes&quot;.&quot;M&quot;);
+ 		$kiwi -&gt; done ();
+@@ -4189,53 +4189,56 @@ sub getSize {
+ 	my $this   = shift;
+ 	my $extend = shift;
+ 	my $xml    = $this-&gt;{xml};
+-	my $mini   = qxx (&quot;find $extend | wc -l&quot;); $mini *= 2;
+-	my $size   = qxx (&quot;du -s --block-size=1 $extend | cut -f1&quot;); chomp $size;
+-	my $spare  = 0.3 * $size;
+-	#==========================================
+-	# Minimum size calculated in MB
+-	#------------------------------------------
+-	my $orig = $size;
+-	$orig /= 1048576;
+-	$orig = int ($orig);
++	my $mini   = qxx (&quot;find $extend | wc -l&quot;);
++	my $minsize= qxx (&quot;du -s --block-size=1 $extend | cut -f1&quot;); chomp $minsize;
++	my $spare  = 1.3;
++	my $xmlsize; 
+ 	#==========================================
+-	# Used size with spare space in MB
++	# Minimum size calculated in Byte + spare
+ 	#------------------------------------------
+-	$size += $spare;
+-	$size += $xml -&gt; getImageSizeAdditiveBytes();
+-	$size /= 1048576;
+-	$size = int ($size);
++	$minsize += $mini * $main::FSInodeSize;
++	$minsize *= $spare;
++	$xmlsize = $minsize;
+ 	#==========================================
+-	# Size value from XML description
++	# XML size calculated in Byte
+ 	#------------------------------------------
+-	my $xmlsize = $xml -&gt; getImageSize();
+-	if ($xmlsize eq &quot;auto&quot;) {
+-		$xmlsize = $size.&quot;M&quot;;
++	my $additive = $xml -&gt; getImageSizeAdditiveBytes();
++	if ($additive) {
++		# relative size value specified...
++		$xmlsize = $minsize + $additive;
++	} else {
++		# absolute size value specified...
++		$xmlsize = $xml -&gt; getImageSize();
++		if ($xmlsize eq &quot;auto&quot;) {
++			$xmlsize = $minsize;
++		} elsif ($xmlsize =~ /^(\d+)([MG])$/i) {
++			my $value= $1;
++			my $unit = $2;
++			if ($unit eq &quot;G&quot;) {
++				# convert GB to MB...
++				$value *= 1024;
++			}
++			# convert MB to Byte
++			$xmlsize = $value * 1048576;
++		}
+ 	}
+ 	#==========================================
+-	# Inode count for this filesystem
++	# Setup used size and inodes, prefer XML
+ 	#------------------------------------------
+-	my $sizeIMGBytes = $size * 1048576;
+-	my $sizeXMLBytes = $sizeIMGBytes;
+-	my $needi = $sizeIMGBytes / $main::FSInodeRatio;
+-	if ($xmlsize =~ /^(\d+)([MG])$/i) {
+-		$sizeXMLBytes = $1;
+-		my $unit = $2;
+-		if ($unit eq &quot;G&quot;) {
+-			# convert GB to MB...
+-			$sizeXMLBytes *= 1024;
+-		}
+-		$sizeXMLBytes *= 1048576;
+-	}
+-	if ($sizeXMLBytes &gt; $sizeIMGBytes) {
+-		$needi = $sizeXMLBytes / $main::FSInodeRatio;
++	my $usedsize = $minsize; 
++	if ($xmlsize &gt; $minsize) {
++		$usedsize = $xmlsize;
++		$this-&gt;{inodes} = int ($usedsize / $main::FSInodeRatio);
++	} else {
++		$this-&gt;{inodes} = $mini * 2;
+ 	}
+-	$this-&gt;{inodes} =
+-		int ($mini &gt; $needi ? $mini : $needi);
+ 	#==========================================
+-	# return result list
++	# return result list in MB
+ 	#------------------------------------------
+-	return ($orig,$size,$xmlsize);
++	$minsize = int ($minsize / 1048576);
++	$usedsize= int ($usedsize / 1048576);
++	$usedsize.= &quot;M&quot;;
++	return ($minsize,$usedsize);
+ }
+ 
+ #==========================================
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 18fa436..10f1bd7 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Fri Feb 26 18:27:04 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed getSize() function. The size of the inodes are
++  part of the size calculation now
++
++-------------------------------------------------------------------
+ Thu Feb 25 12:24:29 UTC 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">adrian at suse.de</A>
+ 
+ - Continue if metapackage was found for any architecture
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001957.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5ad59c2481815a91bf1924b62e0eb94fa70f3ab7
+</A></li>
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1958">[ date ]</a>
+              <a href="thread.html#1958">[ thread ]</a>
+              <a href="subject.html#1958">[ subject ]</a>
+              <a href="author.html#1958">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

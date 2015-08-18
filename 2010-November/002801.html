@@ -1,0 +1,468 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 12f2f340463a6f2c99d64b3e38f25cb1de7c5830
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2012f2f340463a6f2c99d64b3e38f25cb1de7c5830&In-Reply-To=%3C20101115131207.13857481185%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002799.html">
+   <LINK REL="Next"  HREF="002803.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 12f2f340463a6f2c99d64b3e38f25cb1de7c5830</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2012f2f340463a6f2c99d64b3e38f25cb1de7c5830&In-Reply-To=%3C20101115131207.13857481185%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 12f2f340463a6f2c99d64b3e38f25cb1de7c5830">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Nov 15 14:12:06 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002799.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f8ef91280108611013c16b5759711dc83f6558df
+</A></li>
+        <LI>Next message: <A HREF="002803.html">[Kiwi-devel] Verify format of mac address
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2801">[ date ]</a>
+              <a href="thread.html#2801">[ thread ]</a>
+              <a href="subject.html#2801">[ subject ]</a>
+              <a href="author.html#2801">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  12f2f340463a6f2c99d64b3e38f25cb1de7c5830 (commit)
+       via  b26df0e8116c3e8aeefb5ad8de9b6cafbeb5995f (commit)
+      from  f8ef91280108611013c16b5759711dc83f6558df (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 12f2f340463a6f2c99d64b3e38f25cb1de7c5830
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Nov 15 14:09:25 2010 +0100
+
+    - fixed logging for listXMLInfo()
+
+commit b26df0e8116c3e8aeefb5ad8de9b6cafbeb5995f
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Nov 15 11:25:12 2010 +0100
+
+    - move the XML validation and loading to it's own methods
+    - added image consistency checks into KIWIXML as addition to
+      the XSLT stylesheet processor. The function __validateConsistency
+      provides a place to add consistency checks:
+    
+      * Added check: __checkPostDumpAction which ensures that only
+        one of oem-bootwait, oem-reboot, oem-reboot-interactive,
+        oem-shutdown or oem-shutdown-interactive is specified.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 664a87d..9ac50c7 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -1865,7 +1865,18 @@ sub listXMLInfo {
+ 	#==========================================
+ 	# Create log object
+ 	#------------------------------------------
+-	my $kiwi = new KIWILog(&quot;tiny&quot;);
++	$kiwi = new KIWILog(&quot;tiny&quot;);
++	#==========================================
++	# Setup logging location
++	#------------------------------------------
++	if (defined $LogFile) {
++		if ((! defined $Survive) || ($Survive ne &quot;yes&quot;)) {
++			$kiwi -&gt; info (&quot;Setting log file to: $LogFile\n&quot;);
++			if (! $kiwi -&gt; setLogFile ( $LogFile )) {
++				exit 1;
++			}
++		}
++	}
+ 	#==========================================
+ 	# Check selection list
+ 	#------------------------------------------
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 0d6dbd4..1a35aea 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -75,6 +75,13 @@ sub new {
+ 	if (! defined $kiwi) {
+ 		$kiwi = new KIWILog();
+ 	}
++	#==========================================
++	# Store object data
++	#------------------------------------------
++	$this-&gt;{kiwi} = $kiwi;
++	#==========================================
++	# Setup defaults to read in image directory
++	#------------------------------------------
+ 	if (($imageDesc !~ /\//) &amp;&amp; (! -d $imageDesc)) {
+ 		$imageDesc = $main::System.&quot;/&quot;.$imageDesc;
+ 	}
+@@ -84,7 +91,7 @@ sub new {
+ 	my $havemd5File = 1;
+ 	my $systemTree;
+ 	#==========================================
+-	# Check all xml alternatives
++	# Check xml alternatives if default failed
+ 	#------------------------------------------
+ 	if (! -f $controlFile) {
+ 		my @globsearch = glob ($imageDesc.&quot;/*.kiwi&quot;);
+@@ -101,6 +108,7 @@ sub new {
+ 			$controlFile = pop @globsearch;
+ 		}
+ 	}
++	$this-&gt;{xmlOrigFile} = $controlFile;
+ 	#==========================================
+ 	# Check image md5 sum
+ 	#------------------------------------------
+@@ -117,99 +125,47 @@ sub new {
+ 		$havemd5File = 0;
+ 	}
+ 	#==========================================
+-	# Load XML objects and schema
++	# load XML and pass to XSL stylesheets
+ 	#------------------------------------------
+-	my $systemXML   = new XML::LibXML;
+-	my $systemRNG   = new XML::LibXML::RelaxNG ( location =&gt; $main::Schema );
+-	my $optionsNodeList;
+-	my $driversNodeList;
+-	my $usrdataNodeList;
+-	my $repositNodeList;
+-	my $packageNodeList;
+-	my $imgnameNodeList;
+-	my $instsrcNodeList;
+-	my $profilesNodeList;
+-	my $XML;
+-	my $skipXSLT = 0;
+-	if ($skipXSLT) {
+-		if (! open ($XML,&quot;cat $controlFile|&quot;)) {
+-			$kiwi -&gt; error (&quot;XSL: Failed to open file $controlFile&quot;);
+-			$kiwi -&gt; failed ();
+-			return undef;
+-		}
+-	} else {
+-		if (! open ($XML,&quot;xsltproc $main::SchemaCVT $controlFile|&quot;)) {
+-			$kiwi -&gt; error (&quot;XSL: Failed to open xslt processor&quot;);
+-			$kiwi -&gt; failed ();
+-			return undef;
+-		}
++	my $XML = $this -&gt; __loadControlfile ();
++	if (! $XML) {
++		return undef;
+ 	}
+-	binmode $XML;
+-	eval {
+-		$systemTree = $systemXML -&gt; parse_fh ( $XML );
+-	};
+-	if ($@) {
+-		my $evaldata = $@;
+-		$kiwi -&gt; error  (&quot;Problem reading control file&quot;);
+-		$kiwi -&gt; failed ();
++	#==========================================
++	# load XML document tree for perl
++	#------------------------------------------
++	$systemTree = $this -&gt; __getXMLDocTree ( $XML );
++	if (! $systemTree) {
+ 		return undef;
+ 	}
+ 	#==========================================
+-	# Validate xml input with current schema
++	# Store object data
+ 	#------------------------------------------
+-	eval {
+-		$systemRNG -&gt;validate ( $systemTree );
+-	};
+-	if ($@) {
+-		my $evaldata=$@;
+-		$kiwi -&gt; error  (&quot;Schema validation failed&quot;);
+-		$kiwi -&gt; failed ();
+-		my $configStr = $systemXML -&gt; parse_file( $controlFile ) -&gt; toString();
+-		my $upgradedStr = $systemTree -&gt; toString();
+-		my $upgradedContolFile = $controlFile;
+-		if ($configStr ne $upgradedStr) {
+-			$upgradedContolFile =~ s/\.xml/\.converted\.xml/;
+-			$kiwi -&gt; info (&quot;Automatically upgraded $controlFile to&quot;);
+-			$kiwi -&gt; info (&quot;$upgradedContolFile\n&quot;);
+-			$kiwi -&gt; info (&quot;Reported line numbers may not match the &quot;);
+-			$kiwi -&gt; info (&quot;file $controlFile\n&quot;);
+-			open (my $UPCNTFL, '&gt;', $upgradedContolFile);
+-			print $UPCNTFL $upgradedStr;
+-			close ( $UPCNTFL );
+-		}
+-		my $jingExec = main::findExec('jing');
+-		if ($jingExec) {
+-			qxx (&quot;$jingExec $main::Schema $upgradedContolFile 1&gt;&amp;2&quot;);
+-			return undef;
+-		} else {
+-			$kiwi -&gt; error (&quot;$evaldata\n&quot;);
+-			$kiwi -&gt; info  (&quot;Use the jing command for more details\n&quot;);
+-			$kiwi -&gt; info  (&quot;The following requires jing to be installed\n&quot;);
+-			$kiwi -&gt; info  (&quot;jing $main::Schema $upgradedContolFile\n&quot;);
+-			return undef;
+-		}
++	$this-&gt;{xmlOrigString} = $systemTree -&gt; toString();
++	$this-&gt;{systemTree}    = $systemTree;
++	#==========================================
++	# validate XML document with cur. schema
++	#------------------------------------------
++	if (! $this -&gt; __validateXML ()) {
++		return undef;
+ 	}
+ 	#==========================================
+ 	# Read main XML sections
+ 	#------------------------------------------
+-	$imgnameNodeList = $systemTree -&gt; getElementsByTagName (&quot;image&quot;);
+-	$optionsNodeList = $systemTree -&gt; getElementsByTagName (&quot;preferences&quot;);
+-	$driversNodeList = $systemTree -&gt; getElementsByTagName (&quot;drivers&quot;);
+-	$usrdataNodeList = $systemTree -&gt; getElementsByTagName (&quot;users&quot;);
+-	$repositNodeList = $systemTree -&gt; getElementsByTagName (&quot;repository&quot;);
+-	$packageNodeList = $systemTree -&gt; getElementsByTagName (&quot;packages&quot;);
+-	$profilesNodeList= $systemTree -&gt; getElementsByTagName (&quot;profiles&quot;);
+-	$instsrcNodeList = $systemTree -&gt; getElementsByTagName (&quot;instsource&quot;);
++	my $imgnameNodeList = $systemTree -&gt; getElementsByTagName (&quot;image&quot;);
++	my $optionsNodeList = $systemTree -&gt; getElementsByTagName (&quot;preferences&quot;);
++	my $driversNodeList = $systemTree -&gt; getElementsByTagName (&quot;drivers&quot;);
++	my $usrdataNodeList = $systemTree -&gt; getElementsByTagName (&quot;users&quot;);
++	my $repositNodeList = $systemTree -&gt; getElementsByTagName (&quot;repository&quot;);
++	my $packageNodeList = $systemTree -&gt; getElementsByTagName (&quot;packages&quot;);
++	my $profilesNodeList= $systemTree -&gt; getElementsByTagName (&quot;profiles&quot;);
++	my $instsrcNodeList = $systemTree -&gt; getElementsByTagName (&quot;instsource&quot;);
+ 	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
+-	$this-&gt;{xmlOrigString}   = $systemTree -&gt; toString();
+-	$this-&gt;{xmlOrigFile}     = $controlFile;
+-	$this-&gt;{kiwi}            = $kiwi;
+ 	$this-&gt;{foreignRepo}     = $foreignRepo;
+ 	$this-&gt;{optionsNodeList} = $optionsNodeList;
+ 	$this-&gt;{imgnameNodeList} = $imgnameNodeList;
+-	$this-&gt;{systemTree}      = $systemTree;
+ 	$this-&gt;{imageWhat}       = $imageWhat;
+ 	$this-&gt;{reqProfiles}     = $reqProfiles;
+ 	$this-&gt;{profilesNodeList}= $profilesNodeList;
+@@ -479,6 +435,12 @@ sub new {
+ 	# Store object data (create URL list)
+ 	#------------------------------------------
+ 	$this -&gt; createURLList ();
++	#==========================================
++	# Check data consistentcy
++	#==========================================
++	if (! $this -&gt; __validateConsistency ()) {
++		return undef;
++	}
+ 	return $this;
+ }
+ 
+@@ -4522,6 +4484,168 @@ sub addDefaultSplitNode {
+ 	return $this;
+ }
+ 
++#==========================================
++# Private helper methods
++#------------------------------------------
++#==========================================
++# __checkPostDumpAction
++#------------------------------------------
++sub __checkPostDumpAction {
++	# ...
++	# Check that only one post dump action for the OEM
++	# image type is set
++	# ---
++	my $this = shift;
++	my @confNodes = $this-&gt;{systemTree} -&gt; getElementsByTagName(&quot;oemconfig&quot;);
++	if (@confNodes) {
++		my $oemconfig = $confNodes[0];
++		my @postDumOpts = qw
++		/oem-bootwait oem-reboot
++		 oem-reboot-interactive
++		 oem-shutdown
++		 oem-shutdown-interactive
++		/;
++		my $havePostDumpAction = 0;
++		for my $action (@postDumOpts) {
++			my @actionList = $oemconfig -&gt; getElementsByTagName($action);
++			if (@actionList) {
++				my $isSet = $actionList[0]-&gt;textContent();
++				if ($isSet eq &quot;true&quot;) {
++					if ($havePostDumpAction == 0) {
++						$havePostDumpAction = 1;
++						next;
++					}
++					my $kiwi = $this-&gt;{kiwi};
++					$kiwi -&gt; error('Only one post dump action may be defined');
++					$kiwi -&gt; error(&quot;Use one of @postDumOpts&quot;);
++					$kiwi -&gt; failed();
++					return undef;
++				}
++			}
++		}
++	}
++	return 1;
++}
++
++#==========================================
++# __getXMLDocTree
++#------------------------------------------
++sub __getXMLDocTree {
++	# ...
++	# Generate the XML Document tree for perl
++	# ---
++	my $this = shift;
++	my $XML  = shift;
++	my $kiwi = $this-&gt;{kiwi};
++	my $systemTree;
++	my $systemXML = new XML::LibXML;
++	eval {
++		$systemTree = $systemXML -&gt; parse_fh ( $XML );
++	};
++	if ($@) {
++		my $evaldata = $@;
++		$kiwi -&gt; error  (&quot;Problem reading control file&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	return $systemTree;
++}
++
++#==========================================
++# __loadControlfile
++#------------------------------------------
++sub __loadControlfile {
++	# ...
++	# Load the XML file and pass it to the XSLT stylesheet
++	# processor for internal version conversion
++	# ---
++	my $this = shift;
++	my $controlFile = $this-&gt;{xmlOrigFile};
++	my $kiwi        = $this-&gt;{kiwi};
++	my $skipXSLT    = 0; # For development debug purposes
++	my $XML;
++	if ($skipXSLT) {
++		if (! open ($XML,&quot;cat $controlFile|&quot;)) {
++			$kiwi -&gt; error (&quot;XSL: Failed to open file $controlFile&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++	} else {
++		if (! open ($XML,&quot;xsltproc $main::SchemaCVT $controlFile|&quot;)) {
++			$kiwi -&gt; error (&quot;XSL: Failed to open xslt processor&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++	}
++	binmode $XML;
++	return $XML;
++}
++
++#==========================================
++# __validateConsistency
++#------------------------------------------
++sub __validateConsistency {
++	# ...
++	# Validate XML data that cannot be validated through Schema and
++	# structure validation. This includes conditional presence of
++	# elements and attributes as well as certain values.
++	# ---
++	my $this = shift;
++	if (! $this -&gt; __checkPostDumpAction()) {
++		return undef;
++	}
++	return 1;
++}
++
++#==========================================
++# __validateXML
++#------------------------------------------
++sub __validateXML {
++	# ...
++	# Validate the control file for syntactic and
++	# structural correctness according to current schema
++	# ---
++	my $this = shift;
++	my $controlFile = $this-&gt;{xmlOrigFile};
++	my $kiwi        = $this-&gt;{kiwi};
++	my $systemTree  = $this-&gt;{systemTree};
++	my $systemXML   = new XML::LibXML;
++	my $systemRNG   = new XML::LibXML::RelaxNG ( location =&gt; $main::Schema );
++	eval {
++		$systemRNG -&gt;validate ( $systemTree );
++	};
++	if ($@) {
++		my $evaldata=$@;
++		$kiwi -&gt; error  (&quot;Schema validation failed&quot;);
++		$kiwi -&gt; failed ();
++		my $configStr = $systemXML -&gt; parse_file( $controlFile ) -&gt; toString();
++		my $upgradedStr = $systemTree -&gt; toString();
++		my $upgradedContolFile = $controlFile;
++		if ($configStr ne $upgradedStr) {
++			$upgradedContolFile =~ s/\.xml/\.converted\.xml/;
++			$kiwi -&gt; info (&quot;Automatically upgraded $controlFile to&quot;);
++			$kiwi -&gt; info (&quot;$upgradedContolFile\n&quot;);
++			$kiwi -&gt; info (&quot;Reported line numbers may not match the &quot;);
++			$kiwi -&gt; info (&quot;file $controlFile\n&quot;);
++			open (my $UPCNTFL, '&gt;', $upgradedContolFile);
++			print $UPCNTFL $upgradedStr;
++			close ( $UPCNTFL );
++		}
++		my $jingExec = main::findExec('jing');
++		if ($jingExec) {
++			qxx (&quot;$jingExec $main::Schema $upgradedContolFile 1&gt;&amp;2&quot;);
++			return undef;
++		} else {
++			$kiwi -&gt; error (&quot;$evaldata\n&quot;);
++			$kiwi -&gt; info  (&quot;Use the jing command for more details\n&quot;);
++			$kiwi -&gt; info  (&quot;The following requires jing to be installed\n&quot;);
++			$kiwi -&gt; info  (&quot;jing $main::Schema $upgradedContolFile\n&quot;);
++			return undef;
++		}
++	}
++	return 1;
++}
++
+ 1;
+ 
+ # vim: set noexpandtab:
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002799.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f8ef91280108611013c16b5759711dc83f6558df
+</A></li>
+	<LI>Next message: <A HREF="002803.html">[Kiwi-devel] Verify format of mac address
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2801">[ date ]</a>
+              <a href="thread.html#2801">[ thread ]</a>
+              <a href="subject.html#2801">[ subject ]</a>
+              <a href="author.html#2801">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

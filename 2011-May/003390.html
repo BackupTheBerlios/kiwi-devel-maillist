@@ -1,0 +1,469 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 33008a579717a32dc368e21e4340587b6f40af1b
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2033008a579717a32dc368e21e4340587b6f40af1b&In-Reply-To=%3C20110509094413.E1645480308%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003389.html">
+   <LINK REL="Next"  HREF="003391.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 33008a579717a32dc368e21e4340587b6f40af1b</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2033008a579717a32dc368e21e4340587b6f40af1b&In-Reply-To=%3C20110509094413.E1645480308%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 33008a579717a32dc368e21e4340587b6f40af1b">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon May  9 11:44:12 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003389.html">[Kiwi-devel] kiwi: Weekly report 2011-05-01 - 2011-05-06...
+</A></li>
+        <LI>Next message: <A HREF="003391.html">[Kiwi-devel] kiwi and the os-autoinst test-suite
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3390">[ date ]</a>
+              <a href="thread.html#3390">[ thread ]</a>
+              <a href="subject.html#3390">[ subject ]</a>
+              <a href="author.html#3390">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  33008a579717a32dc368e21e4340587b6f40af1b (commit)
+      from  20f6c66b4f42e859abac467956b0262fc47768e7 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 33008a579717a32dc368e21e4340587b6f40af1b
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon May 9 11:37:00 2011 +0200
+
+    - integrate end-to-end testsuite written by Bernhard Wiedemann
+      into kiwi. There is a kiwi --test-image ... mode now, and I
+      added an example test to the 11.4 JeOS description. It's
+      required to have the os-autoinst package installed in order
+      to run a test (bnc #677789)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 7eb3d04..d4c588e 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -161,6 +161,8 @@ our $InstallCD;             # Installation initrd booting from CD
+ our $InstallCDSystem;       # virtual disk system image to be installed on disk
+ our $BootCD;                # Boot initrd booting from CD
+ our $BootUSB;               # Boot initrd booting from Stick
++our $TestImage;             # call end-to-end testsuite if installed
++our $TestCase;              # path to image description including test/ case
+ our $InstallStick;          # Installation initrd booting from USB stick
+ our $InstallStickSystem;    # virtual disk system image to be installed on disk
+ our $StripImage;            # strip shared objects and binaries
+@@ -1142,6 +1144,144 @@ sub main {
+ 		$format -&gt; createMaschineConfiguration();
+ 		my $code = kiwiExit (0); return $code;
+ 	}
++
++	#==========================================
++	# Test suite
++	#------------------------------------------
++	if (defined $TestImage) {
++		$kiwi -&gt; info (&quot;Starting image test run...&quot;);
++		my $suite  = &quot;/usr/lib/os-autoinst&quot;;
++		my $distri = &quot;kiwi-$$&quot;;
++		#==========================================
++		# Check pre-conditions
++		#------------------------------------------
++		if (! -d $suite) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error (&quot;Required os-autoinst test-suite not installed&quot;);
++			$kiwi -&gt; failed ();
++			my $code = kiwiExit (1); return $code;
++		}
++		if (! -f $TestImage) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error (&quot;Test image $TestImage doesn't exist&quot;);
++			$kiwi -&gt; failed ();
++			my $code = kiwiExit (1); return $code;
++		}
++		if (! defined $SetImageType) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error (&quot;No test image type specified&quot;);
++			$kiwi -&gt; failed ();
++			my $code = kiwiExit (1); return $code;
++		}
++		if (! defined $TestCase) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error (&quot;No test test case specified&quot;);
++			$kiwi -&gt; failed ();
++			my $code = kiwiExit (1); return $code;
++		}
++		if (! -d $TestCase.&quot;/&quot;.$SetImageType) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error (&quot;Test case $SetImageType does not exist&quot;);
++			$kiwi -&gt; failed ();
++			my $code = kiwiExit (1); return $code;
++		}
++		if (! -f $TestCase.&quot;/env.sh&quot;) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error (&quot;Can't find environment for this test&quot;);
++			$kiwi -&gt; failed ();
++			my $code = kiwiExit (1); return $code;
++		}
++		#==========================================
++		# Turn parameters into absolute pathes
++		#------------------------------------------
++		$TestImage = File::Spec-&gt;rel2abs ($TestImage);
++		$TestCase  = File::Spec-&gt;rel2abs ($TestCase);
++		#==========================================
++		# Create distri link for os-autoinst
++		#------------------------------------------
++		my $test = $TestCase.&quot;/&quot;.$SetImageType;
++		my $data = qxx (&quot;ln -s $test $suite/distri/$distri 2&gt;&amp;1&quot;);
++		my $code = $? &gt;&gt; 8;
++		if ($code != 0) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Can't create distri link: $data&quot;);
++			$kiwi -&gt; failed ();
++			my $code = kiwiExit (1); return $code;
++		}
++		#==========================================
++		# Create result mktemp directory
++		#------------------------------------------
++		my $out = qxx (&quot;mktemp -q -d /tmp/kiwi-testrun-XXXXXX 2&gt;&amp;1&quot;);
++		$code = $? &gt;&gt; 8; chomp $out;
++		if ($code != 0) {
++			$kiwi -&gt; error  (&quot;Couldn't create result directory: $out: $!&quot;);
++			$kiwi -&gt; failed ();
++			qxx (&quot;rm -f $suite/distri/$distri&quot;);
++			my $code = kiwiExit (1); return $code;
++		}
++		qxx (&quot;chmod 755 $out 2&gt;&amp;1&quot;);
++		#==========================================
++		# Copy environment to result directory
++		#------------------------------------------
++		$data = qxx (&quot;cp $TestCase/env.sh $out&quot;);
++		$code = $? &gt;&gt; 8;
++		if ($code != 0) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Failed to copy test environment: $data&quot;);
++			$kiwi -&gt; failed ();
++			qxx (&quot;rm -f $suite/distri/$distri&quot;);
++			qxx (&quot;rm -rf $out&quot;);
++			my $code = kiwiExit (1); return $code;
++		}
++		#==========================================
++		# Create call file
++		#------------------------------------------
++		if (open my $FD,&quot;&gt;$out/run.sh&quot;) {
++			print $FD &quot;cd $out\n&quot;;
++			print $FD &quot;export DISTRI=$distri&quot;.&quot;\n&quot;;
++			print $FD &quot;export ISO=$TestImage&quot;.&quot;\n&quot;;
++			print $FD 'isotovideo $ISO'.&quot;\n&quot;;
++			close $FD;
++		} else {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Failed to create run test script: $!&quot;);
++			$kiwi -&gt; failed ();
++			qxx (&quot;rm -f $suite/distri/$distri&quot;);
++			qxx (&quot;rm -rf $out&quot;);
++			my $code = kiwiExit (1); return $code;
++		}
++		#==========================================
++		# Create screen ctrl file
++		#------------------------------------------
++		if (open my $FD,&quot;&gt;$out/run.ctrl&quot;) {
++			print $FD &quot;logfile /dev/null\n&quot;;
++			close $FD;
++		} else {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Failed to create screen ctrl file: $!&quot;);
++			$kiwi -&gt; failed ();
++			qxx (&quot;rm -f $suite/distri/$distri&quot;);
++			qxx (&quot;rm -rf $out&quot;);
++			my $code = kiwiExit (1); return $code;
++		}
++		#==========================================
++		# Call the test
++		#------------------------------------------
++		$kiwi -&gt; done ();
++		$kiwi -&gt; info (&quot;Calling isotovideo, this can take some time...\n&quot;);
++		$kiwi -&gt; info (&quot;watch the screen session by: 'screen -r'&quot;);
++		qxx (&quot;chmod u+x $out/run.sh&quot;);
++		qxx (&quot;screen -L -D -m -c $out/run.ctrl $out/run.sh&quot;);
++		$code = $? &gt;&gt; 8;
++		qxx (&quot;rm -f $suite/distri/$distri&quot;);
++		if ($code == 0) {
++			$kiwi -&gt; done ();
++		} else {
++			$kiwi -&gt; failed ();
++		}
++		$kiwi -&gt; info (&quot;Find test results in $out/currentautoinst-log.txt&quot;);
++		$kiwi -&gt; done ();
++	}
+ 	return 1;
+ }
+ 
+@@ -1243,6 +1383,8 @@ sub init {
+ 		&quot;targetdevice=s&quot;        =&gt; \$targetDevice,
+ 		&quot;type|t=s&quot;              =&gt; \$SetImageType,
+ 		&quot;upgrade|u=s&quot;           =&gt; \$Upgrade,
++		&quot;test-image=s&quot;          =&gt; \$TestImage,
++		&quot;test-case=s&quot;           =&gt; \$TestCase,
+ 		&quot;v|verbose+&quot;            =&gt; \$Verbosity,
+ 		&quot;version&quot;               =&gt; \$Version,
+ 		&quot;yes|y&quot;                 =&gt; \$defaultAnswer,
+@@ -1475,6 +1617,7 @@ sub init {
+ 		(! defined $BootUSB)            &amp;&amp;
+ 		(! defined $Clone)              &amp;&amp;
+ 		(! defined $CheckConfig)        &amp;&amp;
++		(! defined $TestImage)          &amp;&amp;
+ 		(! defined $Convert)
+ 	) {
+ 		$kiwi -&gt; error (&quot;No operation specified&quot;);
+@@ -1632,6 +1775,9 @@ sub usage {
+ 	print &quot;       [ --exclude &lt;directory&gt; --exclude &lt;...&gt; ]\n&quot;;
+ 	print &quot;       [ --skip &lt;package&gt; --skip &lt;...&gt; ]\n&quot;;
+ 	print &quot;       [ --nofiles --notemplate ]\n&quot;;
++	print &quot;Testsuite (requires os-autoinst package):\n&quot;;
++	print &quot;    kiwi --test-image &lt;image&gt; --test-case &lt;path&gt;\n&quot;;
++	print &quot;         --type &lt;image-type&gt;\n&quot;;
+ 	print &quot;Image postprocessing modes:\n&quot;;
+ 	print &quot;    kiwi --bootvm &lt;initrd&gt; --bootvm-system &lt;systemImage&gt;\n&quot;;
+ 	print &quot;       [ --bootvm-disksize &lt;size&gt; ]\n&quot;;
+diff --git a/template/ix86/suse-11.4-JeOS/test/README b/template/ix86/suse-11.4-JeOS/test/README
+new file mode 100644
+index 0000000..07e16e1
+--- /dev/null
++++ b/template/ix86/suse-11.4-JeOS/test/README
+@@ -0,0 +1,26 @@
++# /.../
++# The files in this directory defines an end-to-end test description
++# which can be used by the os-autoinst toolkit. In order to run the
++# test the following pre conditions must be fulfilled:
++#
++# 1) make sure you have installed the os-autoinst package which
++#    provides the test-suite code required by this test description
++#
++# 2) make sure you have built an image out of the template using kiwi
++#    so far I only added an e2e test for the iso image type
++#
++# After that you can run the test by calling:
++#
++#  kiwi \
++#    --test-image LimeJeOS-openSUSE-11.4.i686-1.11.4.iso \
++#    --test-case /usr/share/kiwi/image/suse-11.4-JeOS/test \
++#    --type iso
++#
++# according to your system performance it might be required to adapt
++# the IDLETHESHOLD value in the file
++#
++#  /usr/share/kiwi/image/suse-11.4-JeOS/test/env.sh
++#
++# please refer the os-autoinst documentation for details about the
++# environment and the test contents
++#
+diff --git a/template/ix86/suse-11.4-JeOS/test/env.sh b/template/ix86/suse-11.4-JeOS/test/env.sh
+new file mode 100644
+index 0000000..504e5f0
+--- /dev/null
++++ b/template/ix86/suse-11.4-JeOS/test/env.sh
+@@ -0,0 +1,40 @@
++#!/bin/sh
++
++# if you have something slower than Core i7 you might need to increase the IDLETHRESHOLD value... e.g. on my Phenom X4 I have 25 instead of 16
++export IDLETHESHOLD=18
++
++# default: 0.5 (two screenshots per second)
++export SCREENSHOTINTERVAL=1
++
++#export HTTPPROXY=192.168.234.34:3128
++
++# leave empty for <A HREF="http://download.opensuse.org/factory">http://download.opensuse.org/factory</A>
++#export SUSEMIRROR=<A HREF="http://ftp5.gwdg.de/pub/opensuse/factory">http://ftp5.gwdg.de/pub/opensuse/factory</A>
++
++# possible values: 0|1|5|6|10
++#export RAIDLEVEL=6
++# alternatively use Logical Volume Manager
++#export LVM=1
++
++# use random values for undefined testing variables
++#RANDOMENV=1
++
++# ignored for LiveCDs ; possible values: kde|gnome|xfce|lxde|minimalx|textmode
++#export DESKTOP=gnome
++
++# if you want to run this mostly for the video
++#export NICEVIDEO=1
++
++# is this a beta version with extra popup window on welcome screen?
++export BETA=1
++
++# if you want to run tests in parallel, you need to give different ports
++# note that $QEMUPORT+1 is also used
++export QEMUPORT=15222
++
++# which VNC port to use. default is to allow vncviewer $HOSTNAME:99
++export VNC=99
++# VNC keyboard layout of vncclient machine
++#export VNCKB=de
++
++#export INSTLANG=de_DE
+diff --git a/template/ix86/suse-11.4-JeOS/test/iso/check.pm b/template/ix86/suse-11.4-JeOS/test/iso/check.pm
+new file mode 100644
+index 0000000..50655ef
+--- /dev/null
++++ b/template/ix86/suse-11.4-JeOS/test/iso/check.pm
+@@ -0,0 +1,21 @@
++#!/usr/bin/perl -w
++use strict;
++use base &quot;basetest&quot;;
++use diagnostics;
++use bmwqemu;
++use autotest;
++
++sub check() {
++	my $results=\%::results;
++	autotest::runtestdir(
++		&quot;$scriptdir/distri/$ENV{DISTRI}/test.d&quot;,
++		\&amp;::checkfunc
++	);
++	my $overall=1;
++	for my $test (keys(%$results)) {
++		$overall=0 unless ::is_ok($results-&gt;{$test});
++	}
++	return $overall;
++}
++
++1;
+diff --git a/template/ix86/suse-11.4-JeOS/test/iso/main.pm b/template/ix86/suse-11.4-JeOS/test/iso/main.pm
+new file mode 100644
+index 0000000..4a7f1f3
+--- /dev/null
++++ b/template/ix86/suse-11.4-JeOS/test/iso/main.pm
+@@ -0,0 +1,29 @@
++#!/usr/bin/perl -w
++use strict;
++use bmwqemu;
++use autotest;
++
++sub installrunfunc {
++	my($test)=@_;
++	my $class=ref $test;
++	diag &quot;starting $class&quot;;
++	$test-&gt;run();
++	$test-&gt;take_screenshot;
++	diag &quot;finished $class&quot;;
++}
++
++$username = &quot;root&quot;;
++$password = &quot;linux&quot;;
++
++set_hash_rects(
++	[30,30,100,100],  # where most applications pop up
++	[630,30,100,100], # where some applications pop up
++	[0,579,100,10 ],  # bottom line (KDE/GNOME bar)
++);
++
++autotest::runtestdir (
++	&quot;$scriptdir/distri/$ENV{DISTRI}/test.d&quot;,
++	\&amp;installrunfunc
++);
++
++1;
+diff --git a/template/ix86/suse-11.4-JeOS/test/iso/test.d/001_boot.pm b/template/ix86/suse-11.4-JeOS/test/iso/test.d/001_boot.pm
+new file mode 100644
+index 0000000..e258977
+--- /dev/null
++++ b/template/ix86/suse-11.4-JeOS/test/iso/test.d/001_boot.pm
+@@ -0,0 +1,46 @@
++use base &quot;basetest&quot;;
++use strict;
++use bmwqemu;
++
++sub run {
++	my $self = shift;
++
++	# boot
++	sleep 6; # skip animation
++	sendkey &quot;ret&quot;;
++	sleep 5;
++	sendkey &quot;esc&quot;;
++	sleep 20;
++	waitidle(100);
++
++	# login
++	sendkey &quot;ctrl-alt-f2&quot;; # change to tty2 for real black background
++	sleep 2;
++	sendautotype &quot;$username\n&quot;;
++	sleep 2;
++	sendautotype &quot;$password\n&quot;;
++	waitidle (10);
++	sendautotype &quot;PS1=\$\n&quot;; # set constant shell promt
++	sleep 2;
++	sendkey &quot;ctrl-l&quot;;
++	sleep 5;
++	$self-&gt;take_screenshot;
++	sleep 5;
++
++	# zypper repo
++	sendautotype &quot;zypper sl\n&quot;;
++	sleep 2;
++	$self-&gt;take_screenshot;
++	sleep 5;
++	
++	# shutdown
++	sendautotype &quot;halt\n&quot;;
++}
++
++sub checklist {
++	return {qw(
++		7c8184e291a122a5be03ae419f8a0767 OK-11.4
++	)}
++}
++
++1;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003389.html">[Kiwi-devel] kiwi: Weekly report 2011-05-01 - 2011-05-06...
+</A></li>
+	<LI>Next message: <A HREF="003391.html">[Kiwi-devel] kiwi and the os-autoinst test-suite
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3390">[ date ]</a>
+              <a href="thread.html#3390">[ thread ]</a>
+              <a href="subject.html#3390">[ subject ]</a>
+              <a href="author.html#3390">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

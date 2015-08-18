@@ -1,0 +1,441 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 12af9adcefb69086106c8ec96663df3618fca393
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2012af9adcefb69086106c8ec96663df3618fca393&In-Reply-To=%3C20100914155500.0215B480E9C%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002674.html">
+   <LINK REL="Next"  HREF="002676.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 12af9adcefb69086106c8ec96663df3618fca393</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2012af9adcefb69086106c8ec96663df3618fca393&In-Reply-To=%3C20100914155500.0215B480E9C%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 12af9adcefb69086106c8ec96663df3618fca393">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Sep 14 17:54:59 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002674.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. af02be355d5227a7a125a388444cf3b66d165479
+</A></li>
+        <LI>Next message: <A HREF="002676.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 702cd9f85555df366d3ef23e15016f01351d541c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2675">[ date ]</a>
+              <a href="thread.html#2675">[ thread ]</a>
+              <a href="subject.html#2675">[ subject ]</a>
+              <a href="author.html#2675">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  12af9adcefb69086106c8ec96663df3618fca393 (commit)
+      from  3c4ed6400b2827008a84f72a9ee54e121a5ef6b4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 12af9adcefb69086106c8ec96663df3618fca393
+Author: root &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">root at s390vm05.suse.de</A>&gt;
+Date:   Tue Sep 14 17:54:43 2010 +0200
+
+    - added support for s390 DASD repartitioning
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 3dbca3b..3b5e332 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -959,7 +959,7 @@ function suseStripInitrd {
+ 		dmsetup dialog awk gawk clicfs cryptsetup clear blkid fbiterm
+ 		gettext diff bc utimer cmp busybox kexec pam_console_apply
+ 		setterm kpartx vgcfgbackup vgcfgrestore lsdasd dasd_configure
+-		qeth_configure
++		qeth_configure fdasd
+ 	&quot;
+ 	tools=&quot;$tools $@&quot;
+ 	for path in /sbin /usr/sbin /usr/bin /bin;do
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 5c96c95..125b738 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -269,7 +269,11 @@ function systemException {
+ 	;;
+ 	&quot;shell&quot;)
+ 		Echo &quot;shellException: providing shell...&quot;
+-		setctsid $ttydev /bin/bash -i
++		if ! setctsid $ttydev /bin/true;then
++			/bin/bash -i
++		else
++			setctsid $ttydev /bin/bash -i
++		fi
+ 	;;
+ 	&quot;user_reboot&quot;)
+ 		Echo &quot;reboot triggered by user: consoles at Alt-F3/F4&quot;
+@@ -3416,6 +3420,26 @@ function sfdiskGetPartitionID {
+ 	sfdisk -c $1 $2
+ }
+ #======================================
++# fdasdGetPartitionID
++#--------------------------------------
++function fdasdGetPartitionID {
++	local count=1
++	for i in $(fdasd -s -p $1 | grep -E '^[ ]+\/' |\
++		 awk -v OFS=&quot;:&quot; '$1=$1' | cut -f5 -d:);do
++		if [ $count = $2 ];then
++			if $i = 2;then
++				echo 82
++			elif $i = 1;then
++				echo 83
++			else
++				echo $i
++			fi
++			return
++		fi
++		count=$((count + 1))
++	done
++}
++#======================================
+ # partedGetPartitionID
+ #--------------------------------------
+ function partedGetPartitionID {
+@@ -3433,6 +3457,8 @@ function partitionID {
+ 	local diskNumber=$2
+ 	if [ $PARTITIONER = &quot;sfdisk&quot; ];then
+ 		sfdiskGetPartitionID $diskDevice $diskNumber
++	elif [ $PARTITIONER = &quot;fdasd&quot; ];then
++		fdasdGetPartitionID $diskDevice $diskNumber
+ 	else
+ 		partedGetPartitionID $diskDevice $diskNumber
+ 	fi
+@@ -4685,6 +4711,9 @@ function getDiskID {
+ 		return
+ 	fi
+ 	for i in /dev/disk/by-id/*;do
++		if [ -z &quot;$i&quot; ];then
++			continue
++		fi
+ 		if echo $i | grep -q edd-;then
+ 			continue
+ 		fi
+@@ -5489,6 +5518,14 @@ function callPartitioner {
+ 		if test $? != 0; then
+ 			systemException &quot;Failed to create partition table&quot; &quot;reboot&quot;
+ 		fi
++	elif [ $PARTITIONER = &quot;fdasd&quot; ];then
++		Echo &quot;Repartition the disk according to real geometry [ fdasd ]&quot;
++		echo &quot;w&quot; &gt;&gt; $input
++		echo &quot;q&quot; &gt;&gt; $input
++		fdasd $imageDiskDevice &lt; $input 1&gt;&amp;2
++		if test $? != 0; then
++			systemException &quot;Failed to create partition table&quot; &quot;reboot&quot;
++		fi
+ 	else
+ 		# /.../
+ 		# nothing to do for parted here as we write
+@@ -5504,8 +5541,13 @@ function callPartitioner {
+ # createPartitionerInput
+ #--------------------------------------
+ function createPartitionerInput {
++	if echo $imageDiskDevice | grep -q 'dev\/dasd';then
++		PARTITIONER=fdasd
++	fi
+ 	if [ $PARTITIONER = &quot;sfdisk&quot; ];then
+ 		createFDiskInput $@
++	elif [ $PARTITIONER = &quot;fdasd&quot; ];then
++		createFDasdInput $@
+ 	else
+ 		Echo &quot;Repartition the disk according to real geometry [ parted ]&quot;
+ 		partedInit $imageDiskDevice
+@@ -5514,6 +5556,45 @@ function createPartitionerInput {
+     fi
+ }
+ #======================================
++# createFDasdInput
++#--------------------------------------
++function createFDasdInput {
++	local input=/part.input
++	local ignore_once=0
++	local ignore=0
++	normalizeRepartInput $*
++	for cmd in ${pcmds[*]};do
++		if [ $ignore = 1 ] &amp;&amp; echo $cmd | grep -qE '[dntwq]';then
++			ignore=0
++		elif [ $ignore = 1 ];then
++			continue
++		fi
++		if [ $ignore_once = &quot;1&quot; ];then
++			ignore_once=0
++			continue
++		fi
++		if [ $cmd = &quot;a&quot; ];then
++			ignore=1
++			continue
++		fi
++		if [ $cmd = &quot;p&quot; ];then
++			ignore_once=1
++			continue
++		fi
++		if [ $cmd = &quot;83&quot; ] || [ $cmd = &quot;8e&quot; ];then
++			cmd=1
++		fi
++		if [ $cmd = &quot;82&quot; ];then
++			cmd=2
++		fi
++		if [ $cmd = &quot;.&quot; ];then
++			echo &gt;&gt; $input
++			continue
++		fi
++		echo $cmd &gt;&gt; $input
++	done
++}
++#======================================
+ # createFDiskInput
+ #--------------------------------------
+ function createFDiskInput {
+@@ -5636,63 +5717,15 @@ function createPartedInput {
+ 	local disk=$1
+ 	shift
+ 	local index=0
+-	local pcmds
+-	local pcmds_fix
+ 	local partid
+ 	local pstart
+ 	local pstopp
+ 	local value
+ 	local cmdq
+ 	#======================================
+-	# create list of commands
++	# normalize commands
+ 	#--------------------------------------
+-	for cmd in $*;do
+-		pcmds[$index]=$cmd
+-		index=$(($index + 1))
+-	done
+-	index=0
+-	index_fix=0
+-	#======================================
+-	# fix list of commands
+-	#--------------------------------------
+-	while [ ! -z &quot;${pcmds[$index]}&quot; ];do
+-		cmd=${pcmds[$index]}
+-		pcmds_fix[$index_fix]=$cmd
+-		case $cmd in
+-			&quot;d&quot;)
+-				partid=${pcmds[$index + 1]}
+-				if ! echo $partid | grep -q &quot;^[0-4]$&quot;;then
+-					# make sure there is a ID set for the deletion
+-					index_fix=$(($index_fix + 1))
+-					pcmds_fix[$index_fix]=1
+-				fi
+-			;;
+-			&quot;n&quot;)
+-				partid=${pcmds[$index + 2]}
+-				if ! echo $partid | grep -q &quot;^[0-4]$&quot;;then
+-					# make sure there is a ID set for the creation
+-					index_fix=$(($index_fix + 1))
+-					pcmds_fix[$index_fix]=${pcmds[$index + 1]}
+-					index_fix=$(($index_fix + 1))
+-					pcmds_fix[$index_fix]=4
+-					index=$(($index + 1))
+-				fi
+-			;;
+-		esac
+-		index=$(($index + 1))
+-		index_fix=$(($index_fix + 1))
+-	done
+-	#======================================
+-	# use fixed list and print log info
+-	#--------------------------------------
+-	unset pcmds
+-	pcmds=(${pcmds_fix[*]})
+-	unset pcmds_fix
+-	index=0
+-	#======================================
+-	# process commands
+-	#--------------------------------------
+-	echo &quot;createPartedInput: fixed input: ${pcmds[*]}&quot; 1&gt;&amp;2
++	normalizeRepartInput $*
+ 	for cmd in ${pcmds[*]};do
+ 		case $cmd in
+ 			#======================================
+@@ -5758,6 +5791,61 @@ function createPartedInput {
+ 	done
+ }
+ #======================================
++# normalizeRepartInput
++#--------------------------------------
++function normalizeRepartInput {
++	local pcmds_fix
++	local index=0
++	local index_fix=0
++	local partid
++	local cmd
++	#======================================
++	# create list of commands
++	#--------------------------------------
++	for cmd in $*;do
++		pcmds[$index]=$cmd
++		index=$(($index + 1))
++	done
++	index=0
++	#======================================
++	# fix list of commands
++	#--------------------------------------
++	while [ ! -z &quot;${pcmds[$index]}&quot; ];do
++		cmd=${pcmds[$index]}
++		pcmds_fix[$index_fix]=$cmd
++		case $cmd in
++			&quot;d&quot;)
++				partid=${pcmds[$index + 1]}
++				if ! echo $partid | grep -q &quot;^[0-4]$&quot;;then
++					# make sure there is a ID set for the deletion
++					index_fix=$(($index_fix + 1))
++					pcmds_fix[$index_fix]=1
++				fi
++			;;
++			&quot;n&quot;)
++				partid=${pcmds[$index + 2]}
++				if ! echo $partid | grep -q &quot;^[0-4]$&quot;;then
++					# make sure there is a ID set for the creation
++					index_fix=$(($index_fix + 1))
++					pcmds_fix[$index_fix]=${pcmds[$index + 1]}
++					index_fix=$(($index_fix + 1))
++					pcmds_fix[$index_fix]=4
++					index=$(($index + 1))
++				fi
++			;;
++		esac
++		index=$(($index + 1))
++		index_fix=$(($index_fix + 1))
++	done
++	#======================================
++	# use fixed list and print log info
++	#--------------------------------------
++	unset pcmds
++	pcmds=(${pcmds_fix[*]})
++	unset pcmds_fix
++	echo &quot;Normalized Repartition input: ${pcmds[*]}&quot; 1&gt;&amp;2
++}
++#======================================
+ # reloadKernel
+ #--------------------------------------
+ function reloadKernel {
+diff --git a/system/boot/s390/oemboot/suse-repart b/system/boot/s390/oemboot/suse-repart
+index 30ca1d9..c3457bd 100755
+--- a/system/boot/s390/oemboot/suse-repart
++++ b/system/boot/s390/oemboot/suse-repart
+@@ -48,6 +48,7 @@ function OEMRepartInit {
+ 		umount /reco-root &amp;&amp; rmdir /reco-root
+ 	fi
+ 	export input=/part.input
++	recreateVTOCTable
+ 	rm -f $input
+ }
+ 
+@@ -124,13 +125,13 @@ function OEMRepartStandard {
+ 		#--------------------------------------
+ 		if [ &quot;$haveBootPartition&quot; = &quot;yes&quot; ];then
+ 			createPartitionerInput \
+-				d 2
++				d 2 u y
+ 		fi
+ 		#======================================
+ 		# repart root partition
+ 		#--------------------------------------
+ 		createPartitionerInput \
+-			d n p $pID . +&quot;$disk1MBytes&quot;M
++			d u y n p $pID . +&quot;$disk1MBytes&quot;M
+ 		#======================================
+ 		# add swap partition
+ 		#--------------------------------------
+@@ -273,13 +274,13 @@ function OEMRepartSplit {
+ 		#--------------------------------------
+ 		if [ &quot;$haveBootPartition&quot; = &quot;yes&quot; ];then
+ 			createPartitionerInput \
+-				d 3
++				d 3 u y
+ 		fi
+ 		#======================================
+ 		# repart cow partition
+ 		#--------------------------------------
+ 		createPartitionerInput \
+-			d $pID n p $pID . +&quot;$disk2MBytes&quot;M
++			d u y $pID n p $pID . +&quot;$disk2MBytes&quot;M
+ 		#======================================
+ 		# add swap partition
+ 		#--------------------------------------
+@@ -628,6 +629,9 @@ function activateBootPartition {
+ 	# /.../
+ 	# set boot flag to current value of $bootid
+ 	# ----
++	if [ $PARTITIONER = &quot;fdasd&quot; ];then
++		return
++	fi
+ 	Echo &quot;Set boot flag to partition ID: $bootid [ $imageDiskDevice ]&quot;
+ 	parted $imageDiskDevice set $bootid boot on
+ 	if test $? != 0; then
+@@ -643,6 +647,19 @@ function activateBootPartition {
+ }
+ 
+ #======================================
++# recreateVTOCTable
++#--------------------------------------
++function recreateVTOCTable {
++	# /.../
++	# re-create VTOC re-using existing partition sizes
++	# ----
++	Echo &quot;Recreate VTOC table [ $imageDiskDevice ]&quot;
++	createPartitionerInput u y w
++	callPartitioner $input
++	rm -f $input
++}
++
++#======================================
+ # setupDeviceNames
+ #--------------------------------------
+ function setupDeviceNames {
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002674.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. af02be355d5227a7a125a388444cf3b66d165479
+</A></li>
+	<LI>Next message: <A HREF="002676.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 702cd9f85555df366d3ef23e15016f01351d541c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2675">[ date ]</a>
+              <a href="thread.html#2675">[ thread ]</a>
+              <a href="subject.html#2675">[ subject ]</a>
+              <a href="author.html#2675">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

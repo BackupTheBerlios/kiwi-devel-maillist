@@ -1,0 +1,538 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. edbf984e5ec2947f071f90c9110d10754b5b06ad
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20edbf984e5ec2947f071f90c9110d10754b5b06ad&In-Reply-To=%3C200905261533.n4QFX3nO010971%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001261.html">
+   <LINK REL="Next"  HREF="001263.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. edbf984e5ec2947f071f90c9110d10754b5b06ad</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20edbf984e5ec2947f071f90c9110d10754b5b06ad&In-Reply-To=%3C200905261533.n4QFX3nO010971%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. edbf984e5ec2947f071f90c9110d10754b5b06ad">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue May 26 17:33:03 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001261.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 3a9013156562c31cda05c38395626232789f27ef
+</A></li>
+        <LI>Next message: <A HREF="001263.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. cff6e775cf5ae9e3aad0e5afaa210983d505480d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1262">[ date ]</a>
+              <a href="thread.html#1262">[ thread ]</a>
+              <a href="subject.html#1262">[ subject ]</a>
+              <a href="author.html#1262">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  edbf984e5ec2947f071f90c9110d10754b5b06ad (commit)
+      from  ca135625957a58ab71b6d8dbfc4e4d3e4b7b5a13 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit edbf984e5ec2947f071f90c9110d10754b5b06ad
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue May 26 17:32:37 2009 +0200
+
+    - fixed oem format=&quot;iso&quot; install mode (bnc #506983)
+    - use dialog for asking questions (bnc #503653)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 83f3f87..edcdbe5 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -1482,6 +1482,15 @@ sub setupInstallCD {
+ 	# Copy system image if given
+ 	#------------------------------------------
+ 	if ($gotsys) {
++		if (! open (FD,&quot;&gt;$tmpdir/config.isoclient&quot;)) {
++			$kiwi -&gt; error  (&quot;Couldn't create CD install flag file&quot;);
++			$kiwi -&gt; failed ();
++			$this -&gt; cleanTmp ();
++			qxx ( &quot;$main::Gzip -d $system&quot; );
++			return undef;
++		}
++		print FD &quot;IMAGE=$ibasename\n&quot;;
++		close FD;
+ 		$kiwi -&gt; info (&quot;Importing system image: $system&quot;);
+ 		$status = qxx (&quot;cp $system $tmpdir/$ibasename 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+@@ -3466,7 +3475,7 @@ sub setupBootLoaderConfiguration {
+ 		if (! $isxen || ($isxen &amp;&amp; $xendomain eq &quot;domU&quot;)) {
+ 			if ($type =~ /^KIWI CD/) {
+ 				print FD &quot; kernel (cd)/boot/linux vga=$vga splash=silent&quot;;
+-				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096&quot;;
++				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096 cdinst=1&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+ 				print FD &quot; kernel /boot/linux.vmx vga=$vga&quot;;
+@@ -3494,7 +3503,7 @@ sub setupBootLoaderConfiguration {
+ 			if ($type =~ /^KIWI CD/) {
+ 				print FD &quot; kernel (cd)/boot/xen.gz\n&quot;;
+ 				print FD &quot; module /boot/linux vga=$vga splash=silent&quot;;
+-				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096&quot;;
++				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096 cdinst=1&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+ 				print FD &quot; kernel /boot/xen.gz.vmx\n&quot;;
+@@ -3529,7 +3538,7 @@ sub setupBootLoaderConfiguration {
+ 		if (! $isxen || ($isxen &amp;&amp; $xendomain eq &quot;domU&quot;)) {
+ 			if ($type =~ /^KIWI CD/) {
+ 				print FD &quot; kernel (cd)/boot/linux vga=$vga splash=silent&quot;;
+-				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096&quot;;
++				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096 cdinst=1&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+ 				print FD &quot; kernel /boot/linux.vmx vga=$vga&quot;;
+@@ -3558,7 +3567,7 @@ sub setupBootLoaderConfiguration {
+ 			if ($type =~ /^KIWI CD/) {
+ 				print FD &quot; kernel (cd)/boot/xen.gz\n&quot;;
+ 				print FD &quot; module (cd)/boot/linux vga=$vga splash=silent&quot;;
+-				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096&quot;;
++				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096 cdinst=1&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+ 				print FD &quot; kernel /boot/xen.gz.vmx\n&quot;;
+@@ -3623,7 +3632,10 @@ sub setupBootLoaderConfiguration {
+ 		print FD &quot;DEFAULT vesamenu.c32\n&quot;;
+ 		print FD &quot;TIMEOUT 100\n&quot;;
+ 		if ($type =~ /^KIWI CD/) {
+-			# not supported yet..
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;*** syslinux: cdinst not supported ***&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
+ 		} elsif ($type =~ /^KIWI USB/) {
+ 			print FD &quot;LABEL Linux\n&quot;;
+ 			print FD &quot;MENU LABEL Restore &quot;.$label.&quot;\n&quot;;
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 2156459..6424a41 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -139,6 +139,7 @@ function importFile {
+ 		Echo -e &quot;$ERROR_INTERRUPT&quot;
+ 		systemException &quot;*** interrupted ****&quot; &quot;shell&quot;
+ 	fi
++	IFS=$IFS_ORIG
+ }
+ #======================================
+ # systemException
+@@ -1813,6 +1814,7 @@ function CDDevice {
+ 	# from hwinfo --cdrom to search for the block device
+ 	# ----
+ 	IFS=$IFS_ORIG
++	local silent=$1
+ 	local count=0
+ 	local h=/usr/sbin/hwinfo
+ 	if [ $HAVE_MODULES_ORDER = 0 ];then
+@@ -1820,7 +1822,9 @@ function CDDevice {
+ 			/sbin/modprobe $module
+ 		done
+ 	fi
+-	Echo -n &quot;Waiting for CD/DVD device(s) to appear...&quot;
++	if [ -z &quot;$silent&quot; ];then
++		Echo -n &quot;Waiting for CD/DVD device(s) to appear...&quot;
++	fi
+ 	while true;do
+ 		cddevs=`$h --cdrom | grep &quot;Device File:&quot;|sed -e&quot;s@(.*)@@&quot; | cut -f2 -d:`
+ 		cddevs=`echo $cddevs`
+@@ -1832,14 +1836,18 @@ function CDDevice {
+ 		if [ ! -z &quot;$cddev&quot; ] || [ $count -eq 12 ]; then
+ 			break
+ 		else
+-			echo -n .
++			if [ -z &quot;$silent&quot; ];then
++				echo -n .
++			fi
+ 			sleep 1
+ 		fi
+ 		count=`expr $count + 1`
+ 	done
+-	echo
+-	if [ -z $cddev ];then
+-		USBStickDevice
++	if [ -z &quot;$silent&quot; ];then
++		echo
++	fi
++	if [ -z &quot;$cddev&quot; ];then
++		USBStickDevice $silent
+ 		if [ $stickFound = 0 ];then
+ 			systemException \
+ 				&quot;Failed to detect CD/DVD or USB drive !&quot; \
+@@ -1853,19 +1861,24 @@ function CDDevice {
+ #--------------------------------------
+ function USBStickDevice {
+ 	stickFound=0
++	local silent=$1
+ 	#======================================
+ 	# check virtual environments
+ 	#--------------------------------------
+ 	diskmodels=`getDiskModels`
+ 	if echo $diskmodels | grep -q &quot;QEMU HARDDISK&quot;;then
+-		Echo &quot;QEMU system, skipping USB stick search&quot;
++		if [ -z &quot;$silent&quot; ];then
++			Echo &quot;QEMU system, skipping USB stick search&quot;
++		fi
+ 		return
+ 	fi
+ 	#======================================
+ 	# search for USB removable devices
+ 	#--------------------------------------
+-	Echo -n &quot;Waiting for USB devices to settle...&quot;
+-	for redo in 1 2 3 4 5 6 7 8 9 10;do
++	if [ -z &quot;$silent&quot; ];then
++		Echo -n &quot;Searching for USB stick device...&quot;
++	fi
++	for redo in 1 2 3 4 5;do
+ 		for device in /sys/bus/usb/drivers/usb-storage/*;do
+ 			if [ ! -L $device ];then
+ 				continue
+@@ -1921,12 +1934,16 @@ function USBStickDevice {
+ 						continue
+ 					fi
+ 					stickSerial=$serial
+-					echo .
++					if [ -z &quot;$silent&quot; ];then
++						echo .
++					fi
+ 					return
+ 				fi
+ 			done
+ 		done
+-		echo -n .
++		if [ -z &quot;$silent&quot; ];then
++			echo -n .
++		fi
+ 		sleep 3
+ 	done
+ 	echo .
+@@ -1954,10 +1971,13 @@ function CDMount {
+ 	# search all CD/DVD drives and use the one we can find
+ 	# the CD configuration on
+ 	# ----
++	local silent=$1
+ 	local count=0
+ 	local cdopt
+-	mkdir -p /cdrom &amp;&amp; CDDevice
+-	Echo -n &quot;Mounting live boot drive...&quot;
++	mkdir -p /cdrom &amp;&amp; CDDevice $silent
++	if [ -z &quot;$silent&quot; ];then
++		Echo -n &quot;Mounting live boot drive...&quot;
++	fi
+ 	while true;do
+ 		IFS=&quot;:&quot;; for i in $cddev;do
+ 			cdopt=$(CDMountOption $i)
+@@ -1967,13 +1987,17 @@ function CDMount {
+ 				eval mount $cdopt $i /cdrom &gt;/dev/null
+ 			fi
+ 			if [ -f $LIVECD_CONFIG ];then
+-				cddev=$i; echo;
+-				if [ &quot;$mediacheck&quot; = 1 ]; then
++				cddev=$i
++				if [ -z &quot;$silent&quot; ]; then
++					echo
++				fi
++				if [ &quot;$mediacheck&quot; = 1 ] &amp;&amp; [ -z &quot;$silent&quot; ]; then
+ 					test -e /proc/splash &amp;&amp; echo verbose &gt; /proc/splash
+ 					checkmedia $cddev
+ 					Echo -n &quot;Press any key for reboot: &quot;; read nope
+ 					systemException &quot;CheckMedia&quot; &quot;reboot&quot;
+ 				fi
++				IFS=$IFS_ORIG
+ 				return
+ 			fi
+ 			umount $i &amp;&gt;/dev/null
+@@ -1982,7 +2006,9 @@ function CDMount {
+ 		if [ $count -eq 12 ]; then
+ 			break
+ 		else
+-			echo -n .
++			if [ -z &quot;$silent&quot; ];then
++				echo -n .
++			fi
+ 			sleep 1
+ 		fi
+ 		count=`expr $count + 1`
+@@ -2018,6 +2044,7 @@ function searchBIOSBootDevice {
+ 	# for the MBR disk label and compare it with the kiwi
+ 	# written mbrid file in /boot/grub/ of the system image
+ 	# ----
++	IFS=$IFS_ORIG
+ 	local h=/usr/sbin/hwinfo
+ 	local c=&quot;Device File:|BIOS id&quot;
+ 	local ddevs=`$h --disk|grep -E &quot;$c&quot;|sed -e&quot;s@(.*)@@&quot;|cut -f2 -d:|tr -d &quot; &quot;`
+@@ -2036,6 +2063,16 @@ function searchBIOSBootDevice {
+ 		pred=$curd
+ 	done
+ 	#======================================
++	# Check for OEM ISO installation mode
++	#--------------------------------------
++	if [ ! -z &quot;$cdinst&quot; ];then
++		CDMount silent
++		umount $cddev
++		curd=$cddev
++		echo $curd
++		return
++	fi
++	#======================================
+ 	# Search and copy all mbrid files 
+ 	#--------------------------------------
+ 	mkdir -p $cmpd
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index f97dac7..1988a96 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -2,6 +2,8 @@
+ Mon May 25 16:10:39 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.53
++- fixed oem format=&quot;iso&quot; install mode (bnc #506983)
++- use dialog for asking questions (bnc #503653)
+ - added resize_inode feature to filesystem before resizing.
+   This will reserve space so the block group descriptor
+   table may grow in the future (bnc #498683)
+diff --git a/system/boot/ix86/oemboot/suse-10.3/config.xml b/system/boot/ix86/oemboot/suse-10.3/config.xml
+index 51e17b1..3c0d4d2 100644
+--- a/system/boot/ix86/oemboot/suse-10.3/config.xml
++++ b/system/boot/ix86/oemboot/suse-10.3/config.xml
+@@ -76,6 +76,7 @@
+ 		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;bind-libs&quot;/&gt;
+ 		&lt;package name=&quot;bind-utils&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-11.0/config.xml b/system/boot/ix86/oemboot/suse-11.0/config.xml
+index 576edbd..c37a373 100644
+--- a/system/boot/ix86/oemboot/suse-11.0/config.xml
++++ b/system/boot/ix86/oemboot/suse-11.0/config.xml
+@@ -78,6 +78,7 @@
+ 		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;bind-libs&quot;/&gt;
+ 		&lt;package name=&quot;bind-utils&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-11.1/config.xml b/system/boot/ix86/oemboot/suse-11.1/config.xml
+index bfae57d..4fdb992 100644
+--- a/system/boot/ix86/oemboot/suse-11.1/config.xml
++++ b/system/boot/ix86/oemboot/suse-11.1/config.xml
+@@ -83,6 +83,7 @@
+ 		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;bind-libs&quot;/&gt;
+ 		&lt;package name=&quot;bind-utils&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-11.2/config.xml b/system/boot/ix86/oemboot/suse-11.2/config.xml
+index 4dcba7f..13a5d59 100644
+--- a/system/boot/ix86/oemboot/suse-11.2/config.xml
++++ b/system/boot/ix86/oemboot/suse-11.2/config.xml
+@@ -79,6 +79,7 @@
+ 		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 		&lt;package name=&quot;clicfs&quot;/&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;bind-libs&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLED10/config.xml b/system/boot/ix86/oemboot/suse-SLED10/config.xml
+index 0287742..4863028 100644
+--- a/system/boot/ix86/oemboot/suse-SLED10/config.xml
++++ b/system/boot/ix86/oemboot/suse-SLED10/config.xml
+@@ -72,6 +72,7 @@
+ 		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;bind-libs&quot;/&gt;
+ 		&lt;package name=&quot;bind-utils&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLED11/config.xml b/system/boot/ix86/oemboot/suse-SLED11/config.xml
+index 6c63b1d..22d3759 100644
+--- a/system/boot/ix86/oemboot/suse-SLED11/config.xml
++++ b/system/boot/ix86/oemboot/suse-SLED11/config.xml
+@@ -78,6 +78,7 @@
+ 		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;bind-libs&quot;/&gt;
+ 		&lt;package name=&quot;bind-utils&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLES10/config.xml b/system/boot/ix86/oemboot/suse-SLES10/config.xml
+index 5071baf..abec836 100644
+--- a/system/boot/ix86/oemboot/suse-SLES10/config.xml
++++ b/system/boot/ix86/oemboot/suse-SLES10/config.xml
+@@ -72,6 +72,7 @@
+ 		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;bind-libs&quot;/&gt;
+ 		&lt;package name=&quot;bind-utils&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLES11/config.xml b/system/boot/ix86/oemboot/suse-SLES11/config.xml
+index 4d4b575..2e2e988 100644
+--- a/system/boot/ix86/oemboot/suse-SLES11/config.xml
++++ b/system/boot/ix86/oemboot/suse-SLES11/config.xml
+@@ -78,6 +78,7 @@
+ 		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;bind-libs&quot;/&gt;
+ 		&lt;package name=&quot;bind-utils&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-dump b/system/boot/ix86/oemboot/suse-dump
+index b0037fa..60aac8d 100755
+--- a/system/boot/ix86/oemboot/suse-dump
++++ b/system/boot/ix86/oemboot/suse-dump
+@@ -91,18 +91,25 @@ function OEMInstall {
+ 			#======================================
+ 			# standard mode, ask for install media
+ 			#--------------------------------------
+-			while true;do
+-				Echo -n &quot;Enter device name to select disk for installation: &quot;
+-				read deviceInput
+-				count=0
+-				for instDisk in $deviceDisks;do
+-					if [ ${deviceArray[$count]} = $deviceInput ];then
+-						break 2
+-					fi
+-					count=`expr $count + 1`
+-				done
+-				Echo &quot;Given device is not in the list !&quot;
++			hd=&quot;\&quot;Select disk for installation:\&quot;&quot;
++			count=0
++			for i in $deviceDisks;do
++				dsize=`partitionSize $i`
++				dname=`getDiskID $i`
++				dname=`basename $dname | cut -c1-20`&quot;...&quot;
++				if [ $count = 0 ];then
++					dpara=&quot;$i \&quot;$dname [ $dsize KByte ]\&quot; on&quot;
++					count=1
++				else
++					dpara=&quot;$dpara $i \&quot;$dname [ $dsize KByte ]\&quot; off&quot;
++				fi
+ 			done
++			instDisk=$(eval dialog --stdout --radiolist $hd 20 75 15 $dpara)
++			if [ ! $? = 0 ];then
++				systemException \
++					&quot;System installation canceled&quot; \
++				&quot;reboot&quot;
++			fi
+ 		else
+ 			#======================================
+ 			# SAP mode, use the smallest one
+@@ -121,18 +128,13 @@ function OEMInstall {
+ 	fi
+ 	Echo &quot;Entering installation mode for disk: $instDisk&quot;
+ 	if [ -z &quot;$OEM_SAP_INSTALL&quot; ];then
+-		while true;do
+-			Echo -n &quot;This will destroy ALL data on $instDisk, continue [y/n]: &quot;
+-			read startInstall
+-			if [ &quot;$startInstall&quot; = &quot;y&quot; ];then
+-				break
+-			fi
+-			if [ &quot;$startInstall&quot; = &quot;n&quot; ];then
+-				systemException \
+-					&quot;System installation canceled&quot; \
+-				&quot;reboot&quot;
+-			fi
+-		done
++		dialog --yesno \
++			&quot;This will destroy ALL data on $instDisk, continue ?&quot; 5 60
++		if [ ! $? = 0 ];then
++			systemException \
++				&quot;System installation canceled&quot; \
++			&quot;reboot&quot;
++		fi
+ 	fi
+ 	#======================================
+ 	# Import vmx configuration file
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index 0e03bde..a65b4d4 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -36,7 +36,7 @@ export systemIntegrity=&quot;clean&quot;
+ # Exports (Configuration)
+ #--------------------------------------
+ export VMX_SYSTEM=&quot;/config.vmxsystem&quot;
+-export LIVECD_CONFIG=$VMX_SYSTEM
++export LIVECD_CONFIG=&quot;/cdrom/config.isoclient&quot;
+ export OEM_PARTITION_CONFIG=&quot;/config.oempartition&quot;
+ 
+ #======================================
+@@ -121,6 +121,7 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ else
+ 	export imageDiskDevice=`getDiskDevice $root | tr -d [0-9]+`
+ fi
++Echo &quot;Found boot device: $imageDiskDevice&quot;
+ 
+ #======================================
+ # 9) Check for installation mode...
+@@ -270,8 +271,8 @@ validateRootTree
+ # 17) Recover system if requested
+ #--------------------------------------
+ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+-	Echo -n &quot;Do you want to start the System-Recovery ? [y/n]: &quot;; read runReco
+-	if [ ! $runReco = &quot;y&quot; ];then
++	dialog --yesno &quot;Do you want to start the System-Recovery ?&quot; 5 50
++	if [ ! $? = 0 ];then
+ 		systemException &quot;System-Recovery not started&quot; &quot;reboot&quot;
+ 	fi
+ 	Echo &quot;Starting System-Recovery...&quot;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001261.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 3a9013156562c31cda05c38395626232789f27ef
+</A></li>
+	<LI>Next message: <A HREF="001263.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. cff6e775cf5ae9e3aad0e5afaa210983d505480d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1262">[ date ]</a>
+              <a href="thread.html#1262">[ thread ]</a>
+              <a href="subject.html#1262">[ subject ]</a>
+              <a href="author.html#1262">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,162 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 438e83976cbd12dde20511ea5d000620082fa066
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20438e83976cbd12dde20511ea5d000620082fa066&In-Reply-To=%3C20110118084003.C4CDE480FEA%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002980.html">
+   <LINK REL="Next"  HREF="002982.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 438e83976cbd12dde20511ea5d000620082fa066</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20438e83976cbd12dde20511ea5d000620082fa066&In-Reply-To=%3C20110118084003.C4CDE480FEA%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 438e83976cbd12dde20511ea5d000620082fa066">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jan 18 09:40:03 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002980.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 552b4c55574241d5bc2277c73cf24f02dd4a9feb
+</A></li>
+        <LI>Next message: <A HREF="002982.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. 9ba114b54a2e9d15c420397797fd3e039b50c695
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2981">[ date ]</a>
+              <a href="thread.html#2981">[ thread ]</a>
+              <a href="subject.html#2981">[ subject ]</a>
+              <a href="author.html#2981">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  438e83976cbd12dde20511ea5d000620082fa066 (commit)
+      from  552b4c55574241d5bc2277c73cf24f02dd4a9feb (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 438e83976cbd12dde20511ea5d000620082fa066
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Jan 18 09:39:11 2011 +0100
+
+    - dont't overwrite firstboot.xml or autoconf.xml if they
+      exist as overlay files in the overlay root tree
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIConfigure.pm b/modules/KIWIConfigure.pm
+index 1e301c6..1ce0ed9 100644
+--- a/modules/KIWIConfigure.pm
++++ b/modules/KIWIConfigure.pm
+@@ -341,9 +341,14 @@ sub setupAutoYaST {
+ 		$kiwi -&gt; failed ();
+ 		return &quot;failed&quot;;
+ 	}
+-	qxx (
+-		&quot;cp $imageDesc/config-yast-autoyast.xml $root/$autodir/$autocnf 2&gt;&amp;1&quot;
+-	);
++	my $autosetup = &quot;$root/$autodir/$autocnf&quot;;
++	if ( -f $autosetup ) {
++		$kiwi -&gt; info (&quot;$autocnf file already exists, won't overwrite&quot;);
++	} else {
++		qxx (
++			&quot;cp $imageDesc/config-yast-autoyast.xml $autosetup 2&gt;&amp;1&quot;
++		);
++	}
+ 	if ( ! open (FD,&quot;&gt;$root/etc/install.inf&quot;)) {
+ 		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error (&quot;Failed to create install.inf: $!&quot;);
+@@ -392,13 +397,19 @@ sub setupFirstBootYaST {
+ 		return &quot;failed&quot;;
+ 	}
+ 	my $firstboot = &quot;$root/etc/YaST2/firstboot.xml&quot;;
+-	my $data = qxx (&quot;cp $imageDesc/config-yast-firstboot.xml $firstboot 2&gt;&amp;1&quot;);
+-	my $code = $? &gt;&gt; 8;
+-	if ($code != 0) {
+-		$kiwi -&gt; failed ();
+-		$kiwi -&gt; error  (&quot;Failed to copy config-yast-firstboot.xml: $data&quot;);
+-		$kiwi -&gt; failed ();
+-		return &quot;failed&quot;; 
++	if ( -f $firstboot ) {
++		$kiwi -&gt; info (&quot;firstboot.xml file already exists, won't overwrite&quot;);
++	} else {
++		my $data = qxx (
++			&quot;cp $imageDesc/config-yast-firstboot.xml $firstboot 2&gt;&amp;1&quot;
++		);
++		my $code = $? &gt;&gt; 8;
++		if ($code != 0) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Failed to copy config-yast-firstboot.xml: $data&quot;);
++			$kiwi -&gt; failed ();
++			return &quot;failed&quot;;
++		}
+ 	}
+ 	# /.../
+ 	# keep an existing /etc/sysconfig/firstboot or copy the template
+@@ -455,10 +466,10 @@ sub setupFirstBootYaST {
+ 			if (! -e &quot;$root/etc/init.d/$service&quot;) {
+ 				next;
+ 			}
+-			$data = qxx (
++			my $data = qxx (
+ 				&quot;chroot $root /sbin/insserv /etc/init.d/$service 2&gt;&amp;1&quot;
+ 			);
+-			$code = $? &gt;&gt; 8;
++			my $code = $? &gt;&gt; 8;
+ 			if ($code != 0) {
+ 				$kiwi -&gt; failed ();
+ 				$kiwi -&gt; error (&quot;Failed to activate service(s): $data&quot;);
+@@ -471,8 +482,8 @@ sub setupFirstBootYaST {
+ 		# current firstboot service works like yast second stage and
+ 		# is activated by touching /var/lib/YaST2/reconfig_system
+ 		# ----
+-		$data = qxx (&quot;touch $root/var/lib/YaST2/reconfig_system 2&gt;&amp;1&quot;);
+-		$code = $? &gt;&gt; 8;
++		my $data = qxx (&quot;touch $root/var/lib/YaST2/reconfig_system 2&gt;&amp;1&quot;);
++		my $code = $? &gt;&gt; 8;
+ 		if ($code != 0) {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error (&quot;Failed to activate firstboot: $data&quot;);
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002980.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 552b4c55574241d5bc2277c73cf24f02dd4a9feb
+</A></li>
+	<LI>Next message: <A HREF="002982.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. 9ba114b54a2e9d15c420397797fd3e039b50c695
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2981">[ date ]</a>
+              <a href="thread.html#2981">[ thread ]</a>
+              <a href="subject.html#2981">[ subject ]</a>
+              <a href="author.html#2981">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

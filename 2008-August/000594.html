@@ -1,0 +1,158 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1508 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1508%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200808010939.m719dB0H000322%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="000595.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1508 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1508%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200808010939.m719dB0H000322%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1508 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Aug  1 11:39:11 CEST 2008</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="000595.html">[Kiwi-devel] r1509 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#594">[ date ]</a>
+              <a href="thread.html#594">[ thread ]</a>
+              <a href="subject.html#594">[ subject ]</a>
+              <a href="author.html#594">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-08-01 11:39:07 +0200 (Fri, 01 Aug 2008)
+New Revision: 1508
+
+Modified:
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/modules/KIWILog.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- fixed shell exception on /dev/console (bnc #413474)
+- changed date calls in KIWILog to use localtime()
+
+
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-07-31 15:57:23 UTC (rev 1507)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-08-01 09:39:07 UTC (rev 1508)
+@@ -164,11 +164,7 @@
+ 	;;
+ 	&quot;shell&quot;)
+ 		Echo &quot;shellException: providing shell...&quot;
+-		if [ ! $ELOG_EXCEPTION = &quot;/dev/console&quot; ];then
+-			setctsid $ELOG_EXCEPTION /bin/bash
+-		else
+-			/bin/bash &lt; $ELOG_EXCEPTION &gt; /dev/console 2&gt;&amp;1
+-		fi
++		setctsid $ELOG_EXCEPTION /bin/bash -i
+ 	;;
+ 	*)
+ 		Echo &quot;unknownException...&quot;
+@@ -293,10 +289,8 @@
+ 	else
+ 		echo &quot;KIWI PreInit Log&quot; &gt;&gt;$ELOG_FILE
+ 	fi
+-	if [ ! $ELOG_CONSOLE = &quot;/dev/console&quot; ];then
+-		Echo &quot;Boot-Logging enabled on $ELOG_CONSOLE&quot;
+-		setctsid -f $ELOG_CONSOLE /bin/bash -c &quot;tail -f $ELOG_FILE&quot; &amp;
+-	fi
++	Echo &quot;Boot-Logging enabled on $ELOG_CONSOLE&quot;
++	setctsid -f $ELOG_CONSOLE /bin/bash -i -c &quot;tail -f $ELOG_FILE&quot; &amp;
+ 	exec 2&gt;&gt;$ELOG_FILE
+ 	if [ -f .profile ];then
+ 		echo &quot;KIWI .profile contents:&quot; 1&gt;&amp;2
+@@ -2665,9 +2659,9 @@
+ 	# /.../
+ 	# start a debugging shell on ELOG_BOOTSHELL
+ 	# ----
+-	if [ ! $ELOG_BOOTSHELL = &quot;/dev/console&quot; ];then
++	if [ -z &quot;$kiwistderr&quot; ];then
+ 		Echo &quot;Starting boot shell on $ELOG_BOOTSHELL&quot;
+-		setctsid -f $ELOG_BOOTSHELL /bin/bash
++		setctsid -f $ELOG_BOOTSHELL /bin/bash -i
+ 	fi
+ }
+ #======================================
+@@ -2682,7 +2676,7 @@
+ 		mount -t proc proc /proc
+ 		umountProc=1
+ 	fi
+-	if [ ! $ELOG_BOOTSHELL = &quot;/dev/console&quot; ];then
++	if [ -z &quot;$kiwistderr&quot; ];then
+ 		Echo &quot;Stopping boot shell&quot;
+ 		fuser -k $ELOG_BOOTSHELL &gt;/dev/null
+ 	fi
+
+Modified: kiwi-head/modules/KIWILog.pm
+===================================================================
+--- kiwi-head/modules/KIWILog.pm	2008-07-31 15:57:23 UTC (rev 1507)
++++ kiwi-head/modules/KIWILog.pm	2008-08-01 09:39:07 UTC (rev 1508)
+@@ -415,7 +415,12 @@
+ 	my $this  = shift;
+ 	my $level = shift;
+ 	my $date;
+-	$date = qx (LANG=POSIX /bin/date &quot;+%h-%d %H:%M:%S&quot;); chomp $date;
++	#$date = qx (LANG=POSIX /bin/date &quot;+%h-%d %H:%M:%S&quot;); chomp $date;
++	my @lt= localtime(time());
++	$date = sprintf (&quot;%s-%02d %02d:%02d:%02d&quot;,
++		(qw{Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec})[$lt[4]],
++		$lt[3], $lt[2], $lt[1], $lt[0]
++	);
+ 	$this-&gt;{date} = $date;
+ 	$this-&gt;{level}= $level;
+ 	$date .= &quot; &lt;$level&gt; : &quot;;
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-07-31 15:57:23 UTC (rev 1507)
++++ kiwi-head/rpm/kiwi.changes	2008-08-01 09:39:07 UTC (rev 1508)
+@@ -9,6 +9,7 @@
+   checks with SaTSolver whether the package exists in the
+   solvables or not. I also added the possibility to add
+   repositories while calling kiwi --migrate (bnc #412215)
++- changed date calls in KIWILog to use localtime()
+ 
+ -------------------------------------------------------------------
+ Tue Jul 29 18:03:24 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="000595.html">[Kiwi-devel] r1509 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#594">[ date ]</a>
+              <a href="thread.html#594">[ thread ]</a>
+              <a href="subject.html#594">[ subject ]</a>
+              <a href="author.html#594">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

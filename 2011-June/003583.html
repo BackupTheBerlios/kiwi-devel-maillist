@@ -1,0 +1,139 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c1900fd2dd66c44b36c2d2dded7a7baaccee2560
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20c1900fd2dd66c44b36c2d2dded7a7baaccee2560&In-Reply-To=%3C20110629172112.44364480F93%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003580.html">
+   <LINK REL="Next"  HREF="003584.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c1900fd2dd66c44b36c2d2dded7a7baaccee2560</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20c1900fd2dd66c44b36c2d2dded7a7baaccee2560&In-Reply-To=%3C20110629172112.44364480F93%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c1900fd2dd66c44b36c2d2dded7a7baaccee2560">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jun 29 19:21:11 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003580.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 91b496ff60318ce9b992586ca042979b2b38d327
+</A></li>
+        <LI>Next message: <A HREF="003584.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 14c42665a5c98826645337ca71ccb1932e27912f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3583">[ date ]</a>
+              <a href="thread.html#3583">[ thread ]</a>
+              <a href="subject.html#3583">[ subject ]</a>
+              <a href="author.html#3583">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  c1900fd2dd66c44b36c2d2dded7a7baaccee2560 (commit)
+       via  d1dc18ff78a7fab9ffb4321a39fdb1b6f5c1f052 (commit)
+      from  91b496ff60318ce9b992586ca042979b2b38d327 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit c1900fd2dd66c44b36c2d2dded7a7baaccee2560
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jun 29 19:17:51 2011 +0200
+
+    - fixed setupOverlay() in KIWIImage.pm to write back possible
+      XML changes into the overlay tree to stay persistent in the
+      cow file
+
+commit d1dc18ff78a7fab9ffb4321a39fdb1b6f5c1f052
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jun 29 14:34:23 2011 +0200
+
+    - fixed cleanup of KIWIBoot instances in KIWIImageCreator
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 23202ae..bc2d26f 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -444,12 +444,13 @@ sub checkAndSetupPrebuiltBootImage {
+ #------------------------------------------
+ sub setupOverlay {
+ 	# ...
+-	# mount the clicfs cache if the image is based on it
++	# mount the image cache if the image is based on it
+ 	# and register the overlay mount point as new imageTree
+ 	# ---
+ 	my $this = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $tree = $this-&gt;{imageTree};
++	my $xml  = $this-&gt;{xml};
+ 	$this-&gt;{overlay} = new KIWIOverlay ($kiwi,$tree);
+ 	if (! $this-&gt;{overlay}) {
+ 		return undef;
+@@ -458,6 +459,7 @@ sub setupOverlay {
+ 	if (! defined $this-&gt;{imageTree}) {
+ 		return undef;
+ 	}
++	$xml -&gt; writeXMLDescription ($this-&gt;{imageTree});
+ 	return $this;
+ }
+ 
+diff --git a/modules/KIWIImageCreator.pm b/modules/KIWIImageCreator.pm
+index 13bd60a..7dedb20 100644
+--- a/modules/KIWIImageCreator.pm
++++ b/modules/KIWIImageCreator.pm
+@@ -889,9 +889,9 @@ sub createImageDisk {
+ 	}
+ 	$this-&gt;{boot} = $boot;
+ 	if (! $boot -&gt; setupBootDisk($tdev)) {
+-		undef $boot;
+ 		return undef;
+ 	}
++	$boot -&gt; cleanLoop ();
+ 	undef $boot;
+ 	return 1;
+ }
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003580.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 91b496ff60318ce9b992586ca042979b2b38d327
+</A></li>
+	<LI>Next message: <A HREF="003584.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 14c42665a5c98826645337ca71ccb1932e27912f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3583">[ date ]</a>
+              <a href="thread.html#3583">[ thread ]</a>
+              <a href="subject.html#3583">[ subject ]</a>
+              <a href="author.html#3583">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

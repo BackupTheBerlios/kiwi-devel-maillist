@@ -1,0 +1,259 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 82a5b0d4f6d08ddcdb6e14e404bb77b3c73dc0a3
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2082a5b0d4f6d08ddcdb6e14e404bb77b3c73dc0a3&In-Reply-To=%3C201006231635.o5NGZeML004007%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002331.html">
+   <LINK REL="Next"  HREF="002330.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 82a5b0d4f6d08ddcdb6e14e404bb77b3c73dc0a3</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2082a5b0d4f6d08ddcdb6e14e404bb77b3c73dc0a3&In-Reply-To=%3C201006231635.o5NGZeML004007%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 82a5b0d4f6d08ddcdb6e14e404bb77b3c73dc0a3">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jun 23 18:35:40 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002331.html">[Kiwi-devel] pushing min gnome example to 11.3
+</A></li>
+        <LI>Next message: <A HREF="002330.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ffaf2232bd250b9caec474c20e30043f7f03648f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2329">[ date ]</a>
+              <a href="thread.html#2329">[ thread ]</a>
+              <a href="subject.html#2329">[ subject ]</a>
+              <a href="author.html#2329">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  82a5b0d4f6d08ddcdb6e14e404bb77b3c73dc0a3 (commit)
+       via  e8b8141d861d2c7f014ecfcbf9eefbc50621f075 (commit)
+      from  52dc2fd894dafc8783aac8835bce6d2502569a2f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 82a5b0d4f6d08ddcdb6e14e404bb77b3c73dc0a3
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jun 23 16:59:29 2010 +0200
+
+    - use cylinder based alignment with new parted version
+      2.2.x. This fixes the oem repartition code for systems
+      which uses parted &gt;= 2.2.x build on a parted 1.9.x build
+      system. Also removed unused functions: partedGetSectors
+      and partedStartCylinder
+
+commit e8b8141d861d2c7f014ecfcbf9eefbc50621f075
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jun 23 15:49:50 2010 +0200
+
+    - fixed &lt;image name=&quot;...&quot;/&gt; attribute validation, space
+      and / is not allowed for this attribute
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index c90b38f..6fce461 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -47,7 +47,10 @@ if [ -x /sbin/blogd ];then
+ 	test -z &quot;$CONSOLE&quot;            &amp;&amp; export CONSOLE=/dev/console
+ 	test -z &quot;$REDIRECT&quot;           &amp;&amp; export REDIRECT=/dev/tty1
+ fi
+-    
++if [ -z &quot;$PARTED_VERSION&quot; ];then
++	export PARTED_VER=$(parted -v | head -n 1 | cut -f4 -d&quot; &quot; | cut -f1-2 -d.)
++fi
++
+ #======================================
+ # Dialog
+ #--------------------------------------
+@@ -3022,23 +3025,6 @@ function partedGetPartitionID {
+ 		cut -f2 -d= | tr -d &quot;;&quot; | tr -d 0
+ }
+ #======================================
+-# partedGetSectors
+-#--------------------------------------
+-function partedGetSectors {
+-	# /.../
+-	# calculate start/end sector for given
+-	# sector size
+-	# ---
+-	p_start=$1
+-	if [ $p_start -gt 63 ];then
+-		p_start=`expr $p_start + 1`
+-	fi
+-	p_stopp=`expr $p_start + $2`
+-	if [ $p_stopp -gt $p_size ];then
+-		p_stopp=$p_size
+-	fi
+-}
+-#======================================
+ # partitionID
+ #--------------------------------------
+ function partitionID {
+@@ -5030,26 +5016,16 @@ function partedWrite {
+ 	# ----
+ 	local device=$1
+ 	local cmds=$2
+-	if ! parted -m $device unit cyl $cmds;then
++	local opts
++	if [ $PARTED_VER = &quot;2.2&quot; ];then
++		opts=&quot;-a cyl&quot;
++	fi
++	if ! parted $opts -m $device unit cyl $cmds;then
+ 		systemException &quot;Failed to create partition table&quot; &quot;reboot&quot;
+ 	fi
+ 	partedInit $device
+ }
+ #======================================
+-# partedStartCylinder
+-#--------------------------------------
+-function partedStartCylinder {
+-	# /.../
+-	# return start cylinder of given partition.
+-	# lowest cylinder number is 0
+-	# ----
+-	local part=$(($1 + 3))
+-	local IFS=&quot;&quot;
+-	local header=$(echo $partedOutput | head -n $part | tail -n 1)
+-	local ccount=$(echo $header | cut -f2 -d: | tr -d cyl)
+-	echo $ccount
+-}
+-#======================================
+ # partedEndCylinder
+ #--------------------------------------
+ function partedEndCylinder {
+diff --git a/modules/KIWISchema.rnc b/modules/KIWISchema.rnc
+index ab062a0..79a3534 100644
+--- a/modules/KIWISchema.rnc
++++ b/modules/KIWISchema.rnc
+@@ -33,6 +33,7 @@ db:info [
+ 
+ size-type = xsd:token {pattern = &quot;\d*|image&quot;}
+ volume-size-type = xsd:token {pattern = &quot;\d+|\d+M|\d+G&quot;}
++image-name = xsd:token {pattern = &quot;[^\s/]+&quot;}
+ 
+ #==========================================
+ # start with image description
+@@ -45,7 +46,7 @@ start =
+ # main block: &lt;image&gt;
+ #
+ div {
+-	k.image.name.attribute = k.name.attribute
++	k.image.name.attribute = k.imagename.attribute 
+ 	k.image.displayname.attribute = k.displayname.attribute
+ 	k.image.noNamespaceSchemaLocation.attribute =
+ 		## The location of the XSD Schema (not relevant for RELAX NG or DTD)
+@@ -163,6 +164,9 @@ k.dest.attribute        =
+ k.username.attribute    =
+ 	## A name of a user
+ 	attribute username { text }
++k.imagename.attribute   =
++	## An image name without / and spaces
++	attribute name { image-name }
+ 
+ #==========================================
+ # common element &lt;author&gt;
+diff --git a/modules/KIWISchema.rng b/modules/KIWISchema.rng
+index c71b3f5..f7cb756 100644
+--- a/modules/KIWISchema.rng
++++ b/modules/KIWISchema.rng
+@@ -37,6 +37,11 @@
+       &lt;param name=&quot;pattern&quot;&gt;\d+|\d+M|\d+G&lt;/param&gt;
+     &lt;/data&gt;
+   &lt;/define&gt;
++  &lt;define name=&quot;image-name&quot;&gt;
++    &lt;data type=&quot;token&quot;&gt;
++      &lt;param name=&quot;pattern&quot;&gt;[^\s/]+&lt;/param&gt;
++    &lt;/data&gt;
++  &lt;/define&gt;
+   &lt;!--
+     ==========================================
+     start with image description
+@@ -54,7 +59,7 @@
+   --&gt;
+   &lt;div&gt;
+     &lt;define name=&quot;k.image.name.attribute&quot;&gt;
+-      &lt;ref name=&quot;k.name.attribute&quot;/&gt;
++      &lt;ref name=&quot;k.imagename.attribute&quot;/&gt;
+     &lt;/define&gt;
+     &lt;define name=&quot;k.image.displayname.attribute&quot;&gt;
+       &lt;ref name=&quot;k.displayname.attribute&quot;/&gt;
+@@ -263,6 +268,12 @@ installation source from&lt;/a:documentation&gt;
+       &lt;a:documentation&gt;A name of a user&lt;/a:documentation&gt;
+     &lt;/attribute&gt;
+   &lt;/define&gt;
++  &lt;define name=&quot;k.imagename.attribute&quot;&gt;
++    &lt;attribute name=&quot;name&quot;&gt;
++      &lt;a:documentation&gt;An image name without / and spaces&lt;/a:documentation&gt;
++      &lt;ref name=&quot;image-name&quot;/&gt;
++    &lt;/attribute&gt;
++  &lt;/define&gt;
+   &lt;!--
+     ==========================================
+     common element &lt;author&gt;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index f2637f0..b879a35 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -15,6 +15,13 @@ Fri Jun 18 12:18:11 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+   * also added vmxboot and oemboot bootimages to be build
+     The code there will work as initrd for an s390 guest
+     within kvm
++- fixed &lt;image name=&quot;...&quot;/&gt; attribute validation, space
++  and / is not allowed for this attribute
++- use cylinder based alignment with new parted version
++  2.2.x. This fixes the oem repartition code for systems
++  which uses parted &gt;= 2.2.x build on a parted 1.9.x build
++  system. Also removed unused functions: partedGetSectors
++  and partedStartCylinder
+ 
+ -------------------------------------------------------------------
+ Mon Jun 14 11:10:15 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002331.html">[Kiwi-devel] pushing min gnome example to 11.3
+</A></li>
+	<LI>Next message: <A HREF="002330.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ffaf2232bd250b9caec474c20e30043f7f03648f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2329">[ date ]</a>
+              <a href="thread.html#2329">[ thread ]</a>
+              <a href="subject.html#2329">[ subject ]</a>
+              <a href="author.html#2329">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

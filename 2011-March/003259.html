@@ -1,0 +1,270 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9031f3ae6c4822752eed2af64e85a4d2952d1767
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%209031f3ae6c4822752eed2af64e85a4d2952d1767&In-Reply-To=%3C20110328152355.C25F6480A41%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003254.html">
+   <LINK REL="Next"  HREF="003262.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9031f3ae6c4822752eed2af64e85a4d2952d1767</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%209031f3ae6c4822752eed2af64e85a4d2952d1767&In-Reply-To=%3C20110328152355.C25F6480A41%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9031f3ae6c4822752eed2af64e85a4d2952d1767">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Mar 28 17:23:55 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003254.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9fd2ac1a1f7e3cb58aef3fc739be33a7cb99fc6a
+</A></li>
+        <LI>Next message: <A HREF="003262.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0cc08153a27779c62384338803ee4483301f41f1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3259">[ date ]</a>
+              <a href="thread.html#3259">[ thread ]</a>
+              <a href="subject.html#3259">[ subject ]</a>
+              <a href="author.html#3259">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  9031f3ae6c4822752eed2af64e85a4d2952d1767 (commit)
+      from  9fd2ac1a1f7e3cb58aef3fc739be33a7cb99fc6a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 9031f3ae6c4822752eed2af64e85a4d2952d1767
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Mar 28 17:21:31 2011 +0200
+
+    - added fixupOverlayFilesOwnership() function which handles
+      all files from the overlay root tree and the image archives.
+      The function changes the ownership of all that files to
+      root:root if they don't belong to a user in the passwd file.
+      files which belongs to passwd users are not touched and
+      therefore must be added with the correct owner:group setup
+      in the overlay tree and/or archive
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIRoot.pm b/modules/KIWIRoot.pm
+index af77248..e553cbc 100644
+--- a/modules/KIWIRoot.pm
++++ b/modules/KIWIRoot.pm
+@@ -21,6 +21,8 @@ package KIWIRoot;
+ use strict;
+ use Carp qw (cluck);
+ use File::Glob ':glob';
++use File::Find;
++use FileHandle;
+ use KIWIURL;
+ use KIWILog;
+ use KIWIManager;
+@@ -779,6 +781,7 @@ sub installArchives {
+ 	my $this = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $xml  = $this-&gt;{xml};
++	my $root = $this-&gt;{root};
+ 	my $manager = $this-&gt;{manager};
+ 	#==========================================
+ 	# get image archive list
+@@ -791,6 +794,120 @@ sub installArchives {
+ 	if (! $manager -&gt; setupArchives($this-&gt;{imageDesc}<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">, at archives</A>)) {
+ 		return undef;
+ 	}
++	#==========================================
++	# Check ownership of archive files
++	#------------------------------------------
++	if (-f &quot;$root/bootincluded_archives.filelist&quot;) {
++		$this -&gt; fixupOverlayFilesOwnership (&quot;bootincluded_archives.filelist&quot;);
++	}
++	return $this;
++}
++
++#==========================================
++# fixupOverlayFilesOwnership
++#------------------------------------------
++sub fixupOverlayFilesOwnership {
++	# ...
++	# search for files and directories in the given path or
++	# table of contents (toc) file and make sure those files
++	# get the right ownership assigned
++	# ---
++	my $this  = shift;
++	my $path  = shift;
++	my $kiwi  = $this-&gt;{kiwi};
++	my $root  = $this-&gt;{root};
++	my $item  = $root.&quot;/&quot;.$path;
++	my $prefix= &quot;FixupOwner&quot;;
++	my @files = ();
++	my %except= ();
++	if (-d $item) {
++		#==========================================
++		# got dir, search files there
++		#------------------------------------------
++		sub generateWanted {
++			my $result = shift;
++			my $base   = shift;
++			return sub {
++				my @names = ($File::Find::name,$File::Find::dir);
++				foreach my $name (@names) {
++					$name =~ s/^$base//; $name =~ s/^\///;
++					push @{$result},$name;
++				}
++			}
++		}
++		my $wref = generateWanted (\@files,$root);
++		find ({ wanted =&gt; $wref, follow =&gt; 0 }, $item);
++	} elsif (-f $item) {
++		#==========================================
++		# got archive, use archive toc file
++		#------------------------------------------
++		my $fd = new FileHandle;
++		if ($fd -&gt; open ($item)) {
++			while (my $line = &lt;$fd&gt;) {
++				chomp $line; $line =~ s/^\///;
++				push (@files,$line);
++			}
++			$fd -&gt; close();
++		} else {
++			$kiwi -&gt; warning (&quot;$prefix: Failed to open $item: $!&quot;);
++			$kiwi -&gt; skipped ();
++			return undef;
++		}
++	} else {
++		$kiwi -&gt; warning (&quot;$prefix: No such file or directory: $item&quot;);
++		$kiwi -&gt; skipped ();
++		return undef;
++	}
++	#==========================================
++	# check file list
++	#------------------------------------------
++	if (! @files) {
++		$kiwi -&gt; warning (&quot;$prefix: No files found in: $item&quot;);
++		$kiwi -&gt; skipped ();
++		return undef;
++	}
++	#==========================================
++	# create passwd exception directories
++	#------------------------------------------
++	my $fd = new FileHandle;
++	if (! $fd -&gt; open ($root.&quot;/etc/passwd&quot;)) {
++		$kiwi -&gt; warning (&quot;$prefix: No passwd file found in: $root&quot;);
++		$kiwi -&gt; skipped ();
++		return undef;
++	}
++	while (my $line = &lt;$fd&gt;) {
++		chomp $line;
++		my $name = (split (/:/,$line))[5];
++		$name =~ s/\///;
++		if ($name =~ /^(bin|sbin|root)/) {
++			next;
++		}
++		$except{$name} = 1;
++	}
++	$fd -&gt; close();
++	#==========================================
++	# walk through all files
++	#------------------------------------------
++	foreach my $file (@files) {
++		my $ok = 1;
++		foreach my $exception (keys %except) {
++			if ($file =~ /$exception/) {
++				$kiwi -&gt; loginfo (
++					&quot;$prefix: $file belongs to passwd, leaving it untouched&quot;
++				);
++				$ok = 0; last;
++			}
++		}
++		next if ! $ok;
++		my $data = qxx (&quot;chroot $root chown -c root:root $file 2&gt;&amp;1&quot;);
++		my $code = $? &gt;&gt; 8;
++		if ($code != 0) {
++			$kiwi -&gt; warning (
++				&quot;$prefix: Failed to fixup ownership of $root/$file: $data&quot;
++			);
++			$kiwi -&gt; skipped ();
++		}
++	}
+ 	return $this;
+ }
+ 
+@@ -842,6 +959,9 @@ sub setup {
+ 	#----------------------------------------
+ 	if ((-d &quot;$imageDesc/root&quot;) &amp;&amp; (bsd_glob($imageDesc.'/root/*'))) {
+ 		$kiwi -&gt; info (&quot;Copying user defined files to image tree&quot;);
++		#========================================
++		# copy user defined files to tmproot
++		#----------------------------------------
+ 		mkdir $root.&quot;/tmproot&quot;;
+ 		if ((-l &quot;$imageDesc/root/linuxrc&quot;) || (-l &quot;$imageDesc/root/include&quot;)) {
+ 			$data = qxx (
+@@ -858,6 +978,13 @@ sub setup {
+ 			$kiwi -&gt; info   ($data);
+ 			return undef;
+ 		}
++		#========================================
++		# check tmproot ownership
++		#----------------------------------------
++		$this -&gt; fixupOverlayFilesOwnership (&quot;tmproot&quot;);
++		#========================================
++		# copy tmproot to real root (tar)
++		#----------------------------------------
+ 		$data = qxx (&quot;tar -cf - -C $root/tmproot . | tar -x -C $root 2&gt;&amp;1&quot;);
+ 		$code = $? &gt;&gt; 8;
+ 		if ($code != 0) {
+@@ -865,6 +992,9 @@ sub setup {
+ 			$kiwi -&gt; info   ($data);
+ 			return undef;
+ 		}
++		#========================================
++		# cleanup tmproot
++		#----------------------------------------
+ 		qxx (&quot;rm -rf $root/tmproot&quot;);
+ 		$kiwi -&gt; done();
+ 	}
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003254.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9fd2ac1a1f7e3cb58aef3fc739be33a7cb99fc6a
+</A></li>
+	<LI>Next message: <A HREF="003262.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0cc08153a27779c62384338803ee4483301f41f1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3259">[ date ]</a>
+              <a href="thread.html#3259">[ thread ]</a>
+              <a href="subject.html#3259">[ subject ]</a>
+              <a href="author.html#3259">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,128 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9219e1d114e23c18d934094aaade0ac84f90486a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%209219e1d114e23c18d934094aaade0ac84f90486a&In-Reply-To=%3C20110208155145.3C4A048102F%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003039.html">
+   <LINK REL="Next"  HREF="003041.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9219e1d114e23c18d934094aaade0ac84f90486a</H1>
+    <B>adrians at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%209219e1d114e23c18d934094aaade0ac84f90486a&In-Reply-To=%3C20110208155145.3C4A048102F%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9219e1d114e23c18d934094aaade0ac84f90486a">adrians at mail.berlios.de
+       </A><BR>
+    <I>Tue Feb  8 16:51:44 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003039.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2ecb7164dc5a659c74f2dc1efefec1c4cd93f813
+</A></li>
+        <LI>Next message: <A HREF="003041.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 9ba793edf8eca9306b64c8f0e037db6e6760bc7d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3040">[ date ]</a>
+              <a href="thread.html#3040">[ thread ]</a>
+              <a href="subject.html#3040">[ subject ]</a>
+              <a href="author.html#3040">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  9219e1d114e23c18d934094aaade0ac84f90486a (commit)
+      from  2ecb7164dc5a659c74f2dc1efefec1c4cd93f813 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 9219e1d114e23c18d934094aaade0ac84f90486a
+Author: Adrian Schr&#195;&#182;ter &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">adrian at suse.de</A>&gt;
+Date:   Tue Feb 8 16:50:33 2011 +0100
+
+    - fix arch= statement for real for multi arch medias, use only the subset
+      of global required archs and filtered one by arch= statement
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWICollect.pm b/modules/KIWICollect.pm
+index 5b4c5c4..f487aa5 100644
+--- a/modules/KIWICollect.pm
++++ b/modules/KIWICollect.pm
+@@ -1484,20 +1484,21 @@ sub getArchList
+     return @archs if ($packOptions-&gt;{'onlyarch'} eq &quot;skipit&quot;); # convinience for old hack
+   };
+ 
++  my @archlist = $this-&gt;{m_archlist}-&gt;headList();
+   if(defined($packOptions-&gt;{'arch'})) {
+     # Check if this is a rule for this platform
+     $packOptions-&gt;{'arch'} =~ s{,\s*,}{,}g;
+     $packOptions-&gt;{'arch'} =~ s{,\s*}{,}g;
+     $packOptions-&gt;{'arch'} =~ s{,\s*$}{};
+     $packOptions-&gt;{'arch'} =~ s{^\s*,}{};
+-    my $found = 0;
++    @archlist = ();
+     foreach my $plattform (split(/,\s*/, $packOptions-&gt;{'arch'})) {
+       foreach my $reqArch ($this-&gt;{m_archlist}-&gt;headList()) {
+-        $found = 1 if ( $reqArch eq $plattform );
++        push @archlist, $reqArch if ( $reqArch eq $plattform );
+       };
+     };
+-    if ( &quot;$found&quot; eq &quot;0&quot; ) {
+-      # not our plattform
++    if ( @archlist == 0 ) {
++      # our required plattforms were not found at all, return empty list
+       return @archs;
+     }
+   }
+@@ -1516,7 +1517,7 @@ sub getArchList
+   }
+ 
+   # set required archs
+-  push @archs, $this-&gt;{m_archlist}-&gt;headList();
++  push @archs, @archlist;
+ 
+   if(defined($packOptions-&gt;{'addarch'})) {
+     if(not(grep($packOptions-&gt;{'addarch'} eq $_, @archs))) {
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003039.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2ecb7164dc5a659c74f2dc1efefec1c4cd93f813
+</A></li>
+	<LI>Next message: <A HREF="003041.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 9ba793edf8eca9306b64c8f0e037db6e6760bc7d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3040">[ date ]</a>
+              <a href="thread.html#3040">[ thread ]</a>
+              <a href="subject.html#3040">[ subject ]</a>
+              <a href="author.html#3040">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

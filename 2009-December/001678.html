@@ -1,0 +1,196 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b1dd986ebc878b61198533a340979493f9e22b80
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b1dd986ebc878b61198533a340979493f9e22b80&In-Reply-To=%3C200912101214.nBACEVQp017416%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001680.html">
+   <LINK REL="Next"  HREF="001681.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b1dd986ebc878b61198533a340979493f9e22b80</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b1dd986ebc878b61198533a340979493f9e22b80&In-Reply-To=%3C200912101214.nBACEVQp017416%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b1dd986ebc878b61198533a340979493f9e22b80">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Dec 10 13:14:31 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001680.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. f8e3c144fd44c3b76c5a87af0e610bdef53854b0
+</A></li>
+        <LI>Next message: <A HREF="001681.html">[Kiwi-devel] Supporting plain text passwords in config.xml
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1678">[ date ]</a>
+              <a href="thread.html#1678">[ thread ]</a>
+              <a href="subject.html#1678">[ subject ]</a>
+              <a href="author.html#1678">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  b1dd986ebc878b61198533a340979493f9e22b80 (commit)
+      from  438594e1d0daab0efb734fefc14aef2f07c9ee14 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b1dd986ebc878b61198533a340979493f9e22b80
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Dec 10 13:14:21 2009 +0100
+
+    - use blowfish extension for password creation (bnc #562105)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 15ed5c4..158809f 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -40,6 +40,8 @@ use KIWIMigrate;
+ use KIWIOverlay;
+ use KIWIQX;
+ use KIWITest;
++use Crypt::Blowfish;
++use Crypt::CBC;
+ 
+ #============================================
+ # Globals (Version)
+@@ -196,7 +198,7 @@ our $PackageManager;        # package manager to use for this image
+ our $FSBlockSize;           # filesystem block size
+ our $FSInodeSize;           # filesystem inode size
+ our $FSJournalSize;         # filesystem journal size
+-our $FSMaxMountCount;       # filesystem (ext2-4) max mount count between fs checks
++our $FSMaxMountCount;       # filesystem (ext2-4) max mount count between checks
+ our $FSCheckInterval;       # filesystem (ext2-4) max interval between fs checks
+ our $FSInodeRatio;          # filesystem bytes/inode ratio
+ our $Verbosity = 0;         # control the verbosity level
+@@ -1233,13 +1235,6 @@ sub main {
+ 		$boot -&gt; cleanTmp();
+ 		$code = kiwiExit (0); return $code;
+ 	}
+-
+-	#==========================================
+-	# Create crypted password
+-	#------------------------------------------
+-	if (defined $CreatePassword) {
+-		createPassword();
+-	}
+ 	return 1;
+ }
+ 
+@@ -1345,6 +1340,12 @@ sub init {
+ 	if (! defined $FSInodeRatio) {
+ 		$FSInodeRatio = 16384;
+ 	}
++	#==========================================
++	# non root task: Create crypted password
++	#------------------------------------------
++	if (defined $CreatePassword) {
++		createPassword();
++	}
+ 	#========================================
+ 	# non root task: create inst source
+ 	#----------------------------------------
+@@ -2175,16 +2176,19 @@ sub version {
+ #------------------------------------------
+ sub createPassword {
+ 	# ...
+-	# Create a crypted password which can be used in the xml descr.
+-	# users sections. The crypt() call requires root rights because
+-	# dm-crypt is used to access the crypto pool
++	# Create a Blowfish encrypted password which can be used in the
++	# xml description users sections.
+ 	# ----
+ 	if (! defined $kiwi) {
+ 		$kiwi = new KIWILog(&quot;tiny&quot;);
+ 	}
+ 	my $word2 = 2;
+ 	my $word1 = 1;
+-	my $salt  = (getpwuid ($&lt;))[1];
++	my $key   = pack(&quot;H16&quot;, &quot;0123456789ABCDEF&quot;);
++	my $bfish = new Crypt::Blowfish $key;
++	my $cipher= Crypt::CBC -&gt; new (
++		-cipher =&gt; $bfish
++	);
+ 	while ($word1 ne $word2) {
+ 		$kiwi -&gt; info (&quot;Enter Password: &quot;);
+ 		system &quot;stty -echo&quot;;
+@@ -2202,8 +2206,8 @@ sub createPassword {
+ 		}
+ 	}
+ 	$kiwi -&gt; done ();
+-	my $pwd = crypt ($word1, $salt);
+-	$kiwi -&gt; info (&quot;Your password:\n\t$pwd\n&quot;);
++	my $pwd = $cipher -&gt; encrypt_hex($word1);
++	$kiwi -&gt; info (&quot;Your password (Blowfish):\n\t$pwd\n&quot;);
+ 	my $code = kiwiExit (0); return $code;
+ }
+ 
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 3acc70a..dbd1e96 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -2,6 +2,7 @@
+ Wed Dec  9 10:30:44 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.85
++- use blowfish extension for password creation (bnc #562105)
+ - fixed user/group setup for multiple users (bnc #561749)
+ - hybridpersistent key added. Patch by Uwe Gansert &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ug at novell.com</A>&gt;
+   Thanks Uwe (bnc #557100)
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index 12489f4..7146774 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -41,6 +41,7 @@ Requires:       squashfs
+ Requires:       perl = %{perl_version}
+ Requires:       perl-XML-LibXML perl-libwww-perl screen coreutils
+ Requires:       perl-XML-LibXML-Common perl-XML-SAX perl-Config-IniFiles
++Requires:       perl-Crypt-CBC perl-Crypt-Blowfish
+ Requires:       kiwi-tools libxslt checkmedia
+ %ifarch %ix86 x86_64
+ Requires:       master-boot-code
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001680.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. f8e3c144fd44c3b76c5a87af0e610bdef53854b0
+</A></li>
+	<LI>Next message: <A HREF="001681.html">[Kiwi-devel] Supporting plain text passwords in config.xml
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1678">[ date ]</a>
+              <a href="thread.html#1678">[ thread ]</a>
+              <a href="subject.html#1678">[ subject ]</a>
+              <a href="author.html#1678">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

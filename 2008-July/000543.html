@@ -1,0 +1,353 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1458 - in kiwi-head: . doc/LaTex modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1458%20-%20in%20kiwi-head%3A%20.%20doc/LaTex%20modules%20rpm&In-Reply-To=%3C200807151319.m6FDJjcw011449%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000542.html">
+   <LINK REL="Next"  HREF="000544.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1458 - in kiwi-head: . doc/LaTex modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1458%20-%20in%20kiwi-head%3A%20.%20doc/LaTex%20modules%20rpm&In-Reply-To=%3C200807151319.m6FDJjcw011449%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1458 - in kiwi-head: . doc/LaTex modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jul 15 15:19:45 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000542.html">[Kiwi-devel] r1457 - in kiwi-head: doc doc/LaTex doc/schema modules	rpm
+</A></li>
+        <LI>Next message: <A HREF="000544.html">[Kiwi-devel] r1459 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#543">[ date ]</a>
+              <a href="thread.html#543">[ thread ]</a>
+              <a href="subject.html#543">[ subject ]</a>
+              <a href="author.html#543">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-07-15 15:19:32 +0200 (Tue, 15 Jul 2008)
+New Revision: 1458
+
+Modified:
+   kiwi-head/doc/LaTex/ec2.tex
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIImage.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- allow creation of Amazon aki/ari image with the ec2 type (bnc #367138)
+
+
+
+Modified: kiwi-head/doc/LaTex/ec2.tex
+===================================================================
+--- kiwi-head/doc/LaTex/ec2.tex	2008-07-14 15:37:45 UTC (rev 1457)
++++ kiwi-head/doc/LaTex/ec2.tex	2008-07-15 13:19:32 UTC (rev 1458)
+@@ -3,7 +3,7 @@
+ \label{chapter:ec2}
+ \minitoc
+ 
+-% &lt;type ec2accountnr=&quot;720220196365&quot; ec2privatekeyfile=&quot;/suse/ms/.ec2/pk-cambrian-aws.pem&quot; ec2certfile=&quot;/suse/ms/.ec2/cert-cambrian-aws.pem&quot;&gt;ec2&lt;/type&gt;
++% &lt;type ec2accountnr=&quot;720220196365&quot; ec2privatekeyfile=&quot;/suse/ms/.ec2/pk-cambrian-aws.pem&quot; ec2certfile=&quot;/suse/ms/.ec2/cert-cambrian-aws.pem&quot; boot=&quot;xenboot/suse-11.0&quot;&gt;ec2&lt;/type&gt;
+ 
+ % ec2privatekeyfile: AWS user's PEM encoded RSA private key file
+ % ec2accountnr: The user's EC2 user ID (Note: AWS account number, NOT Access Key ID)
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-07-14 15:37:45 UTC (rev 1457)
++++ kiwi-head/kiwi.pl	2008-07-15 13:19:32 UTC (rev 1458)
+@@ -718,7 +718,7 @@
+ 				last SWITCH;
+ 			};
+ 			/^ec2/      &amp;&amp; do {
+-				$ok = $image -&gt; createImageEC2 ();
++				$ok = $image -&gt; createImageEC2 ( $para );
+ 				last SWITCH;
+ 			};
+ 			$kiwi -&gt; error  (&quot;Unsupported type: $type{type}&quot;);
+@@ -1812,6 +1812,12 @@
+ 			$para = $type{filesystem}.&quot;:&quot;.$type{boot};
+ 			last SWITCH;
+ 		};
++		/^ec2/ &amp;&amp; do {
++			if (defined $type{boot}) {
++				$para = $type{boot};
++			}
++			last SWITCH;
++		};
+ 	}
+ 	return $para;
+ }
+
+Modified: kiwi-head/modules/KIWIImage.pm
+===================================================================
+--- kiwi-head/modules/KIWIImage.pm	2008-07-14 15:37:45 UTC (rev 1457)
++++ kiwi-head/modules/KIWIImage.pm	2008-07-15 13:19:32 UTC (rev 1458)
+@@ -195,15 +195,21 @@
+ 	# kiwi image
+ 	# ---
+ 	my $this      = shift;
++	my $boot      = shift;
+ 	my $imageTree = $this-&gt;{imageTree};
+ 	my $imageDest = $this-&gt;{imageDest};
+-	my $xml       = $this-&gt;{xml};
++	my $baseSystem= $this-&gt;{baseSystem};
++	my $sxml      = $this-&gt;{xml};
+ 	my $kiwi      = $this-&gt;{kiwi};
++	my $type;
++	my $plinux;
++	my $pinitrd;
+ 	#==========================================
+ 	# Check AWS account information
+ 	#------------------------------------------
+ 	my $arch = qxx (&quot;uname -m&quot;); chomp ( $arch );
+-	my %type = %{$xml-&gt;getImageTypeAndAttributes()};
++	my %type = %{$sxml-&gt;getImageTypeAndAttributes()};
++	my $pblt = $type{checkprebuilt};
+ 	if (! defined $type{AWSAccountNr}) {
+ 		$kiwi -&gt; error  (&quot;Missing AWS account number&quot;);
+ 		$kiwi -&gt; failed ();
+@@ -262,9 +268,9 @@
+ 	my $ca = $type{EC2CertFile};
+ 	my $nr = $type{AWSAccountNr};
+ 	my $fi = $imageDest.&quot;/&quot;.$name;
+-	my $to = $imageDest;
++	my $amiopts = &quot;-i $fi -k $pk -c $ca -u $nr -p $name.ami&quot;;
+ 	my $data = qxx (
+-		&quot;ec2-bundle-image -i $fi -k $pk -c $ca -u $nr -d $to -r $arch 2&gt;&amp;1&quot;
++		&quot;ec2-bundle-image $amiopts -d $imageDest -r $arch 2&gt;&amp;1&quot;
+ 	);
+ 	my $code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+@@ -274,6 +280,166 @@
+ 		return undef;
+ 	}
+ 	$kiwi -&gt; done();
++	#==========================================
++	# build boot image only if specified
++	#------------------------------------------
++	if (! defined $boot) {
++		return $this;
++	}
++	#==========================================
++	# Prepare and Create boot image
++	#------------------------------------------
++	$imageTree = $this-&gt;{imageTree};
++	$kiwi -&gt; info (&quot;Creating boot image: $boot...\n&quot;);
++	my $Prepare = $imageTree.&quot;/image&quot;;
++	my $xml = new KIWIXML ( $kiwi,$Prepare );
++	if (! defined $xml) {
++		return undef;
++	}
++	my $tmpdir = qxx (&quot;mktemp -q -d /tmp/kiwi-ec2boot.XXXXXX&quot;); chomp $tmpdir;
++	my $result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; error  (&quot;Couldn't create tmp dir: $tmpdir: $!&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	$main::Survive  = &quot;yes&quot;;
++	$main::RootTree = &quot;$tmpdir/kiwi-ec2boot-$$&quot;;
++	$main::Prepare  = $boot;
++	$main::BaseRoot = $type{baseroot};
++	if (defined $main::BaseRoot) {
++		if (($main::BaseRoot !~ /^\//) &amp;&amp; (! -d $main::BaseRoot)) {
++			$main::BaseRoot = $main::System.&quot;/&quot;.$main::BaseRoot;
++		}
++	}
++	if (($main::Prepare !~ /^\//) &amp;&amp; (! -d $main::Prepare)) {
++		$main::Prepare = $main::System.&quot;/&quot;.$main::Prepare;
++	}
++	if ($type{bootprofile}) {
++		@main::Profiles = split (/,/,$type{bootprofile});
++	}
++	$main::ForeignRepo{&quot;xmlnode&quot;} = $xml -&gt; getForeignNodeList();
++	$main::ForeignRepo{&quot;packagemanager&quot;} = $xml -&gt; getPackageManager();
++	$main::ForeignRepo{&quot;locale&quot;}  = $xml -&gt; getLocale();
++	$main::ForeignRepo{&quot;prepare&quot;} = $main::Prepare;
++	$main::ForeignRepo{&quot;create&quot;}  = $main::Create;
++	$main::Create = $main::RootTree;
++	$xml = new KIWIXML ( $kiwi,$main::Prepare );
++	if (! defined $xml) {
++		return undef;
++	}
++	my $iname = $xml -&gt; getImageName();
++	undef $main::SetImageType;
++	$kiwi -&gt; info (&quot;Checking for pre-built boot image&quot;);
++	if ((! $pblt) || ($pblt eq &quot;false&quot;) || ($pblt eq &quot;0&quot;)) {
++		#==========================================
++		# don't want a prebuilt boot image
++		#------------------------------------------
++		$kiwi -&gt; notset();
++		$pblt = 0;
++	} else {
++		#==========================================
++		# check if a prebuilt boot image exists
++		#------------------------------------------
++		my $lookup = $main::Prepare.&quot;-prebuilt&quot;;
++		if (defined $main::PrebuiltBootImage) {
++			$lookup = $main::PrebuiltBootImage;
++		}
++		$pinitrd = glob (&quot;$lookup/$iname*$arch*.gz&quot;);
++		$plinux  = glob (&quot;$lookup/$iname*$arch*.kernel&quot;);
++		if ((! -f $pinitrd) || (! -f $plinux)) {
++			$kiwi -&gt; skipped();
++			$kiwi -&gt; info (&quot;Cant't find pre-built boot image in $lookup&quot;);
++			$kiwi -&gt; skipped();
++			$pblt = 0;
++		} else {
++			$kiwi -&gt; done();
++			$kiwi -&gt; info (&quot;Extracting pre-built boot image&quot;);
++			$data = qxx (&quot;mkdir -p $main::Create&quot;);
++			$data = qxx (
++				&quot;$main::Gzip -cd $pinitrd|(cd $main::Create &amp;&amp; cpio -di 2&gt;&amp;1)&quot;
++			);
++			$code = $? &gt;&gt; 8;
++			if ($code != 0) {
++				$kiwi -&gt; failed();
++				$kiwi -&gt; error (&quot;Can't extract pre-built boot image: $data&quot;);
++				$kiwi -&gt; failed();
++				$pblt = 0;
++			} else {
++				$kiwi -&gt; done();
++				$pblt = 1;
++			}
++		}
++	}
++	if (! $pblt) {
++		#==========================================
++		# build the split boot image
++		#------------------------------------------
++		undef @main::AddPackage;
++		undef $main::Upgrade;
++		if (! defined main::main()) {
++			$main::Survive = &quot;default&quot;;
++			if (! -d $main::RootTree.$baseSystem) {
++				qxx (&quot;rm -rf $main::RootTree&quot;);
++				qxx (&quot;rm -rf $tmpdir&quot;);
++			}
++			return undef;
++		}
++	}
++	#==========================================
++	# remove tmpdir with boot tree
++	#------------------------------------------
++	$main::Survive = &quot;default&quot;;
++	if (! -d $main::RootTree.$baseSystem) {
++		qxx (&quot;rm -rf $main::RootTree&quot;);
++		qxx (&quot;rm -rf $tmpdir&quot;);
++	}
++	#==========================================
++	# Include splash screen to initrd
++	#------------------------------------------
++	my $kernel = $main::Destination.&quot;/&quot;.$main::ImageName.&quot;.kernel&quot;;
++	my $initrd = $main::Destination.&quot;/&quot;.$main::ImageName.&quot;.gz&quot;;
++	if (! -f $initrd) {
++		$initrd = $main::Destination.&quot;/&quot;.$main::ImageName;
++	}
++	my $kboot  = new KIWIBoot ($kiwi,$initrd);
++	if (! defined $kboot) {
++		return undef;
++	}
++	$kboot -&gt; setupSplash();
++	$kboot -&gt; cleanTmp();
++	#==========================================
++	# call ec2-bundle-ramdisk (Amazon toolkit)
++	#------------------------------------------
++	$kiwi -&gt; info (&quot;Creating EC2 bundle (ramdisk)...&quot;);
++	my $ariopts = &quot;-i $initrd -k $pk -c $ca -u $nr -p $main::ImageName.ari&quot;;
++	$data = qxx (
++		&quot;ec2-bundle-ramdisk $ariopts -d $imageDest -r $arch 2&gt;&amp;1&quot;
++	);
++	$code = $? &gt;&gt; 8;
++	if ($code != 0) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;ec2-bundle-ramdisk: $data&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	$kiwi -&gt; done();
++	#==========================================
++	# call ec2-bundle-kernel (Amazon toolkit)
++	#------------------------------------------
++	$kiwi -&gt; info (&quot;Creating EC2 bundle (kernel)...&quot;);
++	my $akiopts = &quot;-K $kernel -k $pk -c $ca -u $nr -p $main::ImageName.aki&quot;;
++	$data = qxx (
++		&quot;ec2-bundle-kernel $akiopts -d $imageDest -r $arch 2&gt;&amp;1&quot;
++	);
++	$code = $? &gt;&gt; 8;
++	if ($code != 0) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;ec2-bundle-kernel: $data&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	$kiwi -&gt; done();
+ 	return $this;
+ }
+ 
+@@ -2138,10 +2304,10 @@
+ 	$main::ForeignRepo{&quot;xmlnode&quot;} = $xml -&gt; getForeignNodeList();
+ 	$main::ForeignRepo{&quot;packagemanager&quot;} = $xml -&gt; getPackageManager();
+ 	$main::ForeignRepo{&quot;oem-swap&quot;}       = $xml -&gt; getOEMSwap();
+-    $main::ForeignRepo{&quot;oem-swapsize&quot;}   = $xml -&gt; getOEMSwapSize();
+-    $main::ForeignRepo{&quot;oem-systemsize&quot;} = $xml -&gt; getOEMSystemSize();
+-    $main::ForeignRepo{&quot;oem-home&quot;}       = $xml -&gt; getOEMHome();
+-    $main::ForeignRepo{&quot;oem-boot-title&quot;} = $xml -&gt; getOEMBootTitle();
++	$main::ForeignRepo{&quot;oem-swapsize&quot;}   = $xml -&gt; getOEMSwapSize();
++	$main::ForeignRepo{&quot;oem-systemsize&quot;} = $xml -&gt; getOEMSystemSize();
++	$main::ForeignRepo{&quot;oem-home&quot;}       = $xml -&gt; getOEMHome();
++	$main::ForeignRepo{&quot;oem-boot-title&quot;} = $xml -&gt; getOEMBootTitle();
+ 	$main::ForeignRepo{&quot;oem-reboot&quot;}     = $xml -&gt; getOEMReboot();
+ 	$main::ForeignRepo{&quot;oem-recovery&quot;}   = $xml -&gt; getOEMRecovery();
+ 	$main::ForeignRepo{&quot;locale&quot;}  = $xml -&gt; getLocale();
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-07-14 15:37:45 UTC (rev 1457)
++++ kiwi-head/rpm/kiwi.changes	2008-07-15 13:19:32 UTC (rev 1458)
+@@ -4,6 +4,7 @@
+ - v2.58
+ - check for DHCPSID value too (bnc #408668)
+ - allow multiple preferences sections in config.xml (bnc #407981)
++- allow creation of Amazon aki/ari image with the ec2 type (bnc #367138)
+ - fixed importBranding for usbboot, it should be called
+   at first boot only and allow users to change their boot
+   data persistently
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000542.html">[Kiwi-devel] r1457 - in kiwi-head: doc doc/LaTex doc/schema modules	rpm
+</A></li>
+	<LI>Next message: <A HREF="000544.html">[Kiwi-devel] r1459 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#543">[ date ]</a>
+              <a href="thread.html#543">[ thread ]</a>
+              <a href="subject.html#543">[ subject ]</a>
+              <a href="author.html#543">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

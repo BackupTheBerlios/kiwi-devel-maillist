@@ -1,0 +1,283 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1671 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1671%20-%20kiwi-head/modules&In-Reply-To=%3C200810231708.m9NH8b9D004716%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000762.html">
+   <LINK REL="Next"  HREF="000764.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1671 - kiwi-head/modules</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1671%20-%20kiwi-head/modules&In-Reply-To=%3C200810231708.m9NH8b9D004716%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1671 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Thu Oct 23 19:08:37 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000762.html">[Kiwi-devel] r1670 - kiwi-head/modules
+</A></li>
+        <LI>Next message: <A HREF="000764.html">[Kiwi-devel] r1672 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#763">[ date ]</a>
+              <a href="thread.html#763">[ thread ]</a>
+              <a href="subject.html#763">[ subject ]</a>
+              <a href="author.html#763">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2008-10-23 19:08:36 +0200 (Thu, 23 Oct 2008)
+New Revision: 1671
+
+Modified:
+   kiwi-head/modules/KIWICollect.pm
+Log:
+- fixed order of metadata creation
+- fixed return value of createBootPackageLinks
+
+
+Modified: kiwi-head/modules/KIWICollect.pm
+===================================================================
+--- kiwi-head/modules/KIWICollect.pm	2008-10-23 13:42:41 UTC (rev 1670)
++++ kiwi-head/modules/KIWICollect.pm	2008-10-23 17:08:36 UTC (rev 1671)
+@@ -1684,6 +1684,31 @@
+ ### ALTLASTEN ###
+ ### TODO more plugins
+ 
++# moved to beginnig after diffing with autobuild:
++  ## STEP 11: ChangeLog file
++  $this-&gt;{m_logger}-&gt;info(&quot;[I] Running mk_changelog for base directory&quot;);
++  my $mk_cl = &quot;/usr/bin/mk_changelog&quot;;
++  if(! (-f $mk_cl or -x $mk_cl)) {
++    $this-&gt;{m_logger}-&gt;warning(&quot;[W] [createMetadata] excutable `$mk_cl` not found. Maybe package `inst-source-utils` is not installed?&quot;);
++    return;
++  }
++  my @data = qx($mk_cl $this-&gt;{m_basesubdir}-&gt;{'1'});
++  my $res = $? &gt;&gt; 8;
++  if($res == 0) {
++    $this-&gt;{m_logger}-&gt;info(&quot;[I] $mk_cl finished successfully.&quot;);
++  }
++  else {
++    $this-&gt;{m_logger}-&gt;warning(&quot;[W] $mk_cl finished with errors: returncode was $res&quot;);
++  }
++  $this-&gt;{m_logger}-&gt;info(&quot;[I] [createMetadata] $mk_cl output:\n&quot;);
++  foreach(@data) {
++    chomp $_;
++    $this-&gt;{m_logger}-&gt;info(&quot;\t$_\n&quot;);
++  }
++  @data = (); # clear list
++
++
++
+   ## step 5: media file
+   $this-&gt;{m_logger}-&gt;info(&quot;[I] Creating media file in all media:&quot;);
+   my $manufacturer = $this-&gt;{m_proddata}-&gt;getVar(&quot;VENDOR&quot;);
+@@ -1739,16 +1764,20 @@
+   $this-&gt;{m_logger}-&gt;info(&quot;[I] Creating products file in all media:&quot;);
+   my $proddir  = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_DIR&quot;);
+   my $prodname = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_NAME&quot;);
++  my $summary = $this-&gt;{m_proddata}-&gt;getVar(&quot;SUMMARY&quot;);
++  my $sp_ver = $this-&gt;{m_proddata}-&gt;getVar(&quot;SP_VERSION&quot;);
+   my $prodver  = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_VERSION&quot;);
+   my $prodrel  = $this-&gt;{m_proddata}-&gt;getVar(&quot;RELEASE&quot;);
+   $prodname =~ s/\ /-/g;
+-  if(defined($proddir) and defined($prodname) and defined($prodver)) {
++  $prodver .= &quot;.$sp_ver&quot; if defined($sp_ver);
++  if(defined($proddir) and defined($prodname) and defined($prodver) and defined($summary)) {
++    $summary =~ s{\s+}{-}g; # replace space(s) by a single dash
+     for my $n($this-&gt;getMediaNumbers()) {
+       my $productsfile = &quot;$this-&gt;{m_basesubdir}-&gt;{$n}/media.$n/products&quot;;
+       if(not open(PRODUCT, &quot;&gt;&quot;, $productsfile)) {
+ 	die &quot;Cannot create $productsfile&quot;;
+       }
+-      print PRODUCT &quot;$proddir $prodname $prodver-$prodrel\n&quot;;
++      print PRODUCT &quot;$proddir $summary $prodver-$prodrel\n&quot;;
+       close(PRODUCT);
+     }
+   }
+@@ -1762,7 +1791,25 @@
+ 
+   $this-&gt;createBootPackageLinks();
+ 
++  ## step 9: LISTINGS
++  $this-&gt;{m_logger}-&gt;info(&quot;[I] Calling mk_listings:&quot;);
++  my $listings = &quot;/usr/bin/mk_listings&quot;;
++  if(! (-f $listings or -x $listings)) {
++    $this-&gt;{m_logger}-&gt;warning(&quot;[W] [createMetadata] excutable `$listings` not found. Maybe package `inst-source-utils` is not installed?&quot;);
++    return;
++  }
++  my $cmd = &quot;$listings &quot;.$this-&gt;{m_basesubdir}-&gt;{'1'};
++  @data = qx($cmd);
++  undef $cmd;
++  $this-&gt;{m_logger}-&gt;info(&quot;[I] [createMetadata] $listings output:\n&quot;);
++  foreach(@data) {
++    chomp $_;
++    $this-&gt;{m_logger}-&gt;info(&quot;\t$_\n&quot;);
++  }
++  @data = (); # clear list
+ 
++
++
+   ## step 7: SHA1SUMS
+   $this-&gt;{m_logger}-&gt;info(&quot;[I] Calling create_sha1sums:&quot;);
+   my $csha1sum = &quot;/usr/bin/create_sha1sums&quot;;
+@@ -1808,24 +1855,6 @@
+   #@data = (); # clear list
+ 
+ 
+-  ## step 9: LISTINGS
+-  $this-&gt;{m_logger}-&gt;info(&quot;[I] Calling mk_listings:&quot;);
+-  my $listings = &quot;/usr/bin/mk_listings&quot;;
+-  if(! (-f $listings or -x $listings)) {
+-    $this-&gt;{m_logger}-&gt;warning(&quot;[W] [createMetadata] excutable `$listings` not found. Maybe package `inst-source-utils` is not installed?&quot;);
+-    return;
+-  }
+-  $cmd = &quot;$listings &quot;.$this-&gt;{m_basesubdir}-&gt;{'1'};
+-  @data = qx($cmd);
+-  undef $cmd;
+-  $this-&gt;{m_logger}-&gt;info(&quot;[I] [createMetadata] $listings output:\n&quot;);
+-  foreach(@data) {
+-    chomp $_;
+-    $this-&gt;{m_logger}-&gt;info(&quot;\t$_\n&quot;);
+-  }
+-  @data = (); # clear list
+-
+-
+   ## step 10: DIRECTORY.YAST FILES
+   $this-&gt;{m_logger}-&gt;info(&quot;[I] Calling create_directory.yast:&quot;);
+   my $dy = &quot;/usr/bin/create_directory.yast&quot;;
+@@ -1841,17 +1870,17 @@
+     die &quot;MISSING VARIABLES!&quot;;
+   }
+ 
+-
+-## TODO skip /boot if it's empty (should be created by metapackage(s)
+-
+   foreach my $d($this-&gt;getMediaNumbers()) {
+     my $dbase = $this-&gt;{m_basesubdir}-&gt;{$d};
+     #my $dbase = $ENV{'PWD'}.$this-&gt;{m_basesubdir}-&gt;{$d};
+     my @dlist;
+     push @dlist, &quot;$dbase&quot;;
+-    push @dlist, &quot;$dbase/boot&quot;;
+-    push @dlist, glob(&quot;$dbase/boot/*&quot;);
+-    push @dlist, glob(&quot;$dbase/boot/*/loader&quot;);
++    # boot may be nonexistent if no metapack creates it
++    if(-d &quot;$dbase/boot&quot;) {
++      push @dlist, &quot;$dbase/boot&quot; ;
++      push @dlist, glob(&quot;$dbase/boot/*&quot;);
++      push @dlist, glob(&quot;$dbase/boot/*/loader&quot;);
++    }
+     push @dlist, &quot;$dbase/media.1&quot;;
+     push @dlist, &quot;$dbase/media.1/license&quot;;
+     push @dlist, &quot;$dbase/images&quot;;
+@@ -1869,35 +1898,12 @@
+       }
+     }
+   }
+-
+-  ## STEP 11: ChangeLog file
+-  $this-&gt;{m_logger}-&gt;info(&quot;[I] Running mk_changelog for base directory&quot;);
+-  my $mk_cl = &quot;/usr/bin/mk_changelog&quot;;
+-  if(! (-f $mk_cl or -x $mk_cl)) {
+-    $this-&gt;{m_logger}-&gt;warning(&quot;[W] [createMetadata] excutable `$mk_cl` not found. Maybe package `inst-source-utils` is not installed?&quot;);
+-    return;
+-  }
+-  @data = qx($mk_cl $this-&gt;{m_basesubdir}-&gt;{'1'});
+-  my $res = $? &gt;&gt; 8;
+-  if($res == 0) {
+-    $this-&gt;{m_logger}-&gt;info(&quot;[I] $mk_cl finished successfully.&quot;);
+-  }
+-  else {
+-    $this-&gt;{m_logger}-&gt;warning(&quot;[W] $mk_cl finished with errors: returncode was $res&quot;);
+-  }
+-  $this-&gt;{m_logger}-&gt;info(&quot;[I] [createMetadata] $mk_cl output:\n&quot;);
+-  foreach(@data) {
+-    chomp $_;
+-    $this-&gt;{m_logger}-&gt;info(&quot;\t$_\n&quot;);
+-  }
+-  @data = (); # clear list
+-
+-
+ }
+ # createMetadata
+ 
+ 
+ 
++# returns the number of links created
+ sub createBootPackageLinks
+ {
+   my $this = shift;
+@@ -1906,16 +1912,21 @@
+   my $base = $this-&gt;{m_basesubdir}-&gt;{'1'};
+   my $datadir = $this-&gt;{m_proddata}-&gt;getInfo('DATADIR');
+ 
++  my $retval = 0;
++  if(! -d &quot;$base/boot&quot;) {
++    $this-&gt;{m_logger}-&gt;warning(&quot;[W] There is no /boot subdirectory. This may be ok for some media, but might indicate errors in metapackages!&quot;);
++    return $retval;
++  }
++
+   my %rpmlist_files;
+   find( sub { rpmlist_find_cb($this, \%rpmlist_files) }, &quot;$base/boot&quot;);
+ 
+   foreach my $arch(keys(%rpmlist_files)) {
+     if(not open(RPMLIST, $rpmlist_files{$arch})) {
+       $this-&gt;{m_logger}-&gt;warning(&quot;[W] cannot open file $base/boot/$arch/$rpmlist_files{$arch}!&quot;);
+-      return undef;
++      return -1;
+     }
+     else {
+-      #chdir &quot;$workdir/$base/boot/$arch&quot;;
+       RPM:foreach my $rpmname(&lt;RPMLIST&gt;) {
+ 	chomp $rpmname;
+ 	if(not defined($rpmname) or not defined($this-&gt;{m_packages}-&gt;{$rpmname})) {
+@@ -1939,12 +1950,14 @@
+ 	      next FARCH;
+ 	    }
+ 	    symlink(&quot;../../$datadir/$fa/&quot;.$tmp{$fa}-&gt;{'newfile'}, &quot;$base/boot/$arch/$rpmname.rpm&quot;);
++	    $retval++;
+ 	    next RPM;
+ 	  }
+ 	}
+       }
+     }
+   }
++  return $retval;
+ }
+ 
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000762.html">[Kiwi-devel] r1670 - kiwi-head/modules
+</A></li>
+	<LI>Next message: <A HREF="000764.html">[Kiwi-devel] r1672 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#763">[ date ]</a>
+              <a href="thread.html#763">[ thread ]</a>
+              <a href="subject.html#763">[ subject ]</a>
+              <a href="author.html#763">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

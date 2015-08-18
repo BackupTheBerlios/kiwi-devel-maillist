@@ -1,0 +1,135 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ec440fb206629d16be4a75443f43910bdc7dde9b
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ec440fb206629d16be4a75443f43910bdc7dde9b&In-Reply-To=%3C20100902092038.1D1FB48100F%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002618.html">
+   <LINK REL="Next"  HREF="002620.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ec440fb206629d16be4a75443f43910bdc7dde9b</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ec440fb206629d16be4a75443f43910bdc7dde9b&In-Reply-To=%3C20100902092038.1D1FB48100F%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ec440fb206629d16be4a75443f43910bdc7dde9b">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Sep  2 11:20:38 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002618.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7829001a930c097cdbe93bdc42d4f1fa22fad076
+</A></li>
+        <LI>Next message: <A HREF="002620.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c88bc523321a44b86e8136ea569512ab62d2b567
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2619">[ date ]</a>
+              <a href="thread.html#2619">[ thread ]</a>
+              <a href="subject.html#2619">[ subject ]</a>
+              <a href="author.html#2619">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  ec440fb206629d16be4a75443f43910bdc7dde9b (commit)
+      from  7829001a930c097cdbe93bdc42d4f1fa22fad076 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ec440fb206629d16be4a75443f43910bdc7dde9b
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Sep 2 11:19:41 2010 +0200
+
+    - added check for dhcpcd options. On sle10 we don't have
+      the options -p or --noipv4ll
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index b06da53..88bd80f 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -45,6 +45,7 @@ test -z &quot;$UTIMER&quot;             &amp;&amp; export UTIMER=0
+ test -z &quot;$VGROUP&quot;             &amp;&amp; export VGROUP=kiwiVG
+ test -z &quot;$PARTED_HAVE_ALIGN&quot;  &amp;&amp; export PARTED_HAVE_ALIGN=0
+ test -z &quot;$PARTED_HAVE_MACHINE&quot;&amp;&amp; export PARTED_HAVE_MACHINE=0
++test -z &quot;$DHCPCD_HAVE_PERSIST&quot;&amp;&amp; export DHCPCD_HAVE_PERSIST=1
+ if [ -x /sbin/blogd ];then
+ 	test -z &quot;$CONSOLE&quot;            &amp;&amp; export CONSOLE=/dev/console
+ 	test -z &quot;$REDIRECT&quot;           &amp;&amp; export REDIRECT=/dev/tty1
+@@ -58,6 +59,9 @@ fi
+ if [ $PARTED_HAVE_MACHINE -eq 0 ];then
+ 	export PARTITIONER=sfdisk
+ fi
++if dhcpcd -p 2&gt;&amp;1 | grep -q 'Usage';then
++	export DHCPCD_HAVE_PERSIST=0
++fi
+ 
+ #======================================
+ # Dialog
+@@ -3094,6 +3098,7 @@ function setupNetwork {
+ 	local index=0
+ 	local hwicmd=/usr/sbin/hwinfo
+ 	local iface=eth0
++	local opts=&quot;--noipv4ll -p&quot;
+ 	for i in `$hwicmd --netcard`;do
+ 		IFS=$IFS_ORIG
+ 		if echo $i | grep -q &quot;HW Address:&quot;;then
+@@ -3130,7 +3135,14 @@ function setupNetwork {
+ 		done
+ 	fi
+ 	export PXE_IFACE=$iface
+-	if ! dhcpcd --noipv4ll -p $PXE_IFACE 1&gt;&amp;2;then
++	if $DHCPCD_HAVE_PERSIST -eq 0;then
++		# /.../
++		# older version of dhcpd which doesn't have the
++		# options we want to pass
++		# ----
++		unset opts
++	fi
++	if ! dhcpcd $opts $PXE_IFACE 1&gt;&amp;2;then
+ 		systemException \
+ 			&quot;Failed to setup DHCP network interface !&quot; \
+ 		&quot;reboot&quot;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002618.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7829001a930c097cdbe93bdc42d4f1fa22fad076
+</A></li>
+	<LI>Next message: <A HREF="002620.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c88bc523321a44b86e8136ea569512ab62d2b567
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2619">[ date ]</a>
+              <a href="thread.html#2619">[ thread ]</a>
+              <a href="subject.html#2619">[ subject ]</a>
+              <a href="author.html#2619">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,157 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1765 - in kiwi-head: rpm tools/cdtool
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1765%20-%20in%20kiwi-head%3A%20rpm%20tools/cdtool&In-Reply-To=%3C200811171706.mAHH6CjC020378%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000847.html">
+   <LINK REL="Next"  HREF="000851.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1765 - in kiwi-head: rpm tools/cdtool</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1765%20-%20in%20kiwi-head%3A%20rpm%20tools/cdtool&In-Reply-To=%3C200811171706.mAHH6CjC020378%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1765 - in kiwi-head: rpm tools/cdtool">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Mon Nov 17 18:06:12 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000847.html">[Kiwi-devel] r1764 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool
+</A></li>
+        <LI>Next message: <A HREF="000851.html">[Kiwi-devel] r1766 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#848">[ date ]</a>
+              <a href="thread.html#848">[ thread ]</a>
+              <a href="subject.html#848">[ subject ]</a>
+              <a href="author.html#848">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2008-11-17 18:06:11 +0100 (Mon, 17 Nov 2008)
+New Revision: 1765
+
+Modified:
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/tools/cdtool/suse-isolinux
+Log:
+- hfs-volid has valid string now (bnc#444304)
+- efiboot sholud work on Ithanium now
+
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-11-17 15:58:42 UTC (rev 1764)
++++ kiwi-head/rpm/kiwi.changes	2008-11-17 17:06:11 UTC (rev 1765)
+@@ -1,4 +1,12 @@
+ -------------------------------------------------------------------
++Mon Nov 17 18:02:28 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">jcborn at suse.de</A>
++
++- create volid string (patch by Olaf Hering &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">olh at novell.com</A>&gt;
++- fixed quoting in tools/cdtool/suse-isolinux for hfs-volid string
++  (fixes bnc#444304)
++- added options for EFI boot
++
++-------------------------------------------------------------------
+ Mon Nov 17 10:46:09 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed mountSystemUnified() to move the union mount points
+
+Modified: kiwi-head/tools/cdtool/suse-isolinux
+===================================================================
+--- kiwi-head/tools/cdtool/suse-isolinux	2008-11-17 15:58:42 UTC (rev 1764)
++++ kiwi-head/tools/cdtool/suse-isolinux	2008-11-17 17:06:11 UTC (rev 1765)
+@@ -46,7 +46,7 @@
+ 	BOOT_ISOLINUX=$BOOT_BASE_DIR/loader
+ elif [ -d $SOURCE/$BOOT_BASE_DIR/ia64 ] ; then
+ 	BOOT_BASE_DIR=$BOOT_BASE_DIR/ia64
+-	BOOT_IMAGE=$BOOT_BASE_DIR/image
++	BOOT_IMAGE=$BOOT_BASE_DIR/efi
+ fi
+ 
+ #=======================================
+@@ -69,16 +69,7 @@
+ 			mkdir -p $SOURCE2/$BOOT_BASE_DIR || exit 1
+ 		elif [ -f $SOURCE/$BOOT_IMAGE ] ; then
+ 			# needed for ia64
+-			xx=`filesize $SOURCE/$BOOT_IMAGE`
+-			if [ \( &quot;$xx&quot; -ne 1474560 \) -a \( &quot;$xx&quot; -ne 2949120 \) ] ; then
+-			if head -c 200 $SOURCE/$BOOT_IMAGE | \
+-				grep -a -q 'Sorry, didn.t find boot loader, stopped.'
+-			then
+-				PARAMS=&quot;$PARAMS -hard-disk-boot&quot;
+-			else
+-				PARAMS=&quot;$PARAMS -no-emul-boot&quot;
+-			fi
+-			fi
++			PARAMS=&quot;$PARAMS -no-emul-boot -boot-load-size 1&quot;
+ 			echo &quot;$SOURCE2/$BOOT_BASE_DIR/boot.catalog 2&quot; &gt;$SORTFILE
+ 			echo &quot;$SOURCE/$BOOT_IMAGE 1&quot; &gt;&gt;$SORTFILE
+ 			PARAMS=&quot;$PARAMS -sort $SORTFILE -b $BOOT_IMAGE \
+@@ -106,6 +97,9 @@
+ 				-hide-joliet $BOOT_BASE_DIR/boot.catalog&quot;
+ 			echo found boot image. Making CD bootable.
+ 			mkdir -p $SOURCE2/$BOOT_BASE_DIR || exit 1
++			if [ -f $SOURCE/$BOOT_BASE_DIR/efi ]; then
++				PARAMS=&quot;$PARAMS -eltorito-alt-boot -no-emul-boot -boot-load-size 1 -b $BOOT_BASE_DIR/efi&quot;
++			fi
+ 		elif [ -d $SOURCE/ppc ]; then
+ 		  if [ -f $SOURCE/ppc/bootinfo.txt ] ; then
+ 		  # assume thats a pSeries/iSeries CD
+@@ -170,8 +164,8 @@
+ 			  fi
+ 			fi
+ 		  fi
+-		  hfsvolid=`echo $hfsvolid | tr ' ' '-'`
+-		  PARAMS=&quot;$PARAMS -hfs-volid $hfsvolid&quot;
++		  #hfsvolid=`echo $hfsvolid | tr ' ' '-'`
++		  PARAMS=&quot;$PARAMS -hfs-volid '$hfsvolid'&quot;
+ 		else
+ 			if [ -d $SOURCE/etc ] ; then
+ 				echo found $SOURCE/etc. put it at the beginning of iso image.
+@@ -283,9 +277,9 @@
+ echo &quot;PARAMS=$PARAMS&quot;
+ echo &quot;XPARAMS=$XPARAMS&quot;
+ 
+-mkisofs \
+-	-p &quot;$CD_PREPARER&quot; -A &quot;-&quot; \
+-	-publisher &quot;$CD_PUBLISHER&quot; \
++eval mkisofs \
++	-p &quot;'$CD_PREPARER'&quot; -A &quot;-&quot; \
++	-publisher &quot;'$CD_PUBLISHER'&quot; \
+ 	$PARAMS -o $DEST $XPARAMS $SOURCE
+ code=$?
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000847.html">[Kiwi-devel] r1764 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool
+</A></li>
+	<LI>Next message: <A HREF="000851.html">[Kiwi-devel] r1766 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#848">[ date ]</a>
+              <a href="thread.html#848">[ thread ]</a>
+              <a href="subject.html#848">[ subject ]</a>
+              <a href="author.html#848">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

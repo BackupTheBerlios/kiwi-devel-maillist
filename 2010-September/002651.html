@@ -1,0 +1,254 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e547b8534472794bc2f12a7f9d8ee129d128c205
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20e547b8534472794bc2f12a7f9d8ee129d128c205&In-Reply-To=%3C20100909133430.C9742480E7F%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002650.html">
+   <LINK REL="Next"  HREF="002652.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e547b8534472794bc2f12a7f9d8ee129d128c205</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20e547b8534472794bc2f12a7f9d8ee129d128c205&In-Reply-To=%3C20100909133430.C9742480E7F%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e547b8534472794bc2f12a7f9d8ee129d128c205">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Sep  9 15:34:30 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002650.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a8d8334f18cd8e6ced43df046be4b4c8b1ed4387
+</A></li>
+        <LI>Next message: <A HREF="002652.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 84d6d3271dc452dd12eb19ef82888ba153722f0a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2651">[ date ]</a>
+              <a href="thread.html#2651">[ thread ]</a>
+              <a href="subject.html#2651">[ subject ]</a>
+              <a href="author.html#2651">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  e547b8534472794bc2f12a7f9d8ee129d128c205 (commit)
+       via  caf108df4ee5ae6cf2e60ca5131c594404864188 (commit)
+      from  a8d8334f18cd8e6ced43df046be4b4c8b1ed4387 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit e547b8534472794bc2f12a7f9d8ee129d128c205
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Sep 9 15:33:28 2010 +0200
+
+    - allow the qeth parameters to be set via the kernel
+      commandline too for the s390/suse-SLE11-JeOS image.
+      Detailed information about kernel parameters for this
+      image can be found in the s390/suse-SLE11-JeOS/README
+
+commit caf108df4ee5ae6cf2e60ca5131c594404864188
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Sep 9 15:23:27 2010 +0200
+
+    - fixed mount() function to work with disk files too
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index f7bf4dc..894b381 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -2615,6 +2615,47 @@ sub mount {
+ 		return undef;
+ 	}
+ 	#==========================================
++	# Check for DISK file
++	#------------------------------------------
++	if (-f $source) {
++		my $boot = &quot;'boot sector'&quot;;
++		my $null = &quot;/dev/null&quot;;
++		$status= qxx (
++			&quot;dd if=$source bs=512 count=1 2&gt;$null|file - | grep -q $boot&quot;
++		);
++		$result= $? &gt;&gt; 8;
++		if ($result == 0) {			
++			$status = qxx (&quot;/sbin/losetup -s -f $source 2&gt;&amp;1&quot;); chomp $status;
++			$result = $? &gt;&gt; 8;
++			if ($result != 0) {
++				$kiwi -&gt; error  (
++					&quot;Couldn't loop bind disk file: $status&quot;
++				);
++				$kiwi -&gt; failed (); umount();
++				return undef;
++			}
++			my $loop = $status;
++			push @UmountStack,&quot;losetup -d $loop&quot;;
++			$status = qxx (&quot;kpartx -a $loop 2&gt;&amp;1&quot;);
++			$result = $? &gt;&gt; 8;
++			if ($result != 0) {
++				$kiwi -&gt; error (
++					&quot;Couldn't loop bind disk partition(s): $status&quot;
++				);
++				$kiwi -&gt; failed (); umount();
++				return undef;
++			}
++			push @UmountStack,&quot;kpartx -d $loop&quot;;
++			$loop =~ s/\/dev\///;
++			$source = &quot;/dev/mapper/&quot;.$loop.&quot;p1&quot;;
++			if (! -b $source) {
++				$kiwi -&gt; error (&quot;No such block device $source&quot;);
++				$kiwi -&gt; failed (); umount();
++				return undef;
++			}
++		}
++	}
++	#==========================================
+ 	# Check for LUKS extension
+ 	#------------------------------------------
+ 	if ($type eq &quot;luks&quot;) {
+@@ -2623,7 +2664,7 @@ sub mount {
+ 			$result = $? &gt;&gt; 8;
+ 			if ($result != 0) {
+ 				$kiwi -&gt; error  (&quot;Couldn't loop bind logical extend: $status&quot;);
+-				$kiwi -&gt; failed ();
++				$kiwi -&gt; failed (); umount();
+ 				return undef;
+ 			}
+ 			$source = $status;
+@@ -2639,7 +2680,7 @@ sub mount {
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; error  (&quot;Couldn't open luks device: $status&quot;);
+-			$kiwi -&gt; failed ();
++			$kiwi -&gt; failed (); umount();
+ 			return undef;
+ 		}
+ 		$source = &quot;/dev/mapper/luks-&quot;.$salt;
+@@ -2653,7 +2694,7 @@ sub mount {
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; error (&quot;Failed to loop mount $source to: $dest: $status&quot;);
+-			$kiwi -&gt; failed ();
++			$kiwi -&gt; failed (); umount();
+ 			return undef;
+ 		}
+ 	} else {
+@@ -2670,7 +2711,7 @@ sub mount {
+ 		}
+ 		if ($result != 0) {
+ 			$kiwi -&gt; error (&quot;Failed to mount $source to: $dest: $status&quot;);
+-			$kiwi -&gt; failed ();
++			$kiwi -&gt; failed (); umount();
+ 			return undef;
+ 		}
+ 	}
+@@ -2684,7 +2725,7 @@ sub mount {
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; error (&quot;Failed to loop mount $source to: $dest: $status&quot;);
+-			$kiwi -&gt; failed ();
++			$kiwi -&gt; failed (); umount();
+ 			return undef;
+ 		}
+ 		push @UmountStack,&quot;umount $dest&quot;;
+@@ -2807,7 +2848,9 @@ sub checkFileSystem {
+ 					last SWITCH;
+ 				};
+ 				# unknown filesystem type check clicfs...
+-				$data = qxx (&quot;dd if=$fs bs=128k count=1 2&gt;/dev/null | grep -q CLIC&quot;);
++				$data = qxx (
++					&quot;dd if=$fs bs=128k count=1 2&gt;/dev/null | grep -q CLIC&quot;
++				);
+ 				$code = $? &gt;&gt; 8;
+ 				if ($code == 0) {
+ 					$type = &quot;clicfs&quot;;
+diff --git a/template/s390/suse-SLE11-JeOS/README b/template/s390/suse-SLE11-JeOS/README
+index 7365bbf..d3cad9e 100644
+--- a/template/s390/suse-SLE11-JeOS/README
++++ b/template/s390/suse-SLE11-JeOS/README
+@@ -25,3 +25,13 @@ Build instructions for local build
+        --add-repo /usr/share/kiwi/repo/suse-repo/suse-sle11-repo/ \
+        --add-repotype rpm-dir \
+        -d /tmp/myimage --type vmx
++
++
++Kernel paramters to configure the image:
++========================================
++busid=0.0.0530
++qeth_port=VSWL2
++qeth_read=0.0.0800
++qeth_write=0.0.0801
++qeth_ctrl=0.0.0802
++qeth_up=1
+diff --git a/template/s390/suse-SLE11-JeOS/root/etc/init.d/kiwi/dasd/01-network.sh b/template/s390/suse-SLE11-JeOS/root/etc/init.d/kiwi/dasd/01-network.sh
+index e376ca0..124ea46 100755
+--- a/template/s390/suse-SLE11-JeOS/root/etc/init.d/kiwi/dasd/01-network.sh
++++ b/template/s390/suse-SLE11-JeOS/root/etc/init.d/kiwi/dasd/01-network.sh
+@@ -1,5 +1,24 @@
+ #!/bin/bash
+ # s390 network hardware setup
+ # ----
+-qeth_configure -p FE08 -l 0.0.0800 0.0.0801 0.0.0802 1
++#======================================
++# Functions...
++#--------------------------------------
++. /include
++
++qeth_port=VSWL2
++qeth_read=0.0.0800
++qeth_write=0.0.0801
++qeth_ctrl=0.0.0802
++qeth_up=1
++
++#======================================
++# Include kernel parameters
++#--------------------------------------
++includeKernelParameters
++
++#======================================
++# Bring the device online
++#--------------------------------------
++qeth_configure -p $qeth_port -l $qeth_read $qeth_write $qeth_ctrl $qeth_up
+ 
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002650.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a8d8334f18cd8e6ced43df046be4b4c8b1ed4387
+</A></li>
+	<LI>Next message: <A HREF="002652.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 84d6d3271dc452dd12eb19ef82888ba153722f0a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2651">[ date ]</a>
+              <a href="thread.html#2651">[ thread ]</a>
+              <a href="subject.html#2651">[ subject ]</a>
+              <a href="author.html#2651">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

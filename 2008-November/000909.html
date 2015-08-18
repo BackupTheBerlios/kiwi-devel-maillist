@@ -1,0 +1,327 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1802 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1802%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200811271622.mARGMx27024506%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000908.html">
+   <LINK REL="Next"  HREF="000910.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1802 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1802%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200811271622.mARGMx27024506%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1802 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Nov 27 17:22:59 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000908.html">[Kiwi-devel] r1801 - in kiwi-head: . modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000910.html">[Kiwi-devel] r1803 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#909">[ date ]</a>
+              <a href="thread.html#909">[ thread ]</a>
+              <a href="subject.html#909">[ subject ]</a>
+              <a href="author.html#909">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-11-27 17:22:47 +0100 (Thu, 27 Nov 2008)
+New Revision: 1802
+
+Modified:
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- changed from sector based calculation to cylinder based
+  calculation for partitions created with parted
+
+
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2008-11-27 11:25:45 UTC (rev 1801)
++++ kiwi-head/modules/KIWIBoot.pm	2008-11-27 16:22:47 UTC (rev 1802)
+@@ -3086,85 +3086,131 @@
+ }
+ 
+ #==========================================
+-# resetSectors
++# getCylinderSizeAndCount
+ #------------------------------------------
+-sub resetSectors {
++sub getCylinderSizeAndCount {
+ 	# ...
+-	# reset global sector and disk marks
++	# obtain cylinder size and count for the specified disk.
++	# The function returns the size in kB or zero on error
+ 	# ---
+ 	my $this = shift;
+-	undef $this-&gt;{pDiskSectors};
+-	undef $this-&gt;{pDiskFactor};
++	my $disk = shift;
++	my $kiwi = $this-&gt;{kiwi};
++	my $status;
++	my $result;
++	my $parted;
++	$status = qxx (&quot;dd if=/dev/zero of=$disk bs=512 count=1 2&gt;&amp;1&quot;);
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; loginfo ($status);
++		return 0;
++	}
++	$status = qxx (&quot;/usr/sbin/parted -s $disk mklabel msdos 2&gt;&amp;1&quot;);
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; loginfo ($status);
++		return 0;
++	}
++	$parted = &quot;/usr/sbin/parted -m $disk unit cyl print&quot;;
++	$status = qxx (
++		&quot;$parted | head -n 3 | tail -n 1 | cut -f4 -d: | tr -d 'kB;'&quot;
++	);
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; loginfo ($status);
++		return 0;
++	}
++	chomp $status;
++	$this-&gt;{pDiskCylinderSize} = $status;
++	$status = qxx (
++		&quot;$parted | head -n 3 | tail -n 1 | cut -f1 -d:&quot;
++	);
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; loginfo ($status);
++		return 0;
++	}
++	chomp $status;
++	$this-&gt;{pDiskCylinders} = $status;
++	return $status;
++}
++
++#==========================================
++# getCylinder
++#------------------------------------------
++sub getCylinder {
++	# ...
++	# given a size in MB this function calculates the
++	# aligned cylinder count according to the used disk
++	# if no size is given the maximum value is used
++	# ---
++	my $this  = shift;
++	my $size  = shift;
++	my $csize = $this-&gt;{pDiskCylinderSize};
++	my $count = $this-&gt;{pDiskCylinders};
++	my $cyls;
++	if (! defined $csize) {
++		return 0;
++	}
++	if ($size =~ /\+(.*)M$/) {
++		$cyls = sprintf (&quot;%.0f&quot;,($size * 1024) / $csize);
++	} else {
++		$cyls = $count;
++	}
++	return $cyls;
++}
++
++#==========================================
++# resetCylinder
++#------------------------------------------
++sub resetCylinder {
++	# ...
++	# reset global cylinder size and count
++	# ---
++	my $this = shift;
++	undef $this-&gt;{pDiskCylinders};
++	undef $this-&gt;{pDiskCylinderSize};
+ 	undef $this-&gt;{pStart};
+ 	undef $this-&gt;{pStopp};
+ 	return $this;
+ }
+ 
+ #==========================================
+-# initSectors
++# initCylinders
+ #------------------------------------------
+-sub initSectors {
++sub initCylinders {
+ 	# ...
+-	# calculate start/end sector values for parted to create
+-	# the appropriate partition. On success the sector count
++	# calculate cylinder size and count for parted to create
++	# the appropriate partition. On success the cylinder count
+ 	# will be returned, on error zero is returned
+ 	# ---
+-	my $this    = shift;
+-	my $device  = shift;
+-	my $size    = shift;
+-	my $kiwi    = $this-&gt;{kiwi};
+-	my $sectors = 0;
++	my $this   = shift;
++	my $device = shift;
++	my $size   = shift;
++	my $kiwi   = $this-&gt;{kiwi};
++	my $cyls   = 0;
+ 	my $status;
+ 	my $result;
+-	if (! defined $this-&gt;{pDiskSectors}) {
+-		$status = qxx (&quot;dd if=/dev/zero of=$device bs=512 count=1 2&gt;&amp;1&quot;);
+-		$result = $? &gt;&gt; 8;
+-		if ($result != 0) {
+-			$kiwi -&gt; loginfo ($status);
++	if (! defined $this-&gt;{pDiskCylinders}) {
++		my $cylsize = $this -&gt; getCylinderSizeAndCount($device);
++		if ($cylsize == 0) {
+ 			return 0;
+ 		}
+-		$status = qxx (&quot;/usr/sbin/parted -s $device mklabel msdos 2&gt;&amp;1&quot;);
+-		$result = $? &gt;&gt; 8;
+-		if ($result != 0) {
+-			$kiwi -&gt; loginfo ($status);
+-			return 0;
+-		}
+-		my $unit   = &quot;s&quot;;
+-		my $parted = &quot;/usr/sbin/parted -m -s $device unit $unit print 2&gt;&amp;1&quot;;
+-		$status = qxx (&quot;$parted | grep ^$device | cut -f2 -d: | tr -d $unit&quot;);
+-		$result = $? &gt;&gt; 8;
+-		if ($result != 0) {
+-			$kiwi -&gt; loginfo ($status);
+-			return 0;
+-		}
+-		chomp $status;
+-		$this-&gt;{pDiskSectors} = $status - 1;
+-		$unit   = &quot;MB&quot;;
+-		$parted = &quot;/usr/sbin/parted -m -s $device unit $unit print 2&gt;&amp;1&quot;;
+-		$status = qxx (&quot;$parted | grep ^$device | cut -f2 -d: | tr -d $unit&quot;);
+-		$result = $? &gt;&gt; 8;
+-		if ($result != 0) {
+-			$kiwi -&gt; loginfo ($status);
+-			return 0;
+-		}
+-		$this-&gt;{pDiskFactor} = $this-&gt;{pDiskSectors} / $status;
+-		$this-&gt;{pDiskFactor} = int $this-&gt;{pDiskFactor};
+ 	}
+-	if ($size =~ /\+(.*)M$/) {
+-		$sectors = $1 * $this-&gt;{pDiskFactor};
+-	} else {
+-		$sectors = $this-&gt;{pDiskSectors};
++	$cyls = $this -&gt; getCylinder ($size);
++	if ($cyls == 0) {
++		return 0;
+ 	}
+ 	if (! defined $this-&gt;{pStart}) {
+-		$this-&gt;{pStart} = 64;
++		$this-&gt;{pStart} = 0;
+ 	} else {
+ 		$this-&gt;{pStart} = $this-&gt;{pStopp} + 1;
+ 	}
+-	$this-&gt;{pStopp} = $this-&gt;{pStart} + $sectors;
+-	if ($this-&gt;{pStopp} &gt; $this-&gt;{pDiskSectors}) {
+-		$this-&gt;{pStopp} = $this-&gt;{pDiskSectors}
++	$this-&gt;{pStopp} = $this-&gt;{pStart} + $cyls;
++	if ($this-&gt;{pStopp} &gt; $this-&gt;{pDiskCylinders}) {
++		$this-&gt;{pStopp} = $this-&gt;{pDiskCylinders}
+ 	}
+-	return $sectors;
++	return $cyls;
+ }
+ 
+ #==========================================
+@@ -3226,12 +3272,12 @@
+ 		#------------------------------------------
+ 		/^parted/  &amp;&amp; do {
+ 			my @p_cmd = ();
+-			$this -&gt; resetSectors();
++			$this -&gt; resetCylinder();
+ 			for (my $count=0;$count&lt;@commands;$count++) {
+ 				my $cmd = $commands[$count];
+ 				if ($cmd eq &quot;n&quot;) {
+ 					my $size = $commands[$count+4];
+-					$this -&gt; initSectors ($device,$size);
++					$this -&gt; initCylinders ($device,$size);
+ 					push (@p_cmd,
+ 						&quot;mkpart primary $this-&gt;{pStart} $this-&gt;{pStopp}&quot;
+ 					);
+@@ -3250,7 +3296,9 @@
+ 				&quot;PARTED input: $device [@p_cmd]&quot;
+ 			);
+ 			foreach my $p_cmd (@p_cmd) {
+-				$status= qxx (&quot;/usr/sbin/parted -s $device unit s $p_cmd 2&gt;&amp;1&quot;);
++				$status= qxx (
++					&quot;/usr/sbin/parted -s $device unit cyl $p_cmd 2&gt;&amp;1&quot;
++				);
+ 				$result= $? &gt;&gt; 8;
+ 				$kiwi -&gt; loginfo ($status);
+ 				sleep (1);
+@@ -3294,9 +3342,17 @@
+ 			my $parted = &quot;/usr/sbin/parted -m &quot;;
+ 			my $disk   = $pdev;
+ 			my $step   = 2;
+-			if ($pdev =~ /(.*)(\d+)/) {
+-				$disk = $1;
+-				$step = 4;
++			if ($pdev =~ /mapper/) {
++				if ($pdev =~ /mapper\/(.*)\/p(\d+)/) {
++					$disk = &quot;/dev/&quot;.$1;
++					$pdev = &quot;/dev/&quot;.$1.$2;
++					$step = 4;
++				}
++			} else {
++				if ($pdev =~ /(.*)(\d+)/) {
++					$disk = $1;
++					$step = 4;
++				}
+ 			}
+ 			$parted .= '-s '.$disk.' unit B print |';
+ 			$parted .= 'sed -e &quot;s@^\([0-4]\):@'.$disk.'\1:@&quot; |';
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-11-27 11:25:45 UTC (rev 1801)
++++ kiwi-head/rpm/kiwi.changes	2008-11-27 16:22:47 UTC (rev 1802)
+@@ -1,6 +1,8 @@
+ -------------------------------------------------------------------
+ Thu Nov 27 10:31:27 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- changed from sector based calculation to cylinder based
++  calculation for partitions created with parted
+ - added ifplugd to suse-11.1 examples
+ - fixed setup of kiwi_type when in creation mode
+ - added versioned requires for kiwi-instsource
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000908.html">[Kiwi-devel] r1801 - in kiwi-head: . modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000910.html">[Kiwi-devel] r1803 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#909">[ date ]</a>
+              <a href="thread.html#909">[ thread ]</a>
+              <a href="subject.html#909">[ subject ]</a>
+              <a href="author.html#909">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

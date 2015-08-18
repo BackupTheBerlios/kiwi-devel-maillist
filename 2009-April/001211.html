@@ -1,0 +1,383 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. adc5041a8c4922cb9cd1bc242faea783ef3ea699
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20adc5041a8c4922cb9cd1bc242faea783ef3ea699&In-Reply-To=%3C200904271514.n3RFEOTh018686%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001210.html">
+   <LINK REL="Next"  HREF="001212.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. adc5041a8c4922cb9cd1bc242faea783ef3ea699</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20adc5041a8c4922cb9cd1bc242faea783ef3ea699&In-Reply-To=%3C200904271514.n3RFEOTh018686%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. adc5041a8c4922cb9cd1bc242faea783ef3ea699">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Apr 27 17:14:24 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001210.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. fe209138b030c7cc692055d2e6ad7d5e7d5f047e
+</A></li>
+        <LI>Next message: <A HREF="001212.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 54e7c1bdd89fb136f0751652f206cbdd101cce89
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1211">[ date ]</a>
+              <a href="thread.html#1211">[ thread ]</a>
+              <a href="subject.html#1211">[ subject ]</a>
+              <a href="author.html#1211">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  adc5041a8c4922cb9cd1bc242faea783ef3ea699 (commit)
+      from  e1d52abfa868261c17f48b16440e2516d64caa44 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit adc5041a8c4922cb9cd1bc242faea783ef3ea699
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Apr 27 17:14:13 2009 +0200
+
+    - v3.47
+    - added kernel parameter nombridcheck (bnc #498371)
+    - remove boot/grub/mbrid file from installed system
+      at first deployment to avoid conflicts on reboot
+    - set boot flag after repartitioning the device
+    - exclude install source device from being used as
+      SAP data storage device
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 8b44c76..a70d6b0 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -44,7 +44,7 @@ use KIWITest;
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.46&quot;;
++our $Version       = &quot;3.47&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 37fdbf7..b70b6d3 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -2000,17 +2000,18 @@ function searchBIOSBootDevice {
+ 	local ddevs=`$h --disk|grep -E &quot;$c&quot;|sed -e&quot;s@(.*)@@&quot;|cut -f2 -d:|tr -d &quot; &quot;`
+ 	local cmpd=/tmp/mbrids
+ 	local ifix=0
++	local bios
+ 	local file
+ 	local pred
+ 	#======================================
+-	# Check for BIOS id 0x80
++	# Store device with BIOS id 0x80
+ 	#--------------------------------------
+-	#for curd in $ddevs;do
+-	#	if [ $curd = &quot;0x80&quot; ];then
+-	#		echo $pred; return
+-	#	fi
+-	#	pred=$curd
+-	#done
++	for curd in $ddevs;do
++		if [ $curd = &quot;0x80&quot; ];then
++			bios=$pred; break
++		fi
++		pred=$curd
++	done
+ 	#======================================
+ 	# Search and copy all mbrid files 
+ 	#--------------------------------------
+@@ -2042,12 +2043,19 @@ function searchBIOSBootDevice {
+ 	#======================================
+ 	# Compare ID with MBR entry 
+ 	#--------------------------------------
++	ifix=0
+ 	for curd in $ddevs;do
+ 		mbrM=`dd if=$curd bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
+ 		if [ $mbrM = $mbrI ];then
+-			echo $curd; return
++			ifix=1
++			if [ &quot;$curd&quot; = &quot;$bios&quot; ];then
++				echo $curd; return
++			fi
+ 		fi
+ 	done
++	if [ $ifix -eq 1 ];then
++		echo $curd; return
++	fi
+ 	systemException \
+ 		&quot;No devices matches MBR identifier: $mbrI !&quot; \
+ 	&quot;reboot&quot;
+@@ -3947,6 +3955,7 @@ function activateImage {
+ 	#--------------------------------------
+ 	mkdir -p /mnt/var/log
+ 	rm -f /var/log/boot.msg
++	rm -f /mnt/boot/grub/mbrid
+ 	cp -f /mnt/dev/shm/initrd.msg /mnt/var/log/boot.msg
+ 	cp -f /var/log/boot.kiwi /mnt/var/log/boot.kiwi
+ 	#======================================
+@@ -4210,6 +4219,13 @@ function SAPStorageCheck {
+ 	fi
+ 	local hwinfo=/usr/sbin/hwinfo
+ 	local ROOT_DEVICE=$1
++	local ROOT_EXCLUDE=$2
++	if [ ! -n &quot;$ROOT_DEVICE&quot; ];then
++		ROOT_DEVICE=&quot;.&quot;
++	fi
++	if [ -z &quot;$ROOT_EXCLUDE&quot; ];then
++		ROOT_EXCLUDE=$ROOT_DEVICE
++	fi
+ 	local size_rootkB=$(partitionSize $ROOT_DEVICE)
+ 	local DATA_DEVICE=&quot;&quot;
+ 	local size_datakB=&quot;&quot;
+@@ -4245,10 +4261,9 @@ function SAPStorageCheck {
+ 	#======================================
+ 	# Search a data disk
+ 	#--------------------------------------
+-	local imageDiskExclude=$ROOT_DEVICE
+ 	local deviceDisks=`$hwinfo --disk |\
+ 		grep &quot;Device File:&quot; | cut -f2 -d: |\
+-		cut -f1 -d&quot;(&quot; | sed -e s&quot;@$imageDiskExclude@@&quot;`
++		cut -f1 -d&quot;(&quot; | sed -e s&quot;@$ROOT_DEVICE@@&quot; -s s&quot;@$ROOT_EXCLUDE@@&quot;`
+ 	for DATA_DEVICE in $deviceDisks;do
+ 		break
+ 	done
+@@ -4296,19 +4311,23 @@ function SAPDataStorageSetup {
+ 	# a disk which is not the system disk and sets it
+ 	# up as LVM container for later use
+ 	# ----
+-	local imageDiskExclude=$1
++	local ROOT_DEVICE=$1
++	local ROOT_EXCLUDE=$2
+ 	local hwinfo=/usr/sbin/hwinfo
+ 	local input=/tmp/fdisk.input
+ 	local storage
+ 	#======================================
+ 	# Search a data disk
+ 	#--------------------------------------
+-	if [ ! -n &quot;$imageDiskExclude&quot; ];then
+-		imageDiskExclude=&quot;.&quot;
++	if [ ! -n &quot;$ROOT_DEVICE&quot; ];then
++		ROOT_DEVICE=&quot;.&quot;
++	fi
++	if [ ! -n &quot;$ROOT_EXCLUDE&quot; ];then
++		ROOT_EXCLUDE=$ROOT_DEVICE
+ 	fi
+ 	local deviceDisks=`$hwinfo --disk |\
+ 		grep &quot;Device File:&quot; | cut -f2 -d: |\
+-		cut -f1 -d&quot;(&quot; | sed -e s&quot;@$imageDiskExclude@@&quot;`
++		cut -f1 -d&quot;(&quot; | sed -e s&quot;@$ROOT_DEVICE@@&quot; -s s&quot;@$ROOT_EXCLUDE@@&quot;`
+ 	for storage in $deviceDisks;do
+ 		break
+ 	done
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 723d89d..1710e77 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,15 @@
+ -------------------------------------------------------------------
++Mon Apr 27 12:19:09 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.47
++- added kernel parameter nombridcheck (bnc #498371)
++- remove boot/grub/mbrid file from installed system
++  at first deployment to avoid conflicts on reboot
++- set boot flag after repartitioning the device
++- exclude install source device from being used as
++  SAP data storage device
++
++-------------------------------------------------------------------
+ Fri Apr 24 12:22:51 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.46
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index 5882d0e..6976b99 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.46)
++# spec file for package kiwi (Version 3.47)
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -46,7 +46,7 @@ Requires:       satsolver-tools
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.46
++Version:        3.47
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+diff --git a/system/boot/ix86/oemboot/suse-dump b/system/boot/ix86/oemboot/suse-dump
+index b9f434a..b0037fa 100755
+--- a/system/boot/ix86/oemboot/suse-dump
++++ b/system/boot/ix86/oemboot/suse-dump
+@@ -169,17 +169,20 @@ function OEMInstall {
+ 	#======================================
+ 	# Check MBR ID's...
+ 	#--------------------------------------
+-	mbrI=&quot;cat $imageName&quot;
+-	if [ &quot;$imageZipped&quot; = &quot;compressed&quot; ];then
+-		mbrI=&quot;gzip -cd $imageName&quot;
++	if [ -z &quot;$nombridcheck&quot; ];then
++		mbrD=$instDisk
++		mbrI=&quot;cat $imageName&quot;
++		if [ &quot;$imageZipped&quot; = &quot;compressed&quot; ];then
++			mbrI=&quot;gzip -cd $imageName&quot;
++		fi
++		mbrM=`dd if=$mbrD bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
++		mbrI=`$mbrI | dd  bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
++		if [ $mbrM = $mbrI ];then
++			systemException \
++				&quot;Base system already installed&quot; \
++			&quot;reboot&quot;
++		fi	
+ 	fi
+-	mbrM=`dd if=$instDisk  bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
+-	mbrI=`$mbrI | dd bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
+-	if [ $mbrM = $mbrI ];then
+-		systemException \
+-			&quot;Base system already installed&quot; \
+-		&quot;reboot&quot;
+-	fi	
+ 	#======================================
+ 	# read MD5 information...
+ 	#--------------------------------------
+@@ -256,7 +259,12 @@ function OEMInstall {
+ 			&quot;Partition $deviceTest doesn't appear... fatal !&quot; \
+ 		&quot;reboot&quot;
+ 	fi
+-	imageDiskDevice=$imageDevice
++	#======================================
++	# Setup/Reset values for further boot
++	#--------------------------------------
++	export imageDiskExclude=$instDisk
++	export imageDiskDevice=$imageDevice
++	unset stickSerial
+ 	#======================================
+ 	# Reboot system
+ 	#--------------------------------------
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index bc8e4f5..b90c0d3 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -132,8 +132,8 @@ if [ ! -z &quot;$OEM_SAP_INSTALL&quot; ];then
+ 	IFS=$IFS_ORIG
+ 	SAPMemCheck
+ 	SAPCPUCheck
+-	SAPStorageCheck $imageDiskDevice
+-	SAPDataStorageSetup $imageDiskDevice
++	SAPStorageCheck $imageDiskDevice $imageDiskExclude
++	SAPDataStorageSetup $imageDiskDevice $imageDiskExclude
+ fi
+ 
+ #======================================
+diff --git a/system/boot/ix86/oemboot/suse-repart b/system/boot/ix86/oemboot/suse-repart
+index 5d978e7..1aa71ef 100755
+--- a/system/boot/ix86/oemboot/suse-repart
++++ b/system/boot/ix86/oemboot/suse-repart
+@@ -293,6 +293,7 @@ function OEMRepartStandard {
+ 		if test $? != 0; then
+ 			systemException &quot;Failed to create partition table&quot; &quot;reboot&quot;
+ 		fi
++		activateBootPartition
+ 	fi
+ 	#======================================
+ 	# Update new device names
+@@ -440,6 +441,7 @@ function OEMRepartOverlayed {
+ 		if test $? != 0; then
+ 			systemException &quot;Failed to create partition table&quot; &quot;reboot&quot;
+ 		fi
++		activateBootPartition
+ 	fi
+ 	#======================================
+ 	# Update new device names
+@@ -563,6 +565,7 @@ function OEMRepartCombined {
+ 		if test $? != 0; then
+ 			systemException &quot;Failed to create partition table&quot; &quot;reboot&quot;
+ 		fi
++		activateBootPartition
+ 	fi
+ 	#======================================
+ 	# Update new device names
+@@ -613,6 +616,7 @@ function OEMRepartLVM {
+ 	if test $? != 0; then
+ 		systemException &quot;Failed to create partition table&quot; &quot;reboot&quot;
+ 	fi
++	activateBootPartition
+ 	vgchange -a y kiwiVG
+ 	pvcreate $imageDiskDevice&quot;3&quot;
+ 	vgextend kiwiVG $imageDiskDevice&quot;3&quot;
+@@ -754,3 +758,22 @@ function OEMRepart {
+ 		umount /reco-root &amp;&amp; rmdir /reco-root
+ 	fi
+ }
++
++#======================================
++# activateBootPartition
++#--------------------------------------
++function activateBootPartition {
++	# /.../
++	# set boot flag to current value of $bootid
++	# ----
++	local input=/part.input
++	local bid=`expr $bootid + 1`
++	Echo &quot;Set boot flag to partition ID: $bid [ $imageDiskDevice ]&quot;
++	for cmd in a $bid w q; do
++		echo $cmd &gt;&gt; $input
++	done
++	fdisk $imageDiskDevice &lt; $input 1&gt;&amp;2
++	if test $? != 0; then
++		systemException &quot;Failed to set boot flag&quot; &quot;reboot&quot;
++	fi
++}
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001210.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. fe209138b030c7cc692055d2e6ad7d5e7d5f047e
+</A></li>
+	<LI>Next message: <A HREF="001212.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 54e7c1bdd89fb136f0751652f206cbdd101cce89
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1211">[ date ]</a>
+              <a href="thread.html#1211">[ thread ]</a>
+              <a href="subject.html#1211">[ subject ]</a>
+              <a href="author.html#1211">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,663 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4f3de27e9904ba6824d9b33e4b71a62ef5116904
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204f3de27e9904ba6824d9b33e4b71a62ef5116904&In-Reply-To=%3C201006152135.o5FLZUPk015766%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002302.html">
+   <LINK REL="Next"  HREF="002304.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4f3de27e9904ba6824d9b33e4b71a62ef5116904</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204f3de27e9904ba6824d9b33e4b71a62ef5116904&In-Reply-To=%3C201006152135.o5FLZUPk015766%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4f3de27e9904ba6824d9b33e4b71a62ef5116904">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jun 15 23:35:30 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002302.html">[Kiwi-devel] early exit on conditional XML &quot;failure&quot;
+</A></li>
+        <LI>Next message: <A HREF="002304.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1536d4cd4a073c547249fc6c66cd241ce1fd056f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2303">[ date ]</a>
+              <a href="thread.html#2303">[ thread ]</a>
+              <a href="subject.html#2303">[ subject ]</a>
+              <a href="author.html#2303">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  4f3de27e9904ba6824d9b33e4b71a62ef5116904 (commit)
+      from  b1d4bc23670f865e869b7c2d0b12f39fb17ffedb (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 4f3de27e9904ba6824d9b33e4b71a62ef5116904
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Jun 15 23:34:33 2010 +0200
+
+    - fixed spec file to provide /var/cache/kiwi
+    - fixed migration to be faster in searching non packaged
+      files / directories
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIMigrate.pm b/modules/KIWIMigrate.pm
+index d4367aa..7e98fad 100644
+--- a/modules/KIWIMigrate.pm
++++ b/modules/KIWIMigrate.pm
+@@ -157,7 +157,6 @@ sub new {
+ 		'\/proc\/',                     # no /proc data
+ 		'\/sys\/',                      # no /sys data
+ 		'\/abuild\/',                   # no /abuild data
+-		'\/cache',                      # no cache files
+ 		'\/fillup-templates',           # no fillup data
+ 		'\/var\/lib\/rpm',              # no RPM data
+ 		'\/var\/lib\/zypp',             # no ZYPP data
+@@ -176,11 +175,15 @@ sub new {
+ 		'\/etc\/fstab',                 # no fstab file
+ 		'\/etc\/udev\/rules.d',         # no udev rules
+ 		'\/media\/',                    # no media automount files
++		'\/lost\+\/found',              # no filesystem specific files
+ 		'\/var\/lib\/hardware\/'        # no hwinfo hardware files
+ 	);
+ 	if (defined $excl) {
+ 		my @exclude = @{$excl};
+-		foreach (@exclude) { $_ = quotemeta; };
++		foreach (@exclude) {
++			$_ =~ s/\/$//;
++			$_ = quotemeta;
++		};
+ 		push @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">denyFiles, at exclude</A>;
+ 	}
+ 	#==========================================
+@@ -238,7 +241,8 @@ sub createReport {
+ 	#==========================================
+ 	# Beautify report...
+ 	#------------------------------------------
+-	qxx (&quot;tar -C $dest -xf $main::KMigraCSS 2&gt;&amp;1&quot;);
++	mkdir &quot;$dest/.report&quot;;
++	qxx (&quot;tar -C $dest/.report -xf $main::KMigraCSS 2&gt;&amp;1&quot;);
+ 	#==========================================
+ 	# Start report
+ 	#------------------------------------------
+@@ -258,12 +262,15 @@ sub createReport {
+ 	print FD '&lt;/script&gt;'.&quot;\n&quot;;
+ 	print FD &quot;\t\t&quot;.'&lt;![endif]--&gt;'.&quot;\n&quot;;
+ 	print FD &quot;\t\t&quot;.'&lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot; ';
+-	print FD 'href=&quot;css/kiwi.css&quot;&gt;'.&quot;\n&quot;;
+-	print FD &quot;\t\t&quot;.'&lt;script type=&quot;text/javascript&quot; src=&quot;js/jquery.min.js&quot;&gt;';
++	print FD 'href=&quot;.report/css/kiwi.css&quot;&gt;'.&quot;\n&quot;;
++	print FD &quot;\t\t&quot;.'&lt;script type=&quot;text/javascript&quot; ';
++	print FD 'src=&quot;.report/js/jquery.min.js&quot;&gt;';
+ 	print FD '&lt;/script&gt;'.&quot;\n&quot;;
+-	print FD &quot;\t\t&quot;.'&lt;script type=&quot;text/javascript&quot; src=&quot;js/data.js&quot;&gt;';
++	print FD &quot;\t\t&quot;.'&lt;script type=&quot;text/javascript&quot; ';
++	print FD 'src=&quot;.report/js/data.js&quot;&gt;';
+ 	print FD '&lt;/script&gt;'.&quot;\n&quot;;
+-	print FD &quot;\t\t&quot;.'&lt;script type=&quot;text/javascript&quot; src=&quot;js/kiwi.js&quot;&gt;';
++	print FD &quot;\t\t&quot;.'&lt;script type=&quot;text/javascript&quot; ';
++	print FD 'src=&quot;.report/js/kiwi.js&quot;&gt;';
+ 	print FD '&lt;/script&gt;'.&quot;\n&quot;;
+ 	print FD &quot;\t&quot;.'&lt;/head&gt;'.&quot;\n&quot;;
+ 	print FD '&lt;body class=&quot;files&quot;&gt;'.&quot;\n&quot;;
+@@ -421,11 +428,23 @@ sub createReport {
+ 	# Modified files report...
+ 	#------------------------------------------
+ 	if ($nopackage) {
++		print FD '&lt;h1&gt;Overlay files&lt;/h1&gt;'.&quot;\n&quot;;
++		print FD '&lt;p&gt;'.&quot;\n&quot;;
++		print FD 'Behind the current overlay files directory you will ';
++		print FD 'find the packaged but modified files and also a ';
++		print FD 'collection of files which seems to be required for ';
++		print FD 'this system. Please check the current tree ';
++		print FD 'and take the same rules as for the unpackaged files ';
++		print FD 'mentioned in the next section into account. ';
++		print FD '&lt;/p&gt;'.&quot;\n&quot;;
++		print FD '&lt;div&gt;'.&quot;\n&quot;;
++		print FD 'See &lt;a href=&quot;'.$dest.'/root&quot;&gt;Overlay directory&lt;/a&gt;.'.&quot;\n&quot;;
++		print FD '&lt;/div&gt;'.&quot;\n&quot;;
+ 		print FD '&lt;h1&gt;Unpackaged files&lt;/h1&gt;'.&quot;\n&quot;;
+ 		print FD '&lt;p&gt;'.&quot;\n&quot;;
+-		print FD 'Behind the &lt;a href=&quot;'.&quot;$dest/root-nopackage/&quot;.'&quot;&gt;';
+-		print FD 'Unpackaged files directory&lt;/a&gt; link, you will ';
+-		print FD 'find a list of files which are not part of any packages. ';
++		print FD 'Klicking on the Unpackaged files link below ';
++		print FD 'will show you a list of files/directories ';
++		print FD 'which are not part of any packages. ';
+ 		print FD 'For binary files, including executables and libraries, ';
+ 		print FD 'you should try to find and include a package that ';
+ 		print FD 'provides them. If there are no package providers for ';
+@@ -434,15 +453,9 @@ sub createReport {
+ 		print FD 'After that, you should look for personal files like ';
+ 		print FD 'pictures, movies, or repositories, and remove them if ';
+ 		print FD 'they can be easily restored in the later image. ';
+-		print FD 'The rest of the tree can be checked with a program ';
+-		print FD 'called kdirstat which allows you to find large files ';
+-		print FD 'and lets you decide whether or not you need them in ';
+-		print FD 'your image description. Remove all of the files you ';
+-		print FD 'do not want to keep in your overlay files from the ';
+-		print FD 'unpackaged files directory and copy the rest into ';
+-		print FD 'the '.$dest.'/root directory.'.&quot;\n&quot;;
++		print FD 'Copy all of the files you want to be part of the ';
++		print FD 'image into the '.$dest.'/root directory.'.&quot;\n&quot;;
+ 		print FD '&lt;/p&gt;'.&quot;\n&quot;;
+-		print FD '&lt;/div&gt;'.&quot;\n&quot;;
+ 		print FD '&lt;div class=&quot;container&quot; id=&quot;searchbox&quot;&gt;'.&quot;\n&quot;;
+ 		print FD 'See &lt;a href=&quot;root-nopackage.html&quot;&gt;Unpackaged files&lt;/a&gt;.'.&quot;\n&quot;;
+ 		print FD '&lt;/div&gt;'.&quot;\n&quot;;
+@@ -450,7 +463,7 @@ sub createReport {
+ 		if (! open (ND,&quot;&gt;$dest/root-nopackage.html&quot;)) {
+ 			$openFailed = 1;
+ 		}
+-		if (! open (JS,&quot;&gt;$dest/js/data.js&quot;)) {
++		if (! open (JS,&quot;&gt;$dest/.report/js/data.js&quot;)) {
+ 			$openFailed = 1;
+ 		}
+ 		if (! $openFailed) {
+@@ -462,13 +475,13 @@ sub createReport {
+ 			print ND &quot;\t&quot;.'&lt;head&gt;'.&quot;\n&quot;;
+ 			print ND &quot;\t\t&quot;.'&lt;title&gt;File list&lt;/title&gt;'.&quot;\n&quot;;
+ 			print ND &quot;\t\t&quot;.'&lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;';
+-			print ND ' href=&quot;css/kiwi.css&quot;&gt;'.&quot;\n&quot;;
++			print ND ' href=&quot;.report/css/kiwi.css&quot;&gt;'.&quot;\n&quot;;
+ 			print ND &quot;\t\t&quot;.'&lt;script type=&quot;text/javascript&quot;';
+-			print ND ' src=&quot;js/jquery.min.js&quot;&gt;&lt;/script&gt;'.&quot;\n&quot;;
++			print ND ' src=&quot;.report/js/jquery.min.js&quot;&gt;&lt;/script&gt;'.&quot;\n&quot;;
+ 			print ND &quot;\t\t&quot;.'&lt;script type=&quot;text/javascript&quot;';
+-			print ND ' src=&quot;js/data.js&quot;&gt;&lt;/script&gt;'.&quot;\n&quot;;
++			print ND ' src=&quot;.report/js/data.js&quot;&gt;&lt;/script&gt;'.&quot;\n&quot;;
+ 			print ND &quot;\t\t&quot;.'&lt;script type=&quot;text/javascript&quot;';
+-			print ND ' src=&quot;js/kiwi.js&quot;&gt;&lt;/script&gt;'.&quot;\n&quot;;
++			print ND ' src=&quot;.report/js/kiwi.js&quot;&gt;&lt;/script&gt;'.&quot;\n&quot;;
+ 			print ND &quot;\t&quot;.'&lt;/head&gt;'.&quot;\n&quot;;
+ 			print ND '&lt;body class=&quot;files&quot;&gt;'.&quot;\n&quot;;
+ 			print ND '&lt;div class=&quot;headerwrap&quot;&gt;'.&quot;\n&quot;;
+@@ -485,7 +498,6 @@ sub createReport {
+ 			#------------------------------------------
+ 			my $count= 0;
+ 			foreach my $file (sort keys %{$nopackage}) {
+-				next if ! -e &quot;$dest/root-nopackage/$file&quot;;
+ 				my $mtime = localtime ($nopackage-&gt;{$file}-&gt;[1]-&gt;mtime);
+ 				my $size  = $nopackage-&gt;{$file}-&gt;[1]-&gt;size;
+ 				if ($size &gt; 1048576) {
+@@ -1106,13 +1118,10 @@ sub setSystemOverlayFiles {
+ 	my $cache  = $dest.&quot;.cache&quot;;
+ 	my $cdata;
+ 	my $checkopt;
+-	my @rpmlist;
+-	my @rpmcheck;
+ 	my %result;
+ 	my $data;
+ 	my $code;
+ 	my @modified;
+-	my @ilist;
+ 	my $root = &quot;/&quot;;
+ 	#==========================================
+ 	# check for cache file
+@@ -1125,166 +1134,143 @@ sub setSystemOverlayFiles {
+ 		$cdata = retrieve($cache);
+ 	}
+ 	#==========================================
+-	# search installed packages
+-	#------------------------------------------
+-	$kiwi -&gt; info (&quot;Searching installed packages...&quot;);
+-	if ($cache) {
+-		@ilist = @{$cdata-&gt;{ilist}};
+-	} else {
+-		@ilist = qxx ('rpm -qa --qf &quot;%{NAME}\n&quot; | sort | uniq'); chomp @ilist;
+-		$code = $? &gt;&gt; 8;
+-		if ($code != 0) {
+-			$kiwi -&gt; failed ();
+-			$kiwi -&gt; error  (&quot;Failed to obtain installed packages&quot;);
+-			$kiwi -&gt; failed ();
+-			return undef;
+-		}
+-		$cdata-&gt;{ilist} = \@ilist;
+-	}
+-	$kiwi -&gt; done();
+-	#==========================================
+ 	# exclude special and non local mounts
+ 	#------------------------------------------
+-	if (! $cache) {
+-		my @mounts = qxx (&quot;cat /proc/mounts|cut -f 2,3 -d ' '&quot;); chomp @mounts;
+-		foreach my $mount (@mounts) {
+-			my @details = split (/\s+/,$mount);
+-			my $path = quotemeta ($details[0]);
+-			my $type = $details[1];
+-			$path .= &quot;\/&quot;;
+-			if ($type =~
+-				/^(tmpfs|proc|sysfs|debugfs|devpts|fusectl|autofs|nfs|nfsd)$/) {
+-				push @deny,$path;
+-				$kiwi -&gt; loginfo (&quot;Excluding path: $path per mount table\n&quot;);
+-			}
+-		}
+-	}
++	#if (! $cache) {
++	#	my @mounts = qxx (&quot;cat /etc/mtab | cut -f 2,3 -d ' '&quot;); chomp @mounts;
++	#	foreach my $mount (@mounts) {
++	#		my @details = split (/\s+/,$mount);
++	#		my $path = quotemeta ($details[0]);
++	#		my $type = $details[1];
++	#		$path .= &quot;\/&quot;;
++	#		if ($type =~
++	#			/^(tmpfs|proc|sysfs|debugfs|devpts|fusectl|autofs|nfs|nfsd)$/) {
++	#			push @deny,$path;
++	#			$kiwi -&gt; loginfo (&quot;Excluding path: $path per mount table\n&quot;);
++	#		}
++	#	}
++	#}
+ 	#==========================================
+-	# generate File::Find closure
++	# Find files packaged but changed
+ 	#------------------------------------------
+-	sub generateWanted {
+-		my $filehash = shift;
+-		return sub {
+-			if (-d $File::Find::name) {
+-				my $attr = stat ($File::Find::name);
+-				if ($attr-&gt;dev &lt; 0x100) {
+-					$File::Find::prune = 1;
++	$kiwi -&gt; info (&quot;Inspecting RPM database [modified files]...&quot;);
++	if ($cache) {
++		@modified = @{$cdata-&gt;{modified}};
++		$kiwi -&gt; note (&quot;\n&quot;);
++	} else {
++		$checkopt = &quot;--nodeps --nodigest --nosignature --nomtime &quot;;
++		$checkopt.= &quot;--nolinkto --nouser --nogroup --nomode&quot;;
++		my @rpmcheck = qxx (&quot;rpm -Va $checkopt&quot;); chomp @rpmcheck;
++		my $rpmsize = @rpmcheck;
++		my $spart = 100 / $rpmsize;
++		my $count = 1;
++		my $done;
++		my $done_old;
++		$kiwi -&gt; cursorOFF();
++		foreach my $check (@rpmcheck) {
++			if ($check =~ /(\/.*)/) {
++				my $file = $1;
++				my ($name,$dir,$suffix) = fileparse ($file);
++				my $ok   = 1;
++				foreach my $exp (@deny) {
++					if ($file =~ /$exp/) {
++						$ok = 0; last;
++					}
+ 				}
+-			} else {
+-				my $file = $File::Find::name;
+-				my $dirn = $File::Find::dir;
+-				my $attr;
+-				if (-l $file) {
+-					$attr = lstat ($file);
+-				} else {
+-					$attr = stat ($file);
++				if (($ok) &amp;&amp; (-e $file)) {
++					my $attr;
++					if (-l $file) {
++						$attr = lstat ($file);
++					} else {
++						$attr = stat ($file);
++					}
++					$result{$file} = [$dir,$attr];
++					push (@modified,$file);
+ 				}
+-				$filehash-&gt;{$file} = [$dirn,$attr];
+ 			}
++			$done = int ($count * $spart);
++			if ($done != $done_old) {
++				$kiwi -&gt; step ($done);
++			}
++			$done_old = $done;
++			$count++;
+ 		}
+-	};
++		$cdata-&gt;{modified} = \@modified;
++		$kiwi -&gt; note (&quot;\n&quot;);
++		$kiwi -&gt; doNorm ();
++		$kiwi -&gt; cursorON();
++	}
+ 	#==========================================
+-	# Find files not packaged
++	# Find files/directories not packaged
+ 	#------------------------------------------
+-	$kiwi -&gt; info (&quot;Reading root file system...&quot;);
++	$kiwi -&gt; info (&quot;Inspecting RPM database [unpackaged files]...&quot;);
+ 	if ($cache) {
+ 		%result = %{$cdata-&gt;{result}};
++		$kiwi -&gt; done();
+ 	} else {
+-		my $wref = generateWanted (\%result);
+-		find ({ wanted =&gt; $wref }, $root );
+-		$cdata-&gt;{result} = \%result;
+-	}
+-	$kiwi -&gt; done ();
+-	$kiwi -&gt; info (&quot;Inspecting RPM database [installed files]...&quot;);
+-	if ($cache) {
+-		@rpmlist = @{$cdata-&gt;{rpmlist}};
+-	} else {
+-		@rpmlist = qxx (&quot;rpm -qal&quot;);
+-		$cdata-&gt;{rpmlist} = \@rpmlist;
+-	}
+-	my @curlist = keys %result;
+-	my $cursize = @curlist;
+-	my $rpmsize = @rpmlist;
+-	my $spart = 100 / ($cursize + $rpmsize);
+-	my $count = 0;
+-	my $done;
+-	my $done_old;
+-	$kiwi -&gt; cursorOFF();
+-	foreach my $managed (@rpmlist) {
+-		chomp $managed; delete $result{$managed};
+-		$done = int ($count * $spart);
+-		if ($done != $done_old) {
+-			$kiwi -&gt; step ($done);
++		my @rpmcheck = qxx (&quot;rpm -qlav&quot;);
++		chomp @rpmcheck;
++		my @rpm_dir  = ();
++		my @rpm_file = ();
++		foreach my $dir (@rpmcheck) {
++			if ($dir =~ /^d.*?\/(.*)$/) {
++				push @rpm_dir,$1;
++			} elsif ($dir =~ /.*?\/(.*)$/) {
++				push @rpm_file,$1;
++			}
+ 		}
+-		$done_old = $done;
+-		$count++;
+-	}
+-	@curlist = keys %result;
+-	$cursize = @curlist;
+-	$spart = 100 / ($cursize + $rpmsize);
+-	foreach my $file (sort keys %result) {
+-		foreach my $exp (@deny) {
+-			if ($file =~ /$exp/) {
+-				delete $result{$file}; last;
++		my %file_rpm;
++		my %dirs_rpm;
++		my %dirs_cmp;
++		@file_rpm{map {$_ = &quot;/$_&quot;} @rpm_file} = ();
++		@dirs_rpm{map {$_ = &quot;/$_&quot;} @rpm_dir}  = ();
++		$dirs_cmp{&quot;/&quot;} = undef;
++		foreach my $dir (keys %dirs_rpm) {
++			while ($dir =~ s:/[^/]+$::) {
++				$dirs_cmp{$dir} = undef;
+ 			}
+ 		}
+-		$done = int ($count * $spart);
+-		if ($done != $done_old) {
+-			$kiwi -&gt; step ($done);
++		# unpackaged files in packaged directories...
++		my $wref = $this -&gt; generateWanted (\%result);
++		find ($wref, keys %dirs_rpm);
++		foreach my $file (sort keys %result) {
++			if (exists $file_rpm{$file}) {
++				delete $result{$file};
++			}
+ 		}
+-		$done_old = $done;
+-		$count++;
+-	}
+-	$kiwi -&gt; note (&quot;\n&quot;);
+-	$kiwi -&gt; doNorm ();
+-	$kiwi -&gt; cursorON();
+-	#==========================================
+-	# Find files packaged but changed
+-	#------------------------------------------
+-	$kiwi -&gt; info (&quot;Inspecting RPM database [verify]...&quot;);
+-	if ($cache) {
+-		@rpmcheck = @{$cdata-&gt;{rpmcheck}};
+-	} else {
+-		$checkopt = &quot;--nodeps --nodigest --nosignature --nomtime &quot;;
+-		$checkopt.= &quot;--nolinkto --nouser --nogroup --nomode&quot;;
+-		@rpmcheck = qxx (&quot;rpm -Va $checkopt&quot;); chomp @rpmcheck;
+-		$cdata-&gt;{rpmcheck} = \@rpmcheck;
+-	}
+-	$rpmsize = @rpmcheck;
+-	$spart = 100 / $rpmsize;
+-	$count = 1;
+-	$kiwi -&gt; cursorOFF();
+-	foreach my $check (@rpmcheck) {
+-		if ($check =~ /(\/.*)/) {
+-			my $file = $1;
+-			my ($name,$dir,$suffix) = fileparse ($file);
++		# unpackaged directories...
++		foreach my $dir (sort keys %dirs_cmp) {
++			my $FH;	opendir $FH,$dir;
++			while (my $f = readdir $FH) {
++				next if $f eq &quot;.&quot; || $f eq &quot;..&quot;;
++				my $path = &quot;$dir/$f&quot;;
++				if ($dir eq &quot;/&quot;) {
++					$path = &quot;/$f&quot;;
++				}
++				if ((-d $path) &amp;&amp; (! -l $path)) {
++					if (! exists $dirs_rpm{$path}) {
++						my $attr = stat $path;
++						$result{$path} = [$path,$attr];
++					}
++				}
++			}
++			closedir $FH;
++		}
++		# skipped files...
++		foreach my $file (sort keys %result) {
+ 			my $ok   = 1;
+ 			foreach my $exp (@deny) {
+ 				if ($file =~ /$exp/) {
+ 					$ok = 0; last;
+ 				}
+ 			}
+-			if (($ok) &amp;&amp; (-e $file)) {
+-				my $attr;
+-				if (-l $file) {
+-					$attr = lstat ($file);
+-				} else {
+-					$attr = stat ($file);
+-				}
+-				$result{$file} = [$dir,$attr];
+-				push (@modified,$file);
++			if (! $ok) {
++				delete $result{$file};
+ 			}
+ 		}
+-		$done = int ($count * $spart);
+-		if ($done != $done_old) {
+-			$kiwi -&gt; step ($done);
+-		}
+-		$done_old = $done;
+-		$count++;
++		$cdata-&gt;{result} = \%result;
++		$kiwi -&gt; done();
+ 	}
+-	$kiwi -&gt; note (&quot;\n&quot;);
+-	$kiwi -&gt; doNorm ();
+-	$kiwi -&gt; cursorON();
+ 	#==========================================
+ 	# Write cache if required
+ 	#------------------------------------------
+@@ -1292,42 +1278,6 @@ sub setSystemOverlayFiles {
+ 		store ($cdata,$dest.&quot;.cache&quot;);
+ 	}
+ 	#==========================================
+-	# Cleanup
+-	#------------------------------------------
+-	qxx (&quot;rm -rf $dest/root-nopackage 2&gt;&amp;1&quot;);
+-	#==========================================
+-	# Create overlay root tree
+-	#------------------------------------------
+-	$kiwi -&gt; info (&quot;Creating link list...\n&quot;);
+-	$data = qxx (&quot;mkdir -p $dest/root-nopackage 2&gt;&amp;1&quot;);
+-	$code = $? &gt;&gt; 8;
+-	if ($code != 0) {
+-		$kiwi -&gt; failed ();
+-		$kiwi -&gt; error  (&quot;Couldn't create overlay root directory: $data&quot;);
+-		$kiwi -&gt; failed ();
+-		return undef;
+-	}
+-	#==========================================
+-	# 1) Create directory structure
+-	#------------------------------------------
+-	my %paths = ();
+-	foreach my $file (keys %result) {
+-		my $path = $result{$file}-&gt;[0];
+-		$paths{&quot;$dest/root-nopackage/$path&quot;} = $path;
+-	}
+-	mkpath (keys %paths, {verbose =&gt; 0});
+-	#==========================================
+-	# 2) Create hard link list
+-	#------------------------------------------
+-	foreach my $file (keys %result) {
+-		my $old = $file;
+-		my $new = $dest.&quot;/root-nopackage&quot;.$old;
+-		if (! link &quot;$old&quot;,&quot;$new&quot;) {
+-			$kiwi -&gt; warning (&quot;hard link for $file failed: $!&quot;);
+-			$kiwi -&gt; skipped ();
+-		}
+-	}
+-	#==========================================
+ 	# Create modified files tree
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Creating modified files tree...&quot;);
+@@ -1335,16 +1285,14 @@ sub setSystemOverlayFiles {
+ 	foreach my $file (@modified) {
+ 		my ($name,$dir,$suffix) = fileparse ($file);
+ 		mkpath (&quot;$dest/root/$dir&quot;, {verbose =&gt; 0});
+-		move (&quot;$dest/root-nopackage/$file&quot;,&quot;$dest/root/$dir&quot;);
+-		delete $result{$file};
++		qxx (&quot;cp -a $file $dest/root/$dir&quot;);
+ 	}
+-	$kiwi -&gt; done();
+ 	#==========================================
+ 	# Create modified files tree /etc
+ 	#------------------------------------------
+ 	mkpath (&quot;$dest/root/etc&quot;, {verbose =&gt; 0});
+-	qxx (&quot;tar -cf - -C $dest/root-nopackage/etc .|tar -xC $dest/root/etc 2&gt;&amp;1&quot;);
+-	qxx (&quot;rm -rf $dest/root-nopackage/etc&quot;);
++	qxx (&quot;tar -cf - -C /etc .|tar -xC $dest/root/etc 2&gt;&amp;1&quot;);
++	$kiwi -&gt; done();
+ 	#==========================================
+ 	# Cleanup symbolic links
+ 	#------------------------------------------
+@@ -1355,13 +1303,12 @@ sub setSystemOverlayFiles {
+ 	# Remove empty directories
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Removing empty directories...&quot;);
+-	qxx (&quot;find $dest/root-nopackage -type d | xargs rmdir -p 2&gt;/dev/null&quot;);
++	qxx (&quot;find $dest/root -type d | xargs rmdir -p 2&gt;/dev/null&quot;);
+ 	$kiwi -&gt; done();
+ 	#==========================================
+ 	# Store in instance for report
+ 	#------------------------------------------
+ 	$this-&gt;{nopackage} = \%result;
+-	$this-&gt;{ilist}     = \@ilist;
+ 	return $this;
+ }
+ 
+@@ -1524,7 +1471,7 @@ sub checkBrokenLinks {
+ 	my $this = shift;
+ 	my $dest = $this-&gt;{dest};
+ 	my $kiwi = $this-&gt;{kiwi};
+-	my @base = (&quot;root-nopackage&quot;,&quot;root&quot;);
++	my @base = (&quot;root&quot;);
+ 	my @link = ();
+ 	#==========================================
+ 	# search links in overlay subtrees
+@@ -1626,6 +1573,33 @@ sub autoyastClone {
+ 	return $this;
+ }
+ 
++#==========================================
++# generate File::Find closure
++#------------------------------------------
++sub generateWanted {
++	my $filehash = shift;
++	return sub {
++		my $file = $File::Find::name;
++		my $dirn = $File::Find::dir;
++		my $attr;
++		if (-d $file) {
++			$attr = stat ($file);
++			if ($attr-&gt;dev &lt; 0x100) {
++				$File::Find::prune = 1;
++			} else {
++				$filehash-&gt;{$file} = [$dirn,$attr];
++			}
++		} else {
++			if (-l $file) {
++				$attr = lstat ($file);
++			} else {
++				$attr = stat ($file);
++			}
++			$filehash-&gt;{$file} = [$dirn,$attr];
++		}
++	}
++}
++
+ 1;
+ 
+ # vim: set noexpandtab:
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index 2efd621..c96b477 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -315,6 +315,8 @@ touch kiwi.loader
+ 	rm -rf $RPM_BUILD_ROOT/etc/permissions.d/kiwi
+ %endif
+ 
++mkdir -p $RPM_BUILD_ROOT/var/cache/kiwi
++
+ test -f $RPM_BUILD_ROOT/srv/tftpboot/pxelinux.0 &amp;&amp; \
+ 	echo /srv/tftpboot/pxelinux.0 &gt; kiwi.loader
+ test -f $RPM_BUILD_ROOT/srv/tftpboot/mboot.c32 &amp;&amp; \
+@@ -349,6 +351,7 @@ rm -rf $RPM_BUILD_ROOT
+ %defattr(-, root, root)
+ %dir %{_datadir}/kiwi
+ %dir %{_datadir}/kiwi/image
++%dir /var/cache/kiwi
+ %exclude %{_datadir}/kiwi/image/suse-11.3-JeOS
+ %exclude %{_datadir}/kiwi/image/suse-11.2-JeOS
+ %exclude %{_datadir}/kiwi/image/suse-11.1-JeOS
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002302.html">[Kiwi-devel] early exit on conditional XML &quot;failure&quot;
+</A></li>
+	<LI>Next message: <A HREF="002304.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1536d4cd4a073c547249fc6c66cd241ce1fd056f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2303">[ date ]</a>
+              <a href="thread.html#2303">[ thread ]</a>
+              <a href="subject.html#2303">[ subject ]</a>
+              <a href="author.html#2303">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

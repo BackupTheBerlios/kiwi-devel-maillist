@@ -1,0 +1,127 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [PATCH] find and mount the active partition on /livecd
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BPATCH%5D%20find%20and%20mount%20the%20active%20partition%20on%20/livecd&In-Reply-To=%3C1299667533-19448-1-git-send-email-winter%40pre-sense.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003168.html">
+   <LINK REL="Next"  HREF="003170.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [PATCH] find and mount the active partition on /livecd</H1>
+    <B>Justus Winter</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BPATCH%5D%20find%20and%20mount%20the%20active%20partition%20on%20/livecd&In-Reply-To=%3C1299667533-19448-1-git-send-email-winter%40pre-sense.de%3E"
+       TITLE="[Kiwi-devel] [PATCH] find and mount the active partition on /livecd">winter at pre-sense.de
+       </A><BR>
+    <I>Wed Mar  9 11:45:33 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003168.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, ppc,	updated. 89992e0c2156075caad4603fa63eb26ab16131f2
+</A></li>
+        <LI>Next message: <A HREF="003170.html">[Kiwi-devel] [PATCH] find and mount the active partition on /livecd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3169">[ date ]</a>
+              <a href="thread.html#3169">[ thread ]</a>
+              <a href="subject.html#3169">[ subject ]</a>
+              <a href="author.html#3169">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>When mounting the hybrid boot drive, select the partition marked as bootable
+instead of blindly mounting the first one. This change makes it possible to
+update the system if the image has been written to a writable medium.
+---
+ modules/KIWILinuxRC.sh |   38 ++++++++++++++++++++++++++++++++++++--
+ 1 files changed, 36 insertions(+), 2 deletions(-)
+
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 4c2c139..58203f6 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -2927,6 +2927,40 @@ function CDMountOption {
+ 		echo &quot;-t iso9660&quot;
+ 	fi
+ }
++
++BOOTABLE_FLAG=&quot;$(echo -ne '\x80')&quot;
++#======================================
++# IsBootable
++#--------------------------------------
++function IsBootable { # path, partitionNumber
++	# /.../
++	# checks whether a partition is marked as bootable or not
++	# ----
++	local offset
++	let offset=&quot;446 + 16 * (${2} - 1)&quot;
++	[ &quot;$(dd &quot;if=${1}&quot; bs=1 count=1 skip=${offset} 2&gt;/dev/null)&quot; = &quot;${BOOTABLE_FLAG}&quot; ]
++}
++
++#======================================
++# GetBootable
++#--------------------------------------
++function GetBootable { # path
++	# /.../
++	# print the number of the first bootable partition on the given block
++	# device. If no partition is flagged as bootable, it prints 1.
++	# ----
++	local partition
++	for (( partition = 1; partition &lt;= 4; partition++ ));do
++		if IsBootable &quot;${1}&quot; &quot;${partition}&quot;;then
++			echo &quot;${partition}&quot;
++			return
++		fi
++	done
++	# No bootable partition found, default to the old behaviour and select
++	# the first one
++	echo &quot;1&quot;
++}
++
+ #======================================
+ # CDMount
+ #--------------------------------------
+@@ -3013,8 +3047,8 @@ function CDMount {
+ 				createHybridPersistent $biosBootDevice
+ 			fi
+ 		fi
+-		Echo -n &quot;Mounting hybrid live boot drive...&quot;
+-		cddev=$(ddn $biosBootDevice 1)
++		cddev=$(ddn &quot;${biosBootDevice}&quot; &quot;$(GetBootable &quot;${biosBootDevice}&quot;)&quot;)
++		Echo -n &quot;Mounting hybrid live boot drive ${cddev}...&quot;
+ 		kiwiMount &quot;$cddev&quot; &quot;/cdrom&quot; &quot;-o ro&quot;
+ 		if [ -f $LIVECD_CONFIG ];then
+ 			echo
+-- 
+1.7.2.3
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003168.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, ppc,	updated. 89992e0c2156075caad4603fa63eb26ab16131f2
+</A></li>
+	<LI>Next message: <A HREF="003170.html">[Kiwi-devel] [PATCH] find and mount the active partition on /livecd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3169">[ date ]</a>
+              <a href="thread.html#3169">[ thread ]</a>
+              <a href="subject.html#3169">[ subject ]</a>
+              <a href="author.html#3169">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

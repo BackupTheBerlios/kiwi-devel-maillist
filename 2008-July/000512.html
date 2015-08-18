@@ -1,0 +1,395 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1423 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1423%20-%20kiwi-head/modules&In-Reply-To=%3C200807011303.m61D3aDn019372%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000511.html">
+   <LINK REL="Next"  HREF="000513.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1423 - kiwi-head/modules</H1>
+    <B>jcborn at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1423%20-%20kiwi-head/modules&In-Reply-To=%3C200807011303.m61D3aDn019372%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1423 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Tue Jul  1 15:03:36 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000511.html">[Kiwi-devel] [SVN:KIWI-Team] r1422 - kiwi-head/modules/.test
+</A></li>
+        <LI>Next message: <A HREF="000513.html">[Kiwi-devel] [SVN:KIWI-Team] r1424 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#512">[ date ]</a>
+              <a href="thread.html#512">[ thread ]</a>
+              <a href="subject.html#512">[ subject ]</a>
+              <a href="author.html#512">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: Tue Jul  1 15:03:35 2008
+New Revision: 1423
+
+Added:
+   kiwi-head/modules/KIWIArch.pm
+   kiwi-head/modules/KIWIArchList.pm
+
+Log:
+- encapsulation of the architecture list
+
+
+Added: kiwi-head/modules/KIWIArch.pm
+==============================================================================
+--- (empty file)
++++ kiwi-head/modules/KIWIArch.pm	Tue Jul  1 15:03:35 2008
+@@ -0,0 +1,116 @@
++#================
++# FILE          : KIWIArch
++#----------------
++# PROJECT       : OpenSUSE Build-Service
++# COPYRIGHT     : (c) 2006 SUSE LINUX Products GmbH, Germany
++#               :
++# AUTHOR        : Jan-Christoph Bornschlegel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">jcborn at suse.de</A>&gt;
++#               :
++# BELONGS TO    : Operating System images
++#               :
++# DESCRIPTION   : 
++#               :
++# STATUS        : Development
++#----------------
++
++package KIWIArch;
++
++use strict;
++
++
++
++#==================
++# constructor
++#------------------
++# parameters:
++# - [class name]
++# - name of the architecture (scalar)
++# - description string (scalar)
++# - next architcture in fallback chain (scalar)
++#------------------
++sub new
++{
++  # ...
++  # Create a new KIWIArch object which represents one
++  # particular architecture and its next fallback
++  # ---
++  #==========================================
++  # Object setup
++  #------------------------------------------
++  my $class = shift;
++
++  my $this  = {
++    m_name	=&gt; undef,
++    m_desc	=&gt; undef,
++    m_next	=&gt; undef,
++  };
++  bless ($this, $class);
++
++  $this-&gt;{m_name} = shift;
++  $this-&gt;{m_desc} = shift;
++  $this-&gt;{m_next} = shift;
++  if(not(defined($this-&gt;{m_name}) and defined($this-&gt;{m_desc}) and defined($this-&gt;{m_next}))) {
++    return undef; # rock hard get outta here: caller must check retval anyway
++  }
++
++  return $this;
++}
++# /constructor
++
++
++
++#==================
++# access methods
++#------------------
++
++
++
++#==================
++# name
++#------------------
++sub name
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  return $this-&gt;{m_name};
++}
++
++
++
++#==================
++# desc
++#------------------
++sub desc
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  return $this-&gt;{m_desc};
++}
++
++
++
++#==================
++# next
++#------------------
++sub follower
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  if($this-&gt;{m_next} eq &quot;&quot;) {
++    return undef;
++  }
++  else {
++    return $this-&gt;{m_next};
++  }
++}
++
++
++
++1;
++
+
+Added: kiwi-head/modules/KIWIArchList.pm
+==============================================================================
+--- (empty file)
++++ kiwi-head/modules/KIWIArchList.pm	Tue Jul  1 15:03:35 2008
+@@ -0,0 +1,195 @@
++#================
++# FILE          : KIWIArchList
++#----------------
++# PROJECT       : OpenSUSE Build-Service
++# COPYRIGHT     : (c) 2006 SUSE LINUX Products GmbH, Germany
++#               :
++# AUTHOR        : Jan-Christoph Bornschlegel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">jcborn at suse.de</A>&gt;
++#               :
++# BELONGS TO    : Operating System images
++#               :
++# DESCRIPTION   : This module is used to adminster a list of
++#               : architecture objects
++#               :
++# STATUS        : Development
++#----------------
++
++package KIWIArchList;
++
++use strict;
++
++use KIWIArch;
++
++
++#==================
++# constructor
++#------------------
++sub new
++{
++  # ...
++  # Create a new KIWIArchList object which administers
++  # the arch objects
++  # ---
++  #==========================================
++  # Object setup
++  #------------------------------------------
++  my $class = shift;
++
++  my $this  = {
++    m_collect	=&gt; undef,     # phone back to KIWICollect
++    m_archs	=&gt; {},	      # name/objref pairs
++  };
++  bless ($this, $class);
++
++  # other init work:
++  $this-&gt;{m_collect}	= shift;  # first and most important thing: store the caller object
++  if(not defined($this-&gt;{m_collect})) {
++    return undef; # rock hard get outta here: caller must check retval anyway
++  }
++
++  return $this;
++}
++# /constructor
++
++
++
++#==================
++# access methods
++#------------------
++
++
++
++#==================
++# arch(NAME)
++#------------------
++# returns undef if the element is not in the hash
++#------------------
++sub arch
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  my $name = shift;
++
++  if(defined($this-&gt;{m_archs}-&gt;{$name})) {
++    return $this-&gt;{m_archs}-&gt;{$name};
++  }
++  else {
++    return undef;
++  }
++}
++
++
++
++#==================
++# other methods
++#------------------
++
++
++
++#==================
++# _addArch
++#------------------
++# adds one specific arch object to the list
++#------------------
++sub _addArch
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  my $num = @_;
++  if(!@_ or $num &lt; 3) {
++    $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;_addArch: wrong number of arguments!\n&quot;);
++    return undef;
++  }
++  my ($name, $desc, $next) = @_;
++  if(defined($this-&gt;{m_archs}-&gt;{$name})) {
++    $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;_addArch: arch=$name already in list, skipping\n&quot;);
++    return 0;
++  }
++  my $arch = new KIWIArch($name, $desc, $next);
++  $this-&gt;{m_archs}-&gt;{$name} = $arch;
++  return 1;
++}
++
++
++
++#==================
++# addArchs
++#------------------
++# add all architectures from a hash
++# The hash has the following structure
++# (see KIWIXML::getInstSourceArchList):
++# - name =&gt; [descr, nextname]
++# nextname is verified through xml validation:
++# there must be an entry with the referred name
++#------------------
++sub addArchs
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++
++  my $hashref = shift;
++  if(not defined($hashref)) {
++    return undef;
++  }
++  foreach my $a(keys(%{$hashref})) {
++    my $n = $hashref-&gt;{$a}-&gt;[1] eq &quot;0&quot;?&quot;&quot;:$hashref-&gt;{$a}-&gt;[1];
++    $this-&gt;_addArch($a, $hashref-&gt;{$a}-&gt;[0], $hashref-&gt;{$a}-&gt;[1]);
++  }
++}
++
++
++
++#==================
++# fallbacks
++#------------------
++# Create a list of fallback architectures
++# thereby omitting a list of archs in the
++# fallback chain if given as parameters
++# Call like this:
++# my $list = $archlist-&gt;fallback(name[, omitlist])
++# if omitlist is empty the full fallback chain
++# is returned.
++#------------------
++sub fallbacks
++{
++  my $this = shift;
++  my @al;
++  if(not ref($this)) {
++    return @al;
++  }
++
++  my $name = shift;
++  if(not defined($name)) {
++    return @al;
++  }
++  if(not defined($this-&gt;{m_archs}-&gt;{$name})) {
++    return @al;
++  }
++
++  my %omits;
++  if(@_) {
++    %omits = map { $_ =&gt; 1 } @_;
++  }
++  # loop the whole chain following &quot;$name&quot;:
++  #for(my $a = $this-&gt;{m_archs}-&gt;{$name}; $a-&gt;follower();) {
++  my $a = $this-&gt;arch($name);
++  while(1) {
++    if(not($omits{$a-&gt;name()})) {
++      push @al, $a-&gt;name();
++    }
++    $a = $this-&gt;arch($a-&gt;follower());
++    last if not defined($a);
++  }
++  return @al;
++}
++
++
++
++1;
++
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000511.html">[Kiwi-devel] [SVN:KIWI-Team] r1422 - kiwi-head/modules/.test
+</A></li>
+	<LI>Next message: <A HREF="000513.html">[Kiwi-devel] [SVN:KIWI-Team] r1424 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#512">[ date ]</a>
+              <a href="thread.html#512">[ thread ]</a>
+              <a href="subject.html#512">[ subject ]</a>
+              <a href="author.html#512">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

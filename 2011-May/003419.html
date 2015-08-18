@@ -1,0 +1,111 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Fix ownership change issue
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Fix%20ownership%20change%20issue&In-Reply-To=%3C20110517090721.GB10836%40D7.ddts.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003418.html">
+   <LINK REL="Next"  HREF="003422.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Fix ownership change issue</H1>
+    <B>Marcus Sch&#228;fer</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Fix%20ownership%20change%20issue&In-Reply-To=%3C20110517090721.GB10836%40D7.ddts.net%3E"
+       TITLE="[Kiwi-devel] Fix ownership change issue">ms at suse.de
+       </A><BR>
+    <I>Tue May 17 11:07:21 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003418.html">[Kiwi-devel] Fix ownership change issue
+</A></li>
+        <LI>Next message: <A HREF="003422.html">[Kiwi-devel] Fix ownership change issue
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3419">[ date ]</a>
+              <a href="thread.html#3419">[ thread ]</a>
+              <a href="subject.html#3419">[ subject ]</a>
+              <a href="author.html#3419">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi,
+
+&gt;<i> The attached patch addresses the ownership change issue discovered
+</I>&gt;<i> by EMC. The underlying problem is that tar in verbose mode inserts
+</I>&gt;<i> padding to get a pretty table layout. This causes shift of fields
+</I>&gt;<i> and therefore causes out file list of files in the archive to be
+</I>&gt;<i> corrupt. This patch eliminates the padding problem by using a short
+</I>&gt;<i> listing and a different grep command to eliminate the directory
+</I>&gt;<i> entry.
+</I>
+Hmm, this will not really fix it. Remember that the archive is
+unpacked in the system image tree and if bootinclude=&quot;true&quot; is set
+the archive contents are transfered over to the boot image tree.
+The archive contents are determined by the content table of the
+tarball (tar -t)
+
+The reason why I used the &quot;-v&quot; option in tar was to check for
+directory entries. If someone includes an entire directory in
+the tarball the tar -t will list that directory and all its contents.
+So if someone has one file in /etc which should be added but
+created the tarball in a way that it contains the directory as
+well this will lead to the entire /etc directory to be moved into
+the boot image. So the code should create a list of files and
+directories with files but not entire directories like '/etc'
+
+Problem here is that the name of the owner/groub 'autobuild/autobuild' is
+so long that the table layout no longer has the expected field length :(
+The attached patch fixes this by using the --numeric-owner option
+fixed field length detection is always evil but I don't have
+a better solution in mind. I'm open for anything better :)
+
+Regards,
+Marcus
+-- 
+ Public Key available
+ gpg --keyserver gpg-keyserver.de --recv-keys 0xCCE3C6A2
+ -------------------------------------------------------
+ Marcus Sch&#228;fer (Res. &amp; Dev.)   SUSE LINUX Products GmbH
+ Tel: 0911-740 53 0             Maxfeldstrasse 5
+ FAX: 0911-740 53 479           D-90409 N&#252;rnberg
+ GF:  Jeff Hawn,Jennifer Guild, Felix Imend&#246;rffer                  
+ HRB: 21284 (AG N&#252;rnberg)       Germany
+ <A HREF="http://www.suse.de">http://www.suse.de</A>
+ -------------------------------------------------------
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: kiwi.patch
+Type: text/x-patch
+Size: 654 bytes
+Desc: not available
+URL: &lt;<A HREF="https://lists.berlios.de/pipermail/kiwi-devel/attachments/20110517/fba8cafb/attachment.bin">https://lists.berlios.de/pipermail/kiwi-devel/attachments/20110517/fba8cafb/attachment.bin</A>&gt;
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003418.html">[Kiwi-devel] Fix ownership change issue
+</A></li>
+	<LI>Next message: <A HREF="003422.html">[Kiwi-devel] Fix ownership change issue
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3419">[ date ]</a>
+              <a href="thread.html#3419">[ thread ]</a>
+              <a href="subject.html#3419">[ subject ]</a>
+              <a href="author.html#3419">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

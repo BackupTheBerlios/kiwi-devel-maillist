@@ -1,0 +1,1322 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6d3ab89c806a03e807f5cafd5b5aec2e6e6cb74f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%206d3ab89c806a03e807f5cafd5b5aec2e6e6cb74f&In-Reply-To=%3C20101208092646.38A72480D83%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002901.html">
+   <LINK REL="Next"  HREF="002904.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6d3ab89c806a03e807f5cafd5b5aec2e6e6cb74f</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%206d3ab89c806a03e807f5cafd5b5aec2e6e6cb74f&In-Reply-To=%3C20101208092646.38A72480D83%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6d3ab89c806a03e807f5cafd5b5aec2e6e6cb74f">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Dec  8 10:26:44 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002901.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 50a639277aff9df4bcb16aab52b7053fdfeccc07
+</A></li>
+        <LI>Next message: <A HREF="002904.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2cc0d05c8d15b2882e1ae3556d632515488c92f2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2902">[ date ]</a>
+              <a href="thread.html#2902">[ thread ]</a>
+              <a href="subject.html#2902">[ subject ]</a>
+              <a href="author.html#2902">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  6d3ab89c806a03e807f5cafd5b5aec2e6e6cb74f (commit)
+      from  50a639277aff9df4bcb16aab52b7053fdfeccc07 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 6d3ab89c806a03e807f5cafd5b5aec2e6e6cb74f
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Dec 8 10:22:26 2010 +0100
+
+    - added Option --check-config which validates the XML using the
+      new KIWIXMLValidator module. Along with the new module validation
+      from KIWIXML has been moved into the KIWIXMLValidator object
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 5386266..a9247c8 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -42,6 +42,7 @@ use KIWIOverlay;
+ use KIWIQX;
+ use KIWITest;
+ use KIWIImageFormat;
++use KIWIXMLValidator;
+ 
+ #============================================
+ # Globals (Version)
+@@ -141,6 +142,7 @@ $KnownFS{cpio}{ro}        = 0;
+ our $Build;                 # run prepare and create in one step
+ our $Prepare;               # control XML file for building chroot extend
+ our $Create;                # image description for building image extend
++our $CheckConfig;           # Configuration file to check
+ our $InitCache;             # create image cache(s) from given description
+ our $CreateInstSource;      # create installation source from meta packages
+ our $Upgrade;               # upgrade physical extend
+@@ -1337,7 +1339,8 @@ sub init {
+ 		&quot;grub-chainload&quot;        =&gt; \$GrubChainload,
+ 		&quot;format|f=s&quot;            =&gt; \$Format,
+ 		&quot;convert=s&quot;             =&gt; \$Convert,
+-        &quot;yes|y&quot;                 =&gt; \$defaultAnswer,
++		&quot;check-config=s&quot;        =&gt; \$CheckConfig,
++		&quot;yes|y&quot;                 =&gt; \$defaultAnswer,
+ 		&quot;debug&quot;                 =&gt; \$Debug,
+ 		&quot;help|h&quot;                =&gt; \&amp;usage,
+ 		&quot;&lt;&gt;&quot;                    =&gt; \&amp;usage
+@@ -1403,6 +1406,12 @@ sub init {
+ 		$FSInodeSize = 256;
+ 	}
+ 	#==========================================
++	# non root task: Check XML configuration
++	#------------------------------------------
++	if (defined $CheckConfig) {
++		checkConfig();
++	}
++	#==========================================
+ 	# non root task: Create crypted password
+ 	#------------------------------------------
+ 	if (defined $CreatePassword) {
+@@ -1458,6 +1467,7 @@ sub init {
+ 		(! defined $BootUSB)            &amp;&amp;
+ 		(! defined $Clone)              &amp;&amp;
+ 		(! defined $RunTestSuite)       &amp;&amp;
++		(! defined $CheckConfig)        &amp;&amp;
+ 		(! defined $Convert)
+ 	) {
+ 		$kiwi -&gt; error (&quot;No operation specified&quot;);
+@@ -1552,6 +1562,8 @@ sub usage {
+ 
+ 	print &quot;Usage:\n&quot;;
+ 	print &quot;    kiwi -l | --list\n&quot;;
++	print &quot;Configuration check:\n&quot;;
++	print &quot;    kiwi --check-config &lt;path-to-xml-file-to-check&gt;\n&quot;;
+ 	print &quot;Image Cloning:\n&quot;;
+ 	print &quot;    kiwi -o | --clone &lt;image-path&gt; -d &lt;destination&gt;\n&quot;;
+ 	print &quot;Image Creation in one step:\n&quot;;
+@@ -1765,6 +1777,35 @@ sub listImage {
+ }
+ 
+ #==========================================
++# checkConfig
++#------------------------------------------
++sub checkConfig {
++	# ...
++	# Check the specified configuration file
++	# ---
++	my $kiwi = new KIWILog(&quot;tiny&quot;);
++	if (! -f $CheckConfig) {
++		$kiwi -&gt; error (
++			&quot;Could not access specified file to check: $CheckConfig&quot;
++		);
++		$kiwi -&gt; failed ();
++		exit 1;
++	}
++	my $validator = new KIWIXMLValidator (
++		$kiwi,$CheckConfig,$Revision,$Schema,$SchemaCVT
++	);
++	my $isValid = $validator -&gt; validate();
++	if (! defined $isValid) {
++		$kiwi -&gt; error ('Validation failed');
++		$kiwi -&gt; failed ();
++		exit 1;
++	}
++	$kiwi -&gt; info ('Validation passed');
++	$kiwi -&gt; done ();
++	exit 0;
++}
++
++#==========================================
+ # listXMLInfo
+ #------------------------------------------
+ sub listXMLInfo {
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 20bfe2f..570958c 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -30,6 +30,7 @@ use KIWIManager qw (%packageManager);
+ use KIWIOverlay;
+ use KIWIQX;
+ use KIWISatSolver;
++use KIWIXMLValidator;
+ 
+ #==========================================
+ # Exports
+@@ -84,7 +85,6 @@ sub new {
+ 	my $controlFile = $imageDesc.&quot;/&quot;.$main::ConfigName;
+ 	my $checkmdFile = $imageDesc.&quot;/.checksum.md5&quot;;
+ 	my $havemd5File = 1;
+-	my $systemTree;
+ 	#==========================================
+ 	# Check xml alternatives if default failed
+ 	#------------------------------------------
+@@ -120,37 +120,22 @@ sub new {
+ 		$havemd5File = 0;
+ 	}
+ 	#==========================================
+-	# load XML and pass to XSL stylesheets
++	# Read and Validate XML information
+ 	#------------------------------------------
+-	my $XML = $this -&gt; __loadControlfile ();
+-	if (! $XML) {
+-		return undef;
+-	}
+-	#==========================================
+-	# load XML document tree for perl
+-	#------------------------------------------
+-	$systemTree = $this -&gt; __getXMLDocTree ( $XML );
+-	if (! $systemTree) {
++	my $validator = new KIWIXMLValidator (
++		$kiwi,$controlFile,$main::Revision,$main::Schema,$main::SchemaCVT
++	);
++	my $isValid = $validator -&gt; validate();
++	if (! $isValid) {
+ 		return undef;
+ 	}
++	my $systemTree = $validator -&gt; getDOM();
+ 	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
+ 	$this-&gt;{xmlOrigString} = $systemTree -&gt; toString();
+ 	$this-&gt;{systemTree}    = $systemTree;
+ 	#==========================================
+-	# validate XML document with cur. schema
+-	#------------------------------------------
+-	if (! $this -&gt; __validateXML ()) {
+-		return undef;
+-	}
+-	#==========================================
+-	# Check data consistentcy
+-	#==========================================
+-	if (! $this -&gt; __validateConsistency ()) {
+-		return undef;
+-	}
+-	#==========================================
+ 	# Read main XML sections
+ 	#------------------------------------------
+ 	my $imgnameNodeList = $systemTree -&gt; getElementsByTagName (&quot;image&quot;);
+@@ -4473,460 +4458,6 @@ sub __requestedProfile {
+ }
+ 
+ #==========================================
+-# __checkDefaultProfSetting
+-#------------------------------------------
+-sub __checkDefaultProfSetting {
+-	# ...
+-	# Make sure only one profile is marked as default.
+-	# ---
+-	my $this        = shift;
+-	my $numDefProfs = 0;
+-	my $systemTree  = $this-&gt;{systemTree};
+-	my @profiles    = $systemTree -&gt; getElementsByTagName('profile');
+-	for my $profile (@profiles) {
+-		my $import = $profile -&gt; getAttribute('import');
+-		if (defined $import &amp;&amp; $import eq 'true') {
+-			$numDefProfs++;
+-		}
+-		if ($numDefProfs &gt; 1) {
+-			my $kiwi = $this-&gt;{kiwi};
+-			my $msg = 'Only one profile may be set as the dafault profile by '
+-			. 'using the &quot;import&quot; attrinute.';
+-			$kiwi -&gt; error($msg);
+-			$kiwi -&gt; failed();
+-			return undef;
+-		}
+-	}
+-	return 1;
+-}
+-
+-#==========================================
+-# __checkTypeUnique
+-#------------------------------------------
+-sub __checkTypeUnique {
+-	# ...
+-	# Check that only one type with image=&quot;myName&quot; exists per
+-	# &lt;preferences section&gt;
+-	# ---
+-	my $this        = shift;
+-	my $systemTree  = $this-&gt;{systemTree};
+-	my @preferences = $systemTree -&gt; getElementsByTagName('preferences');
+-	for my $pref (@preferences) {
+-		my @imgTypes = ();
+-		my @types = $pref -&gt; getChildrenByTagName('type');
+-		for my $typeN (@types) {
+-			my $imgT = $typeN -&gt; getAttribute('image');
+-			if (grep /$imgT/, @imgTypes) {
+-				my $kiwi = $this-&gt;{kiwi};
+-				my $msg = 'Multiple definition of &lt;type image=&quot;'
+-					. $imgT
+-					. '&quot;.../&gt; found.';
+-				$kiwi -&gt; error ($msg);
+-				$kiwi -&gt; failed ();
+-				return undef;
+-			}
+-			push @imgTypes, $imgT
+-		}
+-	}
+-	return 1;
+-}
+-
+-#==========================================
+-# __checkDefaultTypeSetting
+-#------------------------------------------
+-sub __checkDefaultTypeSetting {
+-	# ...
+-	# Check that only one type is marked as primary per profile
+-	# ---
+-	my $this        = shift;
+-	my $systemTree  = $this-&gt;{systemTree};
+-	my @preferences = $systemTree -&gt; getElementsByTagName('preferences');
+-	for my $pref (@preferences) {
+-		my $hasPrimary = 0;
+-		my @types = $pref -&gt; getChildrenByTagName('type');
+-		for my $typeN (@types) {
+-			my $primary = $typeN -&gt; getAttribute('primary');
+-			if (defined $primary &amp;&amp; $primary eq 'true') {
+-				$hasPrimary++;
+-			}
+-			if ($hasPrimary &gt; 1) {
+-				my $kiwi = $this-&gt;{kiwi};
+-				my $msg = 'Only one primary type my be specified per '
+-				. 'preferences section.';
+-				$kiwi -&gt; error ($msg);
+-				$kiwi -&gt; failed ();
+-				return undef;
+-			}
+-		}
+-	}
+-	return 1;
+-}
+-
+-#==========================================
+-# __checkFilesysSpec
+-#------------------------------------------
+-sub __checkFilesysSpec {
+-	# ...
+-	# It is necessary to specify the filesystem attribute for certain
+-	# image types. Make sure the attribute is specified when required.
+-	# ---
+-	my $this = shift;
+-	my $isInvalid;
+-	my $kiwi = $this-&gt;{kiwi};
+-	my @typeNodes = $this-&gt;{systemTree} -&gt; getElementsByTagName(&quot;type&quot;);
+-	my @typesReqFS = qw /oem pxe usb vmx/;
+-	for my $typeN (@typeNodes) {
+-		my $imgType = $typeN -&gt; getAttribute( &quot;image&quot; );
+-		if (grep /$imgType/, @typesReqFS) {
+-			my $hasFSattr = $typeN -&gt; getAttribute( &quot;filesystem&quot; );
+-			if (! $hasFSattr) {
+-				my $msg = 'filesystem attribute must be set for image=&quot;'
+-				. $imgType
+-				. '&quot;';
+-				$kiwi -&gt; error ( $msg );
+-				$kiwi -&gt; failed ();
+-				$isInvalid = 1;
+-			}
+-		}
+-	}
+-	if ($isInvalid) {
+-		return undef;
+-	}
+-	return 1;
+-}
+-
+-#==========================================
+-# __checkPostDumpAction
+-#------------------------------------------
+-sub __checkPostDumpAction {
+-	# ...
+-	# Check that only one post dump action for the OEM
+-	# image type is set
+-	# ---
+-	my $this = shift;
+-	my @confNodes = $this-&gt;{systemTree} -&gt; getElementsByTagName(&quot;oemconfig&quot;);
+-	for my $oemconfig (@confNodes) {
+-		my @postDumOpts = qw
+-		/oem-bootwait oem-reboot
+-		 oem-reboot-interactive
+-		 oem-shutdown
+-		 oem-shutdown-interactive
+-		/;
+-		my $havePostDumpAction = 0;
+-		for my $action (@postDumOpts) {
+-			my @actionList = $oemconfig -&gt; getElementsByTagName($action);
+-			if (@actionList) {
+-				my $isSet = $actionList[0]-&gt;textContent();
+-				if ($isSet eq &quot;true&quot;) {
+-					if ($havePostDumpAction == 0) {
+-						$havePostDumpAction = 1;
+-						next;
+-					}
+-					my $kiwi = $this-&gt;{kiwi};
+-					$kiwi -&gt; error('Only one post dump action may be defined');
+-					$kiwi -&gt; error(&quot;Use one of @postDumOpts&quot;);
+-					$kiwi -&gt; failed();
+-					return undef;
+-				}
+-			}
+-		}
+-	}
+-	return 1;
+-}
+-
+-#==========================================
+-# __checkPreferencesDefinition
+-#------------------------------------------
+-sub __checkPreferencesDefinition {
+-	# ...
+-	# Check that only one &lt;preference&gt; definition exists without
+-	# use of the profiles attribute.
+-	#
+-	my $this            = shift;
+-	my $kiwi            = $this-&gt;{kiwi};
+-	my $numProfilesAttr = 0;
+-	my $systemTree      = $this-&gt;{systemTree};
+-	my @preferences     = $systemTree -&gt; getElementsByTagName('preferences');
+-	my @usedProfs       = ();
+-	for my $pref (@preferences) {
+-		my $profName = $pref -&gt; getAttribute('profiles');
+-		if (! $profName) {
+-			$numProfilesAttr++;
+-		} else {
+-			if (grep /$profName/, @usedProfs) {
+-				my $msg = 'Only one &lt;preferences&gt; element may reference a '
+-				. &quot;given profile. $profName referenced multiple times.&quot;;
+-				$kiwi -&gt; error ($msg);
+-				$kiwi -&gt; failed ();
+-				return undef;
+-			} else {
+-				push @usedProfs, $profName;
+-			}
+-		}
+-		if ($numProfilesAttr &gt; 1) {
+-			my $msg = 'Specify only one &lt;preferences&gt; element without using '
+-			. 'the &quot;profiles&quot; attribute.';
+-			$kiwi -&gt; error ($msg);
+-			$kiwi -&gt; failed();
+-			return undef;
+-		}
+-	}
+-	return 1;
+-}
+-
+-#==========================================
+-# __checkReferencedProfDefined
+-#------------------------------------------
+-sub __checkReferencedProfDefined {
+-	# ...
+-	# Check that any reference of profiles has a defined
+-	# target, i.e. the profile must be defined
+-	# ---
+-	my $this       = shift;
+-	my $kiwi       = $this-&gt;{kiwi};
+-	my $status     = 1;
+-	my $systemTree = $this-&gt;{systemTree};
+-	my @profiles = $systemTree -&gt; getElementsByTagName('profile');
+-	my @profNames = ();
+-	for my $prof (@profiles) {
+-		push @profNames, $prof -&gt; getAttribute('name');
+-	}
+-	my @nodes = ();
+-	push @nodes, $systemTree -&gt; getElementsByTagName('drivers');
+-	push @nodes, $systemTree -&gt; getElementsByTagName('packages');
+-	push @nodes, $systemTree -&gt; getElementsByTagName('preferences');
+-	push @nodes, $systemTree -&gt; getElementsByTagName('repository');
+-	for my $node (@nodes) {
+-		my $refProf = $node -&gt; getAttribute('profiles');
+-		if (! $refProf) {
+-			next;
+-		}
+-		foreach my $profile (split (/,/,$refProf)) {
+-			my $foundit = 0;
+-			foreach my $lookup (@profNames) {
+-				if ($profile eq $lookup) {
+-					$foundit = 1;
+-					last;
+-				}
+-			}
+-			if (! $foundit) {
+-				my $msg = &quot;Found reference to profile $profile &quot;
+-				. 'but this profile does not exist.';
+-				$kiwi -&gt; error ($msg);
+-				$kiwi -&gt; failed ();
+-				$status = undef;
+-			}
+-		}
+-	}
+-	return $status;
+-}
+-
+-#==========================================
+-# __checkRevision
+-#------------------------------------------
+-sub __checkRevision {
+-	# ...
+-	# Check that the current revision meets the minimum requirement
+-	# ---
+-	my $this = shift;
+-	my $kiwi = $this-&gt;{kiwi};
+-	my $systemTree = $this-&gt;{systemTree};
+-	my $imgnameNodeList = $systemTree -&gt; getElementsByTagName (&quot;image&quot;);
+-	if (open (my $FD,$main::Revision)) {
+-		my $cur_rev = &lt;$FD&gt;; close $FD;
+-		my $req_rev = $imgnameNodeList
+-			-&gt; get_node(1) -&gt; getAttribute (&quot;kiwirevision&quot;);
+-		if ((defined $req_rev) &amp;&amp; ($cur_rev &lt; $req_rev)) {
+-			$kiwi -&gt; failed ();
+-			$kiwi -&gt; error  (
+-				&quot;KIWI revision too old, require r$req_rev got r$cur_rev&quot;
+-			);
+-			$kiwi -&gt; failed ();
+-			return undef;
+-		}
+-	}
+-	return 1;
+-}
+-
+-#==========================================
+-# __checkVersionDefinition
+-#------------------------------------------
+-sub __checkVersionDefinition {
+-	# ...
+-	# Check image version format
+-	# This check should be implemented in the schema but there is a
+-	# bug in libxml2 that prevents proper type validation for elements
+-	# ---
+-	my $this = shift;
+-	my $kiwi = $this-&gt;{kiwi};
+-	my $systemTree = $this-&gt;{systemTree};
+-	my @versions = $systemTree -&gt; getElementsByTagName(&quot;version&quot;);
+-	my $numVersions = @versions;
+-	if ($numVersions &gt; 1) {
+-		my $msg = &quot;Only one &lt;version&gt; definition expected, found $numVersions&quot;;
+-		$kiwi -&gt; error  ($msg);
+-		$kiwi -&gt; failed ();
+-		return undef;
+-	}
+-	my $version = $versions[0] -&gt; textContent();
+-	if ($version !~ /^\d+\.\d+\.\d+$/) {
+-		$kiwi -&gt; error  (&quot;Invalid version format: $version&quot;);
+-		$kiwi -&gt; failed ();
+-		$kiwi -&gt; error  (&quot;Expected 'Major.Minor.Release'&quot;);
+-		$kiwi -&gt; failed ();
+-		return undef;
+-	}
+-	return 1;
+-}
+-
+-#==========================================
+-# __getXMLDocTree
+-#------------------------------------------
+-sub __getXMLDocTree {
+-	# ...
+-	# Generate the XML Document tree for perl
+-	# ---
+-	my $this = shift;
+-	my $XML  = shift;
+-	my $kiwi = $this-&gt;{kiwi};
+-	my $systemTree;
+-	my $systemXML = new XML::LibXML;
+-	eval {
+-		$systemTree = $systemXML -&gt; parse_fh ( $XML );
+-	};
+-	if ($@) {
+-		my $evaldata = $@;
+-		$kiwi -&gt; error  (&quot;Problem reading control file&quot;);
+-		$kiwi -&gt; failed ();
+-		return undef;
+-	}
+-	return $systemTree;
+-}
+-
+-#==========================================
+-# __loadControlfile
+-#------------------------------------------
+-sub __loadControlfile {
+-	# ...
+-	# Load the XML file and pass it to the XSLT stylesheet
+-	# processor for internal version conversion
+-	# ---
+-	my $this = shift;
+-	my $controlFile = $this-&gt;{xmlOrigFile};
+-	my $kiwi        = $this-&gt;{kiwi};
+-	my $skipXSLT    = 0; # For development debug purposes
+-	my $XML;
+-	if ($skipXSLT) {
+-		if (! open ($XML,&quot;cat $controlFile|&quot;)) {
+-			$kiwi -&gt; error (&quot;XSL: Failed to open file $controlFile&quot;);
+-			$kiwi -&gt; failed ();
+-			return undef;
+-		}
+-	} else {
+-		if (! open ($XML,&quot;xsltproc $main::SchemaCVT $controlFile|&quot;)) {
+-			$kiwi -&gt; error (&quot;XSL: Failed to open xslt processor&quot;);
+-			$kiwi -&gt; failed ();
+-			return undef;
+-		}
+-	}
+-	binmode $XML;
+-	return $XML;
+-}
+-
+-#==========================================
+-# __validateConsistency
+-#------------------------------------------
+-sub __validateConsistency {
+-	# ...
+-	# Validate XML data that cannot be validated through Schema and
+-	# structure validation. This includes conditional presence of
+-	# elements and attributes as well as certain values.
+-	# Note that any checks need to work off $this-&gt;{systemTree}. The
+-	# consistency check occurs prior to this object being porpulated
+-	# with XML data. This allows us to basically have no error checking
+-	# in any code that populates this object from XML data.
+-	# ---
+-	my $this = shift;
+-	if (! $this -&gt; __checkDefaultProfSetting()) {
+-		return undef;
+-	}
+-	if (! $this -&gt; __checkDefaultTypeSetting()){
+-		return undef;
+-	}
+-	if (! $this -&gt; __checkFilesysSpec()) {
+-		return undef;
+-	}
+-	if (! $this -&gt; __checkPostDumpAction()) {
+-		return undef;
+-	}
+-	if (! $this -&gt; __checkPreferencesDefinition()) {
+-		return undef;
+-	}
+-	if (! $this -&gt; __checkReferencedProfDefined()) {
+-		return undef;
+-	}
+-	if (! $this -&gt; __checkRevision()) {
+-		return undef;
+-	}
+-	if (! $this -&gt; __checkTypeUnique()) {
+-		return undef;
+-	}
+-	if (! $this -&gt; __checkVersionDefinition()) {
+-		return undef;
+-	}
+-	return 1;
+-}
+-
+-#==========================================
+-# __validateXML
+-#------------------------------------------
+-sub __validateXML {
+-	# ...
+-	# Validate the control file for syntactic and
+-	# structural correctness according to current schema
+-	# ---
+-	my $this = shift;
+-	my $controlFile = $this-&gt;{xmlOrigFile};
+-	my $kiwi        = $this-&gt;{kiwi};
+-	my $systemTree  = $this-&gt;{systemTree};
+-	my $systemXML   = new XML::LibXML;
+-	my $systemRNG   = new XML::LibXML::RelaxNG ( location =&gt; $main::Schema );
+-	eval {
+-		$systemRNG -&gt;validate ( $systemTree );
+-	};
+-	if ($@) {
+-		my $evaldata=$@;
+-		$kiwi -&gt; error  (&quot;Schema validation failed&quot;);
+-		$kiwi -&gt; failed ();
+-		my $configStr = $systemXML -&gt; parse_file( $controlFile ) -&gt; toString();
+-		my $upgradedStr = $systemTree -&gt; toString();
+-		my $upgradedContolFile = $controlFile;
+-		if ($configStr ne $upgradedStr) {
+-			$upgradedContolFile =~ s/\.xml/\.converted\.xml/;
+-			$kiwi -&gt; info (&quot;Automatically upgraded $controlFile to&quot;);
+-			$kiwi -&gt; info (&quot;$upgradedContolFile\n&quot;);
+-			$kiwi -&gt; info (&quot;Reported line numbers may not match the &quot;);
+-			$kiwi -&gt; info (&quot;file $controlFile\n&quot;);
+-			open (my $UPCNTFL, '&gt;', $upgradedContolFile);
+-			print $UPCNTFL $upgradedStr;
+-			close ( $UPCNTFL );
+-		}
+-		my $jingExec = main::findExec('jing');
+-		if ($jingExec) {
+-			qxx (&quot;$jingExec $main::Schema $upgradedContolFile 1&gt;&amp;2&quot;);
+-			return undef;
+-		} else {
+-			$kiwi -&gt; error (&quot;$evaldata\n&quot;);
+-			$kiwi -&gt; info  (&quot;Use the jing command for more details\n&quot;);
+-			$kiwi -&gt; info  (&quot;The following requires jing to be installed\n&quot;);
+-			$kiwi -&gt; info  (&quot;jing $main::Schema $upgradedContolFile\n&quot;);
+-			return undef;
+-		}
+-	}
+-	return 1;
+-}
+-
+-#==========================================
+ # __populateProfiles
+ #------------------------------------------
+ sub __populateProfiles {
+diff --git a/modules/KIWIXMLValidator.pm b/modules/KIWIXMLValidator.pm
+new file mode 100644
+index 0000000..3c311cb
+--- /dev/null
++++ b/modules/KIWIXMLValidator.pm
+@@ -0,0 +1,604 @@
++#================
++# FILE          : KIWIXMLValidator.pm
++#----------------
++# PROJECT       : OpenSUSE Build-Service
++# COPYRIGHT     : (c) 2006 SUSE LINUX Products GmbH, Germany
++#               :
++# AUTHOR        : Robert Schweikert &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&gt;
++#               :
++# BELONGS TO    : Operating System images
++#               :
++# DESCRIPTION   : This module is used to upgrade and validate the
++#               : XML file, describing the image to be created
++#               :
++# STATUS        : Development
++#----------------
++package KIWIXMLValidator;
++#==========================================
++# Modules
++#------------------------------------------
++use strict;
++use warnings;
++require Exporter;
++use XML::LibXML;
++use KIWILog;
++use KIWIQX;
++
++#==========================================
++# Exports
++#------------------------------------------
++our @ISA    = qw (Exporter);
++our @EXPORT = qw (getDOM validate);
++
++#==========================================
++# Constructor
++#------------------------------------------
++sub new {
++	# ...
++	# Create the validator object.
++	# ---
++	#==========================================
++	# Object setup
++	#------------------------------------------
++	my $this  = {};
++	my $class = shift;
++	bless $this,$class;
++	#==========================================
++	# Module Parameters
++	#------------------------------------------
++	my $kiwi       = shift;
++	my $configPath = shift;
++	my $revRecPath = shift;
++	my $schemaPath = shift;
++	my $xsltPath   = shift;
++	#==========================================
++	# Constructor setup
++	#------------------------------------------
++	if (! defined $kiwi) {
++		$kiwi = new KIWILog();
++	}
++	#==========================================
++	# Check pre-conditions
++	#------------------------------------------
++	if (! -f $configPath) {
++		$kiwi -&gt; error (&quot;Could not find specified configuration: $configPath&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	if (! -f $revRecPath) {
++		$kiwi -&gt; error (&quot;Could not find specified revision file: $revRecPath&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	if (! -f $schemaPath) {
++		$kiwi -&gt; error (&quot;Could not find specified schema: $schemaPath&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	if (! -f $xsltPath) {
++		$kiwi -&gt; error (&quot;Could not find specified transformation: $xsltPath&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	#==========================================
++	# Store object data
++	#------------------------------------------
++	$this-&gt;{config}   = $configPath;
++	$this-&gt;{kiwi}     = $kiwi;
++	$this-&gt;{revision} = $revRecPath;
++	$this-&gt;{schema}   = $schemaPath;
++	$this-&gt;{xslt}     = $xsltPath;
++	#=========================================
++	# Load the configuration, automatically upgrade if necessary
++	#----------------------------------------
++	my $XML = $this -&gt; __loadControlfile ();
++	if (! $XML) {
++		return undef;
++	}
++	#=========================================
++	# Generate the DOM
++	#-----------------------------------------
++	my $systemTree = $this -&gt; __getXMLDocTree ( $XML );
++	if (! $systemTree) {
++		return undef;
++	}
++	$this-&gt;{systemTree} = $systemTree;
++	return $this;
++}
++
++#=========================================
++# getDOM
++#-----------------------------------------
++sub getDOM {
++	# ...
++	# Return the DOM for the configuration file.
++	# ---
++	my $this = shift;
++	return $this-&gt;{systemTree};
++}
++
++#=========================================
++# validate
++#-----------------------------------------
++sub validate {
++	# ...
++	# Validate the XML for syntactic correctness and consistency
++	# ---
++	my $this = shift;
++	if (defined $this-&gt;{isValid}) {
++		return $this;
++	}
++	#==========================================
++	# validate XML document with the schema
++	#------------------------------------------
++	if (! $this -&gt; __validateXML ()) {
++		return undef;
++	}
++	#==========================================
++	# Check data consistentcy
++	#==========================================
++	if (! $this -&gt; __validateConsistency ()) {
++		return undef;
++	}
++	$this-&gt;{isValid} = 1;
++	return $this;
++}
++
++#==========================================
++# Private helper methods
++#------------------------------------------
++#==========================================
++# __checkDefaultProfSetting
++#------------------------------------------
++sub __checkDefaultProfSetting {
++	# ...
++	# Make sure only one profile is marked as default.
++	# ---
++	my $this        = shift;
++	my $numDefProfs = 0;
++	my $systemTree  = $this-&gt;{systemTree};
++	my @profiles    = $systemTree -&gt; getElementsByTagName('profile');
++	for my $profile (@profiles) {
++		my $import = $profile -&gt; getAttribute('import');
++		if (defined $import &amp;&amp; $import eq 'true') {
++			$numDefProfs++;
++		}
++		if ($numDefProfs &gt; 1) {
++			my $kiwi = $this-&gt;{kiwi};
++			my $msg = 'Only one profile may be set as the dafault profile by '
++			. 'using the &quot;import&quot; attrinute.';
++			$kiwi -&gt; error($msg);
++			$kiwi -&gt; failed();
++			return undef;
++		}
++	}
++	return 1;
++}
++
++#==========================================
++# __checkDefaultTypeSetting
++#------------------------------------------
++sub __checkDefaultTypeSetting {
++	# ...
++	# Check that only one type is marked as primary per profile
++	# ---
++	my $this        = shift;
++	my $systemTree  = $this-&gt;{systemTree};
++	my @preferences = $systemTree -&gt; getElementsByTagName('preferences');
++	for my $pref (@preferences) {
++		my $hasPrimary = 0;
++		my @types = $pref -&gt; getChildrenByTagName('type');
++		for my $typeN (@types) {
++			my $primary = $typeN -&gt; getAttribute('primary');
++			if (defined $primary &amp;&amp; $primary eq 'true') {
++				$hasPrimary++;
++			}
++			if ($hasPrimary &gt; 1) {
++				my $kiwi = $this-&gt;{kiwi};
++				my $msg = 'Only one primary type my be specified per '
++				. 'preferences section.';
++				$kiwi -&gt; error ($msg);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++		}
++	}
++	return 1;
++}
++
++#==========================================
++# __checkFilesysSpec
++#------------------------------------------
++sub __checkFilesysSpec {
++	# ...
++	# It is necessary to specify the filesystem attribute for certain
++	# image types. Make sure the attribute is specified when required.
++	# ---
++	my $this = shift;
++	my $isInvalid;
++	my $kiwi = $this-&gt;{kiwi};
++	my @typeNodes = $this-&gt;{systemTree} -&gt; getElementsByTagName(&quot;type&quot;);
++	my @typesReqFS = qw /oem pxe usb vmx/;
++	for my $typeN (@typeNodes) {
++		my $imgType = $typeN -&gt; getAttribute( &quot;image&quot; );
++		if (grep /$imgType/, @typesReqFS) {
++			my $hasFSattr = $typeN -&gt; getAttribute( &quot;filesystem&quot; );
++			if (! $hasFSattr) {
++				my $msg = 'filesystem attribute must be set for image=&quot;'
++				. $imgType
++				. '&quot;';
++				$kiwi -&gt; error ( $msg );
++				$kiwi -&gt; failed ();
++				$isInvalid = 1;
++			}
++		}
++	}
++	if ($isInvalid) {
++		return undef;
++	}
++	return 1;
++}
++
++#==========================================
++# __checkPostDumpAction
++#------------------------------------------
++sub __checkPostDumpAction {
++	# ...
++	# Check that only one post dump action for the OEM
++	# image type is set
++	# ---
++	my $this = shift;
++	my @confNodes = $this-&gt;{systemTree} -&gt; getElementsByTagName(&quot;oemconfig&quot;);
++	for my $oemconfig (@confNodes) {
++		my @postDumOpts = qw
++		/oem-bootwait oem-reboot
++		 oem-reboot-interactive
++		 oem-shutdown
++		 oem-shutdown-interactive
++		/;
++		my $havePostDumpAction = 0;
++		for my $action (@postDumOpts) {
++			my @actionList = $oemconfig -&gt; getElementsByTagName($action);
++			if (@actionList) {
++				my $isSet = $actionList[0]-&gt;textContent();
++				if ($isSet eq &quot;true&quot;) {
++					if ($havePostDumpAction == 0) {
++						$havePostDumpAction = 1;
++						next;
++					}
++					my $kiwi = $this-&gt;{kiwi};
++					$kiwi -&gt; error('Only one post dump action may be defined');
++					$kiwi -&gt; error(&quot;Use one of @postDumOpts&quot;);
++					$kiwi -&gt; failed();
++					return undef;
++				}
++			}
++		}
++	}
++	return 1;
++}
++
++#==========================================
++# __checkPreferencesDefinition
++#------------------------------------------
++sub __checkPreferencesDefinition {
++	# ...
++	# Check that only one &lt;preference&gt; definition exists without
++	# use of the profiles attribute.
++	#
++	my $this            = shift;
++	my $kiwi            = $this-&gt;{kiwi};
++	my $numProfilesAttr = 0;
++	my $systemTree      = $this-&gt;{systemTree};
++	my @preferences     = $systemTree -&gt; getElementsByTagName('preferences');
++	my @usedProfs       = ();
++	for my $pref (@preferences) {
++		my $profName = $pref -&gt; getAttribute('profiles');
++		if (! $profName) {
++			$numProfilesAttr++;
++		} else {
++			if (grep /$profName/, @usedProfs) {
++				my $msg = 'Only one &lt;preferences&gt; element may reference a '
++				. &quot;given profile. $profName referenced multiple times.&quot;;
++				$kiwi -&gt; error ($msg);
++				$kiwi -&gt; failed ();
++				return undef;
++			} else {
++				push @usedProfs, $profName;
++			}
++		}
++		if ($numProfilesAttr &gt; 1) {
++			my $msg = 'Specify only one &lt;preferences&gt; element without using '
++			. 'the &quot;profiles&quot; attribute.';
++			$kiwi -&gt; error ($msg);
++			$kiwi -&gt; failed();
++			return undef;
++		}
++	}
++	return 1;
++}
++
++#==========================================
++# __checkReferencedProfDefined
++#------------------------------------------
++sub __checkReferencedProfDefined {
++	# ...
++	# Check that any reference of profiles has a defined
++	# target, i.e. the profile must be defined
++	# ---
++	my $this       = shift;
++	my $kiwi       = $this-&gt;{kiwi};
++	my $status     = 1;
++	my $systemTree = $this-&gt;{systemTree};
++	my @profiles = $systemTree -&gt; getElementsByTagName('profile');
++	my @profNames = ();
++	for my $prof (@profiles) {
++		push @profNames, $prof -&gt; getAttribute('name');
++	}
++	my @nodes = ();
++	push @nodes, $systemTree -&gt; getElementsByTagName('drivers');
++	push @nodes, $systemTree -&gt; getElementsByTagName('packages');
++	push @nodes, $systemTree -&gt; getElementsByTagName('preferences');
++	push @nodes, $systemTree -&gt; getElementsByTagName('repository');
++	for my $node (@nodes) {
++		my $refProf = $node -&gt; getAttribute('profiles');
++		if (! $refProf) {
++			next;
++		}
++		foreach my $profile (split (/,/,$refProf)) {
++			my $foundit = 0;
++			foreach my $lookup (@profNames) {
++				if ($profile eq $lookup) {
++					$foundit = 1;
++					last;
++				}
++			}
++			if (! $foundit) {
++				my $msg = &quot;Found reference to profile $profile &quot;
++				. 'but this profile does not exist.';
++				$kiwi -&gt; error ($msg);
++				$kiwi -&gt; failed ();
++				$status = undef;
++			}
++		}
++	}
++	return $status;
++}
++
++#==========================================
++# __checkRevision
++#------------------------------------------
++sub __checkRevision {
++	# ...
++	# Check that the current revision meets the minimum requirement
++	# ---
++	my $this = shift;
++	my $kiwi = $this-&gt;{kiwi};
++	my $systemTree = $this-&gt;{systemTree};
++	my $imgnameNodeList = $systemTree -&gt; getElementsByTagName (&quot;image&quot;);
++	if (open (my $FD,$this-&gt;{revision})) {
++		my $cur_rev = &lt;$FD&gt;; close $FD;
++		my $req_rev = $imgnameNodeList
++			-&gt; get_node(1) -&gt; getAttribute (&quot;kiwirevision&quot;);
++		if ((defined $req_rev) &amp;&amp; ($cur_rev &lt; $req_rev)) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (
++				&quot;KIWI revision too old, require r$req_rev got r$cur_rev&quot;
++			);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++	}
++	return 1;
++}
++
++#==========================================
++# __checkTypeUnique
++#------------------------------------------
++sub __checkTypeUnique {
++	# ...
++	# Check that only one type with image=&quot;myName&quot; exists per
++	# &lt;preferences section&gt;
++	# ---
++	my $this        = shift;
++	my $systemTree  = $this-&gt;{systemTree};
++	my @preferences = $systemTree -&gt; getElementsByTagName('preferences');
++	for my $pref (@preferences) {
++		my @imgTypes = ();
++		my @types = $pref -&gt; getChildrenByTagName('type');
++		for my $typeN (@types) {
++			my $imgT = $typeN -&gt; getAttribute('image');
++			if (grep /$imgT/, @imgTypes) {
++				my $kiwi = $this-&gt;{kiwi};
++				my $msg = 'Multiple definition of &lt;type image=&quot;'
++					. $imgT
++					. '&quot;.../&gt; found.';
++				$kiwi -&gt; error ($msg);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			push @imgTypes, $imgT
++		}
++	}
++	return 1;
++}
++
++#==========================================
++# __checkVersionDefinition
++#------------------------------------------
++sub __checkVersionDefinition {
++	# ...
++	# Check image version format
++	# This check should be implemented in the schema but there is a
++	# bug in libxml2 that prevents proper type validation for elements
++	# ---
++	my $this = shift;
++	my $kiwi = $this-&gt;{kiwi};
++	my $systemTree = $this-&gt;{systemTree};
++	my @versions = $systemTree -&gt; getElementsByTagName(&quot;version&quot;);
++	my $numVersions = @versions;
++	if ($numVersions &gt; 1) {
++		my $msg = &quot;Only one &lt;version&gt; definition expected, found $numVersions&quot;;
++		$kiwi -&gt; error  ($msg);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	my $version = $versions[0] -&gt; textContent();
++	if ($version !~ /^\d+\.\d+\.\d+$/) {
++		$kiwi -&gt; error  (&quot;Invalid version format: $version&quot;);
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Expected 'Major.Minor.Release'&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	return 1;
++}
++
++#==========================================
++# __getXMLDocTree
++#------------------------------------------
++sub __getXMLDocTree {
++	# ...
++	# Generate the XML Document tree for perl
++	# ---
++	my $this = shift;
++	my $XML  = shift;
++	my $kiwi = $this-&gt;{kiwi};
++	my $systemTree;
++	my $systemXML = new XML::LibXML;
++	eval {
++		$systemTree = $systemXML -&gt; parse_fh ( $XML );
++	};
++	if ($@) {
++		my $evaldata = $@;
++		$kiwi -&gt; error  (&quot;Problem reading control file&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	return $systemTree;
++}
++
++#==========================================
++# __loadControlfile
++#------------------------------------------
++sub __loadControlfile {
++	# ...
++	# Load the XML file and pass it to the XSLT stylesheet
++	# processor for internal version conversion
++	# ---
++	my $this        = shift;
++	my $controlFile = $this-&gt;{config};
++	my $kiwi        = $this-&gt;{kiwi};
++	my $skipXSLT    = 0; # For development debug purposes
++	my $xslt        = $this-&gt;{xslt};
++	my $XML;
++	if ($skipXSLT) {
++		if (! open ($XML,&quot;cat $controlFile|&quot;)) {
++			$kiwi -&gt; error (&quot;XSL: Failed to open file $controlFile&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++	} else {
++		if (! open ($XML,&quot;xsltproc $xslt $controlFile|&quot;)) {
++			$kiwi -&gt; error (&quot;XSL: Failed to open xslt processor&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++	}
++	binmode $XML;
++	return $XML;
++}
++#==========================================
++# __validateConsistency
++#------------------------------------------
++sub __validateConsistency {
++	# ...
++	# Validate XML data that cannot be validated through Schema and
++	# structure validation. This includes conditional presence of
++	# elements and attributes as well as certain values.
++	# Note that any checks need to work off $this-&gt;{systemTree}. The
++	# consistency check occurs prior to this object being porpulated
++	# with XML data. This allows us to basically have no error checking
++	# in any code that populates this object from XML data.
++	# ---
++	my $this = shift;
++	if (! $this -&gt; __checkDefaultProfSetting()) {
++		return undef;
++	}
++	if (! $this -&gt; __checkDefaultTypeSetting()){
++		return undef;
++	}
++	if (! $this -&gt; __checkFilesysSpec()) {
++		return undef;
++	}
++	if (! $this -&gt; __checkPostDumpAction()) {
++		return undef;
++	}
++	if (! $this -&gt; __checkPreferencesDefinition()) {
++		return undef;
++	}
++	if (! $this -&gt; __checkReferencedProfDefined()) {
++		return undef;
++	}
++	if (! $this -&gt; __checkRevision()) {
++		return undef;
++	}
++	if (! $this -&gt; __checkTypeUnique()) {
++		return undef;
++	}
++	if (! $this -&gt; __checkVersionDefinition()) {
++		return undef;
++	}
++	return 1;
++}
++
++#==========================================
++# __validateXML
++#------------------------------------------
++sub __validateXML {
++	# ...
++	# Validate the control file for syntactic and
++	# structural correctness according to current schema
++	# ---
++	my $this = shift;
++	my $controlFile = $this-&gt;{config};
++	my $kiwi        = $this-&gt;{kiwi};
++	my $systemTree  = $this-&gt;{systemTree};
++	my $systemXML   = new XML::LibXML;
++	my $systemRNG   = new XML::LibXML::RelaxNG ( location =&gt; $this-&gt;{schema} );
++	eval {
++		$systemRNG -&gt;validate ( $systemTree );
++	};
++	if ($@) {
++		my $evaldata=$@;
++		$kiwi -&gt; error  (&quot;Schema validation failed&quot;);
++		$kiwi -&gt; failed ();
++		my $configStr = $systemXML -&gt; parse_file( $controlFile ) -&gt; toString();
++		my $upgradedStr = $systemTree -&gt; toString();
++		my $upgradedContolFile = $controlFile;
++		if ($configStr ne $upgradedStr) {
++			$upgradedContolFile =~ s/\.xml/\.converted\.xml/;
++			$kiwi -&gt; info (&quot;Automatically upgraded $controlFile to&quot;);
++			$kiwi -&gt; info (&quot;$upgradedContolFile\n&quot;);
++			$kiwi -&gt; info (&quot;Reported line numbers may not match the &quot;);
++			$kiwi -&gt; info (&quot;file $controlFile\n&quot;);
++			open (my $UPCNTFL, '&gt;', $upgradedContolFile);
++			print $UPCNTFL $upgradedStr;
++			close ( $UPCNTFL );
++		}
++		my $jingExec = main::findExec('jing');
++		if ($jingExec) {
++			qxx (&quot;$jingExec $this-&gt;{schema} $upgradedContolFile 1&gt;&amp;2&quot;);
++			return undef;
++		} else {
++			$kiwi -&gt; error (&quot;$evaldata\n&quot;);
++			$kiwi -&gt; info  (&quot;Use the jing command for more details\n&quot;);
++			$kiwi -&gt; info  (&quot;The following requires jing to be installed\n&quot;);
++			$kiwi -&gt; info  (&quot;jing $this-&gt;{schema} $upgradedContolFile\n&quot;);
++			return undef;
++		}
++	}
++	return 1;
++}
++
++1;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002901.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 50a639277aff9df4bcb16aab52b7053fdfeccc07
+</A></li>
+	<LI>Next message: <A HREF="002904.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2cc0d05c8d15b2882e1ae3556d632515488c92f2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2902">[ date ]</a>
+              <a href="thread.html#2902">[ thread ]</a>
+              <a href="subject.html#2902">[ subject ]</a>
+              <a href="author.html#2902">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

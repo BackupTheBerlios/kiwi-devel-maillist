@@ -1,0 +1,2416 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b999449f987736abaf716ef9489378e4d3c51f34
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b999449f987736abaf716ef9489378e4d3c51f34&In-Reply-To=%3C200907011626.n61GQYrK019717%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="001326.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b999449f987736abaf716ef9489378e4d3c51f34</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b999449f987736abaf716ef9489378e4d3c51f34&In-Reply-To=%3C200907011626.n61GQYrK019717%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b999449f987736abaf716ef9489378e4d3c51f34">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jul  1 18:26:34 CEST 2009</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="001326.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 32542a2bf083acc7b457fbf54bb1ffd96a0fbfba
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1325">[ date ]</a>
+              <a href="thread.html#1325">[ thread ]</a>
+              <a href="subject.html#1325">[ subject ]</a>
+              <a href="author.html#1325">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  b999449f987736abaf716ef9489378e4d3c51f34 (commit)
+      from  8d3fa7aa766bde0f1e3fce0e2f1b3fe0591c3ccb (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b999449f987736abaf716ef9489378e4d3c51f34
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jul 1 18:26:14 2009 +0200
+
+    - v3.61
+    - prepared KIWIImage to work with luks extension. This is not
+      a complete implementation so far, just a first start (bnc #505782)
+    - fixed inclusion of custom tar archives if the image
+      description provides only a bootstrap section like the
+      isoboot data does
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index bee00db..6d5d25e 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -44,7 +44,7 @@ use KIWITest;
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.60&quot;;
++our $Version       = &quot;3.61&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+@@ -77,6 +77,8 @@ our $BasePath;         # configurable base kiwi path
+ our $System;           # configurable baes kiwi image desc. path
+ our $LogServerPort;    # configurable log server port
+ our $Gzip;             # configurable gzip command
++our @UmountStack;      # command list to umount
++our $LuksCipher;       # stored luks passphrase
+ if (! defined $LogServerPort) {
+ 	$LogServerPort = &quot;off&quot;;
+ }
+@@ -481,6 +483,12 @@ sub main {
+ 			$root -&gt; cleanMount ();
+ 			my $code = kiwiExit (1); return $code;
+ 		}
++		if (! $root -&gt; installArchives ()) {
++			$kiwi -&gt; error (&quot;Archive installation failed&quot;);
++			$kiwi -&gt; failed ();
++			$root -&gt; cleanMount ();
++			my $code = kiwiExit (1); return $code;
++		}
+ 		if (! $root -&gt; setup ()) {
+ 			$kiwi -&gt; error (&quot;Couldn't setup image system&quot;);
+ 			$kiwi -&gt; failed ();
+@@ -2354,49 +2362,109 @@ sub checkFSOptions {
+ }
+ 
+ #==========================================
+-# mountLoop
++# mount
+ #------------------------------------------
+-sub mountLoop {
++sub mount {
+ 	# /.../
+-	# implements a loop mount function for all supported
++	# implements a generic mount function for all supported
+ 	# file system types
+ 	# ---
+-	my $file = shift;
+-	my $dest = shift;
+-	my $type = shift;
+-	my $status = qxx (&quot;mount -t $type -o loop $file $dest 2&gt;&amp;1&quot;);
+-	my $result = $? &gt;&gt; 8;
+-	if ($result != 0) {
+-		$kiwi -&gt; error (&quot;Failed to loop mount $file to: $dest: $status&quot;);
+-		$kiwi -&gt; failed ();
+-		return undef;
++	my $source= shift;
++	my $dest  = shift;
++	my $salt  = int (rand(20));
++	my %fsattr = main::checkFileSystem ($source);
++	my $type   = $fsattr{type};
++	my $cipher = $main::LuksCipher;
++	my $status;
++	my $result;
++	#==========================================
++	# Check for LUKS extension
++	#------------------------------------------
++	if ($type eq &quot;luks&quot;) {
++		if (-f $source) {
++			$status = qxx (&quot;/sbin/losetup -s -f $source 2&gt;&amp;1&quot;); chomp $status;
++			$result = $? &gt;&gt; 8;
++			if ($result != 0) {
++				$kiwi -&gt; error  (&quot;Couldn't loop bind logical extend: $status&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			$source = $status;
++			push @UmountStack,&quot;losetup -d $source&quot;;
++		}
++		if ($cipher) {
++			$status = qxx (
++				&quot;echo $cipher | cryptsetup luksOpen $source luks-$salt 2&gt;&amp;1&quot;
++			);
++		} else {
++			$status = qxx (&quot;cryptsetup luksOpen $source luks-$salt 2&gt;&amp;1&quot;);
++		}
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; error  (&quot;Couldn't open luks device: $status&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		$source = &quot;/dev/mapper/luks-&quot;.$salt;
++		push @UmountStack,&quot;cryptsetup luksClose luks-$salt&quot;;
+ 	}
++	#==========================================
++	# Mount device or loop mount file
++	#------------------------------------------
++	if (-f $source) {
++		$status = qxx (&quot;mount -o loop $source $dest 2&gt;&amp;1&quot;);
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; error (&quot;Failed to loop mount $source to: $dest: $status&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++	} else {
++		$status = qxx (&quot;mount $source $dest 2&gt;&amp;1&quot;);
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; error (&quot;Failed to mount $source to: $dest: $status&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++	}
++	push @UmountStack,&quot;umount $source&quot;;
++	#==========================================
++	# Post mount actions
++	#------------------------------------------
+ 	if (-f $dest.&quot;/fsdata.ext3&quot;) {
+-		$type = &quot;ext3&quot;;
+-		$file = $dest.&quot;/fsdata.ext3&quot;;
+-		$status = qxx (&quot;mount -t $type -o loop $file $dest 2&gt;&amp;1&quot;);
++		$source = $dest.&quot;/fsdata.ext3&quot;;
++		$status = qxx (&quot;mount -o loop $source $dest 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+-			$kiwi -&gt; error (&quot;Failed to loop mount $file to: $dest: $status&quot;);
++			$kiwi -&gt; error (&quot;Failed to loop mount $source to: $dest: $status&quot;);
+ 			$kiwi -&gt; failed ();
+ 			return undef;
+ 		}
++		push @UmountStack,&quot;umount $source&quot;;
+ 	}
+ 	return $dest;
+ }
+ 
+ #==========================================
+-# umountLoop
++# umount
+ #------------------------------------------
+-sub umountLoop {
++sub umount {
+ 	# /.../
+ 	# implements an umount function for filesystems mounted
+-	# via mountFileSystemLoop. The same mount point could be
+-	# used twice therefore we umount two times to be safe
++	# via main::mount(). The function walks through the
++	# contents of the UmountStack list
+ 	# ---
+-	my $dest = shift;
+-	my $status = qxx (&quot;umount $dest &amp;&amp; umount $dest 2&gt;&amp;1&quot;);
+-	return $dest;
++	my $status;
++	my $result;
++	foreach my $cmd (reverse @UmountStack) {
++		$status = qxx (&quot;$cmd 2&gt;&amp;1&quot;);
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; warning (&quot;UmountStack failed: $cmd: $status\n&quot;);
++		}
++	}
++	@UmountStack = ();
+ }
+ 
+ #==========================================
+@@ -2456,6 +2524,10 @@ sub checkFileSystem {
+ 					$type = &quot;squashfs&quot;;
+ 					last SWITCH;
+ 				};
++				/LUKS/      &amp;&amp; do {
++					$type = &quot;luks&quot;;
++					last SWITCH;
++				};
+ 				# unknown filesystem type use auto...
+ 				$type = &quot;auto&quot;;
+ 			};
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index efab7ac..da48bb5 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -213,10 +213,7 @@ sub new {
+ 				#------------------------------------------
+ 				my $dmap = $this-&gt;{loop}; $dmap =~ s/dev\///;
+ 				my $sdev = &quot;/dev/mapper&quot;.$dmap.&quot;p1&quot;;
+-				%fsattr = main::checkFileSystem ($sdev);
+-				$status = qxx (&quot;mount -t $fsattr{type} $sdev $tmpdir 2&gt;&amp;1&quot;);
+-				$result = $? &gt;&gt; 8;
+-				if ($result != 0) {
++				if (! main::mount($sdev, $tmpdir)) {
+ 					$kiwi -&gt; error (&quot;System image mount failed: $status&quot;);
+ 					$kiwi -&gt; failed ();
+ 					$this -&gt; cleanLoop ();
+@@ -231,14 +228,14 @@ sub new {
+ 				#==========================================
+ 				# clean up
+ 				#------------------------------------------
+-				qxx (&quot;umount $tmpdir 2&gt;&amp;1&quot;);
++				main::umount();
+ 				qxx (&quot;kpartx -d $this-&gt;{loop}&quot;);
+ 				qxx (&quot;losetup -d $this-&gt;{loop}&quot;);
+ 			} else {
+ 				#==========================================
+ 				# loop mount system image
+ 				#------------------------------------------
+-				if (! main::mountLoop ($system,$tmpdir,$fsattr{type})) {
++				if (! main::mount ($system,$tmpdir)) {
+ 					$this -&gt; cleanTmp ();
+ 					return undef;
+ 				}
+@@ -251,7 +248,7 @@ sub new {
+ 				#==========================================
+ 				# clean up
+ 				#------------------------------------------
+-				main::umountLoop ($tmpdir);
++				main::umount();
+ 			}
+ 		}
+ 		if (! defined $xml) {
+@@ -359,6 +356,9 @@ sub new {
+ 		if ($type{vga}) {
+ 			$vga = $type{vga};
+ 		}
++		if ($type{luks}) {
++			$main::LuksCipher = $type{luks};
++		}
+ 	}
+ 	#==========================================
+ 	# Store object data (2)
+@@ -534,13 +534,16 @@ sub setupBootStick {
+ 	my $haveSplit = 0;
+ 	my $haveTree  = 0;
+ 	my $lvmbootMB = 0;
++	my $luksbootMB= 0;
+ 	my $syslbootMB= 0;
+ 	my $dmbootMB  = 0;
+ 	my $dmapper   = 0;
++	my $haveluks  = 0;
+ 	my $bootloader= &quot;grub&quot;;
+ 	my $lvmsize;
+ 	my $syslsize;
+ 	my $dmsize;
++	my $lukssize;
+ 	my $FSTypeRW;
+ 	my $FSTypeRO;
+ 	my $status;
+@@ -579,8 +582,7 @@ sub setupBootStick {
+ 		}
+ 		$haveTree = 1;
+ 	} else {
+-		my %fsattr = main::checkFileSystem ($system);
+-		if (! main::mountLoop ($system,$tmpdir,$fsattr{type})) {
++		if (! main::mount ($system,$tmpdir)) {
+ 			$this -&gt; cleanTmp ();
+ 			return undef;
+ 		}
+@@ -588,10 +590,7 @@ sub setupBootStick {
+ 			$imgtype = &quot;split&quot;;
+ 		}
+ 		$xml = new KIWIXML ( $kiwi,$tmpdir.&quot;/image&quot;,undef,$imgtype );
+-		if (! main::umountLoop ($tmpdir)) {
+-			$this -&gt; cleanTmp ();
+-			return undef;
+-		}
++		main::umount();
+ 		if (! defined $xml) {
+ 			$this -&gt; cleanTmp ();
+ 			return undef;
+@@ -610,6 +609,13 @@ sub setupBootStick {
+ 		$dmbootMB = 40;
+ 	}
+ 	#==========================================
++	# check for LUKS extension
++	#------------------------------------------
++	if ($type{luks}) {
++		$haveluks   = 1;
++		$luksbootMB = 40;
++	}
++	#==========================================
+ 	# setup boot loader type
+ 	#------------------------------------------
+ 	if ($type{bootloader}) {
+@@ -640,9 +646,12 @@ sub setupBootStick {
+ 	# set boot partition number
+ 	#------------------------------------------
+ 	my $bootpart = &quot;0&quot;;
+-	if (($syszip) || ($haveSplit) || ($lvm)) {
++	if (($syszip) || ($haveSplit) || ($lvm) || ($haveluks)) {
+ 		$bootpart = &quot;1&quot;;
+ 	}
++	if ((($syszip) || ($haveSplit)) &amp;&amp; ($haveluks)) {
++		$bootpart = &quot;2&quot;;
++	}
+ 	if (($dmapper) &amp;&amp; ($lvm)) {
+ 		$bootpart = &quot;1&quot;;
+ 	} elsif ($dmapper) {
+@@ -790,7 +799,7 @@ sub setupBootStick {
+ 	while (1) {
+ 		if (defined $system) {
+ 			if (! $lvm) {
+-				if (($syszip) || ($haveSplit)) {
++				if (($syszip) || ($haveSplit) || ($dmapper)) {
+ 					if ($bootloader eq &quot;syslinux&quot;) {
+ 						$syslsize = $hardSize;
+ 						$syslsize /= 1000;
+@@ -821,6 +830,21 @@ sub setupBootStick {
+ 							&quot;t&quot;,&quot;3&quot;,&quot;83&quot;,
+ 							&quot;a&quot;,&quot;3&quot;,&quot;w&quot;,&quot;q&quot;
+ 						);
++					} elsif ($haveluks) {
++						$lukssize = $hardSize;
++						$lukssize /= 1000;
++						$lukssize -= $syszip;
++						$lukssize -= $luksbootMB;
++						$lukssize = sprintf (&quot;%.f&quot;,$lukssize);
++						@commands = (
++							&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$syszip.&quot;M&quot;,
++							&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;+&quot;.$lukssize.&quot;M&quot;,
++							&quot;n&quot;,&quot;p&quot;,&quot;3&quot;,&quot;.&quot;,&quot;.&quot;,
++							&quot;t&quot;,&quot;1&quot;,&quot;83&quot;,
++							&quot;t&quot;,&quot;2&quot;,&quot;83&quot;,
++							&quot;t&quot;,&quot;3&quot;,&quot;83&quot;,
++							&quot;a&quot;,&quot;3&quot;,&quot;w&quot;,&quot;q&quot;
++						);
+ 					} else {
+ 						@commands = (
+ 							&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$syszip.&quot;M&quot;,
+@@ -841,6 +865,16 @@ sub setupBootStick {
+ 							&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;.&quot;,&quot;t&quot;,&quot;2&quot;,&quot;6&quot;,
+ 							&quot;a&quot;,&quot;2&quot;,&quot;w&quot;,&quot;q&quot;
+ 						);
++					} elsif ($haveluks) {
++						$lukssize = $hardSize;
++						$lukssize /= 1000;
++						$lukssize -= $luksbootMB;
++						$lukssize = sprintf (&quot;%.f&quot;,$lukssize);
++						@commands = (
++							&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$lukssize.&quot;M&quot;,&quot;t&quot;,&quot;83&quot;,
++							&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;.&quot;,
++							&quot;a&quot;,&quot;2&quot;,&quot;w&quot;,&quot;q&quot;
++						);
+ 					} else {
+ 						@commands = (
+ 							&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;.&quot;,&quot;t&quot;,&quot;83&quot;,
+@@ -904,7 +938,7 @@ sub setupBootStick {
+ 		#==========================================
+ 		# Umount possible mounted stick partitions
+ 		#------------------------------------------
+-		for (my $i=1;$i&lt;=2;$i++) {
++		for (my $i=1;$i&lt;=3;$i++) {
+ 			qxx (&quot;umount $deviceMap{$i} 2&gt;&amp;1&quot;);
+ 			if ($deviceMap{fat}) {
+ 				qxx (&quot;umount $deviceMap{fat} 2&gt;&amp;1&quot;);
+@@ -927,7 +961,7 @@ sub setupBootStick {
+ 		#==========================================
+ 		# Umount possible mounted stick partitions
+ 		#------------------------------------------
+-		for (my $i=1;$i&lt;=2;$i++) {
++		for (my $i=1;$i&lt;=3;$i++) {
+ 			qxx (&quot;umount $deviceMap{$i} 2&gt;&amp;1&quot;);
+ 			if ($deviceMap{fat}) {
+ 				qxx (&quot;umount $deviceMap{fat} 2&gt;&amp;1&quot;);
+@@ -1095,9 +1129,7 @@ sub setupBootStick {
+ 		#==========================================
+ 		# Mount system image partition
+ 		#------------------------------------------
+-		$status = qxx (&quot;mount $deviceMap{1} $loopdir 2&gt;&amp;1&quot;);
+-		$result = $? &gt;&gt; 8;
+-		if ($result != 0) {
++		if (! main::mount($deviceMap{1}, $loopdir)) {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error  (&quot;Couldn't mount partition: $status&quot;);
+ 			$kiwi -&gt; failed ();
+@@ -1123,85 +1155,140 @@ sub setupBootStick {
+ 		#==========================================
+ 		# Umount system image partition
+ 		#------------------------------------------
+-		qxx ( &quot;umount $loopdir 2&gt;&amp;1&quot; );
++		main::umount();
+ 	}
+ 	#==========================================
+ 	# Check and resize filesystems
+ 	#------------------------------------------
+ 	$result = 0;
+ 	undef $status;
+-	SWITCH: for ($FSTypeRO) {
++	my $mapper = $deviceMap{1};
++	my %fsattr = main::checkFileSystem ($deviceMap{1});
++	if ($fsattr{type} eq &quot;luks&quot;) {
++		$mapper = $this -&gt; luksResize ($deviceMap{1},&quot;luks-resize&quot;);
++		if (! $mapper) {
++			$this -&gt; luksClose();
++			return undef;
++		}
++		%fsattr= main::checkFileSystem ($mapper);
++	}
++	SWITCH: for ($fsattr{type}) {
+ 		/^ext\d/    &amp;&amp; do {
+-			$kiwi -&gt; info (&quot;Resizing system $FSTypeRO filesystem&quot;);
+-			$status = qxx (&quot;/sbin/resize2fs -f -F -p $deviceMap{1} 2&gt;&amp;1&quot;);
++			$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
++			$status = qxx (&quot;/sbin/resize2fs -f -F -p $mapper 2&gt;&amp;1&quot;);
+ 			$result = $? &gt;&gt; 8;
+ 			last SWITCH;
+ 		};
+ 		/^reiserfs/ &amp;&amp; do {
+-			$kiwi -&gt; info (&quot;Resizing system $FSTypeRO filesystem&quot;);
+-			$status = qxx (&quot;/sbin/resize_reiserfs $deviceMap{1} 2&gt;&amp;1&quot;);
++			$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
++			$status = qxx (&quot;/sbin/resize_reiserfs $mapper 2&gt;&amp;1&quot;);
+ 			$result = $? &gt;&gt; 8;
+ 			last SWITCH;
+ 		}
+ 	};
+ 	if ($result != 0) {
+ 		$kiwi -&gt; failed ();
+-		$kiwi -&gt; error  (&quot;Couldn't resize $FSTypeRO filesystem: $status&quot;);
++		$kiwi -&gt; error  (&quot;Couldn't resize $fsattr{type} filesystem: $status&quot;);
+ 		$kiwi -&gt; failed ();
++		$this -&gt; luksClose();
+ 		$this -&gt; cleanDbus();
+ 		$this -&gt; cleanTmp ();
+ 		return undef;
+ 	}
++	$this -&gt; luksClose();
+ 	if ($status) {
+ 		$kiwi -&gt; done();
+ 	}
+ 	if ($haveSplit) {
+ 		$result = 0;
+ 		undef $status;
+-		SWITCH: for ($FSTypeRW) {
++		$mapper = $deviceMap{2};
++		my %fsattr = main::checkFileSystem ($deviceMap{2});
++		if ($fsattr{type} eq &quot;luks&quot;) {
++			$mapper = $this -&gt; luksResize ($deviceMap{2},&quot;luks-resize&quot;);
++			if (! $mapper) {
++				$this -&gt; luksClose();
++				return undef;
++			}
++			%fsattr= main::checkFileSystem ($mapper);
++		}
++		SWITCH: for ($fsattr{type}) {
+ 			/^ext\d/    &amp;&amp; do {
+-				$kiwi -&gt; info (&quot;Resizing split $FSTypeRW filesystem&quot;);
+-				$status = qxx (&quot;/sbin/resize2fs -f -F -p $deviceMap{2} 2&gt;&amp;1&quot;);
++				$kiwi -&gt; info (&quot;Resizing split $fsattr{type} filesystem&quot;);
++				$status = qxx (&quot;/sbin/resize2fs -f -F -p $mapper 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+ 			};
+ 			/^reiserfs/ &amp;&amp; do {
+-				$kiwi -&gt; info (&quot;Resizing split $FSTypeRW filesystem&quot;);
+-				$status = qxx (&quot;/sbin/resize_reiserfs $deviceMap{2} 2&gt;&amp;1&quot;);
++				$kiwi -&gt; info (&quot;Resizing split $fsattr{type} filesystem&quot;);
++				$status = qxx (&quot;/sbin/resize_reiserfs $mapper 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+ 			}
+ 		};
+ 		if ($result != 0) {
+ 			$kiwi -&gt; failed ();
+-			$kiwi -&gt; error(&quot;Couldn't resize $FSTypeRW filesystem: $status&quot;);
++			$kiwi -&gt; error(&quot;Couldn't resize $fsattr{type} filesystem: $status&quot;);
+ 			$kiwi -&gt; failed ();
++			$this -&gt; luksClose();
+ 			$this -&gt; cleanDbus();
+ 			$this -&gt; cleanTmp ();
+ 			return undef;
+ 		}
++		$this -&gt; luksClose();
+ 		if ($status) {
+ 			$kiwi -&gt; done();
+ 		}
+ 	}
+ 	#==========================================
++	# create read/write filesystem if needed
++	#------------------------------------------
++	if (($syszip) &amp;&amp; (! $haveSplit) &amp;&amp; (! $dmapper)) {
++		$root = $deviceMap{2};
++		$kiwi -&gt; info (&quot;Creating ext3 read-write filesystem&quot;);
++		my %FSopts = main::checkFSOptions();
++		my $fsopts = $FSopts{ext3};
++		$fsopts.= &quot;-F&quot;;
++		$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Couldn't create filesystem: $status&quot;);
++			$kiwi -&gt; failed ();
++			$this -&gt; cleanLoop ();
++			return undef;
++		}
++		$kiwi -&gt; done();
++	}
++	#==========================================
+ 	# create bootloader filesystem if needed
+ 	#------------------------------------------
+ 	if ($bootloader eq &quot;syslinux&quot;) {
+ 		$root = $deviceMap{fat};
++		$kiwi -&gt; info (&quot;Creating DOS boot filesystem&quot;);
+ 		$status = qxx (&quot;/sbin/mkdosfs $root 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
++			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error  (&quot;Couldn't create DOS filesystem: $status&quot;);
+ 			$kiwi -&gt; failed ();
+ 			$this -&gt; cleanDbus();
+ 			$this -&gt; cleanLoop ();
+ 			return undef;
+ 		}
+-	} elsif (($dmapper) || ($lvm)) {
+-		$root = $deviceMap{0};
+-		if ($dmapper) {
+-			$root = $deviceMap{dmapper};
++		$kiwi -&gt; done();
++	} elsif (($dmapper) || ($haveluks) || ($lvm)) {
++		$root = $deviceMap{dmapper};
++		$kiwi -&gt; info (&quot;Creating EXT2 boot filesystem&quot;);
++		if ($haveluks) {
++			if (($syszip) || ($haveSplit) || ($dmapper)) {
++				$root = $deviceMap{3};
++			} else {
++				$root = $deviceMap{2};
++			}
++		}
++		if ($lvm) {
++			$root = $deviceMap{0};
+ 		}
+ 		my %FSopts = main::checkFSOptions();
+ 		my $fsopts = $FSopts{ext2};
+@@ -1216,6 +1303,7 @@ sub setupBootStick {
+ 			$this -&gt; cleanLoop ();
+ 			return undef;
+ 		}
++		$kiwi -&gt; done();
+ 	}
+ 	#==========================================
+ 	# Dump boot image on virtual disk
+@@ -1228,16 +1316,20 @@ sub setupBootStick {
+ 		$root = $deviceMap{fat};
+ 	} elsif ($dmapper) {
+ 		$root = $deviceMap{dmapper};
+-	} elsif ($lvm) {
+-		$root = $deviceMap{0};
+-	} elsif (($syszip) || ($haveSplit)) {
++	} elsif (($syszip) || ($haveSplit) || ($lvm)) {
++		$root = $deviceMap{2};
++		if ($haveluks) {
++			$root = $deviceMap{3};
++		}
++		if ($lvm) {
++			$root = $deviceMap{0};
++		}
++	} elsif ($haveluks) {
+ 		$root = $deviceMap{2};
+ 	} else {
+ 		$root = $deviceMap{1};
+ 	}
+-	$status = qxx (&quot;mount $root $loopdir 2&gt;&amp;1&quot;);
+-	$result = $? &gt;&gt; 8;
+-	if ($result != 0) {
++	if (! main::mount($root, $loopdir)) {
+ 		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;Couldn't mount stick image: $status&quot;);
+ 		$kiwi -&gt; failed ();
+@@ -1259,7 +1351,7 @@ sub setupBootStick {
+ 		$this -&gt; cleanLoop ();
+ 		return undef;
+ 	}
+-	qxx (&quot;umount $loopdir&quot;);
++	main::umount();
+ 	$kiwi -&gt; done();
+ 	#==========================================
+ 	# deactivate volume group
+@@ -1380,10 +1472,7 @@ sub setupInstallCD {
+ 		if (! -e $sdev) {
+ 			$sdev = &quot;/dev/mapper&quot;.$dmap.&quot;p1&quot;;
+ 		}
+-		my %fsattr = main::checkFileSystem ($sdev);
+-		$status = qxx (&quot;mount -t $fsattr{type} $sdev $tmpdir 2&gt;&amp;1&quot;);
+-		$result = $? &gt;&gt; 8;
+-		if ($result != 0) {
++		if (! main::mount ($sdev, $tmpdir)) {
+ 			$kiwi -&gt; error (&quot;Failed to mount system partition: $status&quot;);
+ 			$kiwi -&gt; failed ();
+ 			$this -&gt; cleanLoop ();
+@@ -1392,7 +1481,7 @@ sub setupInstallCD {
+ 		if (-f &quot;$tmpdir/rootfs.tar&quot;) {
+ 			$imgtype = &quot;split&quot;;
+ 		}
+-		$status = qxx (&quot;umount $tmpdir 2&gt;&amp;1&quot;); sleep (1);
++		main::umount();
+ 		$status = qxx (&quot;/sbin/kpartx  -d $this-&gt;{loop} 2&gt;&amp;1&quot;);
+ 		$status = qxx (&quot;/sbin/losetup -d $this-&gt;{loop} 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+@@ -1413,7 +1502,7 @@ sub setupInstallCD {
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Compressing installation image...&quot;);
+ 	$md5name=~ s/\.raw$/\.md5/;
+-	$status = qxx (&quot;$main::Gzip $system 2&gt;&amp;1&quot;);
++	$status = qxx (&quot;$main::Gzip -f $system 2&gt;&amp;1&quot;);
+ 	$result = $? &gt;&gt; 8;
+ 	if ($result != 0) {
+ 		$kiwi -&gt; failed ();
+@@ -1651,10 +1740,7 @@ sub setupInstallStick {
+ 		if (! -e $sdev) {
+ 			$sdev = &quot;/dev/mapper&quot;.$dmap.&quot;p1&quot;;
+ 		}
+-		my %fsattr = main::checkFileSystem ($sdev);
+-		$status = qxx (&quot;mount -t $fsattr{type} $sdev $tmpdir 2&gt;&amp;1&quot;);
+-		$result = $? &gt;&gt; 8;
+-		if ($result != 0) {
++		if (! main::mount ($sdev, $tmpdir)) {
+ 			$kiwi -&gt; error  (&quot;Failed to mount system partition: $status&quot;);
+ 			$kiwi -&gt; failed ();
+ 			$this -&gt; cleanLoop ();
+@@ -1663,7 +1749,7 @@ sub setupInstallStick {
+ 		if (-f &quot;$tmpdir/rootfs.tar&quot;) {
+ 			$imgtype = &quot;split&quot;;
+ 		}
+-		$status = qxx (&quot;umount $tmpdir 2&gt;&amp;1&quot;); sleep (1);
++		main::umount();
+ 		$status = qxx (&quot;/sbin/kpartx  -d $this-&gt;{loop} 2&gt;&amp;1&quot;);
+ 		$status = qxx (&quot;/sbin/losetup -d $this-&gt;{loop} 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+@@ -1685,7 +1771,7 @@ sub setupInstallStick {
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Compressing installation image...&quot;);
+ 	$md5name=~ s/\.raw$/\.md5/;
+-	$status = qxx (&quot;$main::Gzip $system 2&gt;&amp;1&quot;);
++	$status = qxx (&quot;$main::Gzip -f $system 2&gt;&amp;1&quot;);
+ 	$result = $? &gt;&gt; 8;
+ 	if ($result != 0) {
+ 		$kiwi -&gt; failed ();
+@@ -1859,9 +1945,7 @@ sub setupInstallStick {
+ 	# Copy boot data on first partition
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Installing boot data to virtual disk&quot;);
+-	$status = qxx (&quot;mount $boot $loopdir 2&gt;&amp;1&quot;);
+-	$result = $? &gt;&gt; 8;
+-	if ($result != 0) {
++	if (! main::mount ($boot, $loopdir)) {
+ 		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;Couldn't mount boot partition: $status&quot;);
+ 		$kiwi -&gt; failed ();
+@@ -1879,16 +1963,14 @@ sub setupInstallStick {
+ 		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		return undef;
+ 	}
+-	qxx ( &quot;umount $loopdir 2&gt;&amp;1&quot; );
++	main::umount();
+ 	$kiwi -&gt; done();
+ 	#==========================================
+ 	# Copy system image if defined
+ 	#------------------------------------------
+ 	if ($gotsys) {
+ 		$kiwi -&gt; info (&quot;Installing image data to virtual disk&quot;);
+-		$status = qxx (&quot;mount $data $loopdir 2&gt;&amp;1&quot;);
+-		$result = $? &gt;&gt; 8;
+-		if ($result != 0) {
++		if (! main::mount($data, $loopdir)) {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error  (&quot;Couldn't mount data partition: $status&quot;);
+ 			$kiwi -&gt; failed ();
+@@ -1916,7 +1998,7 @@ sub setupInstallStick {
+ 			qxx ( &quot;$main::Gzip -d $system&quot; );
+ 			return undef;
+ 		}
+-		qxx ( &quot;umount $loopdir 2&gt;&amp;1&quot; );
++		main::umount();
+ 		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		$kiwi -&gt; done();
+ 	}
+@@ -1969,9 +2051,11 @@ sub setupBootDisk {
+ 	my $haveTree  = 0;
+ 	my $haveSplit = 0;
+ 	my $lvmbootMB = 0;
++	my $luksbootMB= 0;
+ 	my $syslbootMB= 0;
+ 	my $dmbootMB  = 0;
+ 	my $dmapper   = 0;
++	my $haveluks  = 0;
+ 	my $bootloader= &quot;grub&quot;;
+ 	my $splitfile;
+ 	my $version;
+@@ -1988,7 +2072,7 @@ sub setupBootDisk {
+ 	# add boot space if lvm based
+ 	#------------------------------------------
+ 	if ($lvm) {
+-		$lvmbootMB = 20;
++		$lvmbootMB = 30;
+ 	}
+ 	#==========================================
+ 	# check if image type is oem
+@@ -2018,8 +2102,7 @@ sub setupBootDisk {
+ 		#==========================================
+ 		# build disk name and label from xml data
+ 		#------------------------------------------
+-		my %fsattr = main::checkFileSystem ($system);
+-		if (! main::mountLoop ($system,$tmpdir,$fsattr{type})) {
++		if (! main::mount ($system,$tmpdir)) {
+ 			$this -&gt; cleanTmp ();
+ 			return undef;
+ 		}
+@@ -2030,10 +2113,7 @@ sub setupBootDisk {
+ 			$imgtype = &quot;split&quot;;
+ 		}
+ 		$xml = new KIWIXML ( $kiwi,$tmpdir.&quot;/image&quot;,undef,$imgtype );
+-		if (! main::umountLoop ($tmpdir)) {
+-			$this -&gt; cleanTmp ();
+-			return undef;
+-		}
++		main::umount();
+ 		if (! defined $xml) {
+ 			$this -&gt; cleanTmp ();
+ 			return undef;
+@@ -2052,6 +2132,13 @@ sub setupBootDisk {
+ 		$dmbootMB = 40;
+ 	}
+ 	#==========================================
++	# check for LUKS extension
++	#------------------------------------------
++	if ($type{luks}) {
++		$haveluks   = 1;
++		$luksbootMB = 40;
++	}
++	#==========================================
+ 	# setup boot loader type
+ 	#------------------------------------------
+ 	if ($type{bootloader}) {
+@@ -2137,9 +2224,12 @@ sub setupBootDisk {
+ 	# Setup boot partition ID
+ 	#------------------------------------------
+ 	my $bootpart = &quot;0&quot;;
+-	if (($syszip) || ($haveSplit) || ($lvm)) {
++	if (($syszip) || ($haveSplit) || ($lvm) || ($haveluks)) {
+ 		$bootpart = &quot;1&quot;;
+ 	}
++	if ((($syszip) || ($haveSplit)) &amp;&amp; ($haveluks)) {
++		$bootpart = &quot;2&quot;;
++	}
+ 	if (($dmapper) &amp;&amp; ($lvm)) {
+ 		$bootpart = &quot;1&quot;;
+ 	} elsif ($dmapper) {
+@@ -2220,6 +2310,14 @@ sub setupBootDisk {
+ 						&quot;n&quot;,&quot;p&quot;,&quot;3&quot;,&quot;.&quot;,&quot;.&quot;,
+ 						&quot;a&quot;,&quot;3&quot;,&quot;w&quot;,&quot;q&quot;
+ 					);
++				} elsif ($haveluks) {
++					my $lukssize = $this-&gt;{vmmbyte} - $luksbootMB - $syszip;
++					@commands = (
++						&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$syszip.&quot;M&quot;,
++						&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;+&quot;.$lukssize.&quot;M&quot;,
++						&quot;n&quot;,&quot;p&quot;,&quot;3&quot;,&quot;.&quot;,&quot;.&quot;,
++						&quot;a&quot;,&quot;3&quot;,&quot;w&quot;,&quot;q&quot;
++					);
+ 				} else {
+ 					@commands = (
+ 						&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$syszip.&quot;M&quot;,
+@@ -2237,6 +2335,13 @@ sub setupBootDisk {
+ 						&quot;t&quot;,&quot;2&quot;,&quot;6&quot;,
+ 						&quot;a&quot;,&quot;2&quot;,&quot;w&quot;,&quot;q&quot;
+ 					);
++				} elsif ($haveluks) {
++					my $lukssize = $this-&gt;{vmmbyte} - $luksbootMB;
++					@commands = (
++						&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$lukssize.&quot;M&quot;,
++						&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;.&quot;,
++						&quot;a&quot;,&quot;2&quot;,&quot;w&quot;,&quot;q&quot;
++					);
+ 				} else {
+ 					@commands = (
+ 						&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;.&quot;,
+@@ -2356,27 +2461,41 @@ sub setupBootDisk {
+ 		$kiwi -&gt; done();
+ 		$result = 0;
+ 		undef $status;
+-		SWITCH: for ($FSTypeRO) {
++		my $mapper = $root;
++		my %fsattr = main::checkFileSystem ($root);
++		if ($fsattr{type} eq &quot;luks&quot;) {
++			$mapper = $this -&gt; luksResize ($root,&quot;luks-resize&quot;);
++			if (! $mapper) {
++				$this -&gt; luksClose();
++				return undef;
++			}
++			%fsattr= main::checkFileSystem ($mapper);
++		}
++		SWITCH: for ($fsattr{type}) {
+ 			/^ext\d/    &amp;&amp; do {
+-				$kiwi -&gt; info (&quot;Resizing system $FSTypeRO filesystem&quot;);
+-				$status = qxx (&quot;/sbin/resize2fs -f -F -p $root 2&gt;&amp;1&quot;);
++				$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
++				$status = qxx (&quot;/sbin/resize2fs -f -F -p $mapper 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+ 			};
+ 			/^reiserfs/ &amp;&amp; do {
+-				$kiwi -&gt; info (&quot;Resizing system $FSTypeRO filesystem&quot;);
+-				$status = qxx (&quot;/sbin/resize_reiserfs $root 2&gt;&amp;1&quot;);
++				$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
++				$status = qxx (&quot;/sbin/resize_reiserfs $mapper 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+ 			}
+ 		};
+ 		if ($result != 0) {
+ 			$kiwi -&gt; failed ();
+-			$kiwi -&gt; error  (&quot;Couldn't resize $FSTypeRO filesystem: $status&quot;);
++			$kiwi -&gt; error  (
++				&quot;Couldn't resize $fsattr{type} filesystem $status&quot;
++			);
+ 			$kiwi -&gt; failed ();
++			$this -&gt; luksClose();
+ 			$this -&gt; cleanTmp ();
+ 			return undef;
+ 		}
++		$this -&gt; luksClose();
+ 		if ($status) {
+ 			$kiwi -&gt; done();
+ 		}
+@@ -2395,27 +2514,41 @@ sub setupBootDisk {
+ 			$kiwi -&gt; done();
+ 			$result = 0;
+ 			undef $status;
+-			SWITCH: for ($FSTypeRW) {
++			$mapper = $root;
++			my %fsattr = main::checkFileSystem ($root);
++			if ($fsattr{type} eq &quot;luks&quot;) {
++				$mapper = $this -&gt; luksResize ($root,&quot;luks-resize&quot;);
++				if (! $mapper) {
++					$this -&gt; luksClose();
++					return undef;
++				}
++				%fsattr= main::checkFileSystem ($mapper);
++			}
++			SWITCH: for ($fsattr{type}) {
+ 				/^ext\d/    &amp;&amp; do {
+-					$kiwi -&gt; info (&quot;Resizing split $FSTypeRW filesystem&quot;);
+-					$status = qxx (&quot;/sbin/resize2fs -f -F -p $root 2&gt;&amp;1&quot;);
++					$kiwi -&gt; info (&quot;Resizing split $fsattr{type} filesystem&quot;);
++					$status = qxx (&quot;/sbin/resize2fs -f -F -p $mapper 2&gt;&amp;1&quot;);
+ 					$result = $? &gt;&gt; 8;
+ 					last SWITCH;
+ 				};
+ 				/^reiserfs/ &amp;&amp; do {
+-					$kiwi -&gt; info (&quot;Resizing split $FSTypeRW filesystem&quot;);
+-					$status = qxx (&quot;/sbin/resize_reiserfs $root 2&gt;&amp;1&quot;);
++					$kiwi -&gt; info (&quot;Resizing split $fsattr{type} filesystem&quot;);
++					$status = qxx (&quot;/sbin/resize_reiserfs $mapper 2&gt;&amp;1&quot;);
+ 					$result = $? &gt;&gt; 8;
+ 					last SWITCH;
+ 				}
+ 			};
+ 			if ($result != 0) {
+ 				$kiwi -&gt; failed ();
+-				$kiwi -&gt; error(&quot;Couldn't resize $FSTypeRW filesystem: $status&quot;);
++				$kiwi -&gt; error  (
++					&quot;Couldn't resize $fsattr{type} filesystem: $status&quot;
++				);
+ 				$kiwi -&gt; failed ();
++				$this -&gt; luksClose();
+ 				$this -&gt; cleanTmp ();
+ 				return undef;
+ 			}
++			$this -&gt; luksClose();
+ 			if ($status) {
+ 				$kiwi -&gt; done();
+ 			}
+@@ -2485,9 +2618,7 @@ sub setupBootDisk {
+ 		#==========================================
+ 		# Mount system image partition
+ 		#------------------------------------------
+-		$status = qxx (&quot;mount $root $loopdir 2&gt;&amp;1&quot;);
+-		$result = $? &gt;&gt; 8;
+-		if ($result != 0) {
++		if (! main::mount($root, $loopdir)) {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error  (&quot;Couldn't mount partition: $status&quot;);
+ 			$kiwi -&gt; failed ();
+@@ -2511,48 +2642,57 @@ sub setupBootDisk {
+ 		#==========================================
+ 		# Umount system image partition
+ 		#------------------------------------------
+-		qxx ( &quot;umount $loopdir 2&gt;&amp;1&quot; );
++		main::umount();
+ 	}
+ 	#==========================================
+ 	# create read/write filesystem if needed
+ 	#------------------------------------------
+-	if ((($syszip) || ($haveSplit) || ($lvm)) &amp;&amp; (! $dmapper)) {
++	if (($syszip) &amp;&amp; (! $haveSplit) &amp;&amp; (! $dmapper)) {
+ 		$root = $deviceMap{2};
+-		if ($lvm) {
+-			$root = $deviceMap{0};
+-		}
+-		if ((! $haveSplit) || ($lvm)) {
+-			$kiwi -&gt; info (&quot;Creating ext3 read-write filesystem&quot;);
+-			my %FSopts = main::checkFSOptions();
+-			my $fsopts = $FSopts{ext3};
+-			$fsopts.= &quot;-F&quot;;
+-			$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
+-			$result = $? &gt;&gt; 8;
+-			if ($result != 0) {
+-				$kiwi -&gt; failed ();
+-				$kiwi -&gt; error  (&quot;Couldn't create filesystem: $status&quot;);
+-				$kiwi -&gt; failed ();
+-				$this -&gt; cleanLoop ();
+-				return undef;
+-			}
+-			$kiwi -&gt; done();
++		$kiwi -&gt; info (&quot;Creating ext3 read-write filesystem&quot;);
++		my %FSopts = main::checkFSOptions();
++		my $fsopts = $FSopts{ext3};
++		$fsopts.= &quot;-F&quot;;
++		$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Couldn't create filesystem: $status&quot;);
++			$kiwi -&gt; failed ();
++			$this -&gt; cleanLoop ();
++			return undef;
+ 		}
++		$kiwi -&gt; done();
+ 	}
+ 	#==========================================
+ 	# create bootloader filesystem if needed
+ 	#------------------------------------------
+ 	if ($bootloader eq &quot;syslinux&quot;) {
+ 		$root = $deviceMap{fat};
++		$kiwi -&gt; info (&quot;Creating DOS boot filesystem&quot;);
+ 		$status = qxx (&quot;/sbin/mkdosfs $root 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
++			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error  (&quot;Couldn't create DOS filesystem: $status&quot;);
+ 			$kiwi -&gt; failed ();
+ 			$this -&gt; cleanLoop ();
+ 			return undef;
+ 		}
+-	} elsif ($dmapper) {
++		$kiwi -&gt; done();
++	} elsif (($dmapper) || ($haveluks) || ($lvm)) {
+ 		$root = $deviceMap{dmapper};
++		$kiwi -&gt; info (&quot;Creating EXT2 boot filesystem&quot;);
++		if ($haveluks) {
++			if (($syszip) || ($haveSplit) || ($dmapper)) {
++				$root = $deviceMap{3};
++			} else {
++				$root = $deviceMap{2};
++			}
++		}
++		if ($lvm) {
++			$root = $deviceMap{0};
++		}
+ 		my %FSopts = main::checkFSOptions();
+ 		my $fsopts = $FSopts{ext2};
+ 		$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
+@@ -2564,6 +2704,7 @@ sub setupBootDisk {
+ 			$this -&gt; cleanLoop ();
+ 			return undef;
+ 		}
++		$kiwi -&gt; done();
+ 	}
+ 	#==========================================
+ 	# Dump boot image on virtual disk
+@@ -2572,9 +2713,24 @@ sub setupBootDisk {
+ 	#==========================================
+ 	# Mount system image / or rw partition
+ 	#------------------------------------------
+-	$status = qxx (&quot;mount $root $loopdir 2&gt;&amp;1&quot;);
+-	$result = $? &gt;&gt; 8;
+-	if ($result != 0) {
++	if ($bootloader eq &quot;syslinux&quot;) {
++		$root = $deviceMap{fat};
++	} elsif ($dmapper) {
++		$root = $deviceMap{dmapper};
++	} elsif (($syszip) || ($haveSplit) || ($lvm)) {
++		$root = $deviceMap{2};
++		if ($haveluks) {
++			$root = $deviceMap{3};
++		}
++		if ($lvm) {
++			$root = $deviceMap{0};
++		}
++	} elsif ($haveluks) {
++		$root = $deviceMap{2};
++	} else {
++		$root = $deviceMap{1};
++	}
++	if (! main::mount ($root, $loopdir)) {
+ 		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;Couldn't mount image: $status&quot;);
+ 		$kiwi -&gt; failed ();
+@@ -2593,7 +2749,7 @@ sub setupBootDisk {
+ 		$this -&gt; cleanLoop ();
+ 		return undef;
+ 	}
+-	qxx ( &quot;umount $loopdir 2&gt;&amp;1&quot; );
++	main::umount();
+ 	$kiwi -&gt; done();
+ 	#==========================================
+ 	# cleanup device maps and part mount
+@@ -3050,7 +3206,7 @@ sub cleanLoop {
+ 	my $tmpdir = $this-&gt;{tmpdir};
+ 	my $loop   = $this-&gt;{loop};
+ 	my $loopdir= $this-&gt;{loopdir};
+-	qxx (&quot;umount $loopdir 2&gt;&amp;1&quot;);
++	main::umount();
+ 	if (defined $loop) {
+ 		if ($this-&gt;{lvm}) {
+ 			qxx (&quot;vgchange -an 2&gt;&amp;1&quot;);
+@@ -4190,7 +4346,7 @@ sub setDefaultDeviceMap {
+ 	if (! defined $device) {
+ 		return undef;
+ 	}
+-	for (my $i=1;$i&lt;=2;$i++) {
++	for (my $i=1;$i&lt;=3;$i++) {
+ 		$result{$i} = $device.$i;
+ 	}
+ 	if ($loader eq &quot;syslinux&quot;) {
+@@ -4224,7 +4380,7 @@ sub setLoopDeviceMap {
+ 		return undef;
+ 	}
+ 	my $dmap = $device; $dmap =~ s/dev\///;
+-	for (my $i=1;$i&lt;=2;$i++) {
++	for (my $i=1;$i&lt;=3;$i++) {
+ 		$result{$i} = &quot;/dev/mapper&quot;.$dmap.&quot;p$i&quot;;
+ 	}
+ 	if ($loader eq &quot;syslinux&quot;) {
+@@ -4392,4 +4548,54 @@ sub makeLabel {
+ 	return $label;
+ }
+ 
++#==========================================
++# luksResize
++#------------------------------------------
++sub luksResize {
++	my $this   = shift;
++	my $source = shift;
++	my $name   = shift;
++	my $kiwi   = $this-&gt;{kiwi};
++	my $cipher = $main::LuksCipher;
++	my $status;
++	my $result;
++	if ($cipher) {
++		$status = qxx (
++			&quot;echo $cipher | cryptsetup luksOpen $source $name 2&gt;&amp;1&quot;
++		);
++	} else {
++		$status = qxx (&quot;cryptsetup luksOpen $source $name 2&gt;&amp;1&quot;);
++	}
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Couldn't open luks device: $status&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	$this-&gt;{luks} = $name;
++	$status = qxx (&quot;cryptsetup resize $name&quot;);
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Couldn't resize luks device: $status&quot;);
++		$kiwi -&gt; failed ();
++		$this -&gt; luksClose();
++		return undef;
++	}
++	return &quot;/dev/mapper/&quot;.$name;
++}
++
++#==========================================
++# luksClose
++#------------------------------------------
++sub luksClose {
++	my $this = shift;
++	if ($this-&gt;{luks}) {
++		qxx (&quot;cryptsetup luksClose $this-&gt;{luks} 2&gt;&amp;1&quot;);
++		undef $this-&gt;{luks};
++	}
++	return $this;
++}
++
+ 1; 
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index c6dff49..8eb75d3 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -159,7 +159,6 @@ sub createImageDMSquashExt3 {
+ 	my $tree    = shift;
+ 	my $journal = &quot;journaled-ext3&quot;;
+ 	my $kiwi    = $this-&gt;{kiwi};
+-	my $dest    = $this-&gt;{imageDest};
+ 	my $data;
+ 	my $code;
+ 	if (! defined $tree) {
+@@ -173,7 +172,9 @@ sub createImageDMSquashExt3 {
+ 		return undef;
+ 	}
+ 	if (defined $rename) {
+-		$data = qxx (&quot;mv $dest/$name $dest/$rename 2&gt;&amp;1&quot;);
++		$data = qxx (
++			&quot;mv $this-&gt;{imageDest}/$name $this-&gt;{imageDest}/$rename 2&gt;&amp;1&quot;
++		);
+ 		$code = $? &gt;&gt; 8;
+ 		if ($code != 0) {
+ 			$kiwi -&gt; error  (&quot;Can't rename image file&quot;);
+@@ -198,7 +199,9 @@ sub createImageDMSquashExt3 {
+ 	#==========================================
+ 	# Rename filesystem file
+ 	#------------------------------------------
+-	$data = qxx (&quot;mv $dest/$name $dest/fsdata.ext3 2&gt;&amp;1&quot;);
++	$data = qxx (
++		&quot;mv $this-&gt;{imageDest}/$name $this-&gt;{imageDest}/fsdata.ext3 2&gt;&amp;1&quot;
++	);
+ 	$code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+ 		$kiwi -&gt; error  (&quot;Can't move file to fsdata.ext3&quot;);
+@@ -210,11 +213,12 @@ sub createImageDMSquashExt3 {
+ 	# Create squashfs filesystem from ext3
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Creating squashfs container...&quot;);
+-	if (! $this -&gt; setupSquashFS ( $name,$dest.&quot;/fsdata.ext3&quot; )) {
++	if (! $this -&gt; setupSquashFS ($name,$this-&gt;{imageDest}.&quot;/fsdata.ext3&quot;)) {
+ 		return undef;
+ 	}
+-	qxx (&quot;mv -f $dest/$name.ext3 $dest/$name.squashfs&quot;);
+-	qxx (&quot;rm -f $dest/fsdata.ext3&quot;);
++	my $pfix = &quot;squashfs&quot;;
++	qxx (&quot;mv -f $this-&gt;{imageDest}/$name.ext3 $this-&gt;{imageDest}/$name.$pfix&quot;);
++	qxx (&quot;rm -f $this-&gt;{imageDest}/fsdata.ext3&quot;);
+ 	$kiwi -&gt; done();
+ 	return $this;
+ }
+@@ -231,7 +235,6 @@ sub createImageClicFS {
+ 	my $tree    = shift;
+ 	my $journal = &quot;journaled-ext3&quot;;
+ 	my $kiwi    = $this-&gt;{kiwi};
+-	my $dest    = $this-&gt;{imageDest};
+ 	my $data;
+ 	my $code;
+ 	if (! defined $tree) {
+@@ -245,7 +248,9 @@ sub createImageClicFS {
+ 		return undef;
+ 	}
+ 	if (defined $rename) {
+-		$data = qxx (&quot;mv $dest/$name $dest/$rename 2&gt;&amp;1&quot;);
++		$data = qxx (
++			&quot;mv $this-&gt;{imageDest}/$name $this-&gt;{imageDest}/$rename 2&gt;&amp;1&quot;
++		);
+ 		$code = $? &gt;&gt; 8;
+ 		if ($code != 0) {
+ 			$kiwi -&gt; error  (&quot;Can't rename image file&quot;);
+@@ -270,7 +275,9 @@ sub createImageClicFS {
+ 	#==========================================
+ 	# Rename filesystem loop file
+ 	#------------------------------------------
+-	$data = qxx (&quot;mv $dest/$name $dest/fsdata.ext3 2&gt;&amp;1&quot;);
++	$data = qxx (
++		&quot;mv $this-&gt;{imageDest}/$name $this-&gt;{imageDest}/fsdata.ext3 2&gt;&amp;1&quot;
++	);
+ 	$code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+ 		$kiwi -&gt; error  (&quot;Can't move file to fsdata.ext3&quot;);
+@@ -285,7 +292,7 @@ sub createImageClicFS {
+ 	my $req = &quot;-R 'show_super_stats -h'&quot;;
+ 	my $bcn = &quot;'^Block count:'&quot;;
+ 	my $bfr = &quot;'^Free blocks:'&quot;;
+-	my $src = &quot;$dest/fsdata.ext3&quot;;
++	my $src = &quot;$this-&gt;{imageDest}/fsdata.ext3&quot;;
+ 	my $blocks = 0;
+ 	$data = qxx (
+ 		&quot;$dfs $req $src 2&gt;/dev/null | grep $bcn | sed -e 's,.*: *,,'&quot;
+@@ -309,7 +316,7 @@ sub createImageClicFS {
+ 	}  
+ 	$kiwi -&gt; info (&quot;clicfs: blocks count=$blocks free=$data\n&quot;);  
+ 	$blocks = $blocks - $data;  
+-	$data = qxx (&quot;/sbin/resize2fs $dest/fsdata.ext3 $blocks 2&gt;&amp;1&quot;);
++	$data = qxx (&quot;/sbin/resize2fs $this-&gt;{imageDest}/fsdata.ext3 $blocks 2&gt;&amp;1&quot;);
+ 	$code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+ 		$kiwi -&gt; error  (&quot;Failed to resize ext3 container: $data&quot;);
+@@ -322,9 +329,11 @@ sub createImageClicFS {
+ 	$kiwi -&gt; info (&quot;Creating clicfs container...&quot;);
+ 	if ($ENV{MKCLICFS_COMPRESSION}) {
+ 		my $c = int $ENV{MKCLICFS_COMPRESSION};
+-		$data = qxx (&quot;mkclicfs -c $c $dest/fsdata.ext3 $dest/$name 2&gt;&amp;1&quot;);
++		my $d = $this-&gt;{imageDest};
++		$data = qxx (&quot;mkclicfs -c $c $d/fsdata.ext3 $d/$name 2&gt;&amp;1&quot;);
+ 	} else {
+-		$data = qxx (&quot;mkclicfs $dest/fsdata.ext3 $dest/$name 2&gt;&amp;1&quot;);
++		my $d = $this-&gt;{imageDest};
++		$data = qxx (&quot;mkclicfs $d/fsdata.ext3 $d/$name 2&gt;&amp;1&quot;);
+ 	}
+ 	$code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+@@ -334,8 +343,8 @@ sub createImageClicFS {
+ 		$kiwi -&gt; error  ($data);
+ 		return undef;
+ 	}
+-	qxx (&quot;mv -f $dest/$name.ext3 $dest/$name.clicfs&quot;);
+-	qxx (&quot;rm -f $dest/fsdata.ext3&quot;);
++	qxx (&quot;mv -f $this-&gt;{imageDest}/$name.ext3 $this-&gt;{imageDest}/$name.clicfs&quot;);
++	qxx (&quot;rm -f $this-&gt;{imageDest}/fsdata.ext3&quot;);
+ 	$kiwi -&gt; done();
+ 	return $this;
+ }
+@@ -405,7 +414,6 @@ sub createImageEC2 {
+ 	my $this      = shift;
+ 	my $boot      = shift;
+ 	my $imageTree = $this-&gt;{imageTree};
+-	my $imageDest = $this-&gt;{imageDest};
+ 	my $baseSystem= $this-&gt;{baseSystem};
+ 	my $sxml      = $this-&gt;{xml};
+ 	my $kiwi      = $this-&gt;{kiwi};
+@@ -475,10 +483,10 @@ sub createImageEC2 {
+ 	my $pk = $type{EC2PrivateKeyFile};
+ 	my $ca = $type{EC2CertFile};
+ 	my $nr = $type{AWSAccountNr};
+-	my $fi = $imageDest.&quot;/&quot;.$name;
++	my $fi = $this-&gt;{imageDest}.&quot;/&quot;.$name;
+ 	my $amiopts = &quot;-i $fi -k $pk -c $ca -u $nr -p $name.ami&quot;;
+ 	my $data = qxx (
+-		&quot;ec2-bundle-image $amiopts -d $imageDest -r $arch 2&gt;&amp;1&quot;
++		&quot;ec2-bundle-image $amiopts -d $this-&gt;{imageDest} -r $arch 2&gt;&amp;1&quot;
+ 	);
+ 	my $code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+@@ -640,7 +648,7 @@ sub createImageEC2 {
+ 	my $ariopts = &quot;-i $initrd -k $pk -c $ca -u $nr &quot;;
+ 	$ariopts.= &quot;-p $main::ImageName.ari&quot;;
+ 	$data = qxx (
+-		&quot;ec2-bundle-ramdisk $ariopts -d $imageDest -r $arch 2&gt;&amp;1&quot;
++		&quot;ec2-bundle-ramdisk $ariopts -d $this-&gt;{imageDest} -r $arch 2&gt;&amp;1&quot;
+ 	);
+ 	$code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+@@ -657,7 +665,7 @@ sub createImageEC2 {
+ 	my $akiopts = &quot;-K $kernel -k $pk -c $ca -u $nr &quot;;
+ 	$akiopts.= &quot;-p $main::ImageName.kernel.aki&quot;;
+ 	$data = qxx (
+-		&quot;ec2-bundle-kernel $akiopts -d $imageDest -r $arch 2&gt;&amp;1&quot;
++		&quot;ec2-bundle-kernel $akiopts -d $this-&gt;{imageDest} -r $arch 2&gt;&amp;1&quot;
+ 	);
+ 	$code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+@@ -707,9 +715,9 @@ sub createImageSquashFS {
+ 	# ...
+ 	# create squashfs image from source tree
+ 	# ---
+-	my $this = shift;
+-	my $kiwi = $this-&gt;{kiwi};
+-	my $xml  = $this-&gt;{xml};
++	my $this  = shift;
++	my $kiwi  = $this-&gt;{kiwi};
++	my $xml   = $this-&gt;{xml};
+ 	#==========================================
+ 	# PRE filesystem setup
+ 	#------------------------------------------
+@@ -741,7 +749,6 @@ sub createImageSquashFS {
+ 	#==========================================
+ 	# Create image boot configuration
+ 	#------------------------------------------
+-	$kiwi -&gt; info (&quot;Creating boot configuration...&quot;);
+ 	if (! $this -&gt; writeImageConfig ($name)) {
+ 		return undef;
+ 	}
+@@ -761,7 +768,6 @@ sub createImageCPIO {
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $xml  = $this-&gt;{xml};
+ 	my $imageTree = $this-&gt;{imageTree};
+-	my $imageDest = $this-&gt;{imageDest};
+ 	my $compress  = 1;
+ 	#==========================================
+ 	# PRE filesystem setup
+@@ -775,10 +781,10 @@ sub createImageCPIO {
+ 	#------------------------------------------
+ 	my $pwd  = qxx (&quot;pwd&quot;); chomp $pwd;
+ 	my @cpio = (&quot;--create&quot;, &quot;--format=newc&quot;, &quot;--quiet&quot;);
+-	my $dest = $imageDest.&quot;/&quot;.$name.&quot;.gz&quot;;
++	my $dest = $this-&gt;{imageDest}.&quot;/&quot;.$name.&quot;.gz&quot;;
+ 	my $data;
+ 	if (! $compress) {
+-		$dest = $imageDest.&quot;/&quot;.$name;
++		$dest = $this-&gt;{imageDest}.&quot;/&quot;.$name;
+ 	}
+ 	if ($dest !~ /^\//) {
+ 		$dest = $pwd.&quot;/&quot;.$dest;
+@@ -837,8 +843,11 @@ sub createImageUSB {
+ 	my $para = shift;
+ 	my $text = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
++	my $sxml = $this-&gt;{xml};
++	my %stype= %{$sxml-&gt;getImageTypeAndAttributes()};
+ 	my $imageTree = $this-&gt;{imageTree};
+ 	my $baseSystem= $this-&gt;{baseSystem};
++	my $treeAccess= 1;
+ 	my $type;
+ 	my $boot;
+ 	my %result;
+@@ -855,45 +864,54 @@ sub createImageUSB {
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+ 	}
++	#==========================================
++	# Check for direct tree access
++	#------------------------------------------
++	if (($text ne &quot;VMX&quot;) || ($stype{luks})) {
++		$treeAccess = 0;
++	}
++	#==========================================
++	# Walk through the types
++	#------------------------------------------
+ 	SWITCH: for ($type) {
+ 		/^ext2/       &amp;&amp; do {
+ 			$ok = 1;
+-			if ($text ne &quot;VMX&quot;) {
++			if (! $treeAccess) {
+ 				$ok = $this -&gt; createImageEXT2 ();
+ 			} else {
+ 				$ok = $this -&gt; setupLogicalExtend();
++				$result{imageTree} = $imageTree;
+ 			}
+-			$result{imageTree} = $imageTree;
+ 			last SWITCH;
+ 		};
+ 		/^ext3/       &amp;&amp; do {
+ 			$ok = 1;
+-			if ($text ne &quot;VMX&quot;) {
++			if (! $treeAccess) {
+ 				$ok = $this -&gt; createImageEXT3 ();
+ 			} else {
+ 				$ok = $this -&gt; setupLogicalExtend();
++				$result{imageTree} = $imageTree;
+ 			}
+-			$result{imageTree} = $imageTree;
+ 			last SWITCH;
+ 		};
+ 		/^ext4/       &amp;&amp; do {
+ 			$ok = 1;
+-			if ($text ne &quot;VMX&quot;) {
++			if (! $treeAccess) {
+ 				$ok = $this -&gt; createImageEXT4 ();
+ 			} else {
+ 				$ok = $this -&gt; setupLogicalExtend();
++				$result{imageTree} = $imageTree;
+ 			}
+-			$result{imageTree} = $imageTree;
+ 			last SWITCH;
+ 		};
+ 		/^reiserfs/   &amp;&amp; do {
+ 			$ok = 1;
+-			if ($text ne &quot;VMX&quot;) {
++			if (! $treeAccess) {
+ 				$ok = $this -&gt; createImageReiserFS ();
+ 			} else {
+ 				$ok = $this -&gt; setupLogicalExtend();
++				$result{imageTree} = $imageTree;
+ 			}
+-			$result{imageTree} = $imageTree;
+ 			last SWITCH;
+ 		};
+ 		/^squashfs/   &amp;&amp; do {
+@@ -1332,7 +1350,6 @@ sub createImageLiveCD {
+ 	my $arch = $this-&gt;{arch};
+ 	my $sxml = $this-&gt;{xml};
+ 	my $imageTree = $this-&gt;{imageTree};
+-	my $imageDest = $this-&gt;{imageDest};
+ 	my $baseSystem= $this-&gt;{baseSystem};
+ 	my $error;
+ 	my $data;
+@@ -1384,14 +1401,14 @@ sub createImageLiveCD {
+ 	#------------------------------------------
+ 	my $cdrootData = &quot;config-cdroot.tgz&quot;;
+ 	if (-f $imageTree.&quot;/image/&quot;.$cdrootData) {
+-		qxx (&quot;mv $imageTree/image/$cdrootData $imageDest&quot;);
++		qxx (&quot;mv $imageTree/image/$cdrootData $this-&gt;{imageDest}&quot;);
+ 	}
+ 	#==========================================
+ 	# Check for config-cdroot.sh and move it
+ 	#------------------------------------------
+ 	my $cdrootScript = &quot;config-cdroot.sh&quot;;
+ 	if (-x $imageTree.&quot;/image/&quot;.$cdrootScript) {
+-		qxx (&quot;mv $imageTree/image/$cdrootScript $imageDest&quot;);
++		qxx (&quot;mv $imageTree/image/$cdrootScript $this-&gt;{imageDest}&quot;);
+ 	}
+ 	#==========================================
+ 	# split physical extend into RW / RO part
+@@ -1442,6 +1459,7 @@ sub createImageLiveCD {
+ 		if (! $this -&gt; buildLogicalExtend ($namerw,$mbytesrw.&quot;M&quot;)) {
+ 			$this -&gt; restoreCDRootData();
+ 			$this -&gt; restoreSplitExtend ();
++			$this -&gt; cleanLuks();
+ 			return undef;
+ 		}
+ 		$kiwi -&gt; done ();
+@@ -1456,6 +1474,7 @@ sub createImageLiveCD {
+ 		if (! $this -&gt; setupEXT2 ( $namerw,$imageTree )) {
+ 			$this -&gt; restoreCDRootData();
+ 			$this -&gt; restoreSplitExtend ();
++			$this -&gt; cleanLuks();
+ 			return undef;
+ 		}
+ 		if ($setBlockSize) {
+@@ -1468,6 +1487,7 @@ sub createImageLiveCD {
+ 		if (! defined $extend) {
+ 			$this -&gt; restoreCDRootData();
+ 			$this -&gt; restoreSplitExtend ();
++			$this -&gt; cleanLuks();
+ 			return undef;
+ 		}
+ 		#==========================================
+@@ -1476,9 +1496,12 @@ sub createImageLiveCD {
+ 		if (! $this -&gt; installLogicalExtend ($extend,$imageTree)) {
+ 			$this -&gt; restoreCDRootData();
+ 			$this -&gt; restoreSplitExtend ();
++			$this -&gt; cleanLuks();
+ 			return undef;
+ 		}
+ 		$this -&gt; cleanMount();
++		$this -&gt; restoreImageDest();
++		$this -&gt; cleanLuks();
+ 	}
+ 	#==========================================
+ 	# Create compressed filesystem on RO extend
+@@ -1534,7 +1557,7 @@ sub createImageLiveCD {
+ 		#==========================================
+ 		# Checking RW file system
+ 		#------------------------------------------
+-		qxx (&quot;/sbin/e2fsck -f -y $imageDest/$namerw 2&gt;&amp;1&quot;);
++		qxx (&quot;/sbin/e2fsck -f -y $this-&gt;{imageDest}/$namerw 2&gt;&amp;1&quot;);
+ 
+ 		#==========================================
+ 		# Create image md5sum
+@@ -1711,7 +1734,7 @@ sub createImageLiveCD {
+ 	if (defined $main::CheckKernel) {
+ 		my $initrd = $pinitrd;
+ 		if (! $pblt) {
+-			$initrd = &quot;$imageDest/$iso$arch-$ver.gz&quot;;
++			$initrd = &quot;$this-&gt;{imageDest}/$iso$arch-$ver.gz&quot;;
+ 		}
+ 		if (! $this -&gt; checkKernel ($initrd,$imageTree)) {
+ 			if (! -d $main::RootTree.$baseSystem) {
+@@ -1733,9 +1756,11 @@ sub createImageLiveCD {
+ 	#==========================================
+ 	# Check for optional config-cdroot archive
+ 	#------------------------------------------
+-	if (-f $imageDest.&quot;/&quot;.$cdrootData) {
++	if (-f $this-&gt;{imageDest}.&quot;/&quot;.$cdrootData) {
+ 		$kiwi -&gt; info (&quot;Integrating CD root information...&quot;);
+-		my $data= qxx (&quot;tar -C $main::RootTree/CD -xvf $imageDest/$cdrootData&quot;);
++		my $data= qxx (
++			&quot;tar -C $main::RootTree/CD -xvf $this-&gt;{imageDest}/$cdrootData&quot;
++		);
+ 		my $code= $? &gt;&gt; 8;
+ 		if ($code != 0) {
+ 			$kiwi -&gt; failed ();
+@@ -1754,14 +1779,14 @@ sub createImageLiveCD {
+ 	#==========================================
+ 	# Check for optional config-cdroot.sh
+ 	#------------------------------------------
+-	if (-x $imageDest.&quot;/&quot;.$cdrootScript) {
++	if (-x $this-&gt;{imageDest}.&quot;/&quot;.$cdrootScript) {
+ 		$kiwi -&gt; info (&quot;Calling CD root setup script...&quot;);
+ 		my $pwd = qxx (&quot;pwd&quot;); chomp $pwd;
+ 		my $cdrootEnv = $imageTree.&quot;/.profile&quot;;
+ 		if ($cdrootEnv !~ /^\//) {
+ 			$cdrootEnv = $pwd.&quot;/&quot;.$cdrootEnv;
+ 		}
+-		my $script = $imageDest.&quot;/&quot;.$cdrootScript;
++		my $script = $this-&gt;{imageDest}.&quot;/&quot;.$cdrootScript;
+ 		if ($script !~ /^\//) {
+ 			$script = $pwd.&quot;/&quot;.$script;
+ 		}
+@@ -1797,13 +1822,13 @@ sub createImageLiveCD {
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Moving CD image data into boot structure&quot;);
+ 	if (! defined $gzip) {
+-		qxx (&quot;mv $imageDest/$namerw.md5 $main::RootTree/CD&quot;);
+-		qxx (&quot;mv $imageDest/$namerw.gz $main::RootTree/CD&quot;);
+-		qxx (&quot;rm $imageDest/$namerw.*&quot;);
++		qxx (&quot;mv $this-&gt;{imageDest}/$namerw.md5 $main::RootTree/CD&quot;);
++		qxx (&quot;mv $this-&gt;{imageDest}/$namerw.gz $main::RootTree/CD&quot;);
++		qxx (&quot;rm $this-&gt;{imageDest}/$namerw.*&quot;);
+ 	}
+ 	if (defined $gzip) {
+-		qxx (&quot;mv $imageDest/$namero $main::RootTree/CD&quot;);
+-		qxx (&quot;rm $imageDest/$namero.*&quot;);
++		qxx (&quot;mv $this-&gt;{imageDest}/$namero $main::RootTree/CD&quot;);
++		qxx (&quot;rm $this-&gt;{imageDest}/$namero.*&quot;);
+ 	} else {
+ 		qxx (&quot;mkdir -p $main::RootTree/CD/read-only-system&quot;);
+ 		qxx (&quot;mv $imageTreeReadOnly/* $main::RootTree/CD/read-only-system&quot;);
+@@ -1832,7 +1857,7 @@ sub createImageLiveCD {
+ 	# check if Xen kernel is used
+ 	#------------------------------------------
+ 	my $isxen = 0;
+-	my $xboot = glob (&quot;$imageDest/$iso$arch-$ver*xen.gz&quot;);
++	my $xboot = glob (&quot;$this-&gt;{imageDest}/$iso$arch-$ver*xen.gz&quot;);
+ 	if (-f $xboot) {
+ 		$isxen = 1;
+ 	}
+@@ -1846,7 +1871,7 @@ sub createImageLiveCD {
+ 		$data = qxx (&quot;cp $pinitrd $destination/initrd 2&gt;&amp;1&quot;);
+ 	} else {
+ 		$data = qxx (
+-			&quot;cp $imageDest/$iso$arch-$ver.gz $destination/initrd 2&gt;&amp;1&quot;
++			&quot;cp $this-&gt;{imageDest}/$iso$arch-$ver.gz $destination/initrd 2&gt;&amp;1&quot;
+ 		);
+ 	}
+ 	$code = $? &gt;&gt; 8;
+@@ -1855,7 +1880,7 @@ sub createImageLiveCD {
+ 			$data = qxx (&quot;cp $plinux $destination/linux 2&gt;&amp;1&quot;);
+ 		} else {
+ 			$data = qxx (
+-				&quot;cp $imageDest/$iso$arch-$ver.kernel $destination/linux 2&gt;&amp;1&quot;
++				&quot;cp $this-&gt;{imageDest}/$iso$arch-$ver.kernel $destination/linux 2&gt;&amp;1&quot;
+ 			);
+ 		}
+ 		$code = $? &gt;&gt; 8;
+@@ -2017,7 +2042,7 @@ sub createImageLiveCD {
+ 	# remove original kernel and initrd
+ 	#------------------------------------------
+ 	if (! $pblt) {
+-		$data = qxx (&quot;rm $imageDest/$iso*.* 2&gt;&amp;1&quot;);
++		$data = qxx (&quot;rm $this-&gt;{imageDest}/$iso*.* 2&gt;&amp;1&quot;);
+ 		$code = $? &gt;&gt; 8;
+ 		if ($code != 0) {
+ 			$kiwi -&gt; warning (&quot;Couldn't cleanup boot files: $data&quot;);
+@@ -2056,7 +2081,7 @@ sub createImageLiveCD {
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Creating ISO image...\n&quot;);
+ 	my $isoerror = 1;
+-	my $name = $imageDest.&quot;/&quot;.$namerw.&quot;.iso&quot;;
++	my $name = $this-&gt;{imageDest}.&quot;/&quot;.$namerw.&quot;.iso&quot;;
+ 	my $attr = &quot;-R -J -pad -joliet-long&quot;;
+ 	$attr .= &quot; -p \&quot;$main::Preparer\&quot; -publisher \&quot;$main::Publisher\&quot;&quot;;
+ 	if (! defined $gzip) {
+@@ -2139,7 +2164,6 @@ sub createImageSplit {
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $arch = $this-&gt;{arch};
+ 	my $imageTree = $this-&gt;{imageTree};
+-	my $imageDest = $this-&gt;{imageDest};
+ 	my $baseSystem= $this-&gt;{baseSystem};
+ 	my $sxml = $this-&gt;{xml};
+ 	my $FSTypeRW;
+@@ -2205,10 +2229,10 @@ sub createImageSplit {
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Creating root tree clone for split operations&quot;);
+ 	$treebase = basename $imageTree;
+-	if (-d $imageDest.&quot;/&quot;.$treebase) {
+-		qxx (&quot;rm -rf $imageDest/$treebase&quot;);
++	if (-d $this-&gt;{imageDest}.&quot;/&quot;.$treebase) {
++		qxx (&quot;rm -rf $this-&gt;{imageDest}/$treebase&quot;);
+ 	}
+-	$data = qxx (&quot;cp -a -x $imageTree $imageDest&quot;);
++	$data = qxx (&quot;cp -a -x $imageTree $this-&gt;{imageDest}&quot;);
+ 	$code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+ 		$kiwi -&gt; failed ();
+@@ -2221,7 +2245,7 @@ sub createImageSplit {
+ 	#==========================================
+ 	# split physical extend into RW/RO/tmp part
+ 	#------------------------------------------
+-	$imageTree    = $imageDest.&quot;/&quot;.$treebase;
++	$imageTree    = $this-&gt;{imageDest}.&quot;/&quot;.$treebase;
+ 	$imageTreeTmp = $imageTree;
+ 	$imageTreeTmp =~ s/\/+$//;
+ 	$imageTreeTmp.= &quot;-tmp/&quot;;
+@@ -2484,11 +2508,13 @@ sub createImageSplit {
+ 			$kiwi -&gt; failed ();
+ 			qxx (&quot;rm -rf $imageTreeRW&quot;);
+ 			qxx (&quot;rm -rf $imageTree&quot;);
++			$this -&gt; cleanLuks();
+ 			return undef;
+ 		}
+ 		if (! $ok) {
+ 			qxx (&quot;rm -rf $imageTreeRW&quot;);
+ 			qxx (&quot;rm -rf $imageTree&quot;);
++			$this -&gt; cleanLuks();
+ 			return undef;
+ 		}
+ 	}
+@@ -2530,11 +2556,13 @@ sub createImageSplit {
+ 		$kiwi -&gt; failed ();
+ 		qxx (&quot;rm -rf $imageTreeRW&quot;);
+ 		qxx (&quot;rm -rf $imageTree&quot;);
++		$this -&gt; cleanLuks();
+ 		return undef;
+ 	}
+ 	if (! $ok) {
+ 		qxx (&quot;rm -rf $imageTreeRW&quot;);
+ 		qxx (&quot;rm -rf $imageTree&quot;);
++		$this -&gt; cleanLuks();
+ 		return undef;
+ 	}
+ 	#==========================================
+@@ -2565,6 +2593,7 @@ sub createImageSplit {
+ 			if (! defined $extend) {
+ 				qxx (&quot;rm -rf $imageTreeRW&quot;);
+ 				qxx (&quot;rm -rf $imageTree&quot;);
++				$this -&gt; cleanLuks();
+ 				return undef;
+ 			}
+ 			#==========================================
+@@ -2573,6 +2602,7 @@ sub createImageSplit {
+ 			if (! $this -&gt; installLogicalExtend ($extend,$source)) {
+ 				qxx (&quot;rm -rf $imageTreeRW&quot;);
+ 				qxx (&quot;rm -rf $imageTree&quot;);
++				$this -&gt; cleanLuks();
+ 				return undef;
+ 			}
+ 			$this -&gt; cleanMount();
+@@ -2583,24 +2613,24 @@ sub createImageSplit {
+ 		$kiwi -&gt; info (&quot;Checking file system: $type...&quot;);
+ 		SWITCH: for ($type) {
+ 			/ext2/       &amp;&amp; do {
+-				qxx (&quot;/sbin/e2fsck -f -y $imageDest/$name 2&gt;&amp;1&quot;);
++				qxx (&quot;/sbin/e2fsck -f -y $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
+ 				$kiwi -&gt; done();
+ 				last SWITCH;
+ 			};
+ 			/ext3/       &amp;&amp; do {
+-				qxx (&quot;/sbin/fsck.ext3 -f -y $imageDest/$name 2&gt;&amp;1&quot;);
+-				qxx (&quot;/sbin/tune2fs -j $imageDest/$name 2&gt;&amp;1&quot;);
++				qxx (&quot;/sbin/fsck.ext3 -f -y $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
++				qxx (&quot;/sbin/tune2fs -j $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
+ 				$kiwi -&gt; done();
+ 				last SWITCH;
+ 			};
+ 			/ext4/       &amp;&amp; do {
+-				qxx (&quot;/sbin/fsck.ext4 -f -y $imageDest/$name 2&gt;&amp;1&quot;);
+-				qxx (&quot;/sbin/tune2fs -j $imageDest/$name 2&gt;&amp;1&quot;);
++				qxx (&quot;/sbin/fsck.ext4 -f -y $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
++				qxx (&quot;/sbin/tune2fs -j $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
+ 				$kiwi -&gt; done();
+ 				last SWITCH;
+ 			};
+ 			/reiserfs/   &amp;&amp; do {
+-				qxx (&quot;/sbin/reiserfsck -y $imageDest/$name 2&gt;&amp;1&quot;);
++				qxx (&quot;/sbin/reiserfsck -y $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
+ 				$kiwi -&gt; done();
+ 				last SWITCH;
+ 			};
+@@ -2612,21 +2642,26 @@ sub createImageSplit {
+ 			$kiwi -&gt; failed ();
+ 			qxx (&quot;rm -rf $imageTreeRW&quot;);
+ 			qxx (&quot;rm -rf $imageTree&quot;);
++			$this -&gt; cleanLuks();
+ 			return undef;
+ 		}
+ 		#==========================================
+ 		# Create image md5sum
+ 		#------------------------------------------
++		$this -&gt; restoreImageDest();
+ 		if (! $this -&gt; buildMD5Sum ($name)) {
+ 			qxx (&quot;rm -rf $imageTreeRW&quot;);
+ 			qxx (&quot;rm -rf $imageTree&quot;);
++			$this -&gt; cleanLuks();
+ 			return undef;
+ 		}
++		$this -&gt; remapImageDest();
+ 	}
++	$this -&gt; restoreImageDest();
++	$this -&gt; cleanLuks();
+ 	#==========================================
+ 	# Create network boot configuration
+ 	#------------------------------------------
+-	$kiwi -&gt; info (&quot;Creating boot configuration...&quot;);
+ 	if (! $this -&gt; writeImageConfig ($namero)) {
+ 		qxx (&quot;rm -rf $imageTreeRW&quot;);
+ 		qxx (&quot;rm -rf $imageTree&quot;);
+@@ -2928,7 +2963,6 @@ sub writeImageConfig {
+ 	my $name = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $xml  = $this-&gt;{xml};
+-	my $imageDest = $this-&gt;{imageDest};
+ 	my $configName = $this -&gt; buildImageName() . &quot;.config&quot;;
+ 	my $device = $xml -&gt; getDeployImageDevice ();
+ 
+@@ -2937,7 +2971,7 @@ sub writeImageConfig {
+ 	#------------------------------------------
+ 	if (defined $device) {
+ 		$kiwi -&gt; info (&quot;Creating boot configuration...&quot;);
+-		if (! open (FD,&quot;&gt;$imageDest/$configName&quot;)) {
++		if (! open (FD,&quot;&gt;$this-&gt;{imageDest}/$configName&quot;)) {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error  (&quot;Couldn't create image boot configuration&quot;);
+ 			$kiwi -&gt; failed ();
+@@ -2968,7 +3002,7 @@ sub writeImageConfig {
+ 					$targetPartitionNext = $targetPartition + 1;
+ 				}
+ 				if ($href -&gt; {size} eq &quot;image&quot;) {
+-					print FD int (((-s &quot;$imageDest/$name&quot;) / 1024 / 1024) + 1);
++					print FD int(((-s &quot;$this-&gt;{imageDest}/$name&quot;)/1024/1024)+1);
+ 				} else {
+ 					print FD $href -&gt; {size};
+ 				}
+@@ -3104,7 +3138,6 @@ sub postImage {
+ 	my $fstype= shift;
+ 	my $kiwi  = $this-&gt;{kiwi};
+ 	my $xml   = $this-&gt;{xml};
+-	my $imageDest = $this-&gt;{imageDest};
+ 	#==========================================
+ 	# mount logical extend for data transfer
+ 	#------------------------------------------
+@@ -3116,6 +3149,7 @@ sub postImage {
+ 	# copy physical to logical
+ 	#------------------------------------------
+ 	if (! $this -&gt; installLogicalExtend ($extend)) {
++		$this -&gt; cleanLuks();
+ 		return undef;
+ 	}
+ 	$this -&gt; cleanMount();
+@@ -3137,8 +3171,8 @@ sub postImage {
+ 		# Check EXT3 file system
+ 		#------------------------------------------
+ 		/ext3|ec2|dmsquash|clicfs/i &amp;&amp; do {
+-			qxx (&quot;/sbin/fsck.ext3 -f -y $imageDest/$name 2&gt;&amp;1&quot;);
+-			qxx (&quot;/sbin/tune2fs -j $imageDest/$name 2&gt;&amp;1&quot;);
++			qxx (&quot;/sbin/fsck.ext3 -f -y $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
++			qxx (&quot;/sbin/tune2fs -j $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
+ 			$kiwi -&gt; done();
+ 			last SWITCH;
+ 		};
+@@ -3146,8 +3180,8 @@ sub postImage {
+ 		# Check EXT4 file system
+ 		#------------------------------------------
+ 		/ext4/i     &amp;&amp; do {
+-			qxx (&quot;/sbin/fsck.ext4 -f -y $imageDest/$name 2&gt;&amp;1&quot;);
+-			qxx (&quot;/sbin/tune2fs -j $imageDest/$name 2&gt;&amp;1&quot;);
++			qxx (&quot;/sbin/fsck.ext4 -f -y $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
++			qxx (&quot;/sbin/tune2fs -j $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
+ 			$kiwi -&gt; done();
+ 			last SWITCH;
+ 		};
+@@ -3155,7 +3189,7 @@ sub postImage {
+ 		# Check EXT2 file system
+ 		#------------------------------------------
+ 		/ext2/i     &amp;&amp; do {
+-			qxx (&quot;/sbin/e2fsck -f -y $imageDest/$name 2&gt;&amp;1&quot;);
++			qxx (&quot;/sbin/e2fsck -f -y $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
+ 			$kiwi -&gt; done();
+ 			last SWITCH;
+ 		};
+@@ -3163,7 +3197,7 @@ sub postImage {
+ 		# Check ReiserFS file system
+ 		#------------------------------------------
+ 		/reiserfs/i &amp;&amp; do {
+-			qxx (&quot;/sbin/reiserfsck -y $imageDest/$name 2&gt;&amp;1&quot;);
++			qxx (&quot;/sbin/reiserfsck -y $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
+ 			$kiwi -&gt; done();
+ 			last SWITCH;
+ 		};
+@@ -3173,8 +3207,11 @@ sub postImage {
+ 		$kiwi -&gt; failed();
+ 		$kiwi -&gt; error (&quot;Unsupported filesystem type: $type{filesystem}&quot;);
+ 		$kiwi -&gt; failed();
++		$this -&gt; cleanLuks();
+ 		return undef;
+ 	}
++	$this -&gt; restoreImageDest();
++	$this -&gt; cleanLuks ();
+ 	#==========================================
+ 	# Create image md5sum
+ 	#------------------------------------------
+@@ -3233,8 +3270,18 @@ sub buildLogicalExtend {
+ 	my $size = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $xml  = $this-&gt;{xml};
+-	my $imageDest = $this-&gt;{imageDest};
+-	my $out  = $imageDest.&quot;/&quot;.$name;
++	my $encode = 0;
++	my $cipher = 0;
++	my $out  = $this-&gt;{imageDest}.&quot;/&quot;.$name;
++	my %type = %{$xml-&gt;getImageTypeAndAttributes()};
++	#==========================================
++	# Check if luks encoding is requested
++	#------------------------------------------
++	if ($type{luks}) {
++		$encode = 1;
++		$cipher = &quot;$type{luks}&quot;;
++		$main::LuksCipher = $cipher;
++	}
+ 	#==========================================
+ 	# Calculate block size and number of blocks
+ 	#------------------------------------------
+@@ -3255,10 +3302,76 @@ sub buildLogicalExtend {
+ 		$kiwi -&gt; error  ($data);
+ 		return undef;
+ 	}
++	#==========================================
++	# Setup encoding
++	#------------------------------------------
++	if ($encode) {
++		$this -&gt; setupEncoding ($name,$out,$cipher);
++	}
+ 	return $name;
+ }
+ 
+ #==========================================
++# setupEncoding
++#------------------------------------------
++sub setupEncoding {
++	# ...
++	# setup LUKS encoding on the given file and remap
++	# the imageDest variable to the new device mapper
++	# location
++	# ---
++	my $this   = shift;
++	my $name   = shift;
++	my $out    = shift;
++	my $cipher = shift;
++	my $kiwi   = $this-&gt;{kiwi};
++	my $data;
++	my $code;
++	$data = qxx (&quot;/sbin/losetup -s -f $out 2&gt;&amp;1&quot;); chomp $data;
++	$code = $? &gt;&gt; 8;
++	if ($code != 0) {
++		$kiwi -&gt; error  (&quot;Couldn't loop bind logical extend: $data&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	my $loop = $data;
++	my @luksloop;
++	if ($this-&gt;{luksloop}) {
++		@luksloop = @{$this-&gt;{luksloop}};
++	}
++	push @luksloop,$loop;
++	$this-&gt;{luksloop} = \@luksloop;
++	$data = qxx (&quot;echo $cipher | cryptsetup -q luksFormat $loop 2&gt;&amp;1&quot;);
++	$code = $? &gt;&gt; 8;
++	if ($code != 0) {
++		$kiwi -&gt; error  (&quot;Couldn't setup luks format: $loop&quot;);
++		$kiwi -&gt; failed ();
++		$this -&gt; cleanLuks ();
++		return undef;
++	}
++	$data = qxx (&quot;echo $cipher | cryptsetup luksOpen $loop $name 2&gt;&amp;1&quot;);
++	$code = $? &gt;&gt; 8;
++	if ($code != 0) {
++		$kiwi -&gt; error  (&quot;Couldn't open luks device: $data&quot;);
++		$kiwi -&gt; failed ();
++		$this -&gt; cleanLuks ();
++		return undef;
++	}
++	my @luksname;
++	if ($this-&gt;{luksname}) {
++		@luksname = @{$this-&gt;{luksname}};
++	}
++	push @luksname,$name;
++	$this-&gt;{luksname} = \@luksname;
++	if (! $this-&gt;{imageDestOrig}) {
++		$this-&gt;{imageDestOrig} = $this-&gt;{imageDest};
++		$this-&gt;{imageDestMap} = &quot;/dev/mapper/&quot;;
++	}
++	$this-&gt;{imageDest} = $this-&gt;{imageDestMap};
++	return $this;
++}
++
++#==========================================
+ # installLogicalExtend
+ #------------------------------------------
+ sub installLogicalExtend {
+@@ -3349,27 +3462,28 @@ sub mountLogicalExtend {
+ 	my $name = shift;
+ 	my $opts = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+-	my $imageDest = $this-&gt;{imageDest};
+ 	#==========================================
+ 	# mount logical extend for data transfer
+ 	#------------------------------------------
+-	mkdir &quot;$imageDest/mnt-$$&quot;;
++	mkdir &quot;$this-&gt;{imageDest}/mnt-$$&quot;;
+ 	my $mount = &quot;mount&quot;;
+ 	if (defined $opts) {
+ 		$mount = &quot;mount $opts&quot;;
+ 	}
+ 	my $data= qxx (
+-		&quot;$mount -o loop $imageDest/$name $imageDest/mnt-$$ 2&gt;&amp;1&quot;
++		&quot;$mount -o loop $this-&gt;{imageDest}/$name $this-&gt;{imageDest}/mnt-$$ 2&gt;&amp;1&quot;
+ 	);
+ 	my $code= $? &gt;&gt; 8;
+ 	if ($code != 0) {
+ 		chomp $data;
+ 		$kiwi -&gt; error  (&quot;Image loop mount failed:&quot;);
+ 		$kiwi -&gt; failed ();
+-		$kiwi -&gt; error  (&quot;mount: $imageDest/$name -&gt; $imageDest/mnt-$$: $data&quot;);
++		$kiwi -&gt; error  (
++			&quot;mnt: $this-&gt;{imageDest}/$name -&gt; $this-&gt;{imageDest}/mnt-$$: $data&quot;
++		);
+ 		return undef;
+ 	}
+-	return &quot;$imageDest/mnt-$$&quot;;
++	return &quot;$this-&gt;{imageDest}/mnt-$$&quot;;
+ }
+ 
+ #==========================================
+@@ -3381,7 +3495,6 @@ sub extractKernel {
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $xml  = $this-&gt;{xml}; 
+ 	my $imageTree = $this-&gt;{imageTree};
+-	my $imageDest = $this-&gt;{imageDest};
+ 	#==========================================
+ 	# extract kernel from physical extend
+ 	#------------------------------------------
+@@ -3437,7 +3550,7 @@ sub extractKernel {
+ 	# this is a boot image, extract kernel
+ 	#------------------------------------------
+ 	return $this -&gt; extractLinux (
+-		$name,$imageTree,$imageDest
++		$name,$imageTree,$this-&gt;{imageDest}
+ 	);
+ }
+ 
+@@ -3448,7 +3561,7 @@ sub extractLinux {
+ 	my $this      = shift;
+ 	my $name      = shift;
+ 	my $imageTree = shift;
+-	my $imageDest = shift;
++	my $dest      = shift;
+ 	my $kiwi      = $this-&gt;{kiwi};
+ 	if ((-f &quot;$imageTree/boot/vmlinux.gz&quot;) ||
+ 		(-f &quot;$imageTree/boot/vmlinux&quot;)    ||
+@@ -3457,7 +3570,7 @@ sub extractLinux {
+ 		$kiwi -&gt; info (&quot;Extracting kernel...&quot;);
+ 		my $pwd = qxx (&quot;pwd&quot;); chomp $pwd;
+ 		my $shortfile = &quot;$name.kernel&quot;;
+-		my $file = &quot;$imageDest/$shortfile&quot;;
++		my $file = &quot;$dest/$shortfile&quot;;
+ 		if ($file !~ /^\//) {
+ 			$file = $pwd.&quot;/&quot;.$file;
+ 		}
+@@ -3489,7 +3602,7 @@ sub extractLinux {
+ 		$kernel = qxx (&quot;/sbin/get_kernel_version $kfile&quot;); chomp $kernel;
+ 		qxx (&quot;mv -f $file $file.$kernel &amp;&amp; ln -s $shortfile.$kernel $file &quot;);
+ 		if (-f &quot;$imageTree/boot/xen.gz&quot;) {
+-			$file = &quot;$imageDest/$name.kernel-xen&quot;;
++			$file = &quot;$dest/$name.kernel-xen&quot;;
+ 			qxx (&quot;cp $imageTree/boot/xen.gz $file&quot;);
+ 			qxx (&quot;mv $file $file.$kernel.'gz'&quot;);
+ 		}
+@@ -3509,7 +3622,6 @@ sub setupEXT2 {
+ 	my $journal = shift;
+ 	my $kiwi    = $this-&gt;{kiwi};
+ 	my $imageTree = $this-&gt;{imageTree};
+-	my $imageDest = $this-&gt;{imageDest};
+ 	my $fsopts;
+ 	if (! defined $tree) {
+ 		$tree = $imageTree;
+@@ -3525,7 +3637,7 @@ sub setupEXT2 {
+ 		$fsopts = $FSopts{ext2};
+ 		$fsopts.= &quot;-F&quot;;
+ 	}
+-	my $data = qxx (&quot;/sbin/mke2fs $fsopts $imageDest/$name 2&gt;&amp;1&quot;);
++	my $data = qxx (&quot;/sbin/mke2fs $fsopts $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
+ 	my $code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+ 		$kiwi -&gt; error  (&quot;Couldn't create EXT2 filesystem&quot;);
+@@ -3533,13 +3645,15 @@ sub setupEXT2 {
+ 		$kiwi -&gt; error  ($data);
+ 		return undef;
+ 	}
++	$this -&gt; restoreImageDest();
+ 	if ((defined $journal) &amp;&amp; ($journal eq &quot;journaled-ext3&quot;)) {
+-		$data = qxx (&quot;cd $imageDest &amp;&amp; ln -vs $name $name.ext3 2&gt;&amp;1&quot;);
++		$data = qxx (&quot;cd $this-&gt;{imageDest} &amp;&amp; ln -vs $name $name.ext3 2&gt;&amp;1&quot;);
+ 	} elsif ((defined $journal) &amp;&amp; ($journal eq &quot;journaled-ext4&quot;)) {
+-		$data = qxx (&quot;cd $imageDest &amp;&amp; ln -vs $name $name.ext4 2&gt;&amp;1&quot;);
++		$data = qxx (&quot;cd $this-&gt;{imageDest} &amp;&amp; ln -vs $name $name.ext4 2&gt;&amp;1&quot;);
+ 	} else {
+-		$data = qxx (&quot;cd $imageDest &amp;&amp; ln -vs $name $name.ext2 2&gt;&amp;1&quot;);
++		$data = qxx (&quot;cd $this-&gt;{imageDest} &amp;&amp; ln -vs $name $name.ext2 2&gt;&amp;1&quot;);
+ 	}
++	$this -&gt; remapImageDest();
+ 	$kiwi -&gt; loginfo ($data);
+ 	return $name;
+ }
+@@ -3551,12 +3665,11 @@ sub setupReiser {
+ 	my $this = shift;
+ 	my $name = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+-	my $imageDest = $this-&gt;{imageDest};
+ 	my %FSopts = main::checkFSOptions();
+ 	my $fsopts = $FSopts{reiserfs};
+ 	$fsopts.= &quot;-f&quot;;
+ 	my $data = qxx (
+-		&quot;/sbin/mkreiserfs $fsopts $imageDest/$name 2&gt;&amp;1&quot;
++		&quot;/sbin/mkreiserfs $fsopts $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;
+ 	);
+ 	my $code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+@@ -3565,7 +3678,9 @@ sub setupReiser {
+ 		$kiwi -&gt; error  ($data);
+ 		return undef;
+ 	}
+-	$data = qxx (&quot;cd $imageDest &amp;&amp; ln -vs $name $name.reiserfs 2&gt;&amp;1&quot;);
++	$this -&gt; restoreImageDest();
++	$data = qxx (&quot;cd $this-&gt;{imageDest} &amp;&amp; ln -vs $name $name.reiserfs 2&gt;&amp;1&quot;);
++	$this -&gt; remapImageDest();
+ 	$kiwi -&gt; loginfo ($data);
+ 	return $name;
+ }
+@@ -3578,13 +3693,19 @@ sub setupSquashFS {
+ 	my $name = shift;
+ 	my $tree = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
++	my $xml  = $this-&gt;{xml};
++	my %type = %{$xml-&gt;getImageTypeAndAttributes()};
+ 	my $imageTree = $this-&gt;{imageTree};
+-	my $imageDest = $this-&gt;{imageDest};
+ 	if (! defined $tree) {
+ 		$tree = $imageTree;
+ 	}
+-	unlink (&quot;$imageDest/$name&quot;);
+-	my $data = qxx (&quot;/usr/bin/mksquashfs $tree $imageDest/$name 2&gt;&amp;1&quot;);
++	if ($type{luks}) {
++		$kiwi -&gt; warning (&quot;LUKS extension not supported for squashfs&quot;);
++		$kiwi -&gt; skipped ();
++		$this -&gt; restoreImageDest();
++	}
++	unlink (&quot;$this-&gt;{imageDest}/$name&quot;);
++	my $data = qxx (&quot;/usr/bin/mksquashfs $tree $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
+ 	my $code = $? &gt;&gt; 8; 
+ 	if ($code != 0) {
+ 		$kiwi -&gt; failed ();
+@@ -3593,8 +3714,10 @@ sub setupSquashFS {
+ 		$kiwi -&gt; error  ($data);
+ 		return undef;
+ 	}
+-	$data = qxx (&quot;chmod 644 $imageDest/$name&quot;);
+-	$data = qxx (&quot;cd $imageDest &amp;&amp; ln -vs $name $name.squashfs 2&gt;&amp;1&quot;);
++	$this -&gt; restoreImageDest();
++	$data = qxx (&quot;chmod 644 $this-&gt;{imageDest}/$name&quot;);
++	$data = qxx (&quot;cd $this-&gt;{imageDest} &amp;&amp; ln -vs $name $name.squashfs 2&gt;&amp;1&quot;);
++	$this -&gt; remapImageDest();
+ 	$kiwi -&gt; loginfo ($data);
+ 	return $name;
+ }
+@@ -3809,12 +3932,11 @@ sub buildMD5Sum {
+ 	my $this = shift;
+ 	my $name = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+-	my $imageDest = $this-&gt;{imageDest};
+ 	#==========================================
+ 	# Create image md5sum
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Creating image MD5 sum...&quot;);
+-	my $size = -s &quot;$imageDest/$name&quot;;
++	my $size = -s &quot;$this-&gt;{imageDest}/$name&quot;;
+ 	my $primes = qxx (&quot;factor $size&quot;); $primes =~ s/^.*: //;
+ 	my $blocksize = 1;
+ 	for my $factor (split /\s/,$primes) {
+@@ -3822,13 +3944,13 @@ sub buildMD5Sum {
+ 		$blocksize *= $factor;
+ 	}
+ 	my $blocks = $size / $blocksize;
+-	my $sum  = qxx (&quot;cat $imageDest/$name | md5sum - | cut -f 1 -d-&quot;);
++	my $sum  = qxx (&quot;cat $this-&gt;{imageDest}/$name | md5sum - | cut -f 1 -d-&quot;);
+ 	chomp $sum;
+ 	if ($name =~ /\.gz$/) {
+ 		$name =~ s/\.gz//;
+ 	}
+-	qxx (&quot;echo \&quot;$sum $blocks $blocksize\&quot; &gt; $imageDest/$name.md5&quot;);
+-	$this-&gt;{md5file} = $imageDest.&quot;/&quot;.$name.&quot;.md5&quot;;
++	qxx (&quot;echo \&quot;$sum $blocks $blocksize\&quot; &gt; $this-&gt;{imageDest}/$name.md5&quot;);
++	$this-&gt;{md5file} = $this-&gt;{imageDest}.&quot;/&quot;.$name.&quot;.md5&quot;;
+ 	$kiwi -&gt; done();
+ 	return $name;
+ }
+@@ -3839,14 +3961,13 @@ sub buildMD5Sum {
+ sub restoreCDRootData {
+ 	my $this = shift;
+ 	my $imageTree    = $this-&gt;{imageTree};
+-	my $imageDest    = $this-&gt;{imageDest};
+ 	my $cdrootData   = &quot;config-cdroot.tgz&quot;;
+ 	my $cdrootScript = &quot;config-cdroot.sh&quot;;
+-	if (-f $imageDest.&quot;/&quot;.$cdrootData) {
+-		qxx (&quot;mv $imageDest/$cdrootData $imageTree/image&quot;);
++	if (-f $this-&gt;{imageDest}.&quot;/&quot;.$cdrootData) {
++		qxx (&quot;mv $this-&gt;{imageDest}/$cdrootData $imageTree/image&quot;);
+ 	}
+-	if (-f $imageDest.&quot;/&quot;.$cdrootScript) {
+-		qxx (&quot;mv $imageDest/$cdrootScript $imageTree/image&quot;);
++	if (-f $this-&gt;{imageDest}.&quot;/&quot;.$cdrootScript) {
++		qxx (&quot;mv $this-&gt;{imageDest}/$cdrootScript $imageTree/image&quot;);
+ 	}
+ }
+ 
+@@ -3888,12 +4009,11 @@ sub compressImage {
+ 	my $this = shift;
+ 	my $name = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+-	my $imageDest = $this-&gt;{imageDest};
+ 	#==========================================
+ 	# Compress image using gzip
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Compressing image...&quot;);
+-	my $data = qxx (&quot;$main::Gzip -f $imageDest/$name&quot;);
++	my $data = qxx (&quot;$main::Gzip -f $this-&gt;{imageDest}/$name&quot;);
+ 	my $code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+ 		$kiwi -&gt; failed ();
+@@ -3914,7 +4034,7 @@ sub compressImage {
+ 			return undef;
+ 		}
+ 		my $line = &lt;FD&gt;; close FD; chomp $line;
+-		my $size = -s &quot;$imageDest/$name.gz&quot;;
++		my $size = -s &quot;$this-&gt;{imageDest}/$name.gz&quot;;
+ 		my $primes = qxx (&quot;factor $size&quot;); $primes =~ s/^.*: //;
+ 		my $blocksize = 1;
+ 		for my $factor (split /\s/,$primes) {
+@@ -4151,13 +4271,51 @@ sub checkKernel {
+ }
+ 
+ #==========================================
++# cleanLuks
++#------------------------------------------
++sub cleanLuks {
++	my $this = shift;
++	my $loop = $this-&gt;{luksloop};
++	my $name = $this-&gt;{luksname};
++	if ($name) {
++		foreach my $luks (@{$name}) {
++			qxx (&quot;cryptsetup luksClose $luks 2&gt;&amp;1&quot;);
++		}
++	}
++	if ($loop) {
++		foreach my $ldev (@{$loop}) {
++			qxx (&quot;losetup -d $ldev 2&gt;&amp;1&quot;);
++		}
++	}
++}
++
++#==========================================
++# restoreImageDest
++#------------------------------------------
++sub restoreImageDest {
++	my $this = shift;
++	if ($this-&gt;{imageDestOrig}) {
++		$this-&gt;{imageDest} = $this-&gt;{imageDestOrig};
++	}
++}
++
++#==========================================
++# remapImageDest
++#------------------------------------------
++sub remapImageDest {
++	my $this = shift;
++	if ($this-&gt;{imageDestMap}) {
++		$this-&gt;{imageDest} = $this-&gt;{imageDestMap};
++	}
++}
++
++#==========================================
+ # cleanMount
+ #------------------------------------------
+ sub cleanMount {
+ 	my $this = shift;
+-	my $imageDest = $this-&gt;{imageDest};
+-	qxx (&quot;umount $imageDest/mnt-$$ 2&gt;&amp;1&quot;);
+-	rmdir &quot;$imageDest/mnt-$$&quot;;
++	qxx (&quot;umount $this-&gt;{imageDest}/mnt-$$ 2&gt;&amp;1&quot;);
++	rmdir &quot;$this-&gt;{imageDest}/mnt-$$&quot;;
+ }
+ 
+ #==========================================
+@@ -4165,10 +4323,9 @@ sub cleanMount {
+ #------------------------------------------
+ sub cleanKernelFSMount {
+ 	my $this = shift;
+-	my $imageDest = $this-&gt;{imageDest};
+ 	my @kfs  = (&quot;/proc/sys/fs/binfmt_misc&quot;,&quot;/proc&quot;,&quot;/dev/pts&quot;,&quot;/sys&quot;);
+ 	foreach my $system (@kfs) {
+-		qxx (&quot;umount $imageDest/$system 2&gt;&amp;1&quot;);
++		qxx (&quot;umount $this-&gt;{imageDest}/$system 2&gt;&amp;1&quot;);
+ 	}
+ }
+ 
+diff --git a/modules/KIWIRoot.pm b/modules/KIWIRoot.pm
+index 4d2ebdf..9eaa9e9 100644
+--- a/modules/KIWIRoot.pm
++++ b/modules/KIWIRoot.pm
+@@ -683,11 +683,29 @@ sub install {
+ 		return undef;
+ 	}
+ 	$manager -&gt; freeLock();
+-	$manager -&gt; switchToLocal();
++	return $this;
++}
++
++#==========================================
++# installArchives
++#------------------------------------------
++sub installArchives {
++	# ...
++	# Install the given raw archives into the root
++	# directory of the image system
++	# ---
++	my $this = shift;
++	my $kiwi = $this-&gt;{kiwi};
++	my $xml  = $this-&gt;{xml};
++	my $manager = $this-&gt;{manager};
+ 	#==========================================
+-	# Install raw data archives
++	# get image archive list
+ 	#------------------------------------------
+ 	my @archives = $xml -&gt; getArchiveList();
++	#==========================================
++	# Install raw data archives
++	#------------------------------------------
++	$manager -&gt; switchToLocal();
+ 	if (! $manager -&gt; setupArchives($this-&gt;{imageDesc}<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">, at archives</A>)) {
+ 		return undef;
+ 	}
+diff --git a/modules/KIWISchema.rnc b/modules/KIWISchema.rnc
+index bdfa587..362533f 100644
+--- a/modules/KIWISchema.rnc
++++ b/modules/KIWISchema.rnc
+@@ -1180,6 +1180,12 @@ div {
+ 		## about the possible values can be found by calling
+ 		## hwinfo --framebuffer or in /usr/src/linux/Documentation/fb/vesafb.txt
+ 		attribute vga { text }
++	k.type.luks.attribute =
++		## Setup cryptographic volume along with the given filesystem
++		## using the LUKS extension. The value of this attribute
++		## represents the password string used to be able to
++		## mount that filesystem while booting
++		attribute luks { text }
+ 	k.type.filesystem.attribute = 
+ 		## Specifies the filesystem which can be one of:
+ 		## ext2 , ext3 , ext4, reiserfs ,squashfs, clicfs or dmsquash.
+@@ -1230,6 +1236,7 @@ div {
+ 		k.type.bootloader.attribute? &amp;
+ 		k.type.compressed.attribute? &amp;
+ 		k.type.vga.attribute? &amp;
++		k.type.luks.attribute? &amp;
+ 		k.type.filesystem.attribute? &amp;
+ 		k.type.fsreadonly.attribute? &amp;
+ 		k.type.fsreadwrite.attribute? &amp;
+diff --git a/modules/KIWISchema.rng b/modules/KIWISchema.rng
+index 531205b..bc90887 100644
+--- a/modules/KIWISchema.rng
++++ b/modules/KIWISchema.rng
+@@ -1612,6 +1612,14 @@ about the possible values can be found by calling
+ hwinfo --framebuffer or in /usr/src/linux/Documentation/fb/vesafb.txt&lt;/a:documentation&gt;
+       &lt;/attribute&gt;
+     &lt;/define&gt;
++    &lt;define name=&quot;k.type.luks.attribute&quot;&gt;
++      &lt;attribute name=&quot;luks&quot;&gt;
++        &lt;a:documentation&gt;Setup cryptographic volume along with the given filesystem
++using the LUKS extension. The value of this attribute
++represents the password string used to be able to
++mount that filesystem while booting&lt;/a:documentation&gt;
++      &lt;/attribute&gt;
++    &lt;/define&gt;
+     &lt;define name=&quot;k.type.filesystem.attribute&quot;&gt;
+       &lt;attribute name=&quot;filesystem&quot;&gt;
+         &lt;a:documentation&gt;Specifies the filesystem which can be one of:
+@@ -1726,6 +1734,9 @@ vmx/oem types only.&lt;/a:documentation&gt;
+           &lt;ref name=&quot;k.type.vga.attribute&quot;/&gt;
+         &lt;/optional&gt;
+         &lt;optional&gt;
++          &lt;ref name=&quot;k.type.luks.attribute&quot;/&gt;
++        &lt;/optional&gt;
++        &lt;optional&gt;
+           &lt;ref name=&quot;k.type.filesystem.attribute&quot;/&gt;
+         &lt;/optional&gt;
+         &lt;optional&gt;
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 046f3c7..91cb3e3 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -740,6 +740,7 @@ sub getImageTypeAndAttributes {
+ 			$first = $prim;
+ 		}
+ 		$record{type}          = $node -&gt; string_value();
++		$record{luks}          = $node -&gt; getAttribute(&quot;luks&quot;);
+ 		$record{compressed}    = $node -&gt; getAttribute(&quot;compressed&quot;);
+ 		$record{boot}          = $node -&gt; getAttribute(&quot;boot&quot;);
+ 		$record{volid}         = $node -&gt; getAttribute(&quot;volid&quot;);
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index c1cce89..b219868 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,14 @@
+ -------------------------------------------------------------------
++Tue Jun 30 10:11:11 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.61
++- prepared KIWIImage to work with luks extension. This is not
++  a complete implementation so far, just a first start (bnc #505782)
++- fixed inclusion of custom tar archives if the image
++  description provides only a bootstrap section like the
++  isoboot data does
++
++-------------------------------------------------------------------
+ Mon Jun 22 16:05:53 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.60
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index 870b1db..a6d9a2f 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.60)
++# spec file for package kiwi (Version 3.61)
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -46,7 +46,7 @@ Requires:       satsolver-tools
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.60
++Version:        3.61
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="001326.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 32542a2bf083acc7b457fbf54bb1ffd96a0fbfba
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1325">[ date ]</a>
+              <a href="thread.html#1325">[ thread ]</a>
+              <a href="subject.html#1325">[ subject ]</a>
+              <a href="author.html#1325">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

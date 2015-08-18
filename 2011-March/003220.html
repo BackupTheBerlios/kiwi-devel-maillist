@@ -1,0 +1,1684 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ddc5708a518ff12b779a8c84393abe6f16daa948
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ddc5708a518ff12b779a8c84393abe6f16daa948&In-Reply-To=%3C20110318101130.2346C4813B3%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003227.html">
+   <LINK REL="Next"  HREF="003221.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ddc5708a518ff12b779a8c84393abe6f16daa948</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ddc5708a518ff12b779a8c84393abe6f16daa948&In-Reply-To=%3C20110318101130.2346C4813B3%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ddc5708a518ff12b779a8c84393abe6f16daa948">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Mar 18 11:11:28 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003227.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master, updated. 885d844be6902cdd5ee4fd610722fdafda054f4a
+</A></li>
+        <LI>Next message: <A HREF="003221.html">[Kiwi-devel] doc update
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3220">[ date ]</a>
+              <a href="thread.html#3220">[ thread ]</a>
+              <a href="subject.html#3220">[ subject ]</a>
+              <a href="author.html#3220">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  ddc5708a518ff12b779a8c84393abe6f16daa948 (commit)
+       via  c43831e60db67aef2970a9ab4a80ecf33b803133 (commit)
+      from  885d844be6902cdd5ee4fd610722fdafda054f4a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ddc5708a518ff12b779a8c84393abe6f16daa948
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Mar 18 10:58:06 2011 +0100
+
+    - fixed exit code handling:
+      * kiwi --version     =&gt; exit 0
+      * kiwi --help | -h   =&gt; exit 0
+      * unknown option     =&gt; exit 1
+      * no root privileges =&gt; exit 1
+      * processsing error  =&gt; exit 1
+
+commit c43831e60db67aef2970a9ab4a80ecf33b803133
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Mar 18 10:34:46 2011 +0100
+
+    - move the knowledge about the default package manager from
+      the KIWIManager object into the XML object. This is a configuration
+      value and thus the default should be in the part of the code
+      that processes the configuration
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 84b3cd1..9b89ee5 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -197,7 +197,6 @@ our $listXMLInfo;           # list XML information for this operation
+ our @listXMLInfoSelection;  # info selection for listXMLInfo
+ our $CreatePassword;        # create crypted password
+ our $ISOCheck;              # create checkmedia boot entry
+-our $PackageManager;        # package manager to use for this image
+ our $FSBlockSize;           # filesystem block size
+ our $FSInodeSize;           # filesystem inode size
+ our $FSJournalSize;         # filesystem journal size
+@@ -357,6 +356,10 @@ sub main {
+ 		if (! defined $xml) {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
++		my $pkgMgr = $cmdL -&gt; getPackageManager();
++		if ($pkgMgr) {
++			$xml -&gt; setPackageManager($pkgMgr);
++		}
+ 		my %type = %{$xml-&gt;getImageTypeAndAttributes()};
+ 		#==========================================
+ 		# Create cache(s)...
+@@ -388,6 +391,10 @@ sub main {
+ 		if (! defined $xml) {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
++		my $pkgMgr = $cmdL -&gt; getPackageManager();
++		if ($pkgMgr) {
++			$xml -&gt; setPackageManager($pkgMgr);
++		}
+ 		my $krc = new KIWIRuntimeChecker ($kiwi,$cmdL,$xml);
+ 		if (! $krc -&gt; prepareChecks()) {
+ 			my $code = kiwiExit (1); return $code;
+@@ -587,6 +594,10 @@ sub main {
+ 		if (! defined $xml) {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
++		my $pkgMgr = $cmdL -&gt; getPackageManager();
++		if ($pkgMgr) {
++			$xml -&gt; setPackageManager($pkgMgr);
++		}
+ 		my $krc = new KIWIRuntimeChecker ($kiwi,$cmdL,$xml);
+ 		if (! $krc -&gt; createChecks()) {
+ 			my $code = kiwiExit (1); return $code;
+@@ -873,6 +884,10 @@ sub main {
+ 		if (! defined $xml) {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
++		my $pkgMgr = $cmdL -&gt; getPackageManager();
++		if ($pkgMgr) {
++			$xml -&gt; setPackageManager($pkgMgr);
++		}
+ 		#==========================================
+ 		# Check for ignore-repos option
+ 		#------------------------------------------
+@@ -1143,13 +1158,16 @@ sub init {
+ 	$SIG{&quot;HUP&quot;}      = \&quit;
+ 	$SIG{&quot;TERM&quot;}     = \&quit;
+ 	$SIG{&quot;INT&quot;}      = \&quit;
++	my $Help;
++	my $Version;
++	my $PackageManager;
+ 	my $kiwi = new KIWILog(&quot;tiny&quot;);
+ 	$cmdL = new KIWICommandLine($kiwi);
+ 	#==========================================
+ 	# get options and call non-root tasks
+ 	#------------------------------------------
+ 	my $result = GetOptions(
+-		&quot;version&quot;               =&gt; \&amp;version,
++		&quot;version&quot;               =&gt; \$Version,
+ 		&quot;recycle-root&quot;          =&gt; \$RecycleRoot,
+ 		&quot;targetdevice=s&quot;        =&gt; \$targetDevice,
+ 		&quot;v|verbose+&quot;            =&gt; \$Verbosity,
+@@ -1224,10 +1242,18 @@ sub init {
+ 		&quot;check-config=s&quot;        =&gt; \$CheckConfig,
+ 		&quot;yes|y&quot;                 =&gt; \$defaultAnswer,
+ 		&quot;debug&quot;                 =&gt; \$Debug,
+-		&quot;help|h&quot;                =&gt; \&amp;usage,
+-		&quot;&lt;&gt;&quot;                    =&gt; \&amp;usage
++		&quot;help|h&quot;                =&gt; \$Help
+ 	);
+ 	#========================================
++	# check if a package manager is specified
++	#----------------------------------------
++	if (defined $PackageManager) {
++		my $result = $cmdL -&gt; setPackageManager($PackageManager);
++		if (! $result) {
++			my $code = kiwiExit (1); return $code;
++		}
++	}
++	#========================================
+ 	# check if recycle-root is used
+ 	#----------------------------------------
+ 	if (defined $RecycleRoot) {
+@@ -1327,15 +1353,30 @@ sub init {
+ 		cloneImage();
+ 	}
+ 	#==========================================
++	# non root task: Help
++	#------------------------------------------
++	if (defined $Help) {
++		usage(0);
++	}
++	#==========================================
++	# non root task: Version
++	#------------------------------------------
++	if (defined $Version) {
++		version(0);
++	}
++	#==========================================
++	# Check result of options parsing
++	#------------------------------------------
++	if ( $result != 1 ) {
++		usage(1);
++	}
++	#==========================================
+ 	# Check for root privileges
+ 	#------------------------------------------
+ 	if ($&lt; != 0) {
+ 		$kiwi -&gt; error (&quot;Only root can do this&quot;);
+ 		$kiwi -&gt; failed ();
+-		usage();
+-	}
+-	if ( $result != 1 ) {
+-		usage();
++		usage(1);
+ 	}
+ 	#==========================================
+ 	# Check option combination/values
+@@ -1442,6 +1483,7 @@ sub usage {
+ 	# Explain the available options for this
+ 	# image creation system
+ 	# ---
++	my $exit = shift;
+ 	my $kiwi = new KIWILog(&quot;tiny&quot;);
+ 	my $date = qxx ( &quot;bash -c 'LANG=POSIX date -I'&quot; ); chomp $date;
+ 	print &quot;Linux KIWI setup  (image builder) ($date)\n&quot;;
+@@ -1632,7 +1674,7 @@ sub usage {
+ 	print &quot;      system image. The kernel check also tries to fix the boot\n&quot;;
+ 	print &quot;      image if no matching kernel was found.\n&quot;;
+ 	print &quot;--\n&quot;;
+-	version();
++	version ($exit);
+ }
+ 
+ #==========================================
+@@ -1776,6 +1818,10 @@ sub listXMLInfo {
+ 	if (! defined $xml) {
+ 		exit 1;
+ 	}
++	my $pkgMgr = $cmdL -&gt; getPackageManager();
++	if ($pkgMgr) {
++		$xml -&gt; setPackageManager($pkgMgr);
++	}
+ 	#==========================================
+ 	# Check for ignore-repos option
+ 	#------------------------------------------
+@@ -2223,6 +2269,10 @@ sub version {
+ 	# ...
+ 	# Version information
+ 	# ---
++	my $exit = shift;
++	if (! defined $exit) {
++		$exit = 0;
++	}
+ 	if (! defined $kiwi) {
+ 		$kiwi = new KIWILog(&quot;tiny&quot;);
+ 	}
+@@ -2232,7 +2282,7 @@ sub version {
+ 	}
+ 	$kiwi -&gt; info (&quot;kiwi version v$Version\nGIT Commit: $rev\n&quot;);
+ 	$kiwi -&gt; cleanSweep();
+-	exit 0;
++	exit ($exit);
+ }
+ 
+ #==========================================
+@@ -2877,6 +2927,10 @@ sub createInstSource {
+ 	if (! defined $xml) {
+ 		my $code = kiwiExit (1); return $code;
+ 	}
++	my $pkgMgr = $cmdL -&gt; getPackageManager();
++	if ($pkgMgr) {
++		$xml -&gt; setPackageManager($pkgMgr);
++	}
+ 	#==========================================
+ 	# Initialize installation source tree
+ 	#------------------------------------------
+@@ -3197,6 +3251,10 @@ sub createCache {
+ 		# ----
+ 		$InitCache = &quot;active&quot;;
+ 		my $cxml  = new KIWIXML ($kiwi,$BasePath.&quot;/modules&quot;);
++		my $pkgMgr = $cmdL -&gt; getPackageManager();
++		if ($pkgMgr) {
++			$cxml -&gt; setPackageManager($pkgMgr);
++		}
+ 		my $image = new KIWIImage (
+ 			$kiwi,$cxml,$root,$imageCacheDir,undef,&quot;/base-system&quot;
+ 		);
+diff --git a/modules/KIWICommandLine.pm b/modules/KIWICommandLine.pm
+index 0e5b224..9a03797 100644
+--- a/modules/KIWICommandLine.pm
++++ b/modules/KIWICommandLine.pm
+@@ -62,6 +62,7 @@ sub new {
+ 	$this-&gt;{configDir}     = '';
+ 	$this-&gt;{imageTgtDir}   = '';
+ 	$this-&gt;{kiwi}          = $kiwi;
++	$this-&gt;{packageMgr}    = '';
+ 	$this-&gt;{rootTgtDir}    = '';
+ 
+ 	return $this;
+@@ -130,6 +131,17 @@ sub getImageTargetDir {
+ }
+ 
+ #==========================================
++# getPackageManager
++#------------------------------------------
++sub getPackageManager {
++	# ...
++	# Return the package manager for this build if set as command line option
++	# ---
++	my $this = shift;
++	return $this -&gt; {packageMgr};
++}
++
++#==========================================
+ # getPrepTargetDir
+ #------------------------------------------
+ sub getRootTargetDir {
+@@ -159,19 +171,6 @@ sub setAdditionalRepos {
+ }
+ 
+ #==========================================
+-# setBuildTargetDir
+-#------------------------------------------
+-sub setTargetDirsForBuild {
+-	# ...
+-	# Setup the target dirs for a combined (prepare &amp; create) image build.
+-	# ---
+-	my $this = shift;
+-	$this-&gt;{prepTgtDir} = $this-&gt;{imageTgtDir};
+-	$this-&gt;{imageTgtDir} = $this-&gt;{prepTgtDir} . '/build';
+-	return 1;
+-}
+-
+-#==========================================
+ # setBuildType
+ #------------------------------------------
+ sub setBuildType {
+@@ -222,7 +221,34 @@ sub setImagetargetDir {
+ }
+ 
+ #==========================================
+-# setPrepTargetDir
++# setPackageManager
++#------------------------------------------
++sub setPackageManager {
++	# ...
++	# Set the package manager for this build as defined on the command line
++	# ---
++	my $this   = shift;
++	my $pkgMgr = shift;
++	my @supportedPkgMgrs = qw (ensconce smart yum zypper);
++	if (! $pkgMgr) {
++		my $msg = 'setPackageManager method called without specifying '
++		. 'package manager value.';
++		$this -&gt; {kiwi} -&gt; error ($msg);
++		$this -&gt; {kiwi} -&gt; failed();
++		return undef;
++	}
++	if (grep /$pkgMgr/, @supportedPkgMgrs) {
++		$this -&gt; {packageMgr} = $pkgMgr;
++		return 1;
++	}
++	my $msg = &quot;Unsupported package manager specified: $pkgMgr&quot;;
++	$this -&gt; {kiwi} -&gt; error ($msg);
++	$this -&gt; {kiwi} -&gt; failed();
++	return undef;
++}
++
++#==========================================
++# setRootTargetDir
+ #------------------------------------------
+ sub setRootTargetDir {
+ 	# ...
+@@ -233,4 +259,17 @@ sub setRootTargetDir {
+ 	return 1;
+ }
+ 
++#==========================================
++# setTargetDirsForBuild
++#------------------------------------------
++sub setTargetDirsForBuild {
++	# ...
++	# Setup the target dirs for a combined (prepare &amp; create) image build.
++	# ---
++	my $this = shift;
++	$this-&gt;{prepTgtDir} = $this-&gt;{imageTgtDir};
++	$this-&gt;{imageTgtDir} = $this-&gt;{prepTgtDir} . '/build';
++	return 1;
++}
++
+ 1;
+diff --git a/modules/KIWIManager.pm b/modules/KIWIManager.pm
+index 8c4e7fe..52b3e5c 100644
+--- a/modules/KIWIManager.pm
++++ b/modules/KIWIManager.pm
+@@ -31,23 +31,12 @@ use KIWIQX;
+ # Exports
+ #------------------------------------------
+ our @ISA    = qw (Exporter);
+-our @EXPORT = qw (%packageManager);
+-
+-#==========================================
+-# Exports
+-#------------------------------------------
+-our %packageManager;
+-my $locator = new KIWILocator();
+-$packageManager{smart}   = $locator -&gt; getExecPath('smart');
+-$packageManager{zypper}  = $locator -&gt; getExecPath('zypper');
+-$packageManager{ensconce}= $locator -&gt; getExecPath('ensconce');
+-$packageManager{yum}     = $locator -&gt; getExecPath('yum');
+-$packageManager{default} = 'smart';
++our @EXPORT = qw ();
+ 
+ #==========================================
+ # Constructor
+ #------------------------------------------
+-sub new { 
++sub new {
+ 	# ...
+ 	# Create a new KIWIManager object, which is used
+ 	# to import all data needed to abstract from different
+@@ -91,12 +80,13 @@ sub new {
+ 		return undef;
+ 	}
+ 	if (! defined $manager) {
+-		$manager = $packageManager{default};
++		$manager = $xml -&gt; getPackageManager();
+ 	}
+ 	if (defined $targetArch &amp;&amp; $manager ne 'zypper') {
+ 		$kiwi -&gt; warning (&quot;Target architecture not supported for $manager&quot;);
+ 		$kiwi -&gt; skipped ();
+ 	}
++	my $locator = new KIWILocator($kiwi);
+ 	#==========================================
+ 	# Clean out any potential previous data
+ 	#------------------------------------------
+@@ -171,49 +161,48 @@ sub new {
+ 	$this-&gt;{dataDir}     = $dataDir;
+ 	$this-&gt;{zyppconf}    = $zyppConf;
+ 	$this-&gt;{zconfig}     = $zconfig;
+-	$this-&gt;{smart}       = [
+-		$packageManager{smart},
+-		&quot;--data-dir=$dataDir&quot;,
+-		&quot;-o remove-packages=false&quot;
+-	];
+-	$this-&gt;{smartroot}   = [
+-		&quot;-o rpm-root=$root&quot;
+-	];
+-	$this-&gt;{zypper}      = [
+-		$packageManager{zypper},
+-		&quot;--non-interactive&quot;,
+-		&quot;--no-gpg-checks&quot;,
+-		&quot;--reposd-dir $dataDir&quot;,
+-		&quot;--cache-dir $dataDir&quot;,
+-		&quot;--raw-cache-dir $dataDir&quot;,
+-		&quot;--config $zypperConf&quot;
+-	];
+-	$this-&gt;{ensconce}    = [
+-		$packageManager{ensconce},
+-		&quot;-r $root&quot;
+-	];
+-	$this-&gt;{yum}         = [
+-		$packageManager{yum},
+-		&quot;-c $dataDir/yum.conf&quot;,
+-		&quot;-y&quot;
+-	];
+-	$this-&gt;{kchroot}     = [
+-		&quot;chroot \&quot;$root\&quot;&quot;
+-	];
+ 	#==========================================
+-	# remove pre-defined smart channels
++	# Store object data package manager options
+ 	#------------------------------------------
+-	if ($manager eq &quot;smart&quot;) {
++	if ($manager eq 'smart') {
++		$this-&gt;{smart} = [
++			$locator -&gt; getExecPath('smart'),
++			&quot;--data-dir=$dataDir&quot;,
++			&quot;-o remove-packages=false&quot;
++		];
++		$this-&gt;{smartroot} = [&quot;-o rpm-root=$root&quot;];
+ 		if (glob (&quot;$root//etc/smart/channels/*&quot;)) {
+ 			qxx ( &quot;rm -f $root/etc/smart/channels/*&quot; );
+ 		}
++	} elsif ($manager eq 'zypper') {
++		$this-&gt;{zypper} = [
++			$locator -&gt; getExecPath('zypper'),
++			'--non-interactive',
++			'--no-gpg-checks',
++			&quot;--reposd-dir $dataDir&quot;,
++			&quot;--cache-dir $dataDir&quot;,
++			&quot;--raw-cache-dir $dataDir&quot;,
++			&quot;--config $zypperConf&quot;
++		];
++	} elsif ($manager eq 'ensconce') {
++		$this-&gt;{ensconce} = [
++			$locator -&gt; getExecPath('ensconce'),
++			&quot;-r $root&quot;
++		];
++	} elsif ($manager eq 'yum') {
++		$this-&gt;{yum} = [
++			$locator -&gt; getExecPath('yum'),
++			&quot;-c $dataDir/yum.conf&quot;,
++			&quot;-y&quot;
++		];
++		$this-&gt;{yumconfig} = $this-&gt;createYumConfig();
+ 	}
+ 	#==========================================
+-	# create yum config if required
++	# Store object data chroot path
+ 	#------------------------------------------
+-	if ($manager eq &quot;yum&quot;) {
+-		$this-&gt;{yumconfig} = $this-&gt;createYumConfig();
+-	}
++	$this-&gt;{kchroot}     = [
++		&quot;chroot \&quot;$root\&quot;&quot;
++	];
+ 	return $this;
+ }
+ 
+@@ -398,12 +387,10 @@ sub setupSignatureCheck {
+ 	my $this = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $xml  = $this-&gt;{xml};
+-	my @smart   = @{$this-&gt;{smart}};
+ 	my $manager = $this-&gt;{manager};
+ 	my $chroot  = $this-&gt;{chroot};
+ 	my $root    = $this-&gt;{root};
+ 	my @kchroot = @{$this-&gt;{kchroot}};
+-	my $yumc    = $this-&gt;{yumconfig};
+ 	my $data;
+ 	my $code;
+ 	#==========================================
+@@ -415,6 +402,7 @@ sub setupSignatureCheck {
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
++		my @smart = @{$this-&gt;{smart}};
+ 		my $optionName  = &quot;rpm-check-signatures&quot;;
+ 		my $curCheckSig = qxx (&quot;@smart config --show $optionName|tr -d '\\n'&quot;);
+ 		$this-&gt;{curCheckSig} = $curCheckSig;
+@@ -452,6 +440,7 @@ sub setupSignatureCheck {
+ 	# yum
+ 	#------------------------------------------
+ 	if ($manager eq &quot;yum&quot;) {
++		my $yumc = $this-&gt;{yumconfig};
+ 		$data = new Config::IniFiles (
+ 			-file =&gt; $yumc, -allowedcommentchars =&gt; '#'
+ 		);
+@@ -478,9 +467,7 @@ sub resetSignatureCheck {
+ 	my $chroot = $this-&gt;{chroot};
+ 	my $manager= $this-&gt;{manager};
+ 	my $root   = $this-&gt;{root};
+-	my @smart  = @{$this-&gt;{smart}};
+ 	my @kchroot= @{$this-&gt;{kchroot}};
+-	my $yumc   = $this-&gt;{yumconfig};
+ 	my $curCheckSig = $this-&gt;{curCheckSig};
+ 	my $data;
+ 	my $code;
+@@ -488,6 +475,7 @@ sub resetSignatureCheck {
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
++		my @smart  = @{$this-&gt;{smart}};
+ 		if (defined $this-&gt;{imgCheckSig}) {
+ 			my $optionName  = &quot;rpm-check-signatures&quot;;
+ 			my $option = &quot;$optionName=$curCheckSig&quot;;
+@@ -523,6 +511,7 @@ sub resetSignatureCheck {
+ 	# yum
+ 	#------------------------------------------
+ 	if ($manager eq &quot;yum&quot;) {
++		my $yumc = $this-&gt;{yumconfig};
+ 		$data = new Config::IniFiles (
+ 			-file =&gt; $yumc, -allowedcommentchars =&gt; '#'
+ 		);
+@@ -544,7 +533,6 @@ sub setupExcludeDocs {
+ 	my $this = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $xml  = $this-&gt;{xml};
+-	my @smart   = @{$this-&gt;{smart}};
+ 	my $manager = $this-&gt;{manager};
+ 	my $chroot  = $this-&gt;{chroot};
+ 	my @kchroot = @{$this-&gt;{kchroot}};
+@@ -561,6 +549,7 @@ sub setupExcludeDocs {
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
++		my @smart = @{$this-&gt;{smart}};
+ 		my $optionName  = &quot;rpm-excludedocs&quot;;
+ 		my $curExclDocs = qxx (
+ 			&quot;@smart config --show $optionName 2&gt;/dev/null | tr -d '\\n'&quot;
+@@ -628,7 +617,6 @@ sub resetExcludeDocs {
+ 	my @kchroot= @{$this-&gt;{kchroot}};
+ 	my $manager= $this-&gt;{manager};
+ 	my $root   = $this-&gt;{root};
+-	my @smart  = @{$this-&gt;{smart}};
+ 	my $curExclDocs = $this-&gt;{curExclDocs};
+ 	my $data;
+ 	my $code;
+@@ -636,6 +624,7 @@ sub resetExcludeDocs {
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
++		my @smart = @{$this-&gt;{smart}};
+ 		if (defined $this-&gt;{imgExclDocs}) {
+ 			my $optionName  = &quot;rpm-excludedocs&quot;;
+ 			my $option = &quot;$optionName=$curExclDocs&quot;;
+@@ -703,11 +692,7 @@ sub setupInstallationSource {
+ 	my %source = %{$this-&gt;{source}};
+ 	my $root   = $this-&gt;{root};
+ 	my $manager= $this-&gt;{manager};
+-	my @zypper = @{$this-&gt;{zypper}};
+-	my @smart  = @{$this-&gt;{smart}};
+-	my @rootdir= @{$this-&gt;{smartroot}};
+ 	my $dataDir= $this-&gt;{dataDir};
+-	my @yum    = @{$this-&gt;{yum}};
+ 	my $data;
+ 	my $code;
+ 	#==========================================
+@@ -719,6 +704,8 @@ sub setupInstallationSource {
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
++		my @smart  = @{$this-&gt;{smart}};
++		my @rootdir= @{$this-&gt;{smartroot}};
+ 		my $stype  = &quot;private&quot;;
+ 		my $cmds   = &quot;@smart channel --add&quot;;
+ 		#==========================================
+@@ -760,6 +747,7 @@ sub setupInstallationSource {
+ 	# zypper
+ 	#------------------------------------------
+ 	if ($manager eq &quot;zypper&quot;) {
++		my @zypper = @{$this-&gt;{zypper}};
+ 		my $stype = &quot;private&quot;;
+ 		my $prio;
+ 		qxx (&quot;rm -f $dataDir/*.repo&quot;);
+@@ -873,6 +861,7 @@ sub setupInstallationSource {
+ 	# yum
+ 	#------------------------------------------
+ 	if ($manager eq &quot;yum&quot;) {
++		my @yum = @{$this-&gt;{yum}};
+ 		my $stype  = &quot;private&quot;;
+ 		if (! $chroot) {
+ 			$stype = &quot;public&quot;;
+@@ -952,9 +941,6 @@ sub resetInstallationSource {
+ 	my @kchroot= @{$this-&gt;{kchroot}};
+ 	my $manager= $this-&gt;{manager};
+ 	my $root   = $this-&gt;{root};
+-	my @zypper = @{$this-&gt;{zypper}};
+-	my @smart  = @{$this-&gt;{smart}};
+-	my @rootdir= @{$this-&gt;{smartroot}};
+ 	my $dataDir= $this-&gt;{dataDir};
+ 	my @channelList = @{$this-&gt;{channelList}};
+ 	my $data;
+@@ -963,6 +949,8 @@ sub resetInstallationSource {
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
++		my @smart  = @{$this-&gt;{smart}};
++		my @rootdir= @{$this-&gt;{smartroot}};
+ 		my @list   = @channelList;
+ 		my $cmds   = &quot;@smart channel --remove&quot;;
+ 		if (! $chroot) {
+@@ -988,6 +976,7 @@ sub resetInstallationSource {
+ 	# zypper
+ 	#------------------------------------------
+ 	if ($manager eq &quot;zypper&quot;) {
++		my @zypper = @{$this-&gt;{zypper}};
+ 		my @list = @channelList;
+ 		my $cmds = &quot;@zypper removerepo&quot;;
+ 		if (! $chroot) {
+@@ -1048,7 +1037,6 @@ sub setupDownload {
+ 	my $kiwi   = $this-&gt;{kiwi};
+ 	my $manager= $this-&gt;{manager};
+ 	my $root   = $this-&gt;{root};
+-	my @smart  = @{$this-&gt;{smart}};
+ 	my @channelList = @{$this-&gt;{channelList}};
+ 	my $screenCall  = $this-&gt;{screenCall};
+ 	my @pacs   = @_;
+@@ -1063,6 +1051,7 @@ sub setupDownload {
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
++		my @smart  = @{$this-&gt;{smart}};
+ 		$kiwi -&gt; info (&quot;Downloading packages...&quot;);
+ 		my @loadOpts = (
+ 			&quot;--target=$root&quot;
+@@ -1135,9 +1124,6 @@ sub installPackages {
+ 	my $root       = $this-&gt;{root};
+ 	my @kchroot    = @{$this-&gt;{kchroot}};
+ 	my $manager    = $this-&gt;{manager};
+-	my @smart      = @{$this-&gt;{smart}};
+-	my @zypper     = @{$this-&gt;{zypper}};
+-	my @yum        = @{$this-&gt;{yum}};
+ 	my $screenCall = $this-&gt;{screenCall};
+ 	#==========================================
+ 	# check addon packages
+@@ -1157,6 +1143,7 @@ sub installPackages {
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
++		my @smart = @{$this-&gt;{smart}};
+ 		#==========================================
+ 		# Create screen call file
+ 		#------------------------------------------
+@@ -1184,6 +1171,7 @@ sub installPackages {
+ 	# zypper
+ 	#------------------------------------------
+ 	if ($manager eq &quot;zypper&quot;) {
++		my @zypper = @{$this-&gt;{zypper}};
+ 		#==========================================
+ 		# Create screen call file
+ 		#------------------------------------------
+@@ -1225,6 +1213,7 @@ sub installPackages {
+ 	# yum
+ 	#------------------------------------------
+ 	if ($manager eq &quot;yum&quot;) {
++		my @yum = @{$this-&gt;{yum}};
+ 		#==========================================
+ 		# Create screen call file
+ 		#------------------------------------------
+@@ -1267,9 +1256,6 @@ sub removePackages {
+ 	my $root       = $this-&gt;{root};
+ 	my @kchroot    = @{$this-&gt;{kchroot}};
+ 	my $manager    = $this-&gt;{manager};
+-	my @smart      = @{$this-&gt;{smart}};
+-	my @zypper     = @{$this-&gt;{zypper}};
+-	my @yum        = @{$this-&gt;{yum}};
+ 	my $screenCall = $this-&gt;{screenCall};
+ 	#==========================================
+ 	# check to be removed packages
+@@ -1292,6 +1278,7 @@ sub removePackages {
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
++		my @smart = @{$this-&gt;{smart}};
+ 		#==========================================
+ 		# Create screen call file
+ 		#------------------------------------------
+@@ -1319,6 +1306,7 @@ sub removePackages {
+ 	# zypper
+ 	#------------------------------------------
+ 	if ($manager eq &quot;zypper&quot;) {
++		my @zypper = @{$this-&gt;{zypper}};
+ 		#==========================================
+ 		# Create screen call file
+ 		#------------------------------------------
+@@ -1360,6 +1348,7 @@ sub removePackages {
+ 	# yum
+ 	#------------------------------------------
+ 	if ($manager eq &quot;yum&quot;) {
++		my @yum = @{$this-&gt;{yum}};
+ 		#==========================================
+ 		# Create screen call file
+ 		#------------------------------------------
+@@ -1397,9 +1386,6 @@ sub setupUpgrade {
+ 	my $xml        = $this-&gt;{xml};
+ 	my @kchroot    = @{$this-&gt;{kchroot}};
+ 	my $manager    = $this-&gt;{manager};
+-	my @smart      = @{$this-&gt;{smart}};
+-	my @zypper     = @{$this-&gt;{zypper}};
+-	my @yum        = @{$this-&gt;{yum}};
+ 	my $screenCall = $this-&gt;{screenCall};
+ 	#==========================================
+ 	# setup screen call
+@@ -1412,6 +1398,7 @@ sub setupUpgrade {
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
++		my @smart = @{$this-&gt;{smart}};
+ 		my @opts = (
+ 			&quot;--log-level=error&quot;,
+ 			&quot;-y&quot;
+@@ -1467,6 +1454,7 @@ sub setupUpgrade {
+ 	# zypper
+ 	#------------------------------------------
+ 	if ($manager eq &quot;zypper&quot;) {
++		my @zypper = @{$this-&gt;{zypper}};
+ 		#==========================================
+ 		# Create screen call file
+ 		#------------------------------------------
+@@ -1559,6 +1547,7 @@ sub setupUpgrade {
+ 	# yum
+ 	#------------------------------------------
+ 	if ($manager eq &quot;yum&quot;) {
++		my @yum  = @{$this-&gt;{yum}};
+ 		#==========================================
+ 		# Create screen call file
+ 		#------------------------------------------
+@@ -1754,13 +1743,8 @@ sub setupRootSystem {
+ 	my $root        = $this-&gt;{root};
+ 	my $xml         = $this-&gt;{xml};
+ 	my $manager     = $this-&gt;{manager};
+-	my @zypper      = @{$this-&gt;{zypper}};
+-	my @smart       = @{$this-&gt;{smart}};
+-	my @rootdir     = @{$this-&gt;{smartroot}};
+-	my @ensconce    = @{$this-&gt;{ensconce}};
+ 	my @channelList = @{$this-&gt;{channelList}};
+ 	my $screenCall  = $this-&gt;{screenCall};
+-	my @yum         = @{$this-&gt;{yum}};
+ 	my %source      = %{$this-&gt;{source}};
+ 	#==========================================
+ 	# search for licenses on media
+@@ -1797,6 +1781,8 @@ sub setupRootSystem {
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
++		my @smart   = @{$this-&gt;{smart}};
++		my @rootdir = @{$this-&gt;{smartroot}};
+ 		if (! $chroot) {
+ 			#==========================================
+ 			# setup install options outside of chroot
+@@ -1891,6 +1877,7 @@ sub setupRootSystem {
+ 	# zypper
+ 	#------------------------------------------
+ 	if ($manager eq &quot;zypper&quot;) {
++		my @zypper = @{$this-&gt;{zypper}};
+ 		if (! $chroot) {
+ 			#==========================================
+ 			# setup install options outside of chroot
+@@ -2046,6 +2033,7 @@ sub setupRootSystem {
+ 	# ensconce
+ 	#------------------------------------------
+ 	if ($manager eq &quot;ensconce&quot;) {
++		my @ensconce = @{$this-&gt;{ensconce}};
+ 		my $imagename = $xml -&gt; getImageName();
+ 		my $ensconce_args = &quot;-i $imagename&quot;;
+ 		if (! $chroot) {
+@@ -2086,6 +2074,7 @@ sub setupRootSystem {
+ 	# yum
+ 	#------------------------------------------
+ 	if ($manager eq &quot;yum&quot;) {
++		my @yum = @{$this-&gt;{yum}};
+ 		if (! $chroot) {
+ 			#==========================================
+ 			# Add package manager to package list
+@@ -2240,13 +2229,12 @@ sub resetSource {
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my %source  = %{$this-&gt;{source}};
+ 	my $manager = $this-&gt;{manager};
+-	my @smart   = @{$this-&gt;{smart}};
+-	my @zypper  = @{$this-&gt;{zypper}};
+ 	my $dataDir = $this-&gt;{dataDir};
+ 	#==========================================
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
++		my @smart = @{$this-&gt;{smart}};
+ 		foreach my $channel (keys %{$source{public}}) {
+ 			$kiwi -&gt; info (&quot;Removing smart channel: $channel\n&quot;);
+ 			qxx (&quot;@smart channel --remove $channel -y 2&gt;&amp;1&quot;);
+@@ -2256,6 +2244,7 @@ sub resetSource {
+ 	# zypper
+ 	#------------------------------------------
+ 	if ($manager eq &quot;zypper&quot;) {
++		my @zypper = @{$this-&gt;{zypper}};
+ 		foreach my $channel (keys %{$source{public}}) {
+ 			$kiwi -&gt; info (&quot;Removing zypper service: $channel\n&quot;);
+ 			qxx (&quot;@zypper removerepo $channel 2&gt;&amp;1&quot;);
+@@ -2292,15 +2281,14 @@ sub setupPackageInfo {
+ 	my @kchroot= @{$this-&gt;{kchroot}};
+ 	my $root   = $this-&gt;{root};
+ 	my $manager= $this-&gt;{manager};
+-	my @zypper = @{$this-&gt;{zypper}};
+-	my @smart  = @{$this-&gt;{smart}};
+-	my @rootdir= @{$this-&gt;{smartroot}};
+ 	my $data;
+ 	my $code;
+ 	#==========================================
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
++		my @smart  = @{$this-&gt;{smart}};
++		my @rootdir= @{$this-&gt;{smartroot}};
+ 		if (! $chroot) {
+ 			$kiwi -&gt; info (&quot;Checking for package: $pack&quot;);
+ 			$data = qxx (&quot;@smart @rootdir query --installed $pack 2&gt;/dev/null&quot;);
+diff --git a/modules/KIWIRuntimeChecker.pm b/modules/KIWIRuntimeChecker.pm
+index 0f7b3a7..f194496 100644
+--- a/modules/KIWIRuntimeChecker.pm
++++ b/modules/KIWIRuntimeChecker.pm
+@@ -92,10 +92,13 @@ sub createChecks {
+ 	if (! $this -&gt; __haveValidTypeString()) {
+ 		return undef;
+ 	}
++	if (! $this -&gt; __checkHaveTypeToBuild()) {
++		return undef;
++	}
+ 	if (! $this -&gt; __checkFilesystemTool()) {
+ 		return undef;
+ 	}
+-	if (! $this -&gt; __checkHaveTypeToBuild()) {
++	if (! $this -&gt; __checkPackageManagerExists()) {
+ 		return undef;
+ 	}
+ 	return 1;
+@@ -115,6 +118,9 @@ sub prepareChecks {
+ 	if (! $this -&gt; __checkHaveTypeToBuild()) {
+ 		return undef;
+ 	}
++	if (! $this -&gt; __checkPackageManagerExists()) {
++		return undef;
++	}
+ 	if (! $this -&gt; __checkPatternTypeAttrrValueConsistent()) {
+ 		return undef;
+ 	}
+@@ -126,7 +132,7 @@ sub prepareChecks {
+ #------------------------------------------
+ sub __haveValidTypeString {
+ 	# ...
+-	# if the commandline data set contains a buildtype
++	# if the commandline data set contains buildtype
+ 	# information, check if it contains a valid string
+ 	# This check must be done for prepare and create in
+ 	# order to early detect a broken commandline when
+@@ -144,8 +150,8 @@ sub __haveValidTypeString {
+ 	if ($type) {
+ 		if (! grep /$type/, @allowedTypes) {
+ 			my $kiwi = $this -&gt; {kiwi};
+-			my $msg = 'Specified value for &quot;type&quot; command line argument is not '
+-			. 'valid.';
++			my $msg = 'Specified value for &quot;type&quot; command line argument is '
++				. 'not valid.';
+ 			$kiwi -&gt; error ($msg);
+ 			$kiwi -&gt; failed();
+ 			return undef;
+@@ -180,7 +186,7 @@ sub __checkFilesystemTool {
+ 			$toolError = 1;
+ 		}
+ 	} elsif ($typeName eq 'iso') {
+-        my $genTool = $this -&gt; {locator} -&gt; getExecPath('genisoimage');
++		my $genTool = $this -&gt; {locator} -&gt; getExecPath('genisoimage');
+ 		my $mkTool = $this -&gt; {locator} -&gt; getExecPath('mkisofs');
+ 		if ((! $genTool) &amp;&amp; (! $mkTool)) {
+ 			$checkedFS = 'iso';
+@@ -244,6 +250,26 @@ sub __checkHaveTypeToBuild {
+ }
+ 
+ #==========================================
++# __checkPackageManagerExists
++#------------------------------------------
++sub __checkPackageManagerExists {
++	# ...
++	# Check that the specified package manager exists
++	# ---
++	my $this = shift;
++	my $pkgMgr = $this -&gt; {xml} -&gt; getPackageManager();
++	my $haveExec = $this -&gt; {locator} -&gt; getExecPath($pkgMgr);
++	if (! $haveExec) {
++		my $msg = &quot;Executable for specified package manager, $pkgMgr, &quot;
++			. 'could not be found.';
++		$this -&gt; {kiwi} -&gt; error($msg);
++		$this -&gt; {kiwi} -&gt; failed();
++		return undef;
++	}
++	return 1;
++}
++
++#==========================================
+ # __checkPatternTypeAttrValueConsistent
+ #------------------------------------------
+ sub __checkPatternTypeAttrrValueConsistent {
+@@ -312,7 +338,7 @@ sub __isFsToolAvailable {
+ 	my $fsType = shift;
+ 	my $locator = $this -&gt; {locator};
+ 	if ($fsType eq 'btrfs' ) {
+-		$locator -&gt; getExecPath('mkfs.btrfs');
++		return $locator -&gt; getExecPath('mkfs.btrfs');
+ 	}
+ 	if ($fsType eq 'clicfs' ) {
+ 		return $locator -&gt; getExecPath('mkclicfs');
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 72033f4..6e69007 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -27,7 +27,6 @@ use LWP;
+ use XML::LibXML;
+ use KIWILocator;
+ use KIWILog;
+-use KIWIManager qw (%packageManager);
+ use KIWIOverlay;
+ use KIWIQX;
+ use KIWIURL;
+@@ -67,7 +66,7 @@ our @EXPORT = qw (
+ #==========================================
+ # Constructor
+ #------------------------------------------
+-sub new { 
++sub new {
+ 	# ...
+ 	# Create a new KIWIXML object which is used to access the
+ 	# configuration XML data stored as description file.
+@@ -205,14 +204,6 @@ sub new {
+ 		return undef;
+ 	}
+ 	#==========================================
+-	# Set global packagemanager value
+-	#------------------------------------------
+-	if (defined $main::PackageManager) {
+-		$this -&gt; setPackageManager ($main::PackageManager);
+-	} else {
+-		$main::PackageManager = $this -&gt; getPackageManager();
+-	}
+-	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
+ 	$this-&gt;{driversNodeList}    = $driversNodeList;
+@@ -902,6 +893,13 @@ sub setPackageManager {
+ 	# ---
+ 	my $this  = shift;
+ 	my $value = shift;
++	if (! $value) {
++		my $msg = 'setPackageManager method called without specifying '
++		. 'package manager value.';
++		$this -&gt; {kiwi} -&gt; error ($msg);
++		$this -&gt; {kiwi} -&gt; failed();
++		return undef;
++	}
+ 	my $opts = $this -&gt; getPreferencesNodeByTagName (&quot;packagemanager&quot;);
+ 	my $pmgr = $opts -&gt; getElementsByTagName (&quot;packagemanager&quot;);
+ 	if (($pmgr) &amp;&amp; (&quot;$pmgr&quot; eq &quot;$value&quot;)) {
+@@ -910,7 +908,9 @@ sub setPackageManager {
+ 	my $addElement = new XML::LibXML::Element (&quot;packagemanager&quot;);
+ 	$addElement -&gt; appendText ($value);
+ 	my $node = $opts -&gt; getElementsByTagName (&quot;packagemanager&quot;) -&gt; get_node(1);
+-	$opts -&gt; removeChild ($node);
++	if ($node) {
++		$opts -&gt; removeChild ($node);
++	}
+ 	$opts -&gt; appendChild ($addElement);
+ 	$this -&gt; updateXML();
+ 	return $this;
+@@ -928,23 +928,12 @@ sub getPackageManager {
+ 	my $this = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $node = $this -&gt; getPreferencesNodeByTagName (&quot;packagemanager&quot;);
+-	my $pmgr = $node -&gt; getElementsByTagName (&quot;packagemanager&quot;);
++	my @packMgrs = $node -&gt; getElementsByTagName (&quot;packagemanager&quot;);
++	my $pmgr = $packMgrs[0];
+ 	if (! $pmgr) {
+-		return $packageManager{default};
++		return 'zypper';
+ 	}
+-	foreach my $manager (keys %packageManager) {
+-		if (&quot;$pmgr&quot; eq &quot;$manager&quot;) {
+-			my $file = $packageManager{$manager};
+-			if (! -f $file) {
+-				$kiwi -&gt; info (&quot;Package manager $file doesn't exist&quot;);
+-				$kiwi -&gt; skipped ();
+-				return undef;
+-			}
+-			return $manager;
+-		}
+-	}
+-	$kiwi -&gt; loginfo (&quot;Invalid package manager: $pmgr&quot;);
+-	return undef;
++	return $pmgr -&gt; textContent();
+ }
+ 
+ #==========================================
+@@ -3162,7 +3151,7 @@ sub getInstallSize {
+ 	#==========================================
+ 	# Add packagemanager in any case
+ 	#------------------------------------------
+-	push @result,$main::PackageManager;
++	push @result, $manager;
+ 	#==========================================
+ 	# Run the solver...
+ 	#------------------------------------------
+diff --git a/tests/unit/KIWIRuntimeChecker.t b/tests/unit/KIWIXML.t
+similarity index 87%
+copy from tests/unit/KIWIRuntimeChecker.t
+copy to tests/unit/KIWIXML.t
+index cc9f168..988ec79 100644
+--- a/tests/unit/KIWIRuntimeChecker.t
++++ b/tests/unit/KIWIXML.t
+@@ -1,5 +1,5 @@
+ #================
+-# FILE          : KIWIRuntimeChecker.t
++# FILE          : KIWIXML.t
+ #----------------
+ # PROJECT       : OpenSUSE Build-Service
+ # COPYRIGHT     : (c) 2011 Novell Inc.
+@@ -8,7 +8,7 @@
+ #               :
+ # BELONGS TO    : Operating System images
+ #               :
+-# DESCRIPTION   : Unit test driver for the KIWIRuntimeChecker module.
++# DESCRIPTION   : Unit test driver for the KIWIXMLValidator module.
+ #               :
+ # STATUS        : Development
+ #----------------
+@@ -34,4 +34,4 @@ our $SchemaCVT = &quot;$FindBin::Bin/../../xsl/master.xsl&quot;;
+ # END variable hack
+ 
+ my $runner = Test::Unit::HarnessUnit-&gt;new();
+-$runner-&gt;start( 'Test::kiwiRuntimeChecker' );
++$runner-&gt;start( 'Test::xml' );
+diff --git a/tests/unit/data/kiwiRuntimeChecker/config.xml b/tests/unit/data/kiwiRuntimeChecker/config.xml
+index 369f502..c41db0a 100644
+--- a/tests/unit/data/kiwiRuntimeChecker/config.xml
++++ b/tests/unit/data/kiwiRuntimeChecker/config.xml
+@@ -1,10 +1,10 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+ 
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-xml-validator-test&quot;&gt;
++&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-default-runtime-check-config&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.</A>&lt;/contact&gt;
+-		&lt;specification&gt;test patternType usage consistency, no default packages section, different attribute values&lt;/specification&gt;
++		&lt;specification&gt;A general vaild configuration use for runtime tester&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;my-first&quot; description=&quot;a first test profile&quot;/&gt;
+diff --git a/tests/unit/data/kiwiLocator/multiConf/config_one.kiwi b/tests/unit/data/xml/defPkgMgr/config.xml
+similarity index 64%
+copy from tests/unit/data/kiwiLocator/multiConf/config_one.kiwi
+copy to tests/unit/data/xml/defPkgMgr/config.xml
+index a886e6e..3950f71 100644
+--- a/tests/unit/data/kiwiLocator/multiConf/config_one.kiwi
++++ b/tests/unit/data/xml/defPkgMgr/config.xml
+@@ -1,30 +1,31 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-&lt;image schemaversion=&quot;4.7&quot; name=&quot;suse-11.3-vm-guest&quot;&gt;
++
++&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-xml-test-config&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;Generic valid configuration file&lt;/specification&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.</A>&lt;/contact&gt;
++		&lt;specification&gt;No package manager specified, test should return smart&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+ 		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+-			&lt;machine memory=&quot;512&quot;&gt;
++			&lt;machine memory=&quot;1024&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+-				&lt;vmnic interface=&quot;0&quot; driver=&quot;e1000&quot; mode=&quot;bridged&quot;/&gt;
+-				&lt;vmnic interface=&quot;1&quot; driver=&quot;e1000&quot; mode=&quot;bridged&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+-		&lt;version&gt;1.0.0&lt;/version&gt;
+-		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
++		&lt;version&gt;1.0.1&lt;/version&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+ 		&lt;rpm-force&gt;true&lt;/rpm-force&gt;
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 	&lt;/preferences&gt;
++	&lt;users group=&quot;users&quot;&gt;
++		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/home/tux&quot; name=&quot;tux&quot;/&gt;
++	&lt;/users&gt;
+ 	&lt;users group=&quot;root&quot;&gt;
+-		&lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
++		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+-	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
++	&lt;repository type=&quot;rpm-dir&quot;&gt;
++		&lt;source path=&quot;/tmp&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/doc/examples/suse-11.2/suse-min-gnome/config.xml b/tests/unit/data/xml/multiPkgMgrWithProf/config.xml
+similarity index 62%
+copy from doc/examples/suse-11.2/suse-min-gnome/config.xml
+copy to tests/unit/data/xml/multiPkgMgrWithProf/config.xml
+index 32384ac..63f5465 100644
+--- a/doc/examples/suse-11.2/suse-min-gnome/config.xml
++++ b/tests/unit/data/xml/multiPkgMgrWithProf/config.xml
+@@ -1,50 +1,44 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+ 
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.2-gnome-demo&quot;&gt;
++&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-xml-test-config&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.2 Appliance using GNOME&lt;/specification&gt;
++		&lt;specification&gt;Package manager specified for specifc profile, test should return smart or zypper, depending on build profile&lt;/specification&gt;
+ 	&lt;/description&gt;
++	&lt;profiles&gt;
++		&lt;profile name=&quot;specPkgMgr&quot; description=&quot;test-profile&quot;/&gt;
++	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+-		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.2&quot; format=&quot;vmdk&quot;&gt;
++		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+ 			&lt;machine memory=&quot;1024&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+-		&lt;type image=&quot;iso&quot; boot=&quot;isoboot/suse-11.2&quot; flags=&quot;unified&quot;/&gt;
+ 		&lt;version&gt;1.0.1&lt;/version&gt;
+-		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+ 		&lt;rpm-force&gt;true&lt;/rpm-force&gt;
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 	&lt;/preferences&gt;
++	&lt;preferences profiles=&quot;specPkgMgr&quot;&gt;
++		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
++	&lt;/preferences&gt;
+ 	&lt;users group=&quot;users&quot;&gt;
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/home/tux&quot; name=&quot;tux&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;users group=&quot;root&quot;&gt;
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+-	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="opensuse://11.2/repo/oss/">opensuse://11.2/repo/oss/</A>&quot;/&gt;
++	&lt;repository type=&quot;rpm-dir&quot;&gt;
++		&lt;source path=&quot;/tmp&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+-		&lt;package name=&quot;bootsplash&quot;/&gt;
++	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;firefox&quot;/&gt;
+-		&lt;package name=&quot;gdm&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;gnome-applets&quot;/&gt;
+-		&lt;package name=&quot;ifplugd&quot;/&gt;
+-		&lt;package name=&quot;iputils&quot;/&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+-		&lt;package name=&quot;python&quot;/&gt;
+-		&lt;package name=&quot;perl&quot;/&gt;
+-		&lt;package name=&quot;preload&quot;/&gt;
+-		&lt;package name=&quot;tomboy&quot;/&gt;
++		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-server&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+diff --git a/tests/unit/data/kiwiLocator/config.xml b/tests/unit/data/xml/specPkgMgr/config.xml
+similarity index 66%
+copy from tests/unit/data/kiwiLocator/config.xml
+copy to tests/unit/data/xml/specPkgMgr/config.xml
+index be0b4b7..a9db267 100644
+--- a/tests/unit/data/kiwiLocator/config.xml
++++ b/tests/unit/data/xml/specPkgMgr/config.xml
+@@ -1,31 +1,32 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+ 
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.3-vm-guest&quot;&gt;
++&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-xml-test-config&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;Generic valid configuration file&lt;/specification&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.</A>&lt;/contact&gt;
++		&lt;specification&gt;Package manager specified, test should return zypper&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+ 		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+-			&lt;machine memory=&quot;512&quot;&gt;
++			&lt;machine memory=&quot;1024&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+-				&lt;vmnic interface=&quot;0&quot; driver=&quot;e1000&quot; mode=&quot;bridged&quot;/&gt;
+-				&lt;vmnic interface=&quot;1&quot; driver=&quot;e1000&quot; mode=&quot;bridged&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+-		&lt;version&gt;1.0.0&lt;/version&gt;
+-		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
++		&lt;version&gt;1.0.1&lt;/version&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+ 		&lt;rpm-force&gt;true&lt;/rpm-force&gt;
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
++		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 	&lt;/preferences&gt;
++	&lt;users group=&quot;users&quot;&gt;
++		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/home/tux&quot; name=&quot;tux&quot;/&gt;
++	&lt;/users&gt;
+ 	&lt;users group=&quot;root&quot;&gt;
+-		&lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
++		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+-	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
++	&lt;repository type=&quot;rpm-dir&quot;&gt;
++		&lt;source path=&quot;/tmp&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/lib/Test/kiwiCommandLine.pm b/tests/unit/lib/Test/kiwiCommandLine.pm
+index 1934c1c..a7ae0ca 100644
+--- a/tests/unit/lib/Test/kiwiCommandLine.pm
++++ b/tests/unit/lib/Test/kiwiCommandLine.pm
+@@ -82,6 +82,50 @@ sub test_cmdBuildTypeUsage {
+ }
+ 
+ #==========================================
++# test_cmdPackageMgrUsage
++#------------------------------------------
++sub test_cmdPackageMgrUsage {
++	# ...
++	# Test the storage of the package manager
++	# ---
++	my $this = shift;
++	my $kiwi = $this -&gt; {kiwi};
++	my $cmd = $this -&gt; __getCmdObj();
++	# Test improper call
++	my $res = $cmd -&gt; setPackageManager();
++	my $msg = $kiwi -&gt; getMessage();
++	my $expectedMsg = 'setPackageManager method called without specifying '
++	. 'package manager value.';
++	$this -&gt; assert_str_equals($expectedMsg, $msg);
++	my $msgT = $kiwi -&gt; getMessageType();
++	$this -&gt; assert_str_equals('error', $msgT);
++	my $state = $kiwi -&gt; getState();
++	$this -&gt; assert_str_equals('failed', $state);
++	$this -&gt; assert_null($res);
++	# Test unsupported package manager
++	$res = $cmd -&gt; setPackageManager('pablo');
++	$msg = $kiwi -&gt; getMessage();
++	$expectedMsg = 'Unsupported package manager specified: pablo';
++	$this -&gt; assert_str_equals($expectedMsg, $msg);
++	$msgT = $kiwi -&gt; getMessageType();
++	$this -&gt; assert_str_equals('error', $msgT);
++	$state = $kiwi -&gt; getState();
++	$this -&gt; assert_str_equals('failed', $state);
++	$this -&gt; assert_null($res);
++	# Make sure we can get our data back
++	$res = $cmd -&gt; setPackageManager('zypper');
++	$msg = $kiwi -&gt; getMessage();
++	$this -&gt; assert_str_equals('No messages set', $msg);
++	$msgT = $kiwi -&gt; getMessageType();
++	$this -&gt; assert_str_equals('none', $msgT);
++	$state = $kiwi -&gt; getState();
++	$this -&gt; assert_str_equals('No state set', $state);
++	$this -&gt; assert_not_null($res);
++	my $pckMgr = $cmd -&gt; getPackageManager();
++	$this -&gt; assert_str_equals('zypper', $pckMgr);
++}
++
++#==========================================
+ # test_cmdProfileUsage
+ #------------------------------------------
+ sub test_cmdProfileUsage {
+diff --git a/tests/unit/lib/Test/kiwiRuntimeChecker.pm b/tests/unit/lib/Test/kiwiRuntimeChecker.pm
+index 427aa0c..e1720f0 100644
+--- a/tests/unit/lib/Test/kiwiRuntimeChecker.pm
++++ b/tests/unit/lib/Test/kiwiRuntimeChecker.pm
+@@ -22,6 +22,7 @@ use Common::ktTestCase;
+ use base qw /Common::ktTestCase/;
+ 
+ use KIWICommandLine;
++use KIWILocator;
+ use KIWIRuntimeChecker;
+ use KIWIXML;
+ 
+@@ -193,7 +194,7 @@ sub test_fsToolCheckFsysImg {
+ 			# Test this condition last to get potential error messages
+ 			$this -&gt; assert_null($res);
+ 		} else {
+-			# Filesystem tools is present
++			# Filesystem tool is present
+ 			my $msg = $kiwi -&gt; getMessage();
+ 			$this -&gt; assert_str_equals('No messages set', $msg);
+ 			my $msgT = $kiwi -&gt; getMessageType();
+@@ -328,32 +329,32 @@ sub test_fsToolCheckSplitImg {
+ 	my $xml = $this -&gt; __getXMLObj($configPath);
+ 	my $checker = new KIWIRuntimeChecker($kiwi, $cmd, $xml);
+ 	my $res = $checker -&gt; createChecks();
+-	my $eMsg = $kiwi -&gt; getErrorMessage();
+-	if ($eMsg) {
++	my $locator = new KIWILocator($kiwi);
++	my $haveBtrfs = $locator -&gt; getExecPath('mkfs.btrfs');
++	if ($haveBtrfs) {
++		# Filesystem tool is present
++		my $msg = $kiwi -&gt; getMessage();
++		$this -&gt; assert_str_equals('No messages set', $msg);
++		my $msgT = $kiwi -&gt; getMessageType();
++		$this -&gt; assert_str_equals('none', $msgT);
++		my $state = $kiwi -&gt; getState();
++		$this -&gt; assert_str_equals('No state set', $state);
++		# Test this condition last to get potential error messages
++		$this -&gt; assert_not_null($res);
++	} else {
+ 		# File system tool is not present
+ 		my $logMsg = $kiwi -&gt; getLogInfoMessage();
+ 		my $expected = &quot;warning: mkfs.btrfs not found\n&quot;;
+ 		$this -&gt; assert_str_equals($expected, $logMsg);
++		my $eMsg = $kiwi -&gt; getErrorMessage();
+ 		$expected = 'Requested image creation with filesystem &quot;btrfs&quot;; '
+ 		. 'but tool to create the file system could not '
+ 		. 'be found.';
+ 		$this -&gt; assert_str_equals($expected, $eMsg);
+-		my $msgT = $kiwi -&gt; getMessageType();
+-		$this -&gt; assert_str_equals('error', $msgT);
+ 		my $state = $kiwi -&gt; getState();
+ 		$this -&gt; assert_str_equals('failed', $state);
+ 		# Test this condition last to get potential error messages
+ 		$this -&gt; assert_null($res);
+-	} else {
+-		# Filesystem tools is present
+-		my $msg = $kiwi -&gt; getMessage();
+-		$this -&gt; assert_str_equals('No messages set', $msg);
+-		my $msgT = $kiwi -&gt; getMessageType();
+-		$this -&gt; assert_str_equals('none', $msgT);
+-		my $state = $kiwi -&gt; getState();
+-		$this -&gt; assert_str_equals('No state set', $state);
+-		# Test this condition last to get potential error messages
+-		$this -&gt; assert_not_null($res);
+ 	}
+ }
+ 
+@@ -410,6 +411,84 @@ sub test_noBuildType {
+ }
+ 
+ #==========================================
++# test_packageManagerCheck
++#------------------------------------------
++sub test_packageManagerCheck {
++	# ...
++	# Test that the runtime check for package manager tool existence behaves
++	# properly.
++	# ---
++	my $this = shift;
++	my $kiwi = $this -&gt; {kiwi};
++	my $cmd = $this -&gt; __getCommandLineObj();
++	# Select manager least likely to be present we want this part of
++	# the test to simulate a failure condition
++	$cmd -&gt; setPackageManager('ensconce');
++	my $xml = $this -&gt; __getXMLObj( $this -&gt; {dataDir} );
++	$xml -&gt; setPackageManager('ensconce');
++	my $checker = new KIWIRuntimeChecker($kiwi, $cmd, $xml);
++	my $res = $checker -&gt; prepareChecks();
++	my $locator = new KIWILocator($kiwi);
++	my $haveEnsconce = $locator -&gt; getExecPath('ensconce');
++	if ($haveEnsconce) {
++		my $msg = $kiwi -&gt; getMessage();
++		$this -&gt; assert_str_equals('No messages set', $msg);
++		my $msgT = $kiwi -&gt; getMessageType();
++		$this -&gt; assert_str_equals('none', $msgT);
++		my $state = $kiwi -&gt; getState();
++		$this -&gt; assert_str_equals('No state set', $state);
++		$this -&gt; assert_not_null($res);
++		my $infoMsg = 'Found ensconce package manager, not hitting the '
++			. &quot;anticipated failure condition. This is NOT an error.\n&quot;;
++		print STDOUT $infoMsg;
++	} else {
++		my $logInf = $kiwi -&gt; getLogInfoMessage();
++		$this -&gt; assert_str_equals(&quot;warning: ensconce not found\n&quot;, $logInf);
++		my $errMsg = $kiwi -&gt; getErrorMessage();
++		my $expected = 'Executable for specified package manager, ensconce, '
++			. 'could not be found.';
++		$this -&gt; assert_str_equals($expected, $errMsg);
++		my $state = $kiwi -&gt; getState();
++		$this -&gt; assert_str_equals('failed', $state);
++		$this -&gt; assert_null($res);
++	}
++	# Test the most likely use case, zypper set as package manager in
++	# config.xml, this test should succeed
++	$cmd = $this -&gt; __getCommandLineObj();
++	$xml = $this -&gt; __getXMLObj( $this -&gt; {dataDir} );
++	$checker = new KIWIRuntimeChecker($kiwi, $cmd, $xml);
++	$res = $checker -&gt; prepareChecks();
++
++	$locator = new KIWILocator($kiwi);
++	my $haveZypper = $locator -&gt; getExecPath('zypper');
++	if ($haveZypper) {
++		my $msg = $kiwi -&gt; getMessage();
++		$this -&gt; assert_str_equals('No messages set', $msg);
++		my $msgT = $kiwi -&gt; getMessageType();
++		$this -&gt; assert_str_equals('none', $msgT);
++		my $state = $kiwi -&gt; getState();
++		$this -&gt; assert_str_equals('No state set', $state);
++		$this -&gt; assert_not_null($res);
++
++	} else {
++		my $logInf = $kiwi -&gt; getLogInfoMessage();
++		$this -&gt; assert_str_equals(&quot;warning: zypper not found\n&quot;, $logInf);
++		my $errMsg = $kiwi -&gt; getErrorMessage();
++		my $failExpect = 'Executable for specified package manager, zypper, '
++			. 'could not be found.';
++		$this -&gt; assert_str_equals($failExpect, $errMsg);
++		my $msgT = $kiwi -&gt; getMessageType();
++		$this -&gt; assert_str_equals('error', $msgT);
++		my $state = $kiwi -&gt; getState();
++		$this -&gt; assert_str_equals('failed', $state);
++		$this -&gt; assert_null($res);
++		my $infoMsg = 'Did not find zypper package manager, not hitting the '
++			. &quot;anticipated success condition. This is NOT an error.\n&quot;;
++		print STDOUT $infoMsg;
++	}
++}
++
++#==========================================
+ # test_useSingleBuildProfile
+ #------------------------------------------
+ sub test_useSingleBuildProfile {
+diff --git a/tests/unit/lib/Test/xml.pm b/tests/unit/lib/Test/xml.pm
+new file mode 100644
+index 0000000..d3b5c4d
+--- /dev/null
++++ b/tests/unit/lib/Test/xml.pm
+@@ -0,0 +1,167 @@
++#================
++# FILE          : xml.pm
++#----------------
++# PROJECT       : OpenSUSE Build-Service
++# COPYRIGHT     : (c) 2011 Novell Inc.
++#               :
++# AUTHOR        : Robert Schweikert &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&gt;
++#               :
++# BELONGS TO    : Operating System images
++#               :
++# DESCRIPTION   : Unit test implementation for the KIWIXMLValidator module.
++#               :
++# STATUS        : Development
++#----------------
++package Test::xml;
++
++use strict;
++use warnings;
++
++use Common::ktLog;
++use Common::ktTestCase;
++use base qw /Common::ktTestCase/;
++
++use KIWIXML;
++
++# All tests will need to be adjusted once KIWXML turns into a stateless
++# container and the ctor receives the config.xml file name as an argument.
++# At this point the test data location should also change.
++#
++# Complete unit testing of the XML object may not be possible until the
++# conversion to a stateless container is complete
++
++#==========================================
++# Constructor
++#------------------------------------------
++sub new {
++	# ...
++	# Construct new test case
++	# ---
++	my $this = shift -&gt; SUPER::new(@_);
++	$this -&gt; {dataDir} = $this -&gt; getDataDir() . '/xml/';
++	$this -&gt; {kiwi} = new  Common::ktLog();
++
++	return $this;
++}
++
++#==========================================
++# test_packageManagerInfoHasConfigValue
++#------------------------------------------
++sub test_packageManagerInfoHasConfigValue {
++	# ...
++	# Verify that the default package manager is provided if no package manager
++	# is set in the configuration
++	# ---
++	my $this = shift;
++	my $kiwi = $this -&gt; {kiwi};
++	my $confDir = $this-&gt;{dataDir} . 'specPkgMgr';
++	my $xml = new KIWIXML($this -&gt; {kiwi}, $confDir, undef, undef);
++	my $pkgMgr = $xml -&gt; getPackageManager();
++	$this -&gt; assert_str_equals('zypper', $pkgMgr);
++	# Call set without argument, expect error
++	my $res = $xml -&gt; setPackageManager();
++	my $msg = $kiwi -&gt; getMessage();
++	my $expectedMsg = 'setPackageManager method called without specifying '
++		. 'package manager value.';
++	$this -&gt; assert_str_equals($expectedMsg, $msg);
++	my $msgT = $kiwi -&gt; getMessageType();
++	$this -&gt; assert_str_equals('error', $msgT);
++	my $state = $kiwi -&gt; getState();
++	$this -&gt; assert_str_equals('failed', $state);
++	# Test this condition last to get potential error messages
++	$this -&gt; assert_null($res);
++	# Set the package manager to be yum
++	$res = $xml -&gt; setPackageManager('smart');
++	$msg = $kiwi -&gt; getMessage();
++	$this -&gt; assert_str_equals('No messages set', $msg);
++	$msgT = $kiwi -&gt; getMessageType();
++	$this -&gt; assert_str_equals('none', $msgT);
++	$state = $kiwi -&gt; getState();
++	$this -&gt; assert_str_equals('No state set', $state);
++	# Test this condition last to get potential error messages
++	$this -&gt; assert_not_null($res);
++	my $newPkgMgr = $xml -&gt; getPackageManager();
++	$this -&gt; assert_str_equals('smart', $newPkgMgr);
++}
++
++#==========================================
++# test_packageManagerInfoHasProfs
++#------------------------------------------
++sub test_packageManagerInfoHasProfs {
++	# ...
++	# Verify that the default package manager is provided if no package manager
++	# is set in the configuration
++	# ---
++	my $this = shift;
++	my $kiwi = $this -&gt; {kiwi};
++	my $confDir = $this-&gt;{dataDir} . 'multiPkgMgrWithProf';
++	my $xml = new KIWIXML($this -&gt; {kiwi}, $confDir, undef, undef);
++	my $pkgMgr = $xml -&gt; getPackageManager();
++	$this -&gt; assert_str_equals('zypper', $pkgMgr);
++	# Set the package manager to be yum
++	my $res = $xml -&gt; setPackageManager('yum');
++	my $msg = $kiwi -&gt; getMessage();
++	$this -&gt; assert_str_equals('No messages set', $msg);
++	my $msgT = $kiwi -&gt; getMessageType();
++	$this -&gt; assert_str_equals('none', $msgT);
++	my $state = $kiwi -&gt; getState();
++	$this -&gt; assert_str_equals('No state set', $state);
++	# Test this condition last to get potential error messages
++	$this -&gt; assert_not_null($res);
++	my $newPkgMgr = $xml -&gt; getPackageManager();
++	$this -&gt; assert_str_equals('yum', $newPkgMgr);
++	# Use the profile that has a package manager specified
++	my @profiles = ('specPkgMgr');
++	$xml = new KIWIXML($this -&gt; {kiwi}, $confDir, undef, \@profiles);
++	$pkgMgr = $xml -&gt; getPackageManager();
++	$this -&gt; assert_str_equals('zypper', $pkgMgr);
++	$msg = $kiwi -&gt; getMessage();
++	$this -&gt; assert_str_equals('Using profile(s): specPkgMgr', $msg);
++	$msgT = $kiwi -&gt; getMessageType();
++	$this -&gt; assert_str_equals('info', $msgT);
++	$state = $kiwi -&gt; getState();
++	$this -&gt; assert_str_equals('completed', $state);
++	# Set the package manager to be yum
++	$res = $xml -&gt; setPackageManager('yum');
++	$msg = $kiwi -&gt; getMessage();
++	$this -&gt; assert_str_equals('No messages set', $msg);
++	$msgT = $kiwi -&gt; getMessageType();
++	$this -&gt; assert_str_equals('none', $msgT);
++	$state = $kiwi -&gt; getState();
++	$this -&gt; assert_str_equals('No state set', $state);
++	# Test this condition last to get potential error messages
++	$this -&gt; assert_not_null($res);
++	$newPkgMgr = $xml -&gt; getPackageManager();
++	$this -&gt; assert_str_equals('yum', $newPkgMgr);
++}
++
++#==========================================
++# test_packageManagerInfoNoConfigValue
++#------------------------------------------
++sub test_packageManagerInfoNoConfigValue {
++	# ...
++	# Verify that the default package manager is provided if no package manager
++	# is set in the configuration
++	# ---
++	my $this = shift;
++	my $kiwi = $this -&gt; {kiwi};
++	my $confDir = $this-&gt;{dataDir} . 'defPkgMgr';
++	my $xml = new KIWIXML($this -&gt; {kiwi}, $confDir, undef, undef);
++	my $pkgMgr = $xml -&gt; getPackageManager();
++	$this -&gt; assert_str_equals('zypper', $pkgMgr);
++	# Set the package manager to be yum
++	my $res = $xml -&gt; setPackageManager('yum');
++	my $msg = $kiwi -&gt; getMessage();
++	$this -&gt; assert_str_equals('No messages set', $msg);
++	my $msgT = $kiwi -&gt; getMessageType();
++	$this -&gt; assert_str_equals('none', $msgT);
++	my $state = $kiwi -&gt; getState();
++	$this -&gt; assert_str_equals('No state set', $state);
++	# Test this condition last to get potential error messages
++	$this -&gt; assert_not_null($res);
++	my $newPkgMgr = $xml -&gt; getPackageManager();
++	$this -&gt; assert_str_equals('yum', $newPkgMgr);
++}
++
++
++1;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003227.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master, updated. 885d844be6902cdd5ee4fd610722fdafda054f4a
+</A></li>
+	<LI>Next message: <A HREF="003221.html">[Kiwi-devel] doc update
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3220">[ date ]</a>
+              <a href="thread.html#3220">[ thread ]</a>
+              <a href="subject.html#3220">[ subject ]</a>
+              <a href="author.html#3220">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

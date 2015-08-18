@@ -1,0 +1,256 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3d53f76a6f8ef09d0b75d71ad9111156f6ac443f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%203d53f76a6f8ef09d0b75d71ad9111156f6ac443f&In-Reply-To=%3C200910021328.n92DS9i8019173%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001475.html">
+   <LINK REL="Next"  HREF="001477.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3d53f76a6f8ef09d0b75d71ad9111156f6ac443f</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%203d53f76a6f8ef09d0b75d71ad9111156f6ac443f&In-Reply-To=%3C200910021328.n92DS9i8019173%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3d53f76a6f8ef09d0b75d71ad9111156f6ac443f">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Oct  2 15:28:09 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001475.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3e855a42cf907fcf77d367b59ad519f8290df3a0
+</A></li>
+        <LI>Next message: <A HREF="001477.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f0aff2e56eac639dd1f113370a1b2d0178477e46
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1476">[ date ]</a>
+              <a href="thread.html#1476">[ thread ]</a>
+              <a href="subject.html#1476">[ subject ]</a>
+              <a href="author.html#1476">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  3d53f76a6f8ef09d0b75d71ad9111156f6ac443f (commit)
+      from  3e855a42cf907fcf77d367b59ad519f8290df3a0 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 3d53f76a6f8ef09d0b75d71ad9111156f6ac443f
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Oct 2 15:27:58 2009 +0200
+
+    - fixed bool value evaluation in KIWIXML.pm::get*()
+    - added suseImportBuildKey() helper function used in JeOS
+      templates (bnc #521970)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index f7d43a3..58818d6 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -216,6 +216,32 @@ function suseCloneRunlevel {
+ }
+ 
+ #======================================
++# suseImportBuildKey
++#--------------------------------------
++function suseImportBuildKey {
++	# /.../
++	# Add missing gpg keys to rpm database
++	# ----
++	local KEY
++	local TDIR=$(mktemp -d)
++	if [ ! -d &quot;$TDIR&quot; ]; then
++		echo &quot;suseImportBuildKey: Failed to create temp dir&quot;
++		return
++	fi
++	pushd &quot;$TDIR&quot;
++	/usr/lib/rpm/gnupg/dumpsigs /usr/lib/rpm/gnupg/suse-build-key.gpg
++	ls gpg-pubkey-*.asc | while read KFN; do
++		KEY=$(basename &quot;$KFN&quot; .asc)
++		rpm -q &quot;$KEY&quot; &gt;/dev/null
++		[ $? -eq 0 ] &amp;&amp; continue
++		echo &quot;Importing $KEY to rpm database&quot;
++		rpm --import &quot;$KFN&quot;
++	done
++	popd
++	rm -rf &quot;$TDIR&quot;
++}
++
++#======================================
+ # baseSetupOEMPartition
+ #--------------------------------------
+ function baseSetupOEMPartition {
+@@ -388,21 +414,20 @@ function baseStripMans {
+ function baseStripDocs {
+ 	# /.../
+ 	# remove all documentation, except 
+-	# one given as parametr
+-	#
+-	# params - name of package of which 
+-	# doc to keep
++	# copying license copyright
+ 	# ----
+-	local keepDocs=&quot;$@&quot;
++	local docfiles
+ 	local directories=&quot;
+ 		/opt/gnome/share/doc/packages
+ 		/usr/share/doc/packages
+ 		/opt/kde3/share/doc/packages
+ 	&quot;
+ 	for dir in $directories; do
+-		find $dir -mindepth 1 -maxdepth 1 -type d 2&gt;/dev/null |\
+-			baseStripAndKeep &quot;${keepDocs}&quot;
++		docfiles=$(find $dir -type f |grep -iv &quot;copying\|license\|copyright&quot;)
++		rm -f $docfiles
+ 	done
++	rm -rf /usr/share/info
++	rm -rf /usr/share/man
+ }
+ #======================================
+ # baseStripLocales
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index dce8e72..45df6da 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -1276,7 +1276,7 @@ sub getOEMKiwiInitrd {
+ 	my $this = shift;
+ 	my $node = $this -&gt; getPreferencesNodeByTagName (&quot;oem-kiwi-initrd&quot;);
+ 	my $kboot= $node -&gt; getElementsByTagName (&quot;oem-kiwi-initrd&quot;);
+-	if ((! defined $kboot) || (&quot;$kboot&quot; eq &quot;&quot;)) {
++	if ((! defined $kboot) || (&quot;$kboot&quot; eq &quot;&quot;) || (&quot;$kboot&quot; eq &quot;false&quot;)) {
+ 		return undef;
+ 	}
+ 	return $kboot;
+@@ -1292,7 +1292,7 @@ sub getOEMSAPInstall {
+ 	my $this = shift;
+ 	my $node = $this -&gt; getPreferencesNodeByTagName (&quot;oem-sap-install&quot;);
+ 	my $sap  = $node -&gt; getElementsByTagName (&quot;oem-sap-install&quot;);
+-	if ((! defined $sap) || (&quot;$sap&quot; eq &quot;&quot;)) {
++	if ((! defined $sap) || (&quot;$sap&quot; eq &quot;&quot;) || (&quot;$sap&quot; eq &quot;false&quot;)) {
+ 		return undef;
+ 	}
+ 	return $sap;
+@@ -1308,7 +1308,7 @@ sub getOEMReboot {
+ 	my $this = shift;
+ 	my $node = $this -&gt; getPreferencesNodeByTagName (&quot;oem-reboot&quot;);
+ 	my $boot = $node -&gt; getElementsByTagName (&quot;oem-reboot&quot;);
+-	if ((! defined $boot) || (&quot;$boot&quot; eq &quot;&quot;)) {
++	if ((! defined $boot) || (&quot;$boot&quot; eq &quot;&quot;) || (&quot;$boot&quot; eq &quot;false&quot;)) {
+ 		return undef;
+ 	}
+ 	return $boot;
+@@ -1324,7 +1324,7 @@ sub getOEMSwap {
+ 	my $this = shift;
+ 	my $node = $this -&gt; getPreferencesNodeByTagName (&quot;oem-swap&quot;);
+ 	my $swap = $node -&gt; getElementsByTagName (&quot;oem-swap&quot;);
+-	if ((! defined $swap) || (&quot;$swap&quot; eq &quot;&quot;)) {
++	if ((! defined $swap) || (&quot;$swap&quot; eq &quot;&quot;) || (&quot;$swap&quot; eq &quot;false&quot;)) {
+ 		return undef;
+ 	}
+ 	return $swap;
+@@ -1340,7 +1340,7 @@ sub getOEMRecovery {
+ 	my $this = shift;
+ 	my $node = $this -&gt; getPreferencesNodeByTagName (&quot;oem-recovery&quot;);
+ 	my $reco = $node -&gt; getElementsByTagName (&quot;oem-recovery&quot;);
+-	if ((! defined $reco) || (&quot;$reco&quot; eq &quot;&quot;)) {
++	if ((! defined $reco) || (&quot;$reco&quot; eq &quot;&quot;) || (&quot;$reco&quot; eq &quot;false&quot;)) {
+ 		return undef;
+ 	}
+ 	return $reco;
+@@ -1372,7 +1372,7 @@ sub getOEMHome {
+ 	my $this = shift;
+ 	my $node = $this -&gt; getPreferencesNodeByTagName (&quot;oem-home&quot;);
+ 	my $home = $node -&gt; getElementsByTagName (&quot;oem-home&quot;);
+-	if ((! defined $home) || (&quot;$home&quot; eq &quot;&quot;)) {
++	if ((! defined $home) || (&quot;$home&quot; eq &quot;&quot;) || (&quot;$home&quot; eq &quot;false&quot;)) {
+ 		return undef;
+ 	}
+ 	return $home;
+@@ -1421,7 +1421,7 @@ sub getRPMCheckSignatures {
+ 	my $this = shift;
+ 	my $node = $this -&gt; getPreferencesNodeByTagName (&quot;rpm-check-signatures&quot;);
+ 	my $sigs = $node -&gt; getElementsByTagName (&quot;rpm-check-signatures&quot;);
+-	if ((! defined $sigs) || (&quot;$sigs&quot; eq &quot;false&quot;)) {
++	if ((! defined $sigs) || (&quot;$sigs&quot; eq &quot;&quot;) || (&quot;$sigs&quot; eq &quot;false&quot;)) {
+ 		return undef;
+ 	}
+ 	return $sigs;
+@@ -1438,7 +1438,7 @@ sub getRPMExcludeDocs {
+ 	my $this = shift;
+ 	my $node = $this-&gt; getPreferencesNodeByTagName (&quot;rpm-excludedocs&quot;);
+ 	my $xdoc = $node -&gt; getElementsByTagName (&quot;rpm-excludedocs&quot;);
+-	if ((! defined $xdoc) || (&quot;$xdoc&quot; eq &quot;false&quot;)) {
++	if ((! defined $xdoc) || (&quot;$xdoc&quot; eq &quot;&quot;) || (&quot;$xdoc&quot; eq &quot;false&quot;)) {
+ 		return undef;
+ 	}
+ 	return $xdoc;
+@@ -1455,7 +1455,7 @@ sub getRPMForce {
+ 	my $this = shift;
+ 	my $node = $this -&gt; getPreferencesNodeByTagName (&quot;rpm-force&quot;);
+ 	my $frpm = $node -&gt; getElementsByTagName (&quot;rpm-force&quot;);
+-	if ((! defined $frpm) || (&quot;$frpm&quot; eq &quot;&quot;)) {
++	if ((! defined $frpm) || (&quot;$frpm&quot; eq &quot;&quot;) || (&quot;$frpm&quot; eq &quot;false&quot;)) {
+ 		return undef;
+ 	}
+ 	return $frpm;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index d289f8d..7a42099 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Fri Oct  2 14:06:23 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed bool value evaluation in KIWIXML.pm::get*()
++- added suseImportBuildKey() helper function used in JeOS
++  templates (bnc #521970)
++
++-------------------------------------------------------------------
+ Thu Oct  1 11:24:52 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - added support for &lt;oem-recoveryID&gt;, default ID=83 (bnc #543118)
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001475.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3e855a42cf907fcf77d367b59ad519f8290df3a0
+</A></li>
+	<LI>Next message: <A HREF="001477.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f0aff2e56eac639dd1f113370a1b2d0178477e46
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1476">[ date ]</a>
+              <a href="thread.html#1476">[ thread ]</a>
+              <a href="subject.html#1476">[ subject ]</a>
+              <a href="author.html#1476">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

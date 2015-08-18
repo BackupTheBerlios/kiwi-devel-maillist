@@ -1,0 +1,446 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1579 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1579%20-%20kiwi-head/modules&In-Reply-To=%3C200809231624.m8NGO8hT031149%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000675.html">
+   <LINK REL="Next"  HREF="000677.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1579 - kiwi-head/modules</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1579%20-%20kiwi-head/modules&In-Reply-To=%3C200809231624.m8NGO8hT031149%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1579 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Tue Sep 23 18:24:08 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000675.html">[Kiwi-devel] r1578 - in kiwi-head: . rpm	system/boot/ix86/isoboot/suse-10.3	system/boot/ix86/isoboot/suse-11.0	system/boot/ix86/isoboot/suse-11.1	system/boot/ix86/netboot/suse-10.3	system/boot/ix86/netboot/suse-11.0	system/boot/ix86/netboot/suse-11.1	system/boot/ix86/oemboot/suse-10.3	system/boot/ix86/oemboot/suse-11.0	system/boot/ix86/oemboot/suse-11.1	system/boot/ix86/usbboot/suse-10.3	system/boot/ix86/usbboot/suse-11.0	system/boot/ix86/usbboot/suse-11.1	system/boot/ix86/vmxboot/suse-10.3	system/boot/ix86/vmxboot/suse-11.0	system/boot/ix86/vmxboot/suse-11.1 system/boot/ppc/netboot/suse-11.0
+</A></li>
+        <LI>Next message: <A HREF="000677.html">[Kiwi-devel] r1580 - kiwi-head/modules/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#676">[ date ]</a>
+              <a href="thread.html#676">[ thread ]</a>
+              <a href="subject.html#676">[ subject ]</a>
+              <a href="author.html#676">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2008-09-23 18:24:07 +0200 (Tue, 23 Sep 2008)
+New Revision: 1579
+
+Modified:
+   kiwi-head/modules/KIWICollect.pm
+Log:
+- fixed several directory issues
+- fixed some ugly quick hacks
+- Init() loads plugins now
+- Init failures are checked
+- <A HREF="obs://">obs://</A> repo specifier is expanded now
+- use absolute path for basedir now
+
+
+Modified: kiwi-head/modules/KIWICollect.pm
+===================================================================
+--- kiwi-head/modules/KIWICollect.pm	2008-09-23 14:26:10 UTC (rev 1578)
++++ kiwi-head/modules/KIWICollect.pm	2008-09-23 16:24:07 UTC (rev 1579)
+@@ -37,6 +37,8 @@
+ 
+ use File::Find;
+ use File::Path;
++use Cwd 'abs_path';
++use IO::Compress::Gzip qw(gzip $GzipError); # temporarily: as soon as plugins extracted, scratch here
+ 
+ # remove if not longer necessary:
+ use Data::Dumper;
+@@ -110,6 +112,9 @@
+     return undef;
+   }
+ 
++  # work with absolute paths from here.
++  $this-&gt;{m_basedir} = abs_path($this-&gt;{m_basedir});
++
+   # create second logger object to log only the data relevant
+   # for repository creation:
+   $this-&gt;{m_logger} = new KIWILog(&quot;tiny&quot;);
+@@ -124,7 +129,6 @@
+   # create the product variables administrator object.
+   # This must be incubated with the respective data in the Init() method
+   $this-&gt;{m_proddata} = new KIWIProductData($this);
+-  #$this-&gt;Init(); # let the caller do this
+ 
+   return $this;
+ }
+@@ -202,6 +206,28 @@
+ 
+ 
+ 
++sub basedir
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  return $this-&gt;{m_basedir};
++}
++
++
++
++sub basesubdirs
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  return $this-&gt;{m_basesubdir};
++}
++
++
++
+ #=================
+ # other methods:
+ #-----------------
+@@ -217,8 +243,6 @@
+ # - create LWP client object
+ # - calls &quot;normaliseDirname for each repo's sourcedirs
+ #   (stores the result in repo-&gt;[name]-&gt;'basedir')
+-# - creates the respective basedir beneath the current dir
+-#   [FIXME: use global base here to avoid problems]
+ # - creates path list for each repo
+ #   (stored in repos-&gt;[name]-&gt;'srcdirs')
+ # - initialises failed packs lists (empty)
+@@ -228,10 +252,6 @@
+   my $this = shift;
+   my $debug = shift || 0;
+ 
+-  if($this-&gt;{m_basedir} !~ m{.*/$}) {
+-    $this-&gt;{m_basedir} =~ s{(.*)$}{$1/};
+-  }
+-
+   # retrieve data from xml file:
+   ## packages list (regular packages)
+   %{$this-&gt;{m_packages}}      = $this-&gt;{m_xml}-&gt;getInstSourcePackageList();
+@@ -315,23 +335,25 @@
+   my $dirext = undef;
+   if($mult eq &quot;no&quot;) {
+     if(scalar(@media) == 1) { 
+-      $dirext = 1;#&quot;$this-&gt;{m_united}/$mediumname&quot;;
++      $dirext = 1;
+     }
+     else {
+       # this means the config says multiple_media=no BUT defines a &quot;medium=&lt;number&gt;&quot; somewhere!
+-      $this-&gt;{m_logger}-&gt;warning(&quot;[E] You want a single medium distro but specified medium=... for some packages\n\tIgnoring the MULTIPLE_MEDIA=no flag!&quot;);
++      $this-&gt;{m_logger}-&gt;warning(&quot;[W] You want a single medium distro but specified medium=... for some packages\n\tIgnoring the MULTIPLE_MEDIA=no flag!&quot;);
+     }
+   }
+   my $descrdir = $this-&gt;{m_proddata}-&gt;getInfo(&quot;DESCRDIR&quot;);
+   if(not defined($descrdir) or $descrdir =~ m{notset}i) {
+     $this-&gt;{m_logger}-&gt;error(&quot;Variable DESCRDIR missing!&quot;);
+-    die;
++    return undef;
+   }
+   my $datadir = $this-&gt;{m_proddata}-&gt;getInfo(&quot;DATADIR&quot;);
+   if(not defined($datadir) or $datadir =~ m{notset}i) {
+     $this-&gt;{m_logger}-&gt;error(&quot;Variable DATADIR missing!&quot;);
+-    die;
++    return undef;
+   }
++  ### FIXME: remove later checks on those vars
++
+   $descrdir =~ s{^/(.*)/$}{$1};
+   my @descrdirs = split('/', $descrdir);
+   foreach my $n(@media) {
+@@ -339,11 +361,13 @@
+     $dirbase .= &quot;$n&quot; if not defined($dirext);
+     $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase&quot;} = 1;
+     $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/$datadir&quot;} = 1;
+-    ## HACK ALERT !!
+-    $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/$datadir/$descrdirs[1]&quot;} = 1;
+-    $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/$datadir/$descrdirs[1]/$descrdirs[2]&quot;} = 1;
+-    $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/script&quot;} = 1;
+-    $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/temp&quot;} = 1;
++    my $curdir = &quot;$dirbase/&quot;;
++    foreach my $part(@descrdirs) {
++      $curdir .= &quot;$part/&quot;;
++      $this-&gt;{m_dirlist}-&gt;{&quot;$curdir&quot;} = 1;
++    }
++    #$this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/script&quot;} = 1; # who needs that?
++    #$this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/temp&quot;} = 1;	# who needs that?
+     $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/media.$n&quot;} = 1;
+     $this-&gt;{m_basesubdir}-&gt;{$n} = &quot;$dirbase&quot;;
+     $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_basesubdir}-&gt;{$n}&quot;} = 1;
+@@ -363,6 +387,18 @@
+ 
+   $this-&gt;{m_browser} = new LWP::UserAgent;
+ 
++  ## create the metadata handler and load (+verify) all available plugins:
++  # the required variables are MEDIUM_NAME, PLUGIN_DIR, INI_DIR
++  # should be set by now.
++  $this-&gt;{m_metacreator} = new KIWIRepoMetaHandler($this);
++  $this-&gt;{m_metacreator}-&gt;baseurl($this-&gt;{m_united});
++  $this-&gt;{m_metacreator}-&gt;mediaName($this-&gt;{m_proddata}-&gt;getVar('MEDIUM_NAME'));
++  $this-&gt;{m_logger}-&gt;info(&quot;[I] Loading plugins from &lt;&quot;.$this-&gt;{m_proddata}-&gt;getOpt(&quot;PLUGIN_DIR&quot;).&quot;&gt;&quot;);
++  my $num_loaded = $this-&gt;{m_metacreator}-&gt;loadPlugins();
++  $this-&gt;{m_logger}-&gt;info(&quot;[I] Loaded $num_loaded plugins successfully.\n&quot;);
++
++  ### object is set up so far; next step is the repository scan analysis (TODO: create an own method for that bit)
++
+   ## second level initialisation done, now start work:
+   if($this-&gt;{m_debug}) {
+     $this-&gt;{m_logger}-&gt;info(&quot;&quot;);
+@@ -372,11 +408,12 @@
+ 
+   # create local directories as download targets. Normalising special chars (slash, dot, ...) by replacing with second param.
+   foreach my $r(keys(%{$this-&gt;{m_repos}})) {
+-    if($this-&gt;{m_repos}-&gt;{$r}-&gt;{'source'} =~ m{^opensuse:.*}) {
+-      $this-&gt;{m_logger}-&gt;info(&quot;[I] [Init] resolving <A HREF="opensuse://">opensuse://</A> URL $this-&gt;{m_repos}-&gt;{$r}-&gt;{'source'}...&quot;) if $this-&gt;{m_debug};
++    #if($this-&gt;{m_repos}-&gt;{$r}-&gt;{'source'} =~ m{^opensuse:.*}) {
++      $this-&gt;{m_logger}-&gt;info(&quot;[I] [Init] resolving URL $this-&gt;{m_repos}-&gt;{$r}-&gt;{'source'}...&quot;) if $this-&gt;{m_debug};
+       $this-&gt;{m_repos}-&gt;{$r}-&gt;{'source'} = $this-&gt;{m_urlparser}-&gt;normalizePath($this-&gt;{m_repos}-&gt;{$r}-&gt;{'source'});
+-    }
+-    $this-&gt;{m_repos}-&gt;{$r}-&gt;{'basedir'} = $this-&gt;{m_basedir}.$this-&gt;{m_util}-&gt;normaliseDirname($this-&gt;{m_repos}-&gt;{$r}-&gt;{'source'}, '-');
++      $this-&gt;{m_logger}-&gt;info(&quot;[I] [Init] resolved URL: $this-&gt;{m_repos}-&gt;{$r}-&gt;{'source'}&quot;) if $this-&gt;{m_debug};
++    #}
++    $this-&gt;{m_repos}-&gt;{$r}-&gt;{'basedir'} = $this-&gt;{m_basedir}.&quot;/&quot;.$this-&gt;{m_util}-&gt;normaliseDirname($this-&gt;{m_repos}-&gt;{$r}-&gt;{'source'}, '-');
+ 
+     $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_repos}-&gt;{$r}-&gt;{'basedir'}&quot;} = 1;
+ 
+@@ -408,8 +445,6 @@
+       $this-&gt;{m_repos}-&gt;{$r}-&gt;{'srcdirs'} = undef;
+     }
+   }
+-  $this-&gt;{m_metacreator} = new KIWIRepoMetaHandler($this);
+-  $this-&gt;{m_metacreator}-&gt;baseurl($this-&gt;{m_united});
+ }
+ # /Init
+ 
+@@ -1535,43 +1570,36 @@
+ {
+   my $this = shift;
+ 
++  my %plugins = $this-&gt;{m_metacreator}-&gt;getPluginList(); # retrieve a complete list of all loaded plugins
+ 
+-  $this-&gt;{m_metacreator}-&gt;loadPlugins(&quot;/usr/share/kiwi/modules&quot;);
+-  $this-&gt;{m_metacreator}-&gt;mediaName($this-&gt;{m_proddata}-&gt;getVar('MEDIUM_NAME'));
+-  # testhack: set the plugin ready:
+-  my $p = $this-&gt;{m_metacreator}-&gt;getPlugin(1);
+-  if(defined($p)) {
+-    $p-&gt;ready(1);
+-    $this-&gt;{m_metacreator}-&gt;createMetadata();
++  # create required directories if necessary:
++  foreach my $i(keys(%plugins)) {
++    my $p = $plugins{$i};
++    $this-&gt;{m_logger}-&gt;info(&quot;[I] Processing plugin &quot;.$p-&gt;name().&quot;\n&quot;);
++    my @requireddirs = $p-&gt;requiredDirs();
++    # this may be a list and each entry may look like &quot;/foo/bar/baz/&quot; in the worst case.
++    foreach my $dir(@requireddirs) {
++      $dir =~ s{^/(.*)/$}{$1}; # just to be on the safe side: split leading and trailing slashes
++      my @sublist = split('/', $dir);
++      my $curdir = $this-&gt;{m_basesubdir}-&gt;{1};
++      foreach my $part_dir(@sublist) {
++	$curdir .= &quot;/$part_dir&quot;;
++	$this-&gt;{m_dirlist}-&gt;{&quot;$curdir&quot;} = 1;
++      }
++    }
+   }
+-  else {
+-    $this-&gt;{m_logger}-&gt;error(&quot;Metadata plugin not avalable&quot;);
+-  }
++  # that should be all, bit by bit and in order ;)
++  $this-&gt;createDirectoryStructure();
++  #$this-&gt;{m_logger}-&gt;info(&quot;[I] Enabling all plugins...\n&quot;);
++  #$this-&gt;{m_metacreator}-&gt;enableAllPlugins();
+ 
++  $this-&gt;{m_logger}-&gt;info(&quot;[I] Executing all plugins...\n&quot;);
++  $this-&gt;{m_metacreator}-&gt;createMetadata();
++  # creates the patters file. Rest will follow later
+ 
+-  ## step 2: create_package_descr
+-  #==============================
+-  my @paths = values(%{$this-&gt;{m_basesubdir}});
+-  @paths = reverse map { $_.&quot;/&quot;.$this-&gt;{m_proddata}-&gt;getInfo(&quot;DATADIR&quot;) =&gt; &quot;-d&quot; if $_ !~ m{.*0}} reverse @paths;
+-  my $pathlist = join(' ', @paths);
++### ALTLASTEN ###
++### TODO more plugins
+ 
+-  $this-&gt;{m_logger}-&gt;info(&quot;[I] Calling create_package_descr for directories @paths:&quot;);
+-  if(! (-f &quot;/usr/bin/create_package_descr&quot; or -x &quot;/usr/bin/create_package_descr&quot;)) {
+-    $this-&gt;{m_logger}-&gt;warning(&quot;[W] [createMetadata] excutable `/usr/bin/create_package_descr` not found. Maybe package `inst-source-utils` is not installed?&quot;);
+-    return;
+-  }
+-
+-  ## TODO make the path to pdb stuff available through hook!
+-  my $data = qx(cd &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/suse&quot; &amp;&amp; /usr/bin/create_package_descr -p /mounts/work/cd/data/pdb/stable $pathlist -P -Z -C -K -M 3 -l german -l english -l french -l czech -l spanish -l hungarian);
+-  my $status = $? &gt;&gt; 8;
+-  
+-  # just to keep it in sync with mach_cd
+-  my $returndir = $ENV{'PWD'};
+-  chdir &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/&quot;.$this-&gt;{m_proddata}-&gt;getInfo(&quot;DESCRDIR&quot;);
+-  symlink &quot;packages.cs&quot;, &quot;packages.sk&quot;;
+-  chdir $returndir;
+-
+-
+   ## step 3: packages2eula:
+   $this-&gt;{m_logger}-&gt;info(&quot;[I] Calling packages2eula:&quot;);
+   my $p2eula = &quot;/usr/bin/packages2eula.pl&quot;;
+@@ -1579,8 +1607,12 @@
+     $this-&gt;{m_logger}-&gt;warning(&quot;[W] [createMetadata] excutable `$p2eula` not found. Maybe package `inst-source-utils` is not installed?&quot;);
+     return;
+   }
+-  if(-f &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt&quot; and -f &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/packages.en&quot;) {
+-    my $data = qx($p2eula -i &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt&quot; -p $this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/packages.en -o &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt.new&quot;);
++  my $pfilename = &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/packages.en&quot;;
++  if(not -f $pfilename) {
++    $pfilename .= &quot;.gz&quot;;
++  }
++  if(-f &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt&quot; and -f $pfilename) {
++    my $data = qx($p2eula -i &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt&quot; -p $pfilename -o &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt.new&quot;);
+     if(-f &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt.new&quot;) {
+       link &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt.new&quot;, &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt&quot;;
+       # cleanup the old file
+@@ -1605,7 +1637,7 @@
+   close(CONT);
+ 
+ 
+-  ## step 4b FIXME: openSUSE-release.prod file
++  ## step 4b FIXME: openSUSE-release.prod file -&gt; PLUGIN!
+   ## 5minuteHACK of the day
+   ### discussed with Klaus: this will come from an rpm in the future
+   $this-&gt;{m_logger}-&gt;info(&quot;[I] Creating openSUSE-release.prod file:&quot;);
+@@ -1680,6 +1712,7 @@
+ 
+   $this-&gt;createBootPackageLinks();
+ 
++
+   ## step 7: SHA1SUMS
+   $this-&gt;{m_logger}-&gt;info(&quot;[I] Calling create_sha1sums:&quot;);
+   my $csha1sum = &quot;/usr/bin/create_sha1sums&quot;;
+@@ -1713,8 +1746,11 @@
+     $this-&gt;{m_logger}-&gt;warning(&quot;[W] [createMetadata] excutable `$md5sums` not found. Maybe package `inst-source-utils` is not installed?&quot;);
+     return;
+   }
+-  my @data = qx(cd $this-&gt;{m_basesubdir}-&gt;{'1'} &amp;&amp; $md5sums $md5opt suse);
+-  $this-&gt;{m_logger}-&gt;info(&quot;[I] [createMetadata] $csha1sum output:\n&quot;);
++  my $cmd = &quot;$md5sums $md5opt &quot;;
++  $cmd .= $this-&gt;{m_basesubdir}-&gt;{1}.&quot;/&quot;.$this-&gt;{m_proddata}-&gt;getInfo(&quot;DATADIR&quot;);
++  my @data = qx($cmd);
++  undef $cmd;
++  $this-&gt;{m_logger}-&gt;info(&quot;[I] [createMetadata] $md5sums output:\n&quot;);
+   foreach(@data) {
+     chomp $_;
+     $this-&gt;{m_logger}-&gt;info(&quot;\t$_\n&quot;);
+@@ -1729,7 +1765,10 @@
+     $this-&gt;{m_logger}-&gt;warning(&quot;[W] [createMetadata] excutable `$listings` not found. Maybe package `inst-source-utils` is not installed?&quot;);
+     return;
+   }
+-  @data = qx(cd $this-&gt;{m_basesubdir}-&gt;{'1'} &amp;&amp; $listings .);
++  $cmd = &quot;$listings &quot;.$this-&gt;{m_basesubdir}-&gt;{'1'};
++  @data = qx($cmd);
++  #@data = qx(cd $ENV{'PWD'}/$this-&gt;{m_basesubdir}-&gt;{'1'} &amp;&amp; $listings .);
++  undef $cmd;
+   $this-&gt;{m_logger}-&gt;info(&quot;[I] [createMetadata] $listings output:\n&quot;);
+   foreach(@data) {
+     chomp $_;
+@@ -1754,6 +1793,7 @@
+   }
+   foreach my $d($this-&gt;getMediaNumbers()) {
+     my $dbase = $this-&gt;{m_basesubdir}-&gt;{$d};
++    #my $dbase = $ENV{'PWD'}.$this-&gt;{m_basesubdir}-&gt;{$d};
+     my @dlist;
+     push @dlist, &quot;$dbase&quot;;
+     push @dlist, &quot;$dbase/boot&quot;;
+@@ -1784,7 +1824,7 @@
+     $this-&gt;{m_logger}-&gt;warning(&quot;[W] [createMetadata] excutable `$mk_cl` not found. Maybe package `inst-source-utils` is not installed?&quot;);
+     return;
+   }
+-  @data = qx(cd $this-&gt;{m_basesubdir}-&gt;{'1'} &amp;&amp; $mk_cl .);
++  @data = qx($mk_cl $this-&gt;{m_basesubdir}-&gt;{'1'});
+   my $res = $? &gt;&gt; 8;
+   if($res == 0) {
+     $this-&gt;{m_logger}-&gt;info(&quot;[I] $mk_cl finished successfully.&quot;);
+@@ -1810,17 +1850,11 @@
+   my $this = shift;
+   return undef if not ref($this);
+ 
+-  my $workdir = $ENV{'PWD'};
+-  if(not defined($workdir)) {
+-    $workdir = $this-&gt;{m_basedir};
+-  }
+   my $base = $this-&gt;{m_basesubdir}-&gt;{'1'};
+-  chdir $base;
+-
+   my $datadir = $this-&gt;{m_proddata}-&gt;getInfo('DATADIR');
+ 
+   my %rpmlist_files;
+-  find( sub { _findcallback($this, \%rpmlist_files) }, &quot;$base/boot&quot;);
++  find( sub { rpmlist_find_cb($this, \%rpmlist_files) }, &quot;$base/boot&quot;);
+ 
+   foreach my $arch(keys(%rpmlist_files)) {
+     if(not open(RPMLIST, $rpmlist_files{$arch})) {
+@@ -1828,7 +1862,7 @@
+       return undef;
+     }
+     else {
+-      chdir &quot;boot/$arch&quot;;
++      #chdir &quot;$workdir/$base/boot/$arch&quot;;
+       RPM:foreach my $rpmname(&lt;RPMLIST&gt;) {
+ 	chomp $rpmname;
+ 	if(not defined($rpmname) or not defined($this-&gt;{m_packages}-&gt;{$rpmname})) {
+@@ -1845,20 +1879,18 @@
+ 	    if(not defined($tmp{$fa})) {
+ 	      next FARCH;
+ 	    }
+-	    symlink(&quot;../../$datadir/$fa/&quot;.$tmp{$fa}-&gt;{'newfile'}, &quot;$rpmname.rpm&quot;);
++	    symlink(&quot;../../$datadir/$fa/&quot;.$tmp{$fa}-&gt;{'newfile'}, &quot;$base/boot/$arch/$rpmname.rpm&quot;);
+ 	    next RPM;
+ 	  }
+ 	}
+       }
+-      chdir $base;
+     }
+   }
+-  chdir $workdir;
+ }
+ 
+ 
+ 
+-sub _findcallback
++sub rpmlist_find_cb
+ {
+   my $this = shift;
+   return undef if not ref($this);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000675.html">[Kiwi-devel] r1578 - in kiwi-head: . rpm	system/boot/ix86/isoboot/suse-10.3	system/boot/ix86/isoboot/suse-11.0	system/boot/ix86/isoboot/suse-11.1	system/boot/ix86/netboot/suse-10.3	system/boot/ix86/netboot/suse-11.0	system/boot/ix86/netboot/suse-11.1	system/boot/ix86/oemboot/suse-10.3	system/boot/ix86/oemboot/suse-11.0	system/boot/ix86/oemboot/suse-11.1	system/boot/ix86/usbboot/suse-10.3	system/boot/ix86/usbboot/suse-11.0	system/boot/ix86/usbboot/suse-11.1	system/boot/ix86/vmxboot/suse-10.3	system/boot/ix86/vmxboot/suse-11.0	system/boot/ix86/vmxboot/suse-11.1 system/boot/ppc/netboot/suse-11.0
+</A></li>
+	<LI>Next message: <A HREF="000677.html">[Kiwi-devel] r1580 - kiwi-head/modules/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#676">[ date ]</a>
+              <a href="thread.html#676">[ thread ]</a>
+              <a href="subject.html#676">[ subject ]</a>
+              <a href="author.html#676">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

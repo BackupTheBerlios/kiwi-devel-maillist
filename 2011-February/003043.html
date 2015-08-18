@@ -1,0 +1,153 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9517a88e9fb41315e3f2f274941648c35ea0d825
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%209517a88e9fb41315e3f2f274941648c35ea0d825&In-Reply-To=%3C20110208220928.7F9AC48138D%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003047.html">
+   <LINK REL="Next"  HREF="003044.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9517a88e9fb41315e3f2f274941648c35ea0d825</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%209517a88e9fb41315e3f2f274941648c35ea0d825&In-Reply-To=%3C20110208220928.7F9AC48138D%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9517a88e9fb41315e3f2f274941648c35ea0d825">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Feb  8 23:09:28 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003047.html">[Kiwi-devel] Additional unit tests
+</A></li>
+        <LI>Next message: <A HREF="003044.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8f4c9e8f8b18bce911c7b54b8a029beda825e9f2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3043">[ date ]</a>
+              <a href="thread.html#3043">[ thread ]</a>
+              <a href="subject.html#3043">[ subject ]</a>
+              <a href="author.html#3043">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  9517a88e9fb41315e3f2f274941648c35ea0d825 (commit)
+      from  9219e1d114e23c18d934094aaade0ac84f90486a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 9517a88e9fb41315e3f2f274941648c35ea0d825
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Feb 8 23:07:54 2011 +0100
+
+    - fixed netboot disk device check. In case of a ramdisk only
+      configuration there is no DISK set but the image download
+      should happen into the ramdisk device. Therefore the disk
+      device check was enhanced to check the ramdisk setup too
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/system/boot/ix86/netboot/suse-linuxrc b/system/boot/ix86/netboot/suse-linuxrc
+index f902860..afdaaa9 100755
+--- a/system/boot/ix86/netboot/suse-linuxrc
++++ b/system/boot/ix86/netboot/suse-linuxrc
+@@ -46,6 +46,7 @@ export SYSTEM_INTEGRITY
+ export SYSTEM_MD5STATUS
+ export systemIntegrity=&quot;unknown&quot;
+ export haveDisk=0
++export haveRamDisk=0
+ 
+ #======================================
+ # Exports (clicfs usage)
+@@ -267,20 +268,24 @@ runHook postprobe
+ #======================================
+ # 11) Check for diskful station
+ #--------------------------------------
+-if \
+-	[ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; \
+-	([ ! -z &quot;$PART&quot; ] || [ ! -z &quot;$IMAGE&quot; ]) &amp;&amp; \
+-	[ -z &quot;$NFSROOT&quot; ]      &amp;&amp; \
+-	[ -z &quot;$NBDROOT&quot; ]      &amp;&amp; \
+-	[ -z &quot;$AOEROOT&quot; ]
+-then
+-	if ! waitForStorageDevice $DISK;then
+-		systemException \
+-			&quot;Disk $DISK doesn't appear... fatal !&quot; \
+-		&quot;reboot&quot;
++if [ $LOCAL_BOOT = &quot;no&quot; ];then
++	checkDevice=$DISK
++	if [ -z &quot;$checkDevice&quot; ];then
++		checkDevice=$(echo $IMAGE | cut -f1 -d\;)
++	fi
++	if [ ! -z &quot;$checkDevice&quot; ];then
++		if ! waitForStorageDevice $checkDevice;then
++			systemException \
++				&quot;Block device $checkDevice doesn't appear... fatal !&quot; \
++			&quot;reboot&quot;
++		fi
++		if echo $checkDevice | grep -q dev\/ram;then
++			export haveRamDisk=1
++		else
++			export haveDisk=1
++			export imageDiskDevice=$checkDevice
++		fi
+ 	fi
+-	export haveDisk=1
+-	export imageDiskDevice=$DISK
+ fi
+ 
+ #======================================
+@@ -437,7 +442,10 @@ fi
+ # 14) Setup root device environment
+ #--------------------------------------
+ runHook predownload
+-if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ $haveDisk = &quot;1&quot; ];then
++if \
++	[ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; \
++	([ $haveDisk = &quot;1&quot; ] || [ $haveRamDisk = &quot;1&quot; ])
++then
+ 	#======================================
+ 	# 14.1) Download network client image
+ 	#--------------------------------------
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003047.html">[Kiwi-devel] Additional unit tests
+</A></li>
+	<LI>Next message: <A HREF="003044.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8f4c9e8f8b18bce911c7b54b8a029beda825e9f2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3043">[ date ]</a>
+              <a href="thread.html#3043">[ thread ]</a>
+              <a href="subject.html#3043">[ subject ]</a>
+              <a href="author.html#3043">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

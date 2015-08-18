@@ -1,0 +1,146 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [PATCH] isoinstall initrd
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2007-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BPATCH%5D%20isoinstall%20initrd&In-Reply-To=%3C20070227101528.GA5235%40D7.ddts.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000016.html">
+   <LINK REL="Next"  HREF="000018.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [PATCH] isoinstall initrd</H1>
+    <B>Marcus Sch&#228;fer</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BPATCH%5D%20isoinstall%20initrd&In-Reply-To=%3C20070227101528.GA5235%40D7.ddts.net%3E"
+       TITLE="[Kiwi-devel] [PATCH] isoinstall initrd">ms at suse.de
+       </A><BR>
+    <I>Tue Feb 27 11:15:29 CET 2007</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000016.html">[Kiwi-devel] [PATCH] isoinstall initrd
+</A></li>
+        <LI>Next message: <A HREF="000018.html">[Kiwi-devel] [PATCH] isoinstall initrd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17">[ date ]</a>
+              <a href="thread.html#17">[ thread ]</a>
+              <a href="subject.html#17">[ subject ]</a>
+              <a href="author.html#17">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi,
+
+&gt;<i> &gt; JFYI
+</I>&gt;<i> &gt; I'm ready with the changes to the iso code, problem ist that
+</I>&gt;<i> &gt; it currently doesn't work :-)... the graphics is not loaded because
+</I>&gt;<i> &gt; of a problem in creating the bootlogo file. I think I did something
+</I>&gt;<i> &gt; wrong but don't know what the problem is right now. So the default
+</I>&gt;<i> &gt; text is displayed instead of the nice graphics. Well it works that
+</I>&gt;<i> &gt; way as well but of course I'd like to fix the graphics the sooner
+</I>&gt;<i> &gt; the better 
+</I>
+ok, this works now
+
+&gt;<i> &gt; One question I found was how do you setup the machine with the
+</I>&gt;<i> &gt; image on the CD/DVD. There must be some kind of config file
+</I>&gt;<i> &gt; telling linuxrc if it should partition the disk,
+</I>&gt;<i> &gt; which disk, how... and so on. What setup is used for isoinstboot ?
+</I>&gt;<i> 
+</I>&gt;<i> Currently it expects a config file similar to those used with netboot to
+</I>&gt;<i> be located at /config.isoclient on the initrd.  Thinking about this some
+</I>&gt;<i> more, though, I don't believe this is the best thing to do.  The initrd
+</I>&gt;<i> images are generally pretty reusable, so the config file should probably
+</I>&gt;<i> be associated with the system image.
+</I>
+yes I agree completely. Up to know the situation was as follows:
+
+	isoboot -&gt; requirement is clear, live system so config.isoclient
+               can have fixed content
+	netboot -&gt; is used within PXE environments and the config.&lt;MAC&gt;
+               is loaded via TFTP from the server
+	usbboot -&gt; requirement is clear, boot from USB stick use the
+               detected device as hard-disk. No configuration needed
+	vmxboot -&gt; requirement is clear, create virtual disk (different formats
+               available) with system on first partition, boot
+               into this system. No configuration needed
+	xenboot -&gt; used in the same way as netboot but with a Xen enabled
+               kernel. The config.&lt;MAC&gt; is loaded from the network
+
+So what I want to express ist that it wasn't needed to provide
+image config data before deployment. In your case the information
+should be on disk so it must be provided during image creation
+
+&gt;<i>  I think picking it up from
+</I>&gt;<i> &lt;systemImageName&gt;.config when we build the image and then sticking it
+</I>&gt;<i> in /config.isoclient on the CD will work fine.
+</I>&gt;<i> 
+</I>&gt;<i> Wouldn't it be great if we could generate these config files
+</I>&gt;<i> automatically?  If we added some partitioning information to config.xml
+</I>&gt;<i> it should be possible.  Maybe something like:
+</I>&gt;<i> 
+</I>&gt;<i> &lt;partitions device=&quot;/dev/hda&quot;&gt;
+</I>&gt;<i> 	&lt;partition type=&quot;swap&quot; number=&quot;1&quot; size=&quot;200&quot;/&gt;
+</I>&gt;<i> 	&lt;partition type=&quot;linux&quot; number=&quot;2&quot;/&gt;
+</I>&gt;<i> &lt;/partitions&gt;
+</I>
+yes I agree completely this should be done. I'd like to have
+a section like:
+
+	&lt;deploy&gt;
+		&lt;partitions device=&quot;/dev/hda&quot;&gt;
+			&lt;partition type=&quot;swap&quot; number=&quot;1&quot; size=&quot;200&quot;/&gt;
+			&lt;partition type=&quot;linux&quot; number=&quot;2&quot;/&gt;
+		&lt;/partitions&gt;
+		... something else we didn't think of right now
+	&lt;/deploy&gt;
+
+What do you think ?
+
+&gt;<i> Maybe a bit more info would be needed, I'm not sure.  Messing with these
+</I>&gt;<i> config files by hand sucks, though :)
+</I>
+indeed, that's because of the shell handling later in linuxrc
+
+Regards
+Marcus
+-- 
+ Public Key available
+ gpg --keyserver gpg-keyserver.de --recv-keys 0xCCE3C6A2
+ -------------------------------------------------------
+ Marcus Sch&#228;fer (Res. &amp; Dev.)   SUSE LINUX Products GmbH
+ Tel: 0911-740 53 0             Maxfeldstrasse 5
+ FAX: 0911-740 53 479           D-90409 N&#252;rnberg
+ GF: Markus Rex                 HRB: 16746 (AG N&#252;rnberg)
+ <A HREF="http://www.suse.de">http://www.suse.de</A>             Germany
+ -------------------------------------------------------
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000016.html">[Kiwi-devel] [PATCH] isoinstall initrd
+</A></li>
+	<LI>Next message: <A HREF="000018.html">[Kiwi-devel] [PATCH] isoinstall initrd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17">[ date ]</a>
+              <a href="thread.html#17">[ thread ]</a>
+              <a href="subject.html#17">[ subject ]</a>
+              <a href="author.html#17">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

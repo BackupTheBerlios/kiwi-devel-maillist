@@ -1,0 +1,209 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 66857c676362323ad08662c3ad76516d09eae283
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2066857c676362323ad08662c3ad76516d09eae283&In-Reply-To=%3C201005111316.o4BDGREP012495%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002164.html">
+   <LINK REL="Next"  HREF="002166.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 66857c676362323ad08662c3ad76516d09eae283</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2066857c676362323ad08662c3ad76516d09eae283&In-Reply-To=%3C201005111316.o4BDGREP012495%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 66857c676362323ad08662c3ad76516d09eae283">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue May 11 15:16:27 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002164.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. f7c7a8f230c93633879e2c7f363b0647d055494b
+</A></li>
+        <LI>Next message: <A HREF="002166.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2f2e0d89187ea1f6a278ec7fe088bfe08c8707f6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2165">[ date ]</a>
+              <a href="thread.html#2165">[ thread ]</a>
+              <a href="subject.html#2165">[ subject ]</a>
+              <a href="author.html#2165">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  66857c676362323ad08662c3ad76516d09eae283 (commit)
+      from  cbf34603b4fb94aa8f96291a7e4d95b974eae97f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 66857c676362323ad08662c3ad76516d09eae283
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue May 11 15:16:17 2010 +0200
+
+    - some code cleanup in KIWIImage.pm, unused variables
+    - call mkclicfs from the installed root tree instead of the
+      build system to prevent version conflicts. If no clicfs
+      is installed by the image description a warning message is
+      displayed and the build system mkclicfs is used as
+      before (bnc #604646)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 4040dc6..6d5a780 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -168,14 +168,10 @@ sub createImageDMSquashExt3 {
+ 	# ---
+ 	my $this    = shift;
+ 	my $rename  = shift;
+-	my $tree    = shift;
+ 	my $journal = &quot;journaled-ext3&quot;;
+ 	my $kiwi    = $this-&gt;{kiwi};
+ 	my $data;
+ 	my $code;
+-	if (! defined $tree) {
+-		$tree = $this-&gt;{imageTree};
+-	}
+ 	#==========================================
+ 	# PRE filesystem setup
+ 	#------------------------------------------
+@@ -244,14 +240,10 @@ sub createImageClicFS {
+ 	# ---
+ 	my $this    = shift;
+ 	my $rename  = shift;
+-	my $tree    = shift;
+ 	my $journal = &quot;journaled-ext3&quot;;
+ 	my $kiwi    = $this-&gt;{kiwi};
+ 	my $data;
+ 	my $code;
+-	if (! defined $tree) {
+-		$tree = $this-&gt;{imageTree};
+-	}
+ 	#==========================================
+ 	# PRE filesystem setup
+ 	#------------------------------------------
+@@ -357,13 +349,20 @@ sub createImageClicFS {
+ 	# Create clicfs filesystem from ext3
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Creating clicfs container...&quot;);
++	my $clicfs = $this-&gt;{imageTree}.&quot;/usr/bin/mkclicfs&quot;;
++	if (! -x $clicfs) {
++		$kiwi -&gt; warning (
++			&quot;Using mkclicfs from build system, versions should match !\n&quot;
++		);
++		$clicfs = &quot;mkclicfs&quot;;
++	}
+ 	if (defined $ENV{MKCLICFS_COMPRESSION}) {
+ 		my $c = int $ENV{MKCLICFS_COMPRESSION};
+ 		my $d = $this-&gt;{imageDest};
+-		$data = qxx (&quot;mkclicfs -c $c $d/fsdata.ext3 $d/$name 2&gt;&amp;1&quot;);
++		$data = qxx (&quot;$clicfs -c $c $d/fsdata.ext3 $d/$name 2&gt;&amp;1&quot;);
+ 	} else {
+ 		my $d = $this-&gt;{imageDest};
+-		$data = qxx (&quot;mkclicfs $d/fsdata.ext3 $d/$name 2&gt;&amp;1&quot;);
++		$data = qxx (&quot;$clicfs $d/fsdata.ext3 $d/$name 2&gt;&amp;1&quot;);
+ 	}
+ 	$code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+@@ -394,7 +393,6 @@ sub createImageEXT2 {
+ 	# ---
+ 	my $this    = shift;
+ 	my $journal = shift;
+-	my $imageTree = $this-&gt;{imageTree};
+ 	#==========================================
+ 	# PRE filesystem setup
+ 	#------------------------------------------
+@@ -1607,7 +1605,7 @@ sub createImageLiveCD {
+ 			};
+ 			/^dmsquash$/ &amp;&amp; do {
+ 				$kiwi -&gt; info (&quot;Creating dmsquash read only filesystem...\n&quot;);
+-				if (! $this -&gt; createImageDMSquashExt3 ( $namero,$imageTree )) {
++				if (! $this -&gt; createImageDMSquashExt3 ( $namero )) {
+ 					$this -&gt; restoreCDRootData();
+ 					$this -&gt; restoreSplitExtend ();
+ 					return undef;
+@@ -1616,7 +1614,7 @@ sub createImageLiveCD {
+ 			};
+ 			/^clic$/ &amp;&amp; do {
+ 				$kiwi -&gt; info (&quot;Creating clicfs read only filesystem...\n&quot;);
+-				if (! $this -&gt; createImageClicFS ( $namero,$imageTree )) {
++				if (! $this -&gt; createImageClicFS ( $namero )) {
+ 					$this -&gt; restoreCDRootData();
+ 					$this -&gt; restoreSplitExtend ();
+ 					return undef;
+diff --git a/modules/KIWIMigrate.pm b/modules/KIWIMigrate.pm
+index 8dd00d5..d138092 100644
+--- a/modules/KIWIMigrate.pm
++++ b/modules/KIWIMigrate.pm
+@@ -252,6 +252,11 @@ sub createReport {
+ 	print FD '&lt;html&gt;'.&quot;\n&quot;;
+ 	print FD &quot;\t&quot;.'&lt;head&gt;'.&quot;\n&quot;;
+ 	print FD &quot;\t\t&quot;.'&lt;title&gt;Migration report&lt;/title&gt;'.&quot;\n&quot;;
++	print FD &quot;\t\t&quot;.'&lt;!--[if lt IE 9]&gt;'.&quot;\n&quot;;
++	print FD &quot;\t\t&quot;.'&lt;script src=&quot;';
++	print FD '<A HREF="http://html5shiv.googlecode.com/svn/trunk/html5.js">http://html5shiv.googlecode.com/svn/trunk/html5.js</A>&quot;&gt;';
++	print FD '&lt;/script&gt;'.&quot;\n&quot;;
++	print FD &quot;\t\t&quot;.'&lt;![endif]--&gt;'.&quot;\n&quot;;
+ 	print FD &quot;\t\t&quot;.'&lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot; ';
+ 	print FD 'href=&quot;css/kiwi.css&quot;&gt;'.&quot;\n&quot;;
+ 	print FD &quot;\t&quot;.'&lt;/head&gt;'.&quot;\n&quot;;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 4f672b1..8ab872f 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,6 +1,12 @@
+ -------------------------------------------------------------------
+ Mon May 10 10:50:18 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- some code cleanup in KIWIImage.pm, unused variables
++- call mkclicfs from the installed root tree instead of the
++  build system to prevent version conflicts. If no clicfs
++  is installed by the image description a warning message is
++  displayed and the build system mkclicfs is used as
++  before (bnc #604646)
+ - set fixed journal size to 12 MB, fixed size calculation
+   in KIWIBoot.pm which did not take the journal size into
+   account (bnc #587361) 
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002164.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. f7c7a8f230c93633879e2c7f363b0647d055494b
+</A></li>
+	<LI>Next message: <A HREF="002166.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2f2e0d89187ea1f6a278ec7fe088bfe08c8707f6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2165">[ date ]</a>
+              <a href="thread.html#2165">[ thread ]</a>
+              <a href="subject.html#2165">[ subject ]</a>
+              <a href="author.html#2165">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

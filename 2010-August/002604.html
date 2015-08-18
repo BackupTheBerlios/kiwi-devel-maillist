@@ -1,0 +1,268 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2b936369eb982f1b8168c56b277bb74f2f3036d5
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%202b936369eb982f1b8168c56b277bb74f2f3036d5&In-Reply-To=%3C20100827132301.2A6C6480C05%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002603.html">
+   <LINK REL="Next"  HREF="002605.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2b936369eb982f1b8168c56b277bb74f2f3036d5</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%202b936369eb982f1b8168c56b277bb74f2f3036d5&In-Reply-To=%3C20100827132301.2A6C6480C05%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2b936369eb982f1b8168c56b277bb74f2f3036d5">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Aug 27 15:23:01 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002603.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. 9a7a1b00608fa394048d0b751f19b4af0b64d8ba
+</A></li>
+        <LI>Next message: <A HREF="002605.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 38649362d4e7a8e04f4a22f43d05c194bee531bd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2604">[ date ]</a>
+              <a href="thread.html#2604">[ thread ]</a>
+              <a href="subject.html#2604">[ subject ]</a>
+              <a href="author.html#2604">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  2b936369eb982f1b8168c56b277bb74f2f3036d5 (commit)
+      from  9b7035d2ee0cbb6f046056f2af439ac9892f776a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 2b936369eb982f1b8168c56b277bb74f2f3036d5
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Aug 27 15:19:53 2010 +0200
+
+    - make use of the mkfs.$FS toolset instead of mk2fs with parameters
+      This is more compatible and also prevents us from dealing with
+      the changed meanings of some mk2fs parameters (bnc #635052)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index a0a083e..e2c4493 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -2534,7 +2534,6 @@ sub checkFSOptions {
+ 		my $inodesize;   # inode size in bytes (ext only)
+ 		my $inoderatio;  # bytes/inode ratio
+ 		my $fsfeature;   # filesystem features (ext only)
+-		my $fstype;      # filesystem type (ext only)
+ 		SWITCH: for ($fs) {
+ 			#==========================================
+ 			# EXT2-4
+@@ -2552,8 +2551,7 @@ sub checkFSOptions {
+ 				if ($FSCheckInterval) {
+ 					$fs_checkinterval = &quot; -i $FSCheckInterval&quot;;
+ 				}
+-				$fsfeature = &quot;-O resize_inode&quot;;
+-				$fstype = &quot;-t $fs&quot;;
++				$fsfeature = &quot;-F -O resize_inode&quot;;
+ 				last SWITCH;
+ 			};
+ 			#==========================================
+@@ -2581,9 +2579,6 @@ sub checkFSOptions {
+ 		if (defined $fsfeature) {
+ 			$result{$fs} .= $fsfeature.&quot; &quot;;
+ 		}
+-		if (defined $fstype) {
+-			$result{$fs} .= $fstype.&quot; &quot;;
+-		}
+ 	}
+ 	if ($fs_maxmountcount || $fs_checkinterval) {
+ 		$result{extfstune} = &quot;$fs_maxmountcount$fs_checkinterval&quot;;
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 37266ba..6dea9bb 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -1310,8 +1310,8 @@ sub setupBootStick {
+ 		}
+ 		my %FSopts = main::checkFSOptions();
+ 		my $fsopts = $FSopts{ext3};
+-		$fsopts.= &quot;-F&quot;;
+-		$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
++		my $fstool = &quot;mkfs.ext3&quot;;
++		$status = qxx (&quot;$fstool $fsopts $root 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; failed ();
+@@ -1378,8 +1378,8 @@ sub setupBootStick {
+ 		}
+ 		my %FSopts = main::checkFSOptions();
+ 		my $fsopts = $FSopts{ext2};
+-		$fsopts.= &quot;-F&quot;;
+-		$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
++		my $fstool = &quot;mkfs.ext2&quot;;
++		$status = qxx (&quot;$fstool $fsopts $root 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; failed ();
+@@ -2146,11 +2146,11 @@ sub setupInstallStick {
+ 		$kiwi -&gt; info (&quot;Creating ext3 filesystem on $root partition&quot;);
+ 		my %FSopts = main::checkFSOptions();
+ 		my $fsopts = $FSopts{ext3};
+-		$fsopts.= &quot;-j&quot;;
++		my $fstool = &quot;mkfs.ext3&quot;;
+ 		if (($root eq $data) &amp;&amp; ($this-&gt;{inodes})) {
+ 			$fsopts.= &quot; -N $this-&gt;{inodes}&quot;;
+ 		}
+-		$status = qxx ( &quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot; );
++		$status = qxx ( &quot;$fstool $fsopts $root 2&gt;&amp;1&quot; );
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; failed ();
+@@ -3022,8 +3022,8 @@ sub setupBootDisk {
+ 		}
+ 		my %FSopts = main::checkFSOptions();
+ 		my $fsopts = $FSopts{ext3};
+-		$fsopts.= &quot;-F&quot;;
+-		$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
++		my $fstool = &quot;mkfs.ext3&quot;;
++		$status = qxx (&quot;$fstool $fsopts $root 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; failed ();
+@@ -3072,7 +3072,8 @@ sub setupBootDisk {
+ 		}
+ 		my %FSopts = main::checkFSOptions();
+ 		my $fsopts = $FSopts{ext2};
+-		$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
++		my $fstool = &quot;mkfs.ext2&quot;;
++		$status = qxx (&quot;$fstool $fsopts $root 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; failed ();
+@@ -5435,13 +5436,13 @@ sub setupFilesystem {
+ 		/^ext[234]/     &amp;&amp; do {
+ 			$kiwi -&gt; info (&quot;Creating $_ $name filesystem&quot;);
+ 			my $fsopts = $FSopts{$_};
+-			$fsopts .= /^ext2/ ? &quot;-F&quot; : &quot;-j -F&quot;;
++			my $fstool = &quot;mkfs.&quot;.$fstype;
+ 			if ($this-&gt;{inodes}) {
+ 				$fsopts.= &quot; -N $this-&gt;{inodes}&quot;;
+ 			}
+ 			my $tuneopts = $type{fsnocheck} eq &quot;true&quot; ? &quot;-c 0 -i 0&quot; : &quot;&quot;;
+ 			$tuneopts = $FSopts{extfstune} if $FSopts{extfstune};
+-			$status = qxx (&quot;/sbin/mke2fs $fsopts $device 2&gt;&amp;1&quot;);
++			$status = qxx (&quot;$fstool $fsopts $device 2&gt;&amp;1&quot;);
+ 			$result = $? &gt;&gt; 8;
+ 			if (!$result &amp;&amp; $tuneopts) {
+ 				$status .= qxx (&quot;/sbin/tune2fs $tuneopts $device 2&gt;&amp;1&quot;);
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 7b65267..2d6e52a 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -3463,22 +3463,23 @@ sub setupEXT2 {
+ 	my $fsopts;
+ 	my $tuneopts;
+ 	my %FSopts = main::checkFSOptions();
++	my $fstool;
+ 	if ((defined $journal) &amp;&amp; ($journal eq &quot;journaled-ext3&quot;)) {
+ 		$fsopts = $FSopts{ext3};
+-		$fsopts.=&quot;-j -F&quot;;
++		$fstool = &quot;mkfs.ext3&quot;;
+ 	} elsif ((defined $journal) &amp;&amp; ($journal eq &quot;journaled-ext4&quot;)) {
+ 		$fsopts = $FSopts{ext4};
+-		$fsopts.=&quot;-j -F&quot;;
++		$fstool = &quot;mkfs.ext4&quot;;
+ 	} else {
+ 		$fsopts = $FSopts{ext2};
+-		$fsopts.= &quot;-F&quot;;
++		$fstool = &quot;mkfs.ext2&quot;;
+ 	}
+ 	if ($this-&gt;{inodes}) {
+ 		$fsopts.= &quot; -N $this-&gt;{inodes}&quot;;
+ 	}
+ 	$tuneopts = $type{fsnocheck} eq &quot;true&quot; ? &quot;-c 0 -i 0&quot; : &quot;&quot;;
+ 	$tuneopts = $FSopts{extfstune} if $FSopts{extfstune};
+-	my $data = qxx (&quot;/sbin/mke2fs $fsopts $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
++	my $data = qxx (&quot;$fstool $fsopts $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
+ 	my $code = $? &gt;&gt; 8;
+ 	if (!$code &amp;&amp; $tuneopts) {
+ 		$data = qxx (&quot;/sbin/tune2fs $tuneopts $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index a81bd79..a90cd6e 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -3688,7 +3688,7 @@ function setupReadWrite {
+ 				! mount -o ro $rwDevice $rwDir &gt;/dev/null
+ 			then
+ 				Echo &quot;Creating filesystem for RW data on $rwDevice...&quot;
+-				if ! mke2fs -F -T ext3 -j $rwDevice &gt;/dev/null;then
++				if ! mkfs.ext3 -F $rwDevice &gt;/dev/null;then
+ 					Echo &quot;Failed to create ext3 filesystem&quot;
+ 					return 1
+ 				fi
+@@ -5709,11 +5709,11 @@ function createFilesystem {
+ 	if [ &quot;$FSTYPE&quot; = &quot;reiserfs&quot; ];then
+ 		mkreiserfs -f $deviceCreate $blocks 1&gt;&amp;2
+ 	elif [ &quot;$FSTYPE&quot; = &quot;ext2&quot; ];then
+-		mke2fs -T ext2 -F $deviceCreate $blocks 1&gt;&amp;2
++		mkfs.ext2 -F $deviceCreate $blocks 1&gt;&amp;2
+ 	elif [ &quot;$FSTYPE&quot; = &quot;ext3&quot; ];then
+-		mke2fs -T ext3 -j -F $deviceCreate $blocks 1&gt;&amp;2
++		mkfs.ext3 -F $deviceCreate $blocks 1&gt;&amp;2
+ 	elif [ &quot;$FSTYPE&quot; = &quot;ext4&quot; ];then
+-		mke2fs -T ext4 -j -F $deviceCreate $blocks 1&gt;&amp;2
++		mkfs.ext4 -F $deviceCreate $blocks 1&gt;&amp;2
+ 	elif [ &quot;$FSTYPE&quot; = &quot;btrfs&quot; ];then
+ 		if [ ! -z &quot;$blocks&quot; ];then
+ 			local bytes=$((blocks * 4096))
+@@ -5723,7 +5723,7 @@ function createFilesystem {
+ 		fi
+ 	else
+ 		# use ext3 by default
+-		mke2fs -T ext3 -j -F $deviceCreate $blocks 1&gt;&amp;2
++		mkfs.ext3 -F $deviceCreate $blocks 1&gt;&amp;2
+ 	fi
+ 	if [ ! $? = 0 ];then
+ 		systemException \
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002603.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. 9a7a1b00608fa394048d0b751f19b4af0b64d8ba
+</A></li>
+	<LI>Next message: <A HREF="002605.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 38649362d4e7a8e04f4a22f43d05c194bee531bd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2604">[ date ]</a>
+              <a href="thread.html#2604">[ thread ]</a>
+              <a href="subject.html#2604">[ subject ]</a>
+              <a href="author.html#2604">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

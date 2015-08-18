@@ -1,0 +1,217 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. eb0fc19690c5e75008e32b09faa09a75b8017c79
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20eb0fc19690c5e75008e32b09faa09a75b8017c79&In-Reply-To=%3C201004090804.o3984mdV007539%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002084.html">
+   <LINK REL="Next"  HREF="002086.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. eb0fc19690c5e75008e32b09faa09a75b8017c79</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20eb0fc19690c5e75008e32b09faa09a75b8017c79&In-Reply-To=%3C201004090804.o3984mdV007539%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. eb0fc19690c5e75008e32b09faa09a75b8017c79">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Apr  9 10:04:48 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002084.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9a60f3eb2ef4bc1bc5e36c607598f0802e5bcd23
+</A></li>
+        <LI>Next message: <A HREF="002086.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 90e89f1bff395156b6b22fb26c7dfb29f6a16a8c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2085">[ date ]</a>
+              <a href="thread.html#2085">[ thread ]</a>
+              <a href="subject.html#2085">[ subject ]</a>
+              <a href="author.html#2085">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  eb0fc19690c5e75008e32b09faa09a75b8017c79 (commit)
+      from  9a60f3eb2ef4bc1bc5e36c607598f0802e5bcd23 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit eb0fc19690c5e75008e32b09faa09a75b8017c79
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Apr 9 10:04:36 2010 +0200
+
+    - fixed info module to work with loop media like <A HREF="iso://">iso://</A>
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 81d5707..a2116c1 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -1809,6 +1809,40 @@ sub listXMLInfo {
+ 		);
+ 	}
+ 	#==========================================
++	# Setup loop sources
++	#------------------------------------------
++	my @mountlist = ();
++	if ($xml-&gt;{urlhash}) {
++		foreach my $source (keys %{$xml-&gt;{urlhash}}) {
++			#==========================================
++			# <A HREF="iso://">iso://</A> sources
++			#------------------------------------------
++			if ($source =~ /^iso:\/\/(.*)/) {
++				my $iso  = $1;
++				my $dir  = $xml-&gt;{urlhash}-&gt;{$source};
++				my $data = qxx (&quot;mkdir -p $dir; mount -o loop $iso $dir 2&gt;&amp;1&quot;);
++				my $code = $? &gt;&gt; 8;
++				if ($code != 0) {
++					$kiwi -&gt; failed ();
++					$kiwi -&gt; error  (&quot;Failed to loop mount ISO path: $data&quot;);
++					$kiwi -&gt; failed ();
++					rmdir $dir;
++					exit 1;
++				}
++				push (@mountlist,$dir);
++			}
++		}
++	}
++	sub newCleanMount {
++		my @list = shift;
++		return sub {
++			foreach my $dir (@list) {
++				qxx (&quot;umount $dir ; rmdir $dir 2&gt;&amp;1&quot;);
++			}
++		}
++	}
++	*cleanMount = newCleanMount (@mountlist);
++	#==========================================
+ 	# Walk through selection list
+ 	#------------------------------------------
+ 	foreach my $info (@listXMLInfoSelection) {
+@@ -1821,6 +1855,7 @@ sub listXMLInfo {
+ 					($meta,$delete,$solfile,$satlist) = $xml-&gt;getInstallSize();
+ 					if (! $meta) {
+ 						$kiwi -&gt; failed();
++						cleanMount();
+ 						exit 1;
+ 					}
+ 				}
+@@ -1844,6 +1879,7 @@ sub listXMLInfo {
+ 						$xml-&gt;getInstallSize();
+ 					if (! $meta) {
+ 						$kiwi -&gt; failed();
++						cleanMount();
+ 						exit 1;
+ 					}
+ 				}
+@@ -1897,6 +1933,7 @@ sub listXMLInfo {
+ 						$xml-&gt;getInstallSize();
+ 					if (! $meta) {
+ 						$kiwi -&gt; failed();
++						cleanMount();
+ 						exit 1;
+ 					}
+ 				}
+@@ -1930,6 +1967,7 @@ sub listXMLInfo {
+ 						$xml-&gt;getInstallSize();
+ 					if (! $meta) {
+ 						$kiwi -&gt; failed();
++						cleanMount();
+ 						exit 1;
+ 					}
+ 				}
+@@ -1945,7 +1983,7 @@ sub listXMLInfo {
+ 					$kiwi -&gt; info (&quot;No packages solved\n&quot;);
+ 				} else {
+ 					$kiwi -&gt; info (&quot;Image Packages:\n&quot;);
+-					foreach my $package (@packs) {
++					foreach my $package (sort @packs) {
+ 						$kiwi -&gt; info (&quot;--&gt; $package\n&quot;);
+ 					}
+ 				}
+@@ -1968,6 +2006,7 @@ sub listXMLInfo {
+ 			};
+ 		}
+ 	}
++	cleanMount();
+ 	exit 0;
+ }
+ 
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index fc23bce..638b101 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -454,6 +454,7 @@ sub createURLList {
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my %repository  = ();
+ 	my @urllist     = ();
++	my %urlhash     = ();
+ 	my @sourcelist  = ();
+ 	%repository = $this-&gt;getRepository();
+ 	if (! %repository) {
+@@ -468,8 +469,10 @@ sub createURLList {
+ 		my $urlHandler  = new KIWIURL ($kiwi,undef);
+ 		my $publics_url = $urlHandler -&gt; normalizePath ($source);
+ 		push (@urllist,$publics_url);
++		$urlhash{$source} = $publics_url;
+ 	}
+ 	$this-&gt;{urllist} = \@urllist;
++	$this-&gt;{urlhash} = \%urlhash;
+ 	return $this;
+ }
+ 
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index b9c4359..b73016b 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -3,6 +3,7 @@ Thu Apr  8 16:43:05 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v4.28
+ - fixed typo in repo prio message
++- fixed info module to work with loop media like <A HREF="iso://">iso://</A>
+ 
+ -------------------------------------------------------------------
+ Mon Mar 29 17:15:37 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002084.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9a60f3eb2ef4bc1bc5e36c607598f0802e5bcd23
+</A></li>
+	<LI>Next message: <A HREF="002086.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 90e89f1bff395156b6b22fb26c7dfb29f6a16a8c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2085">[ date ]</a>
+              <a href="thread.html#2085">[ thread ]</a>
+              <a href="subject.html#2085">[ subject ]</a>
+              <a href="author.html#2085">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

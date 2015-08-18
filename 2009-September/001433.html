@@ -1,0 +1,173 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ac07c96c2b429ac4bc41e2141792c10d65701869
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ac07c96c2b429ac4bc41e2141792c10d65701869&In-Reply-To=%3C200909011316.n81DGLj2028454%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001432.html">
+   <LINK REL="Next"  HREF="001434.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ac07c96c2b429ac4bc41e2141792c10d65701869</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ac07c96c2b429ac4bc41e2141792c10d65701869&In-Reply-To=%3C200909011316.n81DGLj2028454%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ac07c96c2b429ac4bc41e2141792c10d65701869">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Sep  1 15:16:21 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001432.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4f77e17561f018ce171ebe6fd8441359ee5a0269
+</A></li>
+        <LI>Next message: <A HREF="001434.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. de0942f80411c97b1cb8b5e75e455c3d0fd29a83
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1433">[ date ]</a>
+              <a href="thread.html#1433">[ thread ]</a>
+              <a href="subject.html#1433">[ subject ]</a>
+              <a href="author.html#1433">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  ac07c96c2b429ac4bc41e2141792c10d65701869 (commit)
+      from  4f77e17561f018ce171ebe6fd8441359ee5a0269 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ac07c96c2b429ac4bc41e2141792c10d65701869
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Sep 1 15:16:05 2009 +0200
+
+    - fixed virtual disk creation with clicfs involved
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index eba52f9..9653795 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -2419,6 +2419,22 @@ sub mount {
+ 	my $status;
+ 	my $result;
+ 	#==========================================
++	# Check for CLIC extension
++	#------------------------------------------
++	if ($type eq &quot;clicfs&quot;) {
++		if (-f $source) {
++			$status = qxx (&quot;/sbin/losetup -s -f $source 2&gt;&amp;1&quot;); chomp $status;
++			$result = $? &gt;&gt; 8;
++			if ($result != 0) {
++				$kiwi -&gt; error  (&quot;Couldn't loop bind logical extend: $status&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			$source = $status;
++			push @UmountStack,&quot;losetup -d $source&quot;;
++		}
++	}
++	#==========================================
+ 	# Check for LUKS extension
+ 	#------------------------------------------
+ 	if ($type eq &quot;luks&quot;) {
+@@ -2461,7 +2477,11 @@ sub mount {
+ 			return undef;
+ 		}
+ 	} else {
+-		$status = qxx (&quot;mount $source $dest 2&gt;&amp;1&quot;);
++		if ($type eq &quot;clicfs&quot;) {
++			$status = qxx (&quot;clicfs -m 512 $source $dest 2&gt;&amp;1&quot;);
++		} else {
++			$status = qxx (&quot;mount $source $dest 2&gt;&amp;1&quot;);
++		}
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; error (&quot;Failed to mount $source to: $dest: $status&quot;);
+@@ -2569,6 +2589,13 @@ sub checkFileSystem {
+ 					$type = &quot;luks&quot;;
+ 					last SWITCH;
+ 				};
++				# unknown filesystem type check clicfs...
++				$data = qxx (&quot;dd if=$fs bs=128k count=1 2&gt;/dev/null | grep -q CLIC&quot;);
++				$code = $? &gt;&gt; 8;
++				if ($code == 0) {
++					$type = &quot;clicfs&quot;;
++					last SWITCH;
++				}
+ 				# unknown filesystem type use auto...
+ 				$type = &quot;auto&quot;;
+ 			};
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index e04a15b..208737f 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -1631,6 +1631,14 @@ function probeFileSystem {
+ 			FSTYPE=unknown
+ 		;;
+ 	esac
++	if [ $FSTYPE = &quot;unknown&quot; ];then
++		dd if=$1 of=/tmp/filesystem-$$ bs=128k count=1 &gt;/dev/null
++	fi
++	if [ $FSTYPE = &quot;unknown&quot; ];then
++		if grep -q ^CLIC /tmp/filesystem-$$;then
++			FSTYPE=clicfs
++		fi
++	fi
+ 	export FSTYPE
+ }
+ #======================================
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 09bef10..f91d03e 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,6 +1,7 @@
+ -------------------------------------------------------------------
+ Tue Sep  1 10:45:30 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- fixed virtual disk creation with clicfs involved
+ - added option --grub-chainload which allows the virtual
+   disk based images to chainload grub from partition one.
+   This is required for some preload processes (bnc #529850)
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001432.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4f77e17561f018ce171ebe6fd8441359ee5a0269
+</A></li>
+	<LI>Next message: <A HREF="001434.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. de0942f80411c97b1cb8b5e75e455c3d0fd29a83
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1433">[ date ]</a>
+              <a href="thread.html#1433">[ thread ]</a>
+              <a href="subject.html#1433">[ subject ]</a>
+              <a href="author.html#1433">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

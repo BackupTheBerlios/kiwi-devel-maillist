@@ -1,0 +1,132 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Fix ownership change issue
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Fix%20ownership%20change%20issue&In-Reply-To=%3C4DD24476.3060407%40novell.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003419.html">
+   <LINK REL="Next"  HREF="003423.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Fix ownership change issue</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Fix%20ownership%20change%20issue&In-Reply-To=%3C4DD24476.3060407%40novell.com%3E"
+       TITLE="[Kiwi-devel] Fix ownership change issue">rschweikert at novell.com
+       </A><BR>
+    <I>Tue May 17 11:48:38 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003419.html">[Kiwi-devel] Fix ownership change issue
+</A></li>
+        <LI>Next message: <A HREF="003423.html">[Kiwi-devel] Fix ownership change issue
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3422">[ date ]</a>
+              <a href="thread.html#3422">[ thread ]</a>
+              <a href="subject.html#3422">[ subject ]</a>
+              <a href="author.html#3422">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>
+
+On 05/17/2011 05:07 AM, Marcus Sch&#228;fer wrote:
+&gt;<i> Hi,
+</I>&gt;<i>
+</I>&gt;&gt;<i> The attached patch addresses the ownership change issue discovered
+</I>&gt;&gt;<i> by EMC. The underlying problem is that tar in verbose mode inserts
+</I>&gt;&gt;<i> padding to get a pretty table layout. This causes shift of fields
+</I>&gt;&gt;<i> and therefore causes out file list of files in the archive to be
+</I>&gt;&gt;<i> corrupt. This patch eliminates the padding problem by using a short
+</I>&gt;&gt;<i> listing and a different grep command to eliminate the directory
+</I>&gt;&gt;<i> entry.
+</I>&gt;<i>
+</I>&gt;<i> Hmm, this will not really fix it. Remember that the archive is
+</I>&gt;<i> unpacked in the system image tree and if bootinclude=&quot;true&quot; is set
+</I>&gt;<i> the archive contents are transfered over to the boot image tree.
+</I>&gt;<i> The archive contents are determined by the content table of the
+</I>&gt;<i> tarball (tar -t)
+</I>&gt;<i>
+</I>&gt;<i> The reason why I used the &quot;-v&quot; option in tar was to check for
+</I>&gt;<i> directory entries.
+</I>
+Yes, the purpose of grep -v ^d in the pipeline
+
+&gt;<i> If someone includes an entire directory in
+</I>&gt;<i> the tarball the tar -t will list that directory and all its contents.
+</I>&gt;<i> So if someone has one file in /etc which should be added but
+</I>&gt;<i> created the tarball in a way that it contains the directory as
+</I>&gt;<i> well this will lead to the entire /etc directory to be moved into
+</I>&gt;<i> the boot image. So the code should create a list of files and
+</I>&gt;<i> directories with files but not entire directories like '/etc'
+</I>
+The new code filters out directories just as the previous code did, it 
+just uses a different expression, grep -v /$. A listing of a directory 
+in tar -t is indicated by a / as the character before EOL.
+&gt;<i>
+</I>&gt;<i> Problem here is that the name of the owner/groub 'autobuild/autobuild' is
+</I>&gt;<i> so long that the table layout no longer has the expected field length :(
+</I>&gt;<i> The attached patch fixes this by using the --numeric-owner option
+</I>&gt;<i> fixed field length detection is always evil but I don't have
+</I>&gt;<i> a better solution in mind. I'm open for anything better :)
+</I>
+Didn't work in my quick and dirty test:
+
+ &gt; tar --numeric-owner -tvf exa.tgz
+drwxr-xr-x 500/100           0 2011-05-16 14:33 kiwi-hooks/
+-rw-r--r-- 500/100           0 2011-05-16 14:32 kiwi-hooks/preHWdetect.sh
+-rw-r--r-- 500/100           0 2011-05-16 14:33 kiwi-hooks/preCallInit.sh
+
+ &gt; tar --numeric-owner -tvf exa.tgz | grep -v ^d | cut -c49- | cut -f1 -d-
+kiwi
+kiwi
+
+
+But what we expect are path to files
+
+-&gt; tar -tf exa.tgz | grep -v /$
+kiwi-hooks/preHWdetect.sh
+kiwi-hooks/preCallInit.sh
+
+My $0.02
+Robert
+
+-- 
+Robert Schweikert                           MAY THE SOURCE BE WITH YOU
+SUSE-IBM Software Integration Center                   LINUX
+Tech Lead
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at ca.ibm.com</A>
+781-464-8147
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003419.html">[Kiwi-devel] Fix ownership change issue
+</A></li>
+	<LI>Next message: <A HREF="003423.html">[Kiwi-devel] Fix ownership change issue
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3422">[ date ]</a>
+              <a href="thread.html#3422">[ thread ]</a>
+              <a href="subject.html#3422">[ subject ]</a>
+              <a href="author.html#3422">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,340 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d573916d7389cc077a772099dfab79c6fe83152e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20d573916d7389cc077a772099dfab79c6fe83152e&In-Reply-To=%3C20110706105112.4FB03483388%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003596.html">
+   <LINK REL="Next"  HREF="003598.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d573916d7389cc077a772099dfab79c6fe83152e</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20d573916d7389cc077a772099dfab79c6fe83152e&In-Reply-To=%3C20110706105112.4FB03483388%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d573916d7389cc077a772099dfab79c6fe83152e">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jul  6 12:51:11 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003596.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c2b374a2e82708cc6060906be411469fcf98b857
+</A></li>
+        <LI>Next message: <A HREF="003598.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ee597b3cb48ce426edff219edf7d46e6dec145f2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3597">[ date ]</a>
+              <a href="thread.html#3597">[ thread ]</a>
+              <a href="subject.html#3597">[ subject ]</a>
+              <a href="author.html#3597">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  d573916d7389cc077a772099dfab79c6fe83152e (commit)
+      from  c2b374a2e82708cc6060906be411469fcf98b857 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit d573916d7389cc077a772099dfab79c6fe83152e
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jul 6 12:50:13 2011 +0200
+
+    - activate NFS locking for nfsroot systems. This means the
+      mount call doesn't use -o nolock anymore
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index bfad6b5..096b449 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -971,7 +971,7 @@ function suseStripInitrd {
+ 		true touch sleep sh pidof sed rmdir rm pwd ps mv mkdir kill hostname
+ 		gzip grep false df cp cat bash basename arch sort ls uniq lsmod
+ 		usleep parted mke2fs pvcreate vgcreate lvm resize2fs ln hdparm
+-		dmesg splash fbmngplay portmap start-statd sm-notify
++		dmesg splash fbmngplay portmap start-statd sm-notify rpcbind
+ 		rpc.statd rpc.idmapd nbd-client mount.nfs mount.nfs4 eject
+ 		blockdev posbios ping killall killall5 udevcontrol udevd
+ 		udevsettle udevtrigger mknod stat path_id hwup scsi_id scsi_tur
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index cd56287..ba5b63d 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -432,23 +432,56 @@ function createInitialDevices {
+ 	test -L $prefix/stderr || ln -s fd/2 $prefix/stderr
+ }
+ #======================================
++# mount_rpc_pipefs
++#--------------------------------------
++function mount_rpc_pipefs {
++	# See if the file system is there yet
++	case `stat -c &quot;%t&quot; -f /var/lib/nfs/rpc_pipefs` in
++	*67596969*)
++		return 0;;
++	esac
++	mount -t rpc_pipefs rpc_pipefs /var/lib/nfs/rpc_pipefs
++}
++#======================================
++# umount_rpc_pipefs
++#--------------------------------------
++function umount_rpc_pipefs {
++	# See if the file system is there
++	case `stat -c &quot;%t&quot; -f /var/lib/nfs/rpc_pipefs` in
++	*67596969*)
++		umount /var/lib/nfs/rpc_pipefs
++	esac
++}
++#======================================
++# setupNFSServices
++#--------------------------------------
++function setupNFSServices {
++	mount_rpc_pipefs
++	if [ -x /sbin/rpcbind ];then
++		startproc /sbin/rpcbind
++	fi
++	if [ -x /usr/sbin/rpc.statd ];then
++		startproc /usr/sbin/rpc.statd --no-notify
++	fi
++	if [ -x /usr/sbin/rpc.idmapd ];then
++		startproc /usr/sbin/rpc.idmapd
++	fi
++}
++#======================================
+ # mountSystemFilesystems
+ #--------------------------------------
+ function mountSystemFilesystems {
+ 	mount -t proc  proc   /proc
+ 	mount -t sysfs sysfs  /sys
+-	if [ -d /var/lib/nfs/rpc_pipefs ];then
+-		mount -t rpc_pipefs rpc_pipefs /var/lib/nfs/rpc_pipefs
+-	fi
+ }
+ #======================================
+ # umountSystemFilesystems
+ #--------------------------------------
+ function umountSystemFilesystems {
++	umount_rpc_pipefs
+ 	umount /dev/pts &amp;&gt;/dev/null
+ 	umount /sys     &amp;&gt;/dev/null
+ 	umount /proc    &amp;&gt;/dev/null
+-	umount /var/lib/nfs/rpc_pipefs &amp;&gt;/dev/null
+ }
+ #======================================
+ # createFramebufferDevices
+@@ -4533,7 +4566,7 @@ function mountSystemOverlay {
+ 		# on it if not remote. Mount the filesystem
+ 		# ----
+ 		if [ &quot;$roDevice&quot; = &quot;nfs&quot; ];then
+-			rwDevice=&quot;-o nolock,rw $nfsRootServer:$rwDevice&quot;
++			rwDevice=&quot;-o vers=3,rw $nfsRootServer:$rwDevice&quot;
+ 		fi
+ 		if [ ! &quot;$roDevice&quot; = &quot;nfs&quot; ] &amp;&amp; ! setupReadWrite; then
+ 			return 1
+@@ -4688,7 +4721,7 @@ function mountSystem {
+ 	#======================================
+ 	# wait for storage device to appear
+ 	#--------------------------------------
+-	if ! echo $mountDevice | grep -qE &quot;loop|nolock&quot;;then
++	if ! echo $mountDevice | grep -qE &quot;loop|vers=&quot;;then
+ 		waitForStorageDevice $mountDevice
+ 	fi
+ 	#======================================
+@@ -5550,8 +5583,8 @@ function bootImage {
+ 		exec /lib/mkinitrd/bin/run-init -c /dev/console /mnt /bin/bash -c \
+ 			&quot;/preinit ; . /include ; cleanImage ; exec /sbin/halt -fihp&quot; 
+ 	fi
+-	# FIXME: clicfs doesn't like run-init
+-	if [ ! &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
++	# FIXME: clicfs / nfsroot doesn't like run-init
++	if [ ! &quot;$haveClicFS&quot; = &quot;yes&quot; ] &amp;&amp; [ -z &quot;$NFSROOT&quot; ];then
+ 		exec /lib/mkinitrd/bin/run-init -c /dev/console /mnt /bin/bash -c \
+ 			&quot;/preinit ; . /include ; cleanImage ; exec /sbin/init $option&quot;
+ 	else
+diff --git a/system/boot/ix86/netboot/suse-linuxrc b/system/boot/ix86/netboot/suse-linuxrc
+index 4ab4bab..3c1c5d7 100755
+--- a/system/boot/ix86/netboot/suse-linuxrc
++++ b/system/boot/ix86/netboot/suse-linuxrc
+@@ -570,10 +570,11 @@ else
+ 		if [ -z &quot;$nfsRootServer&quot; ];then
+ 			nfsRootServer=$SERVER
+ 		fi
++		setupNFSServices
+ 		Echo &quot;Mounting NFS root system: $nfsRootServer:$nfsRootDevice...&quot;
+-		imageRootDevice=&quot;-o nolock,rw,vers=3 $nfsRootServer:$nfsRootDevice&quot;
++		imageRootDevice=&quot;-o vers=3,rw $nfsRootServer:$nfsRootDevice&quot;
+ 		if [ ! -z &quot;$COMBINED_IMAGE&quot; ] || [ ! -z &quot;$UNIONFS_CONFIG&quot; ];then
+-			imageRootDevice=&quot;-o nolock,ro,vers=3 $nfsRootServer:$nfsRootDevice&quot;
++			imageRootDevice=&quot;-o vers=3,ro $nfsRootServer:$nfsRootDevice&quot;
+ 		fi
+ 		if [ ! -z &quot;$UNIONFS_CONFIG&quot; ];then
+ 			unionFST=`echo $UNIONFS_CONFIG | cut -d , -f 3`
+@@ -770,6 +771,12 @@ if [ $LOCAL_BOOT = &quot;no&quot; ] || [ ! -z &quot;$RELOAD_CONFIG&quot; ];then
+ 		Echo &quot;Configuration files reload forced via RELOAD_CONFIG...&quot;
+ 	fi
+ 	#=======================================
++	# 17.0) Import NFS root files
++	#---------------------------------------
++	if [ ! -z &quot;$NFSROOT&quot; ];then
++		test -f /etc/resolv.conf &amp;&amp; cp /etc/resolv.conf /mnt/etc
++	fi
++	#=======================================
+ 	# 17.1) Import files from backup
+ 	#---------------------------------------
+ 	BCFG_BASE='etc/KIWI'
+diff --git a/system/boot/ix86/netboot/suse-preinit b/system/boot/ix86/netboot/suse-preinit
+index fb95cdf..f068f6d 100755
+--- a/system/boot/ix86/netboot/suse-preinit
++++ b/system/boot/ix86/netboot/suse-preinit
+@@ -120,33 +120,19 @@ if [ ! -z &quot;$imageDiskDevice&quot; ] &amp;&amp; [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ];then
+ fi
+ 
+ #======================================
+-# 11) setup network for nfs boot
+-#--------------------------------------
+-if [ ! -z &quot;$NFSROOT&quot; ];then
+-	mount -t proc  proc    /proc
+-	mount -t sysfs sysfs   /sys
+-	mount -t devpts devpts /dev/pts
+-	if [ -x /etc/init.d/portmap ];then
+-		/etc/init.d/portmap start
+-	elif [ -x /etc/init.d/rpcbind ];then
+-		/etc/init.d/rpcbind start
+-	fi
+-fi
+-
+-#======================================
+-# 12) setup console
++# 11) setup console
+ #--------------------------------------
+ if [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ];then
+ 	setupConsole
+ fi
+ 
+ #======================================
+-# 13) setup console
++# 12) kernelCheck
+ #--------------------------------------
+ kernelCheck
+ 
+ #======================================
+-# 14) kill udev
++# 13) kill udev
+ #--------------------------------------
+ udevSystemStop
+ umountSystemFilesystems
+diff --git a/system/boot/ppc/netboot/suse-linuxrc b/system/boot/ppc/netboot/suse-linuxrc
+index 7f3b8ea..4f02a6b 100755
+--- a/system/boot/ppc/netboot/suse-linuxrc
++++ b/system/boot/ppc/netboot/suse-linuxrc
+@@ -570,10 +570,11 @@ else
+ 		if [ -z &quot;$nfsRootServer&quot; ];then
+ 			nfsRootServer=$SERVER
+ 		fi
++		setupNFSServices
+ 		Echo &quot;Mounting NFS root system: $nfsRootServer:$nfsRootDevice...&quot;
+-		imageRootDevice=&quot;-o nolock,rw $nfsRootServer:$nfsRootDevice&quot;
++		imageRootDevice=&quot;-o vers=3,rw $nfsRootServer:$nfsRootDevice&quot;
+ 		if [ ! -z &quot;$COMBINED_IMAGE&quot; ] || [ ! -z &quot;$UNIONFS_CONFIG&quot; ];then
+-			imageRootDevice=&quot;-o nolock,ro $nfsRootServer:$nfsRootDevice&quot;
++			imageRootDevice=&quot;-o vers=3,ro $nfsRootServer:$nfsRootDevice&quot;
+ 		fi
+ 		if [ ! -z &quot;$UNIONFS_CONFIG&quot; ];then
+ 			unionFST=`echo $UNIONFS_CONFIG | cut -d , -f 3`
+@@ -770,6 +771,12 @@ if [ $LOCAL_BOOT = &quot;no&quot; ] || [ ! -z &quot;$RELOAD_CONFIG&quot; ];then
+ 		Echo &quot;Configuration files reload forced via RELOAD_CONFIG...&quot;
+ 	fi
+ 	#=======================================
++	# 17.0) Import NFS root files
++	#---------------------------------------
++	if [ ! -z &quot;$NFSROOT&quot; ];then
++		test -f /etc/resolv.conf &amp;&amp; cp /etc/resolv.conf /mnt/etc
++	fi
++	#=======================================
+ 	# 17.1) Import files from backup
+ 	#---------------------------------------
+ 	BCFG_BASE='etc/KIWI'
+diff --git a/system/boot/ppc/netboot/suse-preinit b/system/boot/ppc/netboot/suse-preinit
+index fb95cdf..f068f6d 100755
+--- a/system/boot/ppc/netboot/suse-preinit
++++ b/system/boot/ppc/netboot/suse-preinit
+@@ -120,33 +120,19 @@ if [ ! -z &quot;$imageDiskDevice&quot; ] &amp;&amp; [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ];then
+ fi
+ 
+ #======================================
+-# 11) setup network for nfs boot
+-#--------------------------------------
+-if [ ! -z &quot;$NFSROOT&quot; ];then
+-	mount -t proc  proc    /proc
+-	mount -t sysfs sysfs   /sys
+-	mount -t devpts devpts /dev/pts
+-	if [ -x /etc/init.d/portmap ];then
+-		/etc/init.d/portmap start
+-	elif [ -x /etc/init.d/rpcbind ];then
+-		/etc/init.d/rpcbind start
+-	fi
+-fi
+-
+-#======================================
+-# 12) setup console
++# 11) setup console
+ #--------------------------------------
+ if [ &quot;$systemIntegrity&quot; = &quot;clean&quot; ];then
+ 	setupConsole
+ fi
+ 
+ #======================================
+-# 13) setup console
++# 12) kernelCheck
+ #--------------------------------------
+ kernelCheck
+ 
+ #======================================
+-# 14) kill udev
++# 13) kill udev
+ #--------------------------------------
+ udevSystemStop
+ umountSystemFilesystems
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003596.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c2b374a2e82708cc6060906be411469fcf98b857
+</A></li>
+	<LI>Next message: <A HREF="003598.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ee597b3cb48ce426edff219edf7d46e6dec145f2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3597">[ date ]</a>
+              <a href="thread.html#3597">[ thread ]</a>
+              <a href="subject.html#3597">[ subject ]</a>
+              <a href="author.html#3597">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

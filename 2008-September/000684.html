@@ -1,0 +1,134 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1587 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1587%20-%20kiwi-head/modules&In-Reply-To=%3C200809261838.m8QIctUv005639%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000683.html">
+   <LINK REL="Next"  HREF="000685.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1587 - kiwi-head/modules</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1587%20-%20kiwi-head/modules&In-Reply-To=%3C200809261838.m8QIctUv005639%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1587 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Fri Sep 26 20:38:55 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000683.html">[Kiwi-devel] r1586 - in kiwi-head: . rpm	system/boot/ix86/xenboot/suse-10.1	system/boot/ix86/xenboot/suse-10.2	system/boot/ix86/xenboot/suse-10.3	system/boot/ix86/xenboot/suse-SLED10	system/boot/ix86/xenboot/suse-SLES10
+</A></li>
+        <LI>Next message: <A HREF="000685.html">[Kiwi-devel] Fix for manual product resolution
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#684">[ date ]</a>
+              <a href="thread.html#684">[ thread ]</a>
+              <a href="subject.html#684">[ subject ]</a>
+              <a href="author.html#684">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2008-09-26 20:38:54 +0200 (Fri, 26 Sep 2008)
+New Revision: 1587
+
+Modified:
+   kiwi-head/modules/KIWICollect.pm
+   kiwi-head/modules/KIWIRepoMetaHandler.pm
+Log:
+- catch loadsuccess failures
+- and here goeas another one... EulaPlugin now in
+  kiwi-instsource-plugins-openSUSE-11-0 package
+
+
+Modified: kiwi-head/modules/KIWICollect.pm
+===================================================================
+--- kiwi-head/modules/KIWICollect.pm	2008-09-26 15:44:43 UTC (rev 1586)
++++ kiwi-head/modules/KIWICollect.pm	2008-09-26 18:38:54 UTC (rev 1587)
+@@ -1600,30 +1600,6 @@
+ ### ALTLASTEN ###
+ ### TODO more plugins
+ 
+-  ## step 3: packages2eula:
+-  $this-&gt;{m_logger}-&gt;info(&quot;[I] Calling packages2eula:&quot;);
+-  my $p2eula = &quot;/usr/bin/packages2eula.pl&quot;;
+-  if(! (-f $p2eula or -x $p2eula)) {
+-    $this-&gt;{m_logger}-&gt;warning(&quot;[W] [createMetadata] excutable `$p2eula` not found. Maybe package `inst-source-utils` is not installed?&quot;);
+-    return;
+-  }
+-  my $pfilename = &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/packages.en&quot;;
+-  if(not -f $pfilename) {
+-    $pfilename .= &quot;.gz&quot;;
+-  }
+-  if(-f &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt&quot; and -f $pfilename) {
+-    my $data = qx($p2eula -i &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt&quot; -p $pfilename -o &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt.new&quot;);
+-    if(-f &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt.new&quot;) {
+-      link &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt.new&quot;, &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt&quot;;
+-      # cleanup the old file
+-      unlink &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt.new&quot;;
+-    }
+-  }
+-  else {
+-    $this-&gt;{m_logger}-&gt;warning(&quot;[W] [createMetadata] files $this-&gt;{m_basesubdir}-&gt;{'1'}/EULA.txt and/or $this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/packages.en don't exist, skipping&quot;);
+-  }
+-
+-
+   ## step 4: content file
+   $this-&gt;{m_logger}-&gt;info(&quot;[I] Creating content file:&quot;);
+   my $contentfile = &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/content&quot;;
+
+Modified: kiwi-head/modules/KIWIRepoMetaHandler.pm
+===================================================================
+--- kiwi-head/modules/KIWIRepoMetaHandler.pm	2008-09-26 15:44:43 UTC (rev 1586)
++++ kiwi-head/modules/KIWIRepoMetaHandler.pm	2008-09-26 18:38:54 UTC (rev 1587)
+@@ -238,10 +238,15 @@
+     }
+     else {
+       my $object = ($plugin)-&gt;new($this, $inifile);
+-      my $addsuccess = $this-&gt;_addPlugin($object);
+-      if($addsuccess) {
+-	$retval = 1;
++      if(not defined($object)) {
++	$this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;[E] Unable to create object of &lt;$plugin&gt;: constructor failed!&quot;);
+       }
++      else {
++	my $addsuccess = $this-&gt;_addPlugin($object);
++	if($addsuccess) {
++	  $retval = 1;
++	}
++      }
+     }
+   }
+   return $retval;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000683.html">[Kiwi-devel] r1586 - in kiwi-head: . rpm	system/boot/ix86/xenboot/suse-10.1	system/boot/ix86/xenboot/suse-10.2	system/boot/ix86/xenboot/suse-10.3	system/boot/ix86/xenboot/suse-SLED10	system/boot/ix86/xenboot/suse-SLES10
+</A></li>
+	<LI>Next message: <A HREF="000685.html">[Kiwi-devel] Fix for manual product resolution
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#684">[ date ]</a>
+              <a href="thread.html#684">[ thread ]</a>
+              <a href="subject.html#684">[ subject ]</a>
+              <a href="author.html#684">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

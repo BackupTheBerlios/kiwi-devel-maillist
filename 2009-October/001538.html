@@ -1,0 +1,185 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ab1f80911d3bab3bc36181e7f5021df8d0f75791
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ab1f80911d3bab3bc36181e7f5021df8d0f75791&In-Reply-To=%3C200910221218.n9MCIWSg008334%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001537.html">
+   <LINK REL="Next"  HREF="001539.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ab1f80911d3bab3bc36181e7f5021df8d0f75791</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ab1f80911d3bab3bc36181e7f5021df8d0f75791&In-Reply-To=%3C200910221218.n9MCIWSg008334%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ab1f80911d3bab3bc36181e7f5021df8d0f75791">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Oct 22 14:18:32 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001537.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 044f9db6674d068f6461ce376b1c07a9dece03b5
+</A></li>
+        <LI>Next message: <A HREF="001539.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 615411f97aaac18249f3e6ca96a27103c15af61f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1538">[ date ]</a>
+              <a href="thread.html#1538">[ thread ]</a>
+              <a href="subject.html#1538">[ subject ]</a>
+              <a href="author.html#1538">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  ab1f80911d3bab3bc36181e7f5021df8d0f75791 (commit)
+      from  3914993755e6df298e53b46abf6fb54513190ba4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ab1f80911d3bab3bc36181e7f5021df8d0f75791
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Oct 22 14:17:01 2009 +0200
+
+    - recovery mode (bnc #546057):
+      * throw reboot exception if backup files can't be created
+      * create backup files for files in recovery.tar.gz only
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 41edf97..3f65dd4 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Thu Oct 22 12:04:40 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- recovery mode (bnc #546057):
++  * throw reboot exception if backup files can't be created
++  * create backup files for files in recovery.tar.gz only
++
++-------------------------------------------------------------------
+ Wed Oct 21 12:15:36 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - use cmp to compare files first before diffing them. Prevent
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index 80ebab9..41a9376 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -405,15 +405,16 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 		# create backup diffs
+ 		#--------------------------------------
+ 		if [ -z &quot;$RESTORE&quot; ];then
+-			rFilesBackup=0
+ 			getText &quot;Clean sweep...&quot; &gt; /progress
++			rm -rf tmp/foobar; mkdir -p tmp/foobar
+ 			rm -rf tmp/backup; mkdir -p tmp/backup
+-			rFilesList=$(find etc/ home/ -type f 2&gt;/dev/null |\
++			if ! find etc/ home/ -type f 2&gt;/dev/null |\
+ 				xargs tar -cO -f - 2&gt;/dev/null |\
+-				tar -v -C tmp/backup -xf -)
+-			for i in $rFilesList;do
+-				rFilesBackup=$((rFilesBackup + 1))
+-			done
++				tar -v -C tmp/foobar -xf -
++			then
++				rm -rf tmp/foobar
++				systemException &quot;Failed to create backup files&quot; &quot;reboot&quot;
++			fi
+ 		fi
+ 		#======================================
+ 		# extract root archive
+@@ -432,25 +433,40 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 		#--------------------------------------
+ 		if [ -z &quot;$RESTORE&quot; ];then
+ 			rReady=0
++			rCount=0
+ 			getText &quot;backing up: %1...&quot; &quot;0%&quot; &gt; /progress
+-			for file in $rFilesList;do
+-				sizeOrig=$(stat $file --printf=%s)
+-				sizeBack=$(stat tmp/backup/$file --printf=%s)
+-				if [ $sizeOrig -ne $sizeBack ];then
+-					if ! cmp -s -n 20480 $file tmp/backup/$file;then
+-						txdiff=$(diff -u $file tmp/backup/$file 2&gt;/dev/null)
+-						printf &quot;%s\n&quot; &quot;$txdiff&quot; &gt; tmp/backup/$file
+-					else
+-						rm tmp/backup/$file
++			cat /tmp/rFiles | grep -E &quot;^(./etc|./home)&quot; &gt; /tmp/bFiles
++			rFilesBackup=$(cat /tmp/bFiles | wc -l)
++			for file in $(cat /tmp/bFiles);do
++				if [ ! -d $file ] &amp;&amp; [ -e $file ] &amp;&amp; [ -e tmp/foobar/$file ]
++				then
++					sizeOrig=$(stat $file --printf=%s)
++					sizeBack=$(stat tmp/foobar/$file --printf=%s)
++					if [ $sizeOrig -ne $sizeBack ];then
++						if ! cmp -s -n 20480 $file tmp/foobar/$file;then
++							label=$(echo $file | cut -c 2-)
++							txdiff=$(diff -u \
++								--label $label $file \
++								--label $label tmp/foobar/$file 2&gt;/dev/null)
++							if [ $? = 1 ];then
++								base=$(basename $file)
++								printf &quot;%s\n&quot; &quot;$txdiff&quot; \
++									&gt; tmp/backup/$base.$rCount.diff
++								rCount=$((rCount + 1))
++							fi
++						fi
+ 					fi
+-				else
+-					rm tmp/backup/$file
+ 				fi
+ 				rReady=$((rReady + 1))
+ 				rPDone=$(echo &quot;scale=4; $rFilesBackup / $rReady&quot; | bc)
+ 				rPDone=$(echo &quot;scale=0; 100 / $rPDone&quot; | bc)
+ 				getText &quot;backing up: %1...&quot; &quot;$rPDone%&quot; &gt; /progress
+ 			done
++			rm -rf tmp/foobar
++			rm -rf tmp/backup/bootloader*
++			rm -rf tmp/backup/mtab*
++			rm -rf tmp/backup/fstab*
++			rm -rf tmp/backup/kernel*
+ 		fi
+ 		dPID=$(pidof mst)
+ 		kill $dPID
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001537.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 044f9db6674d068f6461ce376b1c07a9dece03b5
+</A></li>
+	<LI>Next message: <A HREF="001539.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 615411f97aaac18249f3e6ca96a27103c15af61f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1538">[ date ]</a>
+              <a href="thread.html#1538">[ thread ]</a>
+              <a href="subject.html#1538">[ subject ]</a>
+              <a href="author.html#1538">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

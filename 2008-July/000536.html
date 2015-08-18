@@ -1,0 +1,273 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1451 - in kiwi-head: modules modules/.test rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1451%20-%20in%20kiwi-head%3A%20modules%20modules/.test%20rpm&In-Reply-To=%3C200807111229.m6BCTLNC000802%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000535.html">
+   <LINK REL="Next"  HREF="000537.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1451 - in kiwi-head: modules modules/.test rpm</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1451%20-%20in%20kiwi-head%3A%20modules%20modules/.test%20rpm&In-Reply-To=%3C200807111229.m6BCTLNC000802%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1451 - in kiwi-head: modules modules/.test rpm">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Fri Jul 11 14:29:21 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000535.html">[Kiwi-devel] r1450 - kiwi-head/system/boot/oemboot
+</A></li>
+        <LI>Next message: <A HREF="000537.html">[Kiwi-devel] r1452 - in kiwi-head: modules rpm system/boot/oemboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#536">[ date ]</a>
+              <a href="thread.html#536">[ thread ]</a>
+              <a href="subject.html#536">[ subject ]</a>
+              <a href="author.html#536">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2008-07-11 14:29:19 +0200 (Fri, 11 Jul 2008)
+New Revision: 1451
+
+Modified:
+   kiwi-head/modules/.test/KIWIArchList-unittest.pl
+   kiwi-head/modules/KIWIArch.pm
+   kiwi-head/modules/KIWIArchList.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+- integration of the &quot;head&quot; flag into KIWIArchList, KIWIArch and the
+  respective unittest
+
+
+Modified: kiwi-head/modules/.test/KIWIArchList-unittest.pl
+===================================================================
+--- kiwi-head/modules/.test/KIWIArchList-unittest.pl	2008-07-11 10:24:36 UTC (rev 1450)
++++ kiwi-head/modules/.test/KIWIArchList-unittest.pl	2008-07-11 12:29:19 UTC (rev 1451)
+@@ -117,6 +117,25 @@
+   print &quot;please verify those results against $pathtoconfig/$ConfigName!\n&quot;;
+   $res--;
+   
++  # TEST 6: get head list now:
++  my @headlist = $module-&gt;headList();
++  if(not @headlist) {
++    print &quot;E: head architectures list is empty!\n&quot;;
++    return $res;
++  }
++  # sanity check: verify if all &quot;head&quot; archs have the &quot;isHead()&quot; return true
++  foreach(@headlist) {
++    my $ha = $module-&gt;arch($_);
++    if(defined($ha) and $ha-&gt;isHead()) {
++      print &quot;I: &quot;.$ha-&gt;name().&quot; is a head architecture\n&quot;;
++    }
++    else {
++      print &quot;W: &quot;.$ha-&gt;name().&quot; is not marked as head architecture!\n&quot;;
++    }
++  }
++  print &quot;I: you must compare this output manually, the test does not know how many head archs are in the config file\n&quot;;
++
++
+   return $res;
+ }
+ 
+
+Modified: kiwi-head/modules/KIWIArch.pm
+===================================================================
+--- kiwi-head/modules/KIWIArch.pm	2008-07-11 10:24:36 UTC (rev 1450)
++++ kiwi-head/modules/KIWIArch.pm	2008-07-11 12:29:19 UTC (rev 1451)
+@@ -44,13 +44,15 @@
+     m_name	=&gt; undef,
+     m_desc	=&gt; undef,
+     m_next	=&gt; undef,
++    m_head	=&gt; undef,
+   };
+   bless ($this, $class);
+ 
+   $this-&gt;{m_name} = shift;
+   $this-&gt;{m_desc} = shift;
+   $this-&gt;{m_next} = shift;
+-  if(not(defined($this-&gt;{m_name}) and defined($this-&gt;{m_desc}) and defined($this-&gt;{m_next}))) {
++  $this-&gt;{m_head} = shift;
++  if(not(defined($this-&gt;{m_name}) and defined($this-&gt;{m_desc}) and defined($this-&gt;{m_next}) and defined($this-&gt;{m_head}))) {
+     return undef; # rock hard get outta here: caller must check retval anyway
+   }
+ 
+@@ -95,7 +97,7 @@
+ 
+ 
+ #==================
+-# next
++# follower
+ #------------------
+ sub follower
+ {
+@@ -113,5 +115,30 @@
+ 
+ 
+ 
++#==================
++# Other methods
++#------------------
++
++
++
++#==================
++# isHead
++#------------------
++sub isHead
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  if($this-&gt;{m_head} eq &quot;&quot;) {
++    return 0;
++  }
++  else {
++    return 1;
++  }
++}
++
++
++
+ 1;
+ 
+
+Modified: kiwi-head/modules/KIWIArchList.pm
+===================================================================
+--- kiwi-head/modules/KIWIArchList.pm	2008-07-11 10:24:36 UTC (rev 1450)
++++ kiwi-head/modules/KIWIArchList.pm	2008-07-11 12:29:19 UTC (rev 1451)
+@@ -73,7 +73,7 @@
+   }
+   my $name = shift;
+ 
+-  if(defined($this-&gt;{m_archs}-&gt;{$name})) {
++  if(defined($name) and defined($this-&gt;{m_archs}-&gt;{$name})) {
+     return $this-&gt;{m_archs}-&gt;{$name};
+   }
+   else {
+@@ -127,12 +127,12 @@
+     $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;_addArch: wrong number of arguments!\n&quot;);
+     return undef;
+   }
+-  my ($name, $desc, $next) = @_;
++  my ($name, $desc, $next, $head) = @_;
+   if(defined($this-&gt;{m_archs}-&gt;{$name})) {
+     $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;_addArch: arch=$name already in list, skipping\n&quot;);
+     return 0;
+   }
+-  my $arch = new KIWIArch($name, $desc, $next);
++  my $arch = new KIWIArch($name, $desc, $next, $head);
+   $this-&gt;{m_archs}-&gt;{$name} = $arch;
+   return 1;
+ }
+@@ -145,7 +145,7 @@
+ # add all architectures from a hash
+ # The hash has the following structure
+ # (see KIWIXML::getInstSourceArchList):
+-# - name =&gt; [descr, nextname]
++# - name =&gt; [descr, nextname, ishead]
+ # nextname is verified through xml validation:
+ # there must be an entry with the referred name
+ #------------------
+@@ -162,7 +162,8 @@
+   }
+   foreach my $a(keys(%{$hashref})) {
+     my $n = $hashref-&gt;{$a}-&gt;[1] eq &quot;0&quot;?&quot;&quot;:$hashref-&gt;{$a}-&gt;[1];
+-    $this-&gt;_addArch($a, $hashref-&gt;{$a}-&gt;[0], $hashref-&gt;{$a}-&gt;[1]);
++    my $head = $hashref-&gt;{$a}-&gt;[2] eq &quot;0&quot;?&quot;&quot;:$hashref-&gt;{$a}-&gt;[2];
++    $this-&gt;_addArch($a, $hashref-&gt;{$a}-&gt;[0], $n, $head);
+   }
+ }
+ 
+@@ -200,7 +201,6 @@
+     %omits = map { $_ =&gt; 1 } @_;
+   }
+   # loop the whole chain following &quot;$name&quot;:
+-  #for(my $a = $this-&gt;{m_archs}-&gt;{$name}; $a-&gt;follower();) {
+   my $a = $this-&gt;arch($name);
+   while(1) {
+     if(not($omits{$a-&gt;name()})) {
+@@ -214,5 +214,32 @@
+ 
+ 
+ 
++#==================
++# headList
++#------------------
++# Returns a list of architecture object
++# references that are marked as &quot;head&quot;
++# These are specified in config.xml as:
++#   &lt;architecures&gt;
++#     &lt;arch id=&quot;..&quot; .../&gt;
++#     ...
++#     &lt;requiredarch ref=&quot;name&quot;/&gt;
++# whereby the element &quot;name&quot; must match an
++# arch's id=&quot;...&quot; otherwise validation fails
++# -&gt; therefore I don't check for existence
++#------------------
++sub headList
++{
++  my $this = shift;
++  my @al;
++  if(not ref($this)) {
++    return @al;
++  }
++
++  @al = grep { $this-&gt;{m_archs}-&gt;{$_}-&gt;isHead()  } keys(%{$this-&gt;{m_archs}});
++}
++
++
++
+ 1;
+ 
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-07-11 10:24:36 UTC (rev 1450)
++++ kiwi-head/rpm/kiwi.changes	2008-07-11 12:29:19 UTC (rev 1451)
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Fri Jul 11 14:28:00 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">jcborn at suse.de</A>
++
++- Integration of head functionality in KIWIArch.pm,
++   KIWIArchList.pm and respective unittest
++
++-------------------------------------------------------------------
+ Thu Jul 10 16:49:00 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.57
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000535.html">[Kiwi-devel] r1450 - kiwi-head/system/boot/oemboot
+</A></li>
+	<LI>Next message: <A HREF="000537.html">[Kiwi-devel] r1452 - in kiwi-head: modules rpm system/boot/oemboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#536">[ date ]</a>
+              <a href="thread.html#536">[ thread ]</a>
+              <a href="subject.html#536">[ subject ]</a>
+              <a href="author.html#536">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

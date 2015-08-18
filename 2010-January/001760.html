@@ -1,0 +1,365 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 26486210f0ceca8f0114088ce5a3997bba3af1a4
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2026486210f0ceca8f0114088ce5a3997bba3af1a4&In-Reply-To=%3C201001111612.o0BGCuxN009571%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001759.html">
+   <LINK REL="Next"  HREF="001761.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 26486210f0ceca8f0114088ce5a3997bba3af1a4</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2026486210f0ceca8f0114088ce5a3997bba3af1a4&In-Reply-To=%3C201001111612.o0BGCuxN009571%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 26486210f0ceca8f0114088ce5a3997bba3af1a4">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Jan 11 17:12:56 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001759.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. af2227324631060b60d9b5e2d245bb8a916c0e32
+</A></li>
+        <LI>Next message: <A HREF="001761.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f0b093f0df4ce6fd7325a0d45847254cab14c9b9
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1760">[ date ]</a>
+              <a href="thread.html#1760">[ thread ]</a>
+              <a href="subject.html#1760">[ subject ]</a>
+              <a href="author.html#1760">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  26486210f0ceca8f0114088ce5a3997bba3af1a4 (commit)
+      from  67e43fd734514e03950ec41e11033361f3c78ffc (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 26486210f0ceca8f0114088ce5a3997bba3af1a4
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Jan 11 17:12:37 2010 +0100
+
+    - added first version of report html creation
+    - again fixed KIWIURL::quote(). perl file checks doesn't
+      allow quoted items (bnc #561855)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIMigrate.pm b/modules/KIWIMigrate.pm
+index 5180c6a..6e6f4fa 100644
+--- a/modules/KIWIMigrate.pm
++++ b/modules/KIWIMigrate.pm
+@@ -196,7 +196,6 @@ sub createReport {
+ 	# user to solve outstanding problems in order to allow a
+ 	# clean migration of the system into an image description
+ 	# ---
+-	# TODO... make it nice as html page
+ 	my $this       = shift;
+ 	my $kiwi       = $this-&gt;{kiwi};
+ 	my $dest       = $this-&gt;{dest};
+@@ -207,99 +206,130 @@ sub createReport {
+ 	my $filechanges= $this-&gt;{filechanges};
+ 	my $modified   = $this-&gt;{modified};
+ 	#==========================================
+-	# start report
++	# Start report
++	#------------------------------------------
++	if (! open (FD,&quot;&gt;$dest/report.html&quot;)) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Couldn't create report: $!&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	print FD '&lt;html&gt;'.&quot;\n&quot;;
++	print FD &quot;\t&quot;.'&lt;head&gt;'.&quot;\n&quot;;
++	print FD &quot;\t\t&quot;.'&lt;title&gt;Migration report&lt;/title&gt;'.&quot;\n&quot;;
++	print FD &quot;\t&quot;.'&lt;/head&gt;'.&quot;\n&quot;;
++	print FD '&lt;body&gt;'.&quot;\n&quot;;
++	#==========================================
++	# Package/Pattern report
+ 	#------------------------------------------
+-	# package report...
+-	$kiwi -&gt; info (&quot;Migration Report\n&quot;);
+-	$kiwi -&gt; info (&quot;----------------\n&quot;);
+ 	if ($problem1) {
+-		$kiwi -&gt; info (&quot;Following patterns couldn't be solved due to\n&quot;);
+-		$kiwi -&gt; info (&quot;dependency conflicts. Please check if your\n&quot;);
+-		$kiwi -&gt; info (&quot;repository setup contains a system repository\n&quot;);
+-		$kiwi -&gt; info (&quot;which matches the system you are about to migrate\n&quot;);
+-		$kiwi -&gt; note (&quot;$problem1&quot;);
++		print FD '&lt;h1&gt;Pattern conflict(s)&lt;/h1&gt;'.&quot;\n&quot;;
++		print FD '&lt;p&gt;'.&quot;\n&quot;;
++		print FD 'Following patterns could not be solved due to ';
++		print FD 'dependency conflicts. Please check if your ';
++		print FD 'repository setup contains a system repository ';
++		print FD 'which matches the system you are about to migrate'.&quot;\n&quot;;
++		print FD '&lt;/p&gt;'.&quot;\n&quot;;
++		print FD '&lt;hr&gt;'.&quot;\n&quot;;
++		print FD '&lt;p&gt;'.&quot;\n&quot;;
++		print FD &quot;$problem1&quot;;
++		print FD '&lt;/p&gt;'.&quot;\n&quot;;
+ 	}
+ 	if ($problem2) {
+-		$kiwi -&gt; info (&quot;Following packages couldn't be solved due to\n&quot;);
+-		$kiwi -&gt; info (&quot;dependency conflicts. Please check the conflicts\n&quot;);
+-		$kiwi -&gt; info (&quot;and solve them by either uninstalling the\n&quot;);
+-		$kiwi -&gt; info (&quot;package(s) from your system or skip them by using\n&quot;);
+-		$kiwi -&gt; info (&quot;the --skip option\n&quot;); 
+-		$kiwi -&gt; note (&quot;$problem2&quot;);
++		print FD '&lt;h1&gt;Package conflict(s)&lt;/h1&gt;'.&quot;\n&quot;;
++		print FD '&lt;p&gt;'.&quot;\n&quot;;
++		print FD 'Following packages could not be solved due to ';
++		print FD 'dependency conflicts. Please check the conflicts ';
++		print FD 'and solve them by either uninstalling the ';
++		print FD 'package(s) from your system or skip them by using ';
++		print FD 'the --skip option'.&quot;\n&quot;;
++		print FD '&lt;/p&gt;'.&quot;\n&quot;;
++		print FD '&lt;hr&gt;'.&quot;\n&quot;;
++		print FD '&lt;p&gt;'.&quot;\n&quot;; 
++		print FD &quot;$problem2&quot;;
++		print FD '&lt;/p&gt;'.&quot;\n&quot;;
+ 	}
+ 	if (@{$failedJob1}) {
+-		$kiwi -&gt; info (&quot;Following patterns couldn't be found in your\n&quot;);
+-		$kiwi -&gt; info (&quot;repository list but are marked as installed.\n&quot;);
+-		$kiwi -&gt; info (&quot;You can either ignore it or add a repository which\n&quot;);
+-		$kiwi -&gt; info (&quot;contains the mentioned patterns\n&quot;);
++		print FD '&lt;h1&gt;Pattern(s) not found&lt;/h1&gt;'.&quot;\n&quot;;
++		print FD '&lt;p&gt;'.&quot;\n&quot;;
++		print FD 'Following patterns could not be found in your ';
++		print FD 'repository list but are marked as installed ';
++		print FD 'You can either ignore it or add a repository which ';
++		print FD 'contains the mentioned patterns'.&quot;\n&quot;;
++		print FD '&lt;/p&gt;'.&quot;\n&quot;;
++		print FD '&lt;hr&gt;'.&quot;\n&quot;;
++		print FD '&lt;ul&gt;'.&quot;\n&quot;;
+ 		foreach my $job (@{$failedJob1}) {
+-			$kiwi -&gt; note (&quot;$job\n&quot;);
++			print FD '&lt;li&gt;'.$job.'&lt;/li&gt;'.&quot;\n&quot;;
+ 		}
++		print FD '&lt;/ul&gt;'.&quot;\n&quot;;
+ 	}
+ 	if (@{$failedJob2}) {
+-		$kiwi -&gt; info (&quot;Following packages couldn't be found in your\n&quot;);
+-		$kiwi -&gt; info (&quot;repository list but are installed on your system.\n&quot;);
+-		$kiwi -&gt; info (&quot;You can either ignore it or add a repository which\n&quot;);
+-		$kiwi -&gt; info (&quot;contains the mentioned packages\n&quot;);
+-		$kiwi -&gt; info (&quot;Please note if you ignore a package which contains\n&quot;);
+-		$kiwi -&gt; info (&quot;files modified in the system kiwi will store the\n&quot;);
+-		$kiwi -&gt; info (&quot;modified files inside the overlay tree.\n&quot;);
++		print FD '&lt;h1&gt;Package(s) not found&lt;/h1&gt;'.&quot;\n&quot;;
++		print FD '&lt;p&gt;'.&quot;\n&quot;;
++		print FD 'Following packages could not be found in your ';
++		print FD 'repository list but are installed on your system ';
++		print FD 'You can either ignore it or add a repository which ';
++		print FD 'contains the mentioned packages ';
++		print FD 'Please note if you ignore a package which contains ';
++		print FD 'files modified in the system kiwi will store the modified';
++		print FD 'files inside the modified files overlay tree though.'.&quot;\n&quot;;
++		print FD '&lt;/p&gt;'.&quot;\n&quot;;
++		print FD '&lt;hr&gt;'.&quot;\n&quot;;
++		print FD '&lt;table&gt;'.&quot;\n&quot;;
+ 		my @pacs = @{$failedJob2};
+ 		my @list = qxx (&quot;rpm -q @pacs --last&quot;); chomp @list;
+ 		foreach my $job (@list) {
+ 			if ($job =~ /([^\s]+)\s+([^\s].*)/) {
+ 				my $pac  = $1;
+ 				my $date = $2;
+-				$kiwi -&gt; note (&quot;--&gt; $pac\n\t$date\n&quot;);
++				print FD '&lt;tr valign=&quot;top&quot;&gt;'.&quot;\n&quot;;
++				print FD '&lt;td&gt;'.$pac.'&lt;/td&gt;'.&quot;\n&quot;;
++				print FD '&lt;td&gt;'.$date.'&lt;/td&gt;'.&quot;\n&quot;;
++				print FD '&lt;/tr&gt;'.&quot;\n&quot;;
+ 			}
+ 		}
++		print FD '&lt;/table&gt;'.&quot;\n&quot;;
+ 	}
+-	# modified files report...
++	#==========================================
++	# Modified files report...
++	#------------------------------------------
+ 	if ($modified) {
+-		$kiwi -&gt; info (&quot;Following files are part of a package and are\n&quot;);
+-		$kiwi -&gt; info (&quot;marked as modified. In most cases this is because\n&quot;);
+-		$kiwi -&gt; info (&quot;a configuration file provided by the package has\n&quot;);
+-		$kiwi -&gt; info (&quot;changed. You may want to keep these files in your\n&quot;);
+-		$kiwi -&gt; info (&quot;overlay tree. But it might also be the case that a\n&quot;);
+-		$kiwi -&gt; info (&quot;package is installed twice. In that case the\n&quot;);
+-		$kiwi -&gt; info (&quot;conflicting files appear as modified and you should\n&quot;);
+-		$kiwi -&gt; info (&quot;fix your system by removing the package version\n&quot;);
+-		$kiwi -&gt; info (&quot;which is apparently not part of your system anymore\n&quot;);
+-		$kiwi -&gt; info (&quot;A good indicator that you have installed multiple\n&quot;);
+-		$kiwi -&gt; info (&quot;versions of the same package is if binary files\n&quot;);
+-		$kiwi -&gt; info (&quot;like libraries or exectuables appear as modified\n&quot;);
+-		$kiwi -&gt; info (&quot;files\n&quot;);
+-		foreach my $file (sort @{$modified}) {
+-			$kiwi -&gt; note (&quot;--&gt; $file\n&quot;);
+-		}
++		# modified...
++		print FD '&lt;h1&gt;Modified files&lt;/h1&gt;'.&quot;\n&quot;;
++		print FD '&lt;p&gt;'.&quot;\n&quot;;
++		print FD 'Following files are part of a package and are ';
++		print FD 'marked as modified. In most cases this is because ';
++		print FD 'a configuration file provided by the package has ';
++		print FD 'changed. You may want to keep these files in your ';
++		print FD 'overlay tree. But it might also be the case that a ';
++		print FD 'package is installed twice. In that case the ';
++		print FD 'conflicting files appear as modified and you should ';
++		print FD 'fix your system by removing the package version ';
++		print FD 'which is apparently not part of your system anymore ';
++		print FD 'A good indicator that you have installed multiple ';
++		print FD 'versions of the same package is if binary files ';
++		print FD 'like libraries or exectuables appear as modified ';
++		print FD 'files'.&quot;\n&quot;;
++		print FD '&lt;/p&gt;'.&quot;\n&quot;;
++		print FD '&lt;hr&gt;'.&quot;\n&quot;;
++		print FD '&lt;a href=&quot;'.&quot;$dest/root-modified/&quot;.'&quot;&gt;';
++		print FD 'Modified files tree&lt;/a&gt;'.&quot;\n&quot;;
++		# unpackaged...
++		print FD '&lt;h1&gt;Unpackaged files&lt;/h1&gt;'.&quot;\n&quot;;
++		print FD '&lt;p&gt;'.&quot;\n&quot;;
++		print FD 'Following files are not part of any package ';
++		print FD 'I suggest to check for binary files first and check ';
++		print FD 'where they come from and if they are needed or can be ';
++		print FD 'provided as a package. After that I suggest to check ';
++		print FD 'the typical linux configuration directories'.&quot;\n&quot;;
++		print FD '&lt;/p&gt;'.&quot;\n&quot;;
++		print FD '&lt;a href=&quot;'.&quot;$dest/root-nopackage/&quot;.'&quot;&gt;';
++		print FD 'Unpackaged files tree&lt;/a&gt;'.&quot;\n&quot;;
+ 	}
+-	#if ($filechanges) {
+-	#	my %result = %{$filechanges};
+-	#	my @rpmcheck = sort keys %result;
+-	#	$kiwi -&gt; info (&quot;Creating files report\n&quot;);
+-	#	if (! open (FD,&quot;&gt;$dest/report-files&quot;)) {
+-	#		$kiwi -&gt; failed ();
+-	#		$kiwi -&gt; error  (&quot;Couldn't create report file: $!&quot;);
+-	#		$kiwi -&gt; failed ();
+-	#		return undef;
+-	#	}
+-	#	my @list = ();
+-	#	foreach my $file (@rpmcheck) {
+-	#		print FD $file.&quot;\0&quot;;
+-	#	}
+-	#	close FD;
+-	#	my $file = &quot;$dest/report-files&quot;;
+-	#	my $prog = &quot;du -ch --time --files0-from&quot;;
+-	#	my @data = qxx (&quot;$prog $file 2&gt;$dest/report-lost&quot;); chomp @data;
+-	#	my $code = $? &gt;&gt; 8;
+-	#	if ($code == 0) {
+-	#		unlink &quot;$dest/report-lost&quot;;
+-	#	}
+-	#	unlink $file;
+-	#	foreach my $line (@data) {
+-	#		$kiwi -&gt; info (&quot;$line\n&quot;);
+-	#	}
+-	#}
++	close FD;
++	$kiwi -&gt; info (&quot;Report file created: $dest/report.html&quot;);
++	$kiwi -&gt; done ();
+ 	return $this;
+ }
+ 
+diff --git a/modules/KIWIRoot.pm b/modules/KIWIRoot.pm
+index 39f0a83..068631a 100644
+--- a/modules/KIWIRoot.pm
++++ b/modules/KIWIRoot.pm
+@@ -99,9 +99,10 @@ sub new {
+ 		my $urlHandler  = new KIWIURL ($kiwi,$this);
+ 		my $publics_url = $urlHandler -&gt; normalizePath ($source);
+ 		if ($publics_url =~ /^\//) {
+-			if (! -d $publics_url) {
+-				$kiwi -&gt; warning (&quot;local URL path not found: $publics_url&quot;);
+-				$kiwi -&gt; skipped ();
++			my ( $publics_url_test ) = glob ( $publics_url );
++			if (! -d $publics_url_test) {
++				$kiwi -&gt;warning (&quot;local URL path not found: $publics_url_test&quot;);
++				$kiwi -&gt;skipped ();
+ 				next;
+ 			}
+ 		}
+diff --git a/modules/KIWIURL.pm b/modules/KIWIURL.pm
+index 67c2930..e129000 100644
+--- a/modules/KIWIURL.pm
++++ b/modules/KIWIURL.pm
+@@ -251,8 +251,9 @@ sub dirPath {
+ 		my $pwd = qxx (&quot;pwd&quot;); chomp $pwd;
+ 		$module = $pwd.&quot;/&quot;.$module;
+ 	}
+-	if (! -e $module) {
+-		$kiwi -&gt; warning (&quot;dir path: $module doesn't exist: $!&quot;);
++	my ( $module_test ) = glob ($module);
++	if (! -e $module_test) {
++		$kiwi -&gt; warning (&quot;dir path: $module_test doesn't exist: $!&quot;);
+ 		$kiwi -&gt; skipped ();
+ 		return undef;
+ 	}
+@@ -341,8 +342,9 @@ sub isoPath {
+ 		my $pwd = qxx (&quot;pwd&quot;); chomp $pwd;
+ 		$module = $pwd.&quot;/&quot;.$module;
+ 	}
+-	if (! -e $module) {
+-		$kiwi -&gt; warning (&quot;ISO path: $module doesn't exist: $!&quot;);
++	my ( $module_test ) = glob ($module);
++	if (! -e $module_test) {
++		$kiwi -&gt; warning (&quot;ISO path: $module_test doesn't exist: $!&quot;);
+ 		$kiwi -&gt; skipped ();
+ 		return undef;
+ 	}
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 3598f0c..e7c2e03 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -4,6 +4,9 @@ Fri Jan  8 15:54:54 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ - v3.90
+ - fixed use of uninitialized value (bnc #569191)
+ - changed default type to oem for migration result
++- added first version of report html creation
++- again fixed KIWIURL::quote(). perl file checks doesn't
++  allow quoted items (bnc #561855)
+ 
+ -------------------------------------------------------------------
+ Mon Jan  4 10:03:14 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001759.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. af2227324631060b60d9b5e2d245bb8a916c0e32
+</A></li>
+	<LI>Next message: <A HREF="001761.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f0b093f0df4ce6fd7325a0d45847254cab14c9b9
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1760">[ date ]</a>
+              <a href="thread.html#1760">[ thread ]</a>
+              <a href="subject.html#1760">[ subject ]</a>
+              <a href="author.html#1760">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

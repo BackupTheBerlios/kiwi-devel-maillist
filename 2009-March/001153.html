@@ -1,0 +1,710 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a84992844b08adfd1be20f7e111d43e2f5ae58e3
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a84992844b08adfd1be20f7e111d43e2f5ae58e3&In-Reply-To=%3C200903301424.n2UEOAG6025437%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001152.html">
+   <LINK REL="Next"  HREF="001154.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a84992844b08adfd1be20f7e111d43e2f5ae58e3</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a84992844b08adfd1be20f7e111d43e2f5ae58e3&In-Reply-To=%3C200903301424.n2UEOAG6025437%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a84992844b08adfd1be20f7e111d43e2f5ae58e3">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Mar 30 16:24:10 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001152.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. da233b12f0b8a09549f4ba1040d9d09ad6767726
+</A></li>
+        <LI>Next message: <A HREF="001154.html">[Kiwi-devel] kiwi OEM image to replace root
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1153">[ date ]</a>
+              <a href="thread.html#1153">[ thread ]</a>
+              <a href="subject.html#1153">[ subject ]</a>
+              <a href="author.html#1153">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  a84992844b08adfd1be20f7e111d43e2f5ae58e3 (commit)
+      from  eec9d1b551fda49650be90774366643b084e3878 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit a84992844b08adfd1be20f7e111d43e2f5ae58e3
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Mar 30 16:23:59 2009 +0200
+
+    - added check functions SAPMemCheck, SAPCPUCheck
+      and SAPStorageCheck. They apply if the oem-sap-install
+      attribute is set for OEM images (bnc #486758)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 6d3f310..44c216c 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -253,6 +253,10 @@ function baseSetupOEMPartition {
+ 		echo &quot;Setting up OEM_KIWI_INITRD=$kiwi_oemkboot&quot;
+ 		echo &quot;OEM_KIWI_INITRD=$kiwi_oemkboot&quot; &gt;&gt; $oemfile
+ 	fi
++	if [ ! -z &quot;$kiwi_oemsap&quot; ];then
++		echo &quot;Setting up OEM_SAP_INSTALL=$kiwi_oemsap&quot;
++		echo &quot;OEM_SAP_INSTALL=$kiwi_oemsap&quot; &gt;&gt; $oemfile
++	fi
+ 	if [ ! -z &quot;$kiwi_oemrecovery&quot; ];then
+ 		echo &quot;Setting up OEM_RECOVERY=1&quot;
+ 		echo &quot;OEM_RECOVERY=1&quot; &gt;&gt; $oemfile
+@@ -942,7 +946,7 @@ function suseStripInitrd {
+ 		ldd driveready checkmedia splashy bzip2 hexdump
+ 		pvchange pvresize pvscan vgscan vgchange vgextend vgdisplay
+ 		lvchange lvresize lvextend lvcreate grub dcounter tty
+-		dmsetup dialog
++		dmsetup dialog awk
+ 	&quot;
+ 	tools=&quot;$tools $@&quot;
+ 	for path in /sbin /usr/sbin /usr/bin /bin;do
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 047e7d5..4e2cdca 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -823,6 +823,7 @@ sub createImageUSB {
+ 	$main::ForeignRepo{&quot;oem-home&quot;}       = $xml -&gt; getOEMHome();
+ 	$main::ForeignRepo{&quot;oem-boot-title&quot;} = $xml -&gt; getOEMBootTitle();
+ 	$main::ForeignRepo{&quot;oem-kiwi-initrd&quot;}= $xml -&gt; getOEMKiwiInitrd();
++	$main::ForeignRepo{&quot;oem-sap-install&quot;}= $xml -&gt; getOEMSAPInstall();
+ 	$main::ForeignRepo{&quot;oem-reboot&quot;}     = $xml -&gt; getOEMReboot();
+ 	$main::ForeignRepo{&quot;oem-recovery&quot;}   = $xml -&gt; getOEMRecovery();
+ 	$main::ForeignRepo{&quot;locale&quot;}  = $xml -&gt; getLocale();
+@@ -2494,6 +2495,7 @@ sub createImageSplit {
+ 	$main::ForeignRepo{&quot;oem-home&quot;}       = $xml -&gt; getOEMHome();
+ 	$main::ForeignRepo{&quot;oem-boot-title&quot;} = $xml -&gt; getOEMBootTitle();
+ 	$main::ForeignRepo{&quot;oem-kiwi-initrd&quot;}= $xml -&gt; getOEMKiwiInitrd();
++	$main::ForeignRepo{&quot;oem-sap-install&quot;}= $xml -&gt; getOEMSAPInstall();
+ 	$main::ForeignRepo{&quot;oem-reboot&quot;}     = $xml -&gt; getOEMReboot();
+ 	$main::ForeignRepo{&quot;oem-recovery&quot;}   = $xml -&gt; getOEMRecovery();
+ 	$main::ForeignRepo{&quot;locale&quot;}  = $xml -&gt; getLocale();
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 19f695c..a2f34e7 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -3993,3 +3993,158 @@ function makeLabel {
+ 		echo $1
+ 	fi
+ }
++#======================================
++# SAPMemCheck
++#--------------------------------------
++function SAPMemCheck {
++	# /.../
++	# if OEM SAP option is set this function checks
++	# for enough memory to perform a SAP installation
++	# ----
++	if [ ! -z &quot;$nomemcheck&quot; ];then
++		return
++	fi
++	local mem=`grep -i MemTotal /proc/meminfo | awk '{ print $2 }'`
++	if [ &quot;$mem&quot; -lt 1900000 ]; then
++		Echo -b &quot;This installation requires at least 2 GB of RAM&quot;
++		Echo -b &quot;but only $(( ${mem} / 1024 )) MB were detected.&quot;
++		Echo -b &quot;You can override this check by passing&quot;
++		Echo -b &quot;'nomemcheck' to the kernel commandline.&quot;
++		systemException \
++			&quot;SAPMemCheck failed... reboot&quot; \
++		&quot;reboot&quot;
++	fi
++}
++#======================================
++# SAPCPUCheck
++#--------------------------------------
++function SAPCPUCheck {
++	# /.../
++	# if OEM SAP option is set this function checks
++	# for the supported system architecture to perform
++	# a SAP installation
++	# ----
++	if [ ! -z &quot;$nocpucheck&quot; ];then
++		return
++	fi
++	local cpu=`uname -m`
++	if [ &quot;$cpu&quot; != &quot;x86_64&quot; ]; then
++		Echo -b &quot;This installation requires a 64Bit CPU (x86_64) but&quot;
++		Echo -b &quot;a $cpu CPU was detected. You can override this check&quot;
++		Echo -b &quot;by passing 'nocpucheck' to the kernel commandline.&quot;
++		systemException \
++			&quot;SAPCPUCheck failed... reboot&quot; \
++		&quot;reboot&quot;
++	fi
++}
++#======================================
++# SAPCheckStorageSize
++#--------------------------------------
++function SAPStorageCheck {
++	# /.../
++	# if OEM SAP option is set this function checks
++	# if the available storage space is big enough
++	# to perform a SAP installation
++	# ----
++	if [ ! -z &quot;$nohdcheck&quot; ];then
++		return
++	fi
++	local main_memory_KB=`awk -F&quot; &quot; '{if (match ($1,&quot;^MemTotal&quot;)) print $2}' \
++		/proc/meminfo`
++	local main_memory_MB=$(( ${main_memory_KB} / 1024 ))
++	local main_memory_GB=$(( ${main_memory_MB} / 1024 ))
++	local MIN_DATA_DEV_SIZE=200 # GB
++	local MIN_ROOT_DEV_SIZE=$(( ${main_memory_GB} * 2 + 40 + 3 ))
++	local DATA_DEVICE=&quot;&quot;
++	local ROOT_DEVICE=&quot;&quot;
++	local NUM=`hwinfo --disk | grep -c &quot;Hardware Class:&quot;`
++	local req_size_data=&quot;&quot;
++	local req_size_root=&quot;&quot;
++	local result=0
++	if [ &quot;$NUM&quot; != &quot;1&quot; ]; then
++		# /.../
++		# more than 1 disk, so we expect some more
++		# sophisticated setup
++		# Data Device:
++		req_size_data=$(( 2*1024*1024*${MIN_DATA_DEV_SIZE} ))
++		# Root Device:
++		req_size_root=$(( 2*1024*1024*${MIN_ROOT_DEV_SIZE} ))
++	else
++		# /.../
++		# only 1 disk, which must be large enough for &lt;root&gt;+&lt;data&gt;
++		# Data Device:
++		req_size_data=$((
++			2*1024*1024*${MIN_DATA_DEV_SIZE} + 2*1024*1024*${MIN_ROOT_DEV_SIZE}
++		))
++		req_size_root=$req_size_data
++	fi
++	eval $(
++		hwinfo --disk | grep -E 'Device File:|Size:' | \
++		while read tmp size dev rest; do \
++			if ( [ &quot;$tmp&quot; = &quot;Driver:&quot; ] &amp;&amp; [[ &quot;$size&quot; =~ &quot;usb&quot; ]] ); then
++				read tmp size dev rest
++				read tmp size dev rest
++				continue;
++			fi
++			[ &quot;$size&quot; = &quot;File:&quot; ] &amp;&amp; dev_file=$dev;
++			[ &quot;$dev&quot;  = &quot;sectors&quot; ]      &amp;&amp; \
++			[ $size -ge $req_size_data ] &amp;&amp; \
++			echo DATA_DEVICE=$dev_file   &amp;&amp; \
++			break;
++		done
++	)
++	if [ -z &quot;$DATA_DEVICE&quot; ]; then
++		if [ &quot;$NUM&quot; != &quot;1&quot; ]; then
++			result=2 # Data Device not large enough
++		else
++			result=1 # Root Device not large enough
++		fi
++	else
++		if [ &quot;$NUM&quot; != &quot;1&quot; ]; then
++			# /.../
++			# more than 1 disk, so we expect some more sophisticated setup
++			# furthermore ensure sufficient space for root-device
++			req_size_root=$(( 2*1024*1024*${MIN_ROOT_DEV_SIZE} ))
++			eval $(
++				hwinfo --disk | grep -E 'Device File:|Size:' | \
++				while read tmp size dev rest; do \
++					if( [ &quot;$tmp&quot; = &quot;Driver:&quot; ] &amp;&amp; [[ &quot;$size&quot; =~ &quot;usb&quot; ]] );then
++						read tmp size dev rest
++						read tmp size dev rest
++						continue;
++					fi
++					[ &quot;$size&quot; = &quot;File:&quot; ] &amp;&amp; dev_file=$dev;
++					[ &quot;$dev&quot;  = &quot;sectors&quot; ]           &amp;&amp; \
++					[ &quot;$DATA_DEVICE&quot; != &quot;$dev_file&quot; ] &amp;&amp; \
++					[ $size -ge $req_size_root ]      &amp;&amp; \
++					echo ROOT_DEVICE=$dev_file        &amp;&amp; \
++					break;
++				done
++			)
++			if [ -z &quot;$ROOT_DEVICE&quot; ]; then
++				result=1 # Root Device not large enough
++			else
++				result=0 # everything ok
++			fi
++		fi
++	fi
++	case $result in
++		1 ) Echo -b &quot;The installation requires at least&quot;
++			Echo -b &quot;$(( ${req_size_root} / 2 / 1024 / 1024 )) GB disk space&quot;
++			Echo -b &quot;for the root partition. You can override this check&quot;
++			Echo -b &quot;by passing 'nohdcheck' to the kernel commandline.&quot;
++			systemException \
++				&quot;SAPStorageCheck failed... reboot&quot; \
++			&quot;reboot&quot;
++			;;
++		2 ) Echo -b &quot;The installation requires at least&quot;
++			Echo -b &quot;$(( ${req_size_data} / 2 / 1024 / 1024 )) GB disk space&quot;
++			Echo -b &quot;for the data partition (second partition).&quot;
++			Echo -b &quot;You can override this check&quot;
++			Echo -b &quot;by passing 'nohdcheck' to the kernel commandline.&quot;
++			systemException \
++				&quot;SAPStorageCheck failed... reboot&quot; \
++			&quot;reboot&quot;
++			;;
++	esac
++}
+diff --git a/modules/KIWIScheme.rnc b/modules/KIWIScheme.rnc
+index 4942b36..9c2e2da 100644
+--- a/modules/KIWIScheme.rnc
++++ b/modules/KIWIScheme.rnc
+@@ -939,6 +939,30 @@ div {
+ }
+ 
+ #==========================================
++# common element &lt;oem-sap-install&gt;
++#
++div {
++	k.oem-sap-install.attlist = empty
++	k.oem-sap-install =
++		## For oemboot driven images: tag the image to be an SAP
++		## appliance. This causes some checks inside the initrd
++		## to become activated as well as a the media changer is
++		## started in early preinit
++		[
++		db:para [
++			&quot;For oemboot driven images: tag the image to be an SAP\x{a}&quot;~
++			&quot;appliance. This causes some checks inside the initrd\x{a}&quot;~
++			&quot;to become activated as well as a the media changer is\x{a}&quot;~
++			&quot;started in early preinit&quot;
++		]
++		]
++		element oem-sap-install {
++			k.oem-sap-install.attlist,
++			text
++		}
++}
++
++#==========================================
+ # common element &lt;oem-reboot&gt;
+ #
+ div {
+@@ -1809,6 +1833,7 @@ div {
+ 			k.oem-home? &amp;
+ 			k.oem-boot-title? &amp;
+ 			k.oem-kiwi-initrd? &amp;
++			k.oem-sap-install? &amp;
+ 			k.oem-swapsize? &amp;
+ 			k.oem-systemsize? &amp;
+ 			k.oem-recovery? &amp;
+diff --git a/modules/KIWIScheme.rng b/modules/KIWIScheme.rng
+index 81aa226..a5f1888 100644
+--- a/modules/KIWIScheme.rng
++++ b/modules/KIWIScheme.rng
+@@ -1288,6 +1288,30 @@ and don't replace it with mkinitrd created initrd&lt;/db:para&gt;
+   &lt;/div&gt;
+   &lt;!--
+     ==========================================
++    common element &lt;oem-sap-install&gt;
++    
++  --&gt;
++  &lt;div&gt;
++    &lt;define name=&quot;k.oem-sap-install.attlist&quot;&gt;
++      &lt;empty/&gt;
++    &lt;/define&gt;
++    &lt;define name=&quot;k.oem-sap-install&quot;&gt;
++      &lt;element name=&quot;oem-sap-install&quot;&gt;
++        &lt;a:documentation&gt;For oemboot driven images: tag the image to be an SAP
++appliance. This causes some checks inside the initrd
++to become activated as well as a the media changer is
++started in early preinit&lt;/a:documentation&gt;
++        &lt;db:para&gt;For oemboot driven images: tag the image to be an SAP
++appliance. This causes some checks inside the initrd
++to become activated as well as a the media changer is
++started in early preinit&lt;/db:para&gt;
++        &lt;ref name=&quot;k.oem-sap-install.attlist&quot;/&gt;
++        &lt;text/&gt;
++      &lt;/element&gt;
++    &lt;/define&gt;
++  &lt;/div&gt;
++  &lt;!--
++    ==========================================
+     common element &lt;oem-reboot&gt;
+     
+   --&gt;
+@@ -2622,6 +2646,9 @@ and also depends of the selected image output type.&lt;/db:para&gt;
+             &lt;ref name=&quot;k.oem-kiwi-initrd&quot;/&gt;
+           &lt;/optional&gt;
+           &lt;optional&gt;
++            &lt;ref name=&quot;k.oem-sap-install&quot;/&gt;
++          &lt;/optional&gt;
++          &lt;optional&gt;
+             &lt;ref name=&quot;k.oem-swapsize&quot;/&gt;
+           &lt;/optional&gt;
+           &lt;optional&gt;
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index e40aa71..c5fb463 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -274,6 +274,9 @@ sub new {
+ 		if (defined $foreignRepo-&gt;{&quot;oem-kiwi-initrd&quot;}) {
+ 			$this -&gt; setForeignOptionsElement (&quot;oem-kiwi-initrd&quot;);
+ 		}
++		if (defined $foreignRepo-&gt;{&quot;oem-sap-install&quot;}) {
++			$this -&gt; setForeignOptionsElement (&quot;oem-sap-install&quot;);
++		}
+ 		if (defined $foreignRepo-&gt;{&quot;oem-reboot&quot;}) {
+ 			$this -&gt; setForeignOptionsElement (&quot;oem-reboot&quot;);
+ 		}
+@@ -1203,6 +1206,22 @@ sub getOEMKiwiInitrd {
+ }
+ 
+ #==========================================
++# getOEMSAPInstall
++#------------------------------------------
++sub getOEMSAPInstall {
++	# ...
++	# Obtain the oem-sap-install value or return undef
++	# ---
++	my $this = shift;
++	my $node = $this -&gt; getPreferencesNodeByTagName (&quot;oem-sap-install&quot;);
++	my $sap  = $node -&gt; getElementsByTagName (&quot;oem-sap-install&quot;);
++	if ((! defined $sap) || (&quot;$sap&quot; eq &quot;&quot;)) {
++		return undef;
++	}
++	return $sap;
++}
++
++#==========================================
+ # getOEMReboot
+ #------------------------------------------
+ sub getOEMReboot {
+@@ -1996,6 +2015,7 @@ sub getImageConfig {
+ 		my $oemhome  = $element -&gt; getElementsByTagName (&quot;oem-home&quot;);
+ 		my $oemtitle = $element -&gt; getElementsByTagName (&quot;oem-boot-title&quot;);
+ 		my $oemkboot = $element -&gt; getElementsByTagName (&quot;oem-kiwi-initrd&quot;);
++		my $oemsap   = $element -&gt; getElementsByTagName (&quot;oem-sap-install&quot;);
+ 		my $oemreboot= $element -&gt; getElementsByTagName (&quot;oem-reboot&quot;);
+ 		my $oemreco  = $element -&gt; getElementsByTagName (&quot;oem-recovery&quot;);
+ 		if (defined $keytable) {
+@@ -2024,6 +2044,9 @@ sub getImageConfig {
+ 		if ((defined $oemkboot) &amp;&amp; (&quot;$oemkboot&quot; ne &quot;&quot;)) {
+ 			$result{kiwi_oemkboot} = $oemkboot;
+ 		}
++		if ((defined $oemsap) &amp;&amp; (&quot;$oemsap&quot; ne &quot;&quot;)) {
++			$result{kiwi_oemsap} = $oemsap
++		}
+ 		if ((defined $oemreboot) &amp;&amp; (&quot;$oemreboot&quot; eq &quot;yes&quot;)) {
+ 			$result{kiwi_oemreboot} = $oemreboot;
+ 		}
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 2f5d11b..4220893 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -2,14 +2,17 @@
+ Mon Mar 30 11:31:54 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.39
+-- added a xendomain attribute in config.xml to be able to
+-  distinguish whether a virtual disk image should be a Xen
+-  dom0 host system or a Xen domU guest system. If no domain
+-  is set a dom0 image will be created
++- added a domain attribute inside the xenconfig section in
++  config.xml to be able to distinguish whether a virtual disk
++  image should be a Xen dom0 host system or a Xen domU guest
++  system. If no domain is set a dom0 image will be created
+ - added xenServer function to check if we run a Xen host
+   or guest system. The bootloader setup is different for
+   dom0 or domU. Adapt setupBootLoader* functions
+ - allow filesystem resizing to be used in isoboot
++- added check functions SAPMemCheck, SAPCPUCheck
++  and SAPStorageCheck. They apply if the oem-sap-install
++  attribute is set for OEM images (bnc #486758)
+ 
+ -------------------------------------------------------------------
+ Fri Mar 27 13:59:44 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+diff --git a/system/boot/ix86/oemboot/suse-10.3/config.xml b/system/boot/ix86/oemboot/suse-10.3/config.xml
+index 90f245b..15bda67 100644
+--- a/system/boot/ix86/oemboot/suse-10.3/config.xml
++++ b/system/boot/ix86/oemboot/suse-10.3/config.xml
+@@ -121,7 +121,6 @@
+ 		&lt;package name=&quot;db&quot;/&gt;
+ 		&lt;package name=&quot;expat&quot;/&gt;
+ 		&lt;package name=&quot;fillup&quot;/&gt;
+-		&lt;package name=&quot;gawk&quot;/&gt;
+ 		&lt;package name=&quot;gdbm&quot;/&gt;
+ 		&lt;package name=&quot;glib2&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-11.0/config.xml b/system/boot/ix86/oemboot/suse-11.0/config.xml
+index ee620b5..d470cf1 100644
+--- a/system/boot/ix86/oemboot/suse-11.0/config.xml
++++ b/system/boot/ix86/oemboot/suse-11.0/config.xml
+@@ -126,7 +126,6 @@
+ 		&lt;package name=&quot;db&quot;/&gt;
+ 		&lt;package name=&quot;expat&quot;/&gt;
+ 		&lt;package name=&quot;fillup&quot;/&gt;
+-		&lt;package name=&quot;gawk&quot;/&gt;
+ 		&lt;package name=&quot;gdbm&quot;/&gt;
+ 		&lt;package name=&quot;glib2&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-11.1/config.xml b/system/boot/ix86/oemboot/suse-11.1/config.xml
+index 8707ef2..aeced2e 100644
+--- a/system/boot/ix86/oemboot/suse-11.1/config.xml
++++ b/system/boot/ix86/oemboot/suse-11.1/config.xml
+@@ -131,7 +131,6 @@
+ 		&lt;package name=&quot;db&quot;/&gt;
+ 		&lt;package name=&quot;expat&quot;/&gt;
+ 		&lt;package name=&quot;fillup&quot;/&gt;
+-		&lt;package name=&quot;gawk&quot;/&gt;
+ 		&lt;package name=&quot;gdbm&quot;/&gt;
+ 		&lt;package name=&quot;glib2&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-11.2/config.xml b/system/boot/ix86/oemboot/suse-11.2/config.xml
+index 6dd76ee..f138b01 100644
+--- a/system/boot/ix86/oemboot/suse-11.2/config.xml
++++ b/system/boot/ix86/oemboot/suse-11.2/config.xml
+@@ -126,7 +126,6 @@
+ 		&lt;package name=&quot;db&quot;/&gt;
+ 		&lt;package name=&quot;expat&quot;/&gt;
+ 		&lt;package name=&quot;fillup&quot;/&gt;
+-		&lt;package name=&quot;gawk&quot;/&gt;
+ 		&lt;package name=&quot;gdbm&quot;/&gt;
+ 		&lt;package name=&quot;glib2&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLED10/config.xml b/system/boot/ix86/oemboot/suse-SLED10/config.xml
+index 5fa0e31..dbbebe8 100644
+--- a/system/boot/ix86/oemboot/suse-SLED10/config.xml
++++ b/system/boot/ix86/oemboot/suse-SLED10/config.xml
+@@ -114,7 +114,6 @@
+ 		&lt;package name=&quot;perl-gettext&quot;/&gt;
+ 		&lt;package name=&quot;perl-Bootloader&quot;/&gt;
+ 		&lt;package name=&quot;pam-modules&quot;/&gt;
+-		&lt;package name=&quot;gawk&quot;/&gt;
+ 		&lt;package name=&quot;gnome-filesystem&quot;/&gt;
+ 		&lt;package name=&quot;openslp&quot;/&gt;
+ 		&lt;package name=&quot;suse-build-key&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLED11/config.xml b/system/boot/ix86/oemboot/suse-SLED11/config.xml
+index e7031a4..9d9f22b 100644
+--- a/system/boot/ix86/oemboot/suse-SLED11/config.xml
++++ b/system/boot/ix86/oemboot/suse-SLED11/config.xml
+@@ -123,7 +123,6 @@
+ 		&lt;package name=&quot;db&quot;/&gt;
+ 		&lt;package name=&quot;expat&quot;/&gt;
+ 		&lt;package name=&quot;fillup&quot;/&gt;
+-		&lt;package name=&quot;gawk&quot;/&gt;
+ 		&lt;package name=&quot;gdbm&quot;/&gt;
+ 		&lt;package name=&quot;glib2&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLES10/config.xml b/system/boot/ix86/oemboot/suse-SLES10/config.xml
+index b43732d..fc46356 100644
+--- a/system/boot/ix86/oemboot/suse-SLES10/config.xml
++++ b/system/boot/ix86/oemboot/suse-SLES10/config.xml
+@@ -114,7 +114,6 @@
+ 		&lt;package name=&quot;perl-gettext&quot;/&gt;
+ 		&lt;package name=&quot;perl-Bootloader&quot;/&gt;
+ 		&lt;package name=&quot;pam-modules&quot;/&gt;
+-		&lt;package name=&quot;gawk&quot;/&gt;
+ 		&lt;package name=&quot;gnome-filesystem&quot;/&gt;
+ 		&lt;package name=&quot;openslp&quot;/&gt;
+ 		&lt;package name=&quot;suse-build-key&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLES11/config.xml b/system/boot/ix86/oemboot/suse-SLES11/config.xml
+index 65bc092..4c7d43c 100644
+--- a/system/boot/ix86/oemboot/suse-SLES11/config.xml
++++ b/system/boot/ix86/oemboot/suse-SLES11/config.xml
+@@ -123,7 +123,6 @@
+ 		&lt;package name=&quot;db&quot;/&gt;
+ 		&lt;package name=&quot;expat&quot;/&gt;
+ 		&lt;package name=&quot;fillup&quot;/&gt;
+-		&lt;package name=&quot;gawk&quot;/&gt;
+ 		&lt;package name=&quot;gdbm&quot;/&gt;
+ 		&lt;package name=&quot;glib2&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index c2af6fb..28e67e5 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -183,14 +183,23 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ] &amp;&amp; [ -f $OEM_PARTITION_CONFIG ];then
+ fi
+ 
+ #======================================
+-# 13) repartition the disk device
++# 13) Run SAP checks if activated
++#--------------------------------------
++if [ ! -z &quot;$OEM_SAP_INSTALL&quot; ];then
++	SAPMemCheck
++	SAPCPUCheck
++	SAPStorageCheck
++fi
++
++#======================================
++# 14) repartition the disk device
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	OEMRepart
+ fi
+ 
+ #======================================
+-# 14) Resize filesystem to full space
++# 15) Resize filesystem to full space
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	deviceResize=$imageRootDevice
+@@ -244,7 +253,7 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ fi
+ 
+ #======================================
+-# 15) Mount system
++# 16) Mount system
+ #--------------------------------------
+ if ! mountSystem $imageRootDevice;then
+ 	systemException &quot;Failed to mount root filesystem&quot; &quot;reboot&quot;
+@@ -252,7 +261,7 @@ fi
+ validateRootTree
+ 
+ #======================================
+-# 16) Recover system if requested
++# 17) Recover system if requested
+ #--------------------------------------
+ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 	Echo -n &quot;Do you want to start the System-Recovery ? [y/n]: &quot;; read runReco
+@@ -314,14 +323,14 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ fi
+ 
+ #======================================
+-# 17) get installed kernels
++# 18) get installed kernels
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	kernelList /mnt
+ fi
+ 
+ #======================================
+-# 18) setup boot partition
++# 19) setup boot partition
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ]; then
+ 	if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
+@@ -353,7 +362,7 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ]; then
+ fi
+ 
+ #======================================
+-# 19) setup ird/kernel links for union
++# 20) setup ird/kernel links for union
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then 
+ 	if [ &quot;$OEM_KIWI_INITRD&quot; = &quot;yes&quot; ] || isFSTypeReadOnly;then
+@@ -393,7 +402,7 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ fi
+ 
+ #======================================
+-# 20) Create system dependant files
++# 21) Create system dependant files
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	#======================================
+@@ -438,14 +447,14 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ fi
+ 
+ #======================================
+-# 21) copy system dependant files
++# 22) copy system dependant files
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	setupConfigFiles
+ fi
+ 
+ #======================================
+-# 22) copy recovery related files
++# 23) copy recovery related files
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ] &amp;&amp; [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ 	IFS=$IFS_ORIG
+@@ -477,22 +486,22 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ] &amp;&amp; [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ fi
+ 
+ #======================================
+-# 23) update system dependant files
++# 24) update system dependant files
+ #--------------------------------------
+ setupInittab /mnt
+ 
+ #======================================
+-# 24) setup real root device
++# 25) setup real root device
+ #--------------------------------------
+ echo 256 &gt; /proc/sys/kernel/real-root-dev
+ 
+ #======================================
+-# 25) umount system filesystems
++# 26) umount system filesystems
+ #--------------------------------------
+ umountSystemFilesystems
+ 
+ #======================================
+-# 26) copy initrd files to image
++# 27) copy initrd files to image
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	importBranding
+@@ -501,17 +510,17 @@ cp /preinit /mnt
+ cp /include /mnt
+ 
+ #======================================
+-# 27) kill boot shell
++# 28) kill boot shell
+ #--------------------------------------
+ killShell
+ killBlogD
+ 
+ #======================================
+-# 28) Activate new root
++# 29) Activate new root
+ #--------------------------------------
+ activateImage
+ 
+ #======================================
+-# 29 Unmount initrd / system init
++# 30 Unmount initrd / system init
+ #--------------------------------------
+ bootImage $@
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001152.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. da233b12f0b8a09549f4ba1040d9d09ad6767726
+</A></li>
+	<LI>Next message: <A HREF="001154.html">[Kiwi-devel] kiwi OEM image to replace root
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1153">[ date ]</a>
+              <a href="thread.html#1153">[ thread ]</a>
+              <a href="subject.html#1153">[ subject ]</a>
+              <a href="author.html#1153">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

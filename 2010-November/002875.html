@@ -1,0 +1,136 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] XML processing - patch two
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20XML%20processing%20-%20patch%20two&In-Reply-To=%3C20101130160956.GA1145%40D7.ddts.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002872.html">
+   <LINK REL="Next"  HREF="002842.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] XML processing - patch two</H1>
+    <B>Marcus Sch&#228;fer</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20XML%20processing%20-%20patch%20two&In-Reply-To=%3C20101130160956.GA1145%40D7.ddts.net%3E"
+       TITLE="[Kiwi-devel] XML processing - patch two">ms at novell.com
+       </A><BR>
+    <I>Tue Nov 30 17:09:56 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002872.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+        <LI>Next message: <A HREF="002842.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 03f3e800e5b8b8f4d2e44c0f9adf4bb9de3df943
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2875">[ date ]</a>
+              <a href="thread.html#2875">[ thread ]</a>
+              <a href="subject.html#2875">[ subject ]</a>
+              <a href="author.html#2875">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi Robert,
+
+&gt;<i> The attached patch also fixes an undefined variable access issue, and a
+</I>&gt;<i> build error triggered by the xen-guest example. The error condition is
+</I>&gt;<i> triggered when specifying a &lt;preferences&gt; section without a &lt;type&gt; as
+</I>&gt;<i> the first &lt;preferences&gt; in the config.xml file. The root cause is the
+</I>&gt;<i> special treatment of boot image descriptions. When we're done with the
+</I>&gt;<i> XML restructuring this type of special casing should no longer be needed.
+</I>&gt;<i> 
+</I>&gt;<i> Last but not least I think there is an issue with the split image. On
+</I>&gt;<i> testing the kernel could not be found after image dump when building the
+</I>&gt;<i> oem-preload example. However, I feel confident that this was not broken
+</I>&gt;<i> by my patch (I tested the preload example with basically the same
+</I>&gt;<i> version of the patch prior to pushing the patch to the latest master
+</I>&gt;<i> tree and the example worked). I'd appreciate it if this patch could be
+</I>&gt;<i> applied prior to the fix for the OEM issue to avoid me having to push
+</I>&gt;<i> the patch forward once again due to merge issues.
+</I>
+I was able to build the suse-11.3/suse-oem-preload example with some
+parts of the patch you attached. Using all of the patch makes it fail
+I didn't took a closer look why because I had a few concerns while
+reading the patch before. Here are the good news first:
+
+* I added the uninitialized value patch in a single commit
+* I added __checkTypeUnique in a single commit
+
+The rest is only added in parts and I also added some additions.
+I'm still concerned about the setCurrentBuildInfo() change and I
+also did not understand why it's required to do it that way. Don't
+get me wrong I'm fine having accessor methods and a XML object
+which doesn't have a method changing the data set.
+
+According to that I added your KIWIXML changes but not the change
+in kiwi.pl and also modified the KIWIXML change to what I think
+we want to achieve. Here are the details:
+
+I restructured the XML data processing by adding the following
+KIWIXML methods:
+
+   __populateTypeInfo() and
+   __populateImageTypeAndNode()
+
+The first method creates the %typeInfo hash which contains all
+possible &lt;type&gt; elements according to the selected profiles.
+
+The second method operates on the %typeInfo hash and initializes
+those part of the hash which represents the requested image type
+or the primary type or the first type read in.
+
+* Both methodes are called only _once_ inside the object constructor
+* The existing method getImageTypeAndAttributes() has changed to
+  simply return the selected part of the %typeInfo hash and does
+  NOT change any object data as done before.
+
+Therefore I think the XML object creation is sane now and we
+can focus on writing the accessor functions which imho also belongs
+to KIWIXML
+
+I pushed the change recently please review and let me know if
+that's apart your ideas and coding
+
+Thanks a lot
+
+Regards,
+Marcus
+-- 
+ Public Key available
+ gpg --keyserver gpg-keyserver.de --recv-keys 0xCCE3C6A2
+ -------------------------------------------------------
+ Marcus Sch&#228;fer (Res. &amp; Dev.)   SUSE LINUX Products GmbH
+ Tel: 0911-740 53 0             Maxfeldstrasse 5
+ FAX: 0911-740 53 479           D-90409 N&#252;rnberg
+ GF: Markus Rex                 HRB: 16746 (AG N&#252;rnberg)
+ <A HREF="http://www.suse.de">http://www.suse.de</A>             Germany
+ -------------------------------------------------------
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002872.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+	<LI>Next message: <A HREF="002842.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 03f3e800e5b8b8f4d2e44c0f9adf4bb9de3df943
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2875">[ date ]</a>
+              <a href="thread.html#2875">[ thread ]</a>
+              <a href="subject.html#2875">[ subject ]</a>
+              <a href="author.html#2875">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

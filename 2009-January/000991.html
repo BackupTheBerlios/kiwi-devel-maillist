@@ -1,0 +1,1110 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1865 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1865%20-%0A%09kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules&In-Reply-To=%3C200901261800.n0QI0PA7020819%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000980.html">
+   <LINK REL="Next"  HREF="000992.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1865 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1865%20-%0A%09kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules&In-Reply-To=%3C200901261800.n0QI0PA7020819%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1865 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Mon Jan 26 19:00:25 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000980.html">[Kiwi-devel] r1864 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool
+</A></li>
+        <LI>Next message: <A HREF="000992.html">[Kiwi-devel] r1866 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#991">[ date ]</a>
+              <a href="thread.html#991">[ thread ]</a>
+              <a href="subject.html#991">[ subject ]</a>
+              <a href="author.html#991">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2009-01-26 19:00:22 +0100 (Mon, 26 Jan 2009)
+New Revision: 1865
+
+Modified:
+   kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect_local.pm
+Log:
+- cosmetics
+- changed return value handling, fixed missing retvalues
+- fixed unclear &quot;die&quot; exits
+- enhanced plugin progress log
+- handle debugmedium as separate medium with media.1 subdir and
+  separate create_package_descr call (bnc #458645)
+- fixed createBootPackageLinks which looped infintely in certain
+  conditions (no bug reported, fixed as found)
+
+
+Modified: kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect_local.pm
+===================================================================
+--- kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect_local.pm	2009-01-26 17:23:44 UTC (rev 1864)
++++ kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect_local.pm	2009-01-26 18:00:22 UTC (rev 1865)
+@@ -543,13 +543,13 @@
+   $this-&gt;{m_metacreator} = new KIWIRepoMetaHandler($this);
+   $this-&gt;{m_metacreator}-&gt;baseurl($this-&gt;{m_united});
+   $this-&gt;{m_metacreator}-&gt;mediaName($this-&gt;{m_proddata}-&gt;getVar('MEDIUM_NAME'));
+-  $this-&gt;logMsg(&quot;W&quot;, &quot;Loading plugins from &lt;&quot;.$this-&gt;{m_proddata}-&gt;getOpt(&quot;PLUGIN_DIR&quot;).&quot;&gt;&quot;);
++  $this-&gt;logMsg(&quot;I&quot;, &quot;Loading plugins from &lt;&quot;.$this-&gt;{m_proddata}-&gt;getOpt(&quot;PLUGIN_DIR&quot;).&quot;&gt;&quot;);
+   my ($loaded, $avail) = $this-&gt;{m_metacreator}-&gt;loadPlugins();
+   if($loaded &lt; $avail) {
+     $this-&gt;logMsg(&quot;E&quot;, &quot;could not load all plugins! &lt;$loaded/$avail&gt;!&quot;);
+     return undef;
+   }
+-  $this-&gt;logMsg(&quot;W&quot;, &quot;Loaded &lt;$loaded&gt; plugins successfully.&quot;);
++  $this-&gt;logMsg(&quot;I&quot;, &quot;Loaded &lt;$loaded&gt; plugins successfully.&quot;);
+ 
+   ### object is set up so far; next step is the repository scan analysis (TODO: create an own method for that bit)
+ 
+@@ -626,69 +626,68 @@
+   my ($collectret, $initmphandlers, $metadatacreate);
+ 
+   $collectret = $this-&gt;collectPackages();
+-  ## HACK: continue anyway, some are false positives
+-  #if($collectret != 0) {
+-  #  $this-&gt;logMsg(&quot;E&quot;, &quot;collecting packages failed!&quot;);
+-  #  $retval = 1;
+-  #}
++  # HACK: continue anyway, some are false positives
++  if($collectret != 0) {
++    $this-&gt;logMsg(&quot;E&quot;, &quot;collecting packages failed!&quot;);
++    $retval = 1;
++    goto finish;
++  }
+ 
+-  #else {
+-    $this-&gt;createMetadata();
+-    
++  $metadatacreate = $this-&gt;createMetadata();
++  if($metadatacreate != 0) {
++    $this-&gt;logMsg(&quot;E&quot;, &quot;creating metadata failed!&quot;);
++    $retval = 2;
++    goto finish;
++  }
+ 
+-    ## Q&amp;D HACK for Adrian: set KIWI_ISO to enable ISO creation
+-    if(!$ENV{'KIWI_ISO'}) {
+-      return;
+-    }
++  ## Q&amp;D HACK for Adrian: set KIWI_ISO to enable ISO creation
++  if(!$ENV{'KIWI_ISO'}) {
++    $this-&gt;logMsg(&quot;I&quot;, &quot;No iso file creation desired, finishing here.&quot;);
++    goto finish;
++  }
+ 
+-    ## HACK
+-    # create ISO using KIWIIsoLinux.pm
+-    eval &quot;require KIWIIsoLinux&quot;;
+-    if($@) {
+-      $this-&gt;logMsg(&quot;W&quot;, &quot;Module KIWIIsoLinux not loadable: $@&quot;);
++  # TODO implement all the stuff from suse-isolinux before here (of course in a separate method...)
++  eval &quot;require KIWIIsoLinux&quot;;
++  if($@) {
++    $this-&gt;logMsg(&quot;W&quot;, &quot;Module KIWIIsoLinux not loadable: $@&quot;);
++    $retval = 3;
++    goto finish;
++  }
++  $this-&gt;logMsg(&quot;I&quot;, &quot;Module KIWIIsoLinux loaded&quot;);
++
++  my $iso;
++  foreach my $cd($this-&gt;getMediaNumbers()) {
++    next if($cd == 0);
++    my $cdname = $this-&gt;{m_basesubdir}-&gt;{$cd};
++    $cdname =~ s{.*/(.*)/*$}{$1};
++    $iso = new KIWIIsoLinux($this-&gt;{m_logger}, $this-&gt;{m_basesubdir}-&gt;{$cd}, $this-&gt;{m_united}.&quot;/$cdname.iso&quot;);
++    if(!$iso-&gt;createSortFile()) {
++      $this-&gt;logMsg(&quot;E&quot;, &quot;Cannot create sortfile&quot;);
++      $retval = 4;
++      goto finish;
+     }
+-    else {
+-      my $iso;
+-      foreach my $cd($this-&gt;getMediaNumbers()) {
+-	next if($cd == 0);
+-	my $cdname = $this-&gt;{m_basesubdir}-&gt;{$cd};
+-	$cdname =~ s{.*/(.*)/*$}{$1};
+-	$iso = new KIWIIsoLinux($this-&gt;{m_logger}, $this-&gt;{m_basesubdir}-&gt;{$cd}, $this-&gt;{m_united}.&quot;/$cdname.iso&quot;);
+-	if(!$iso-&gt;createSortFile()) {
+-	  $this-&gt;logMsg(&quot;E&quot;, &quot;Cannot create sortfile&quot;);
+-	}
+-	else {
+-	  $this-&gt;logMsg(&quot;W&quot;, &quot;Created sortfile&quot;);
+-	}
+-	if(!$iso-&gt;createISOLinuxConfig()) {
+-	  $this-&gt;logMsg(&quot;E&quot;, &quot;Cannot create IsoLinuxConfig&quot;);
+-	}
+-	else {
+-	  $this-&gt;logMsg(&quot;W&quot;, &quot;Created IsoLinux Config&quot;);
+-	}
+-	if(!$iso-&gt;createISO()) {
+-	  $this-&gt;logMsg(&quot;E&quot;, &quot;Cannot create Iso image&quot;);
+-	}
+-	else {
+-	  $this-&gt;logMsg(&quot;W&quot;, &quot;Created Iso image &lt;$cdname.iso&gt;&quot;);
+-	}
+-	if(!$iso-&gt;checkImage()) {
+-	  $this-&gt;logMsg(&quot;E&quot;, &quot;Tagmedia call failed&quot;);
+-	}
+-	else {
+-	  $this-&gt;logMsg(&quot;W&quot;, &quot;Tagmedia call successful&quot;);
+-	}
+-      }
++    $this-&gt;logMsg(&quot;I&quot;, &quot;Created sortfile&quot;);
++    if(!$iso-&gt;createISOLinuxConfig()) {
++      $this-&gt;logMsg(&quot;E&quot;, &quot;Cannot create IsoLinuxConfig&quot;);
++      $retval = 5;
++      goto finish;
+     }
+-#      $metadatacreate = $this-&gt;{m_metacreator}-&gt;createMetadata();
+-#      # handle return value here
+-#    }
+-#    else {
+-#      $this-&gt;logMsg(&quot;E&quot;, &quot;Initialisation of metadata handlers failed!&quot;);
+-#      $retval = 10;
+-#    }
+-  #}
++    $this-&gt;logMsg(&quot;W&quot;, &quot;Created IsoLinux Config&quot;);
++    if(!$iso-&gt;createISO()) {
++      $this-&gt;logMsg(&quot;E&quot;, &quot;Cannot create Iso image&quot;);
++      $retval = 6;
++      goto finish;
++    }
++    $this-&gt;logMsg(&quot;W&quot;, &quot;Created Iso image &lt;$cdname.iso&gt;&quot;);
++    if(!$iso-&gt;checkImage()) {
++      $this-&gt;logMsg(&quot;E&quot;, &quot;Tagmedia call failed&quot;);
++      $retval = 7;
++      goto finish;
++    }
++    $this-&gt;logMsg(&quot;W&quot;, &quot;Tagmedia call successful&quot;);
++  }
+   
++  finish:
+   return $retval;
+ }
+ # /mainTask
+@@ -720,6 +719,7 @@
+     $fname = $1;
+     if(not defined $fname) {
+       $this-&gt;logMsg(&quot;W&quot;, &quot;[getMetafileList] filename $mf doesn't match regexp, skipping&quot;);
++      $failed++;
+       next;
+     }
+   }
+@@ -762,19 +762,20 @@
+     my $nofallback = 0;
+     my @archs;
+     $count_packs++;
+-    if ( $mode eq 2 ) {
++    if($mode eq 2) {
+       push @archs, 'src', 'nosrc';
+-    }else{
++    }
++    else {
+       @archs = $this-&gt;getArchList($packOptions, $packName, \$nofallback);
+     }
+-    if ( $this-&gt;{m_debug} &gt;= 1 ) {
+-      if ( $last_progress_time &lt; time() ){
++    if($this-&gt;{m_debug} &gt;= 1) {
++      if($last_progress_time &lt; time()) {
+         my $str;
+         $str = (time() - $this-&gt;{m_startUpTime}) / 60;
+   	$this-&gt;logMsg(&quot;I&quot;, &quot;  process $usedPackages-&gt;{_name}-&gt;{label} package links: ($count_packs/$num_packs), running $str minutes&quot;);
+         $last_progress_time = time() + 5;
+       }
+-      $this-&gt;logMsg(&quot;W&quot;, &quot;Evaluate package $packName for @archs&quot;) if $this-&gt;{m_debug} &gt;= 4;
++      $this-&gt;logMsg(&quot;I&quot;, &quot;Evaluate package &lt;$packName&gt; for &lt;@archs&gt;&quot;) if $this-&gt;{m_debug} &gt;= 4;
+     }
+ 
+ #    if ( $packOptions-&gt;{pointers} ) {
+@@ -785,47 +786,43 @@
+ #    };
+ 
+     ARCH:foreach my $requestedArch(@archs) {
+-      $this-&gt;logMsg(&quot;W&quot;, &quot;  Evaluate package $packName for requested arch $requestedArch&quot;) if $this-&gt;{m_debug} &gt;= 5;
++      $this-&gt;logMsg(&quot;I&quot;, &quot;  Evaluate package &lt;$packName&gt; for requested arch &lt;$requestedArch&gt;&quot;) if $this-&gt;{m_debug} &gt;= 5;
+ 
+       my @fallbacklist;
+       if($nofallback==0 &amp;&amp; $mode ne 2) {
+ 	@fallbacklist = $this-&gt;{m_archlist}-&gt;fallbacks($requestedArch);
+-        $this-&gt;logMsg(&quot;W&quot;, &quot; Look for fallbacks fallbacks&quot;) if $this-&gt;{m_debug} &gt;= 6;
++        $this-&gt;logMsg(&quot;I&quot;, &quot; Look for fallbacks&quot;) if $this-&gt;{m_debug} &gt;= 6;
+       }
+-      if ( ! @fallbacklist ) {
++      if(!@fallbacklist) {
+         $nofallback = 1;
+ 	@fallbacklist = ($requestedArch);
+         $this-&gt;logMsg(&quot;W&quot;, &quot;    Run without fallbacks&quot;) if $this-&gt;{m_debug} &gt;= 6;
+       }
+-      $this-&gt;logMsg(&quot;W&quot;, &quot;    Use as expanded architectures &gt;&quot;.join(&quot; &quot;, @fallbacklist).&quot;&lt;&quot;) if $this-&gt;{m_debug} &gt;= 5;
++      $this-&gt;logMsg(&quot;I&quot;, &quot;    Use as expanded architectures &gt;&quot;.join(&quot; &quot;, @fallbacklist).&quot;&lt;&quot;) if $this-&gt;{m_debug} &gt;= 5;
+       my $fb_available = 0;
+       FA:foreach my $arch(@fallbacklist) {
+-        $this-&gt;logMsg(&quot;W&quot;, &quot;    check architecture $arch &quot;) if $this-&gt;{m_debug} &gt;= 5;
++        $this-&gt;logMsg(&quot;I&quot;, &quot;    check architecture $arch &quot;) if $this-&gt;{m_debug} &gt;= 5;
+         PACKKEY:foreach my $packKey(keys(%{$poolPackages})) {
+         # FIXME: check for forcerepo
+-          $this-&gt;logMsg(&quot;W&quot;, &quot;    check $packKey &quot;) if $this-&gt;{m_debug} &gt;= 5;
++          $this-&gt;logMsg(&quot;I&quot;, &quot;    check $packKey &quot;) if $this-&gt;{m_debug} &gt;= 5;
+ 
+           my $packPointer = $poolPackages-&gt;{$packKey};
+ 	  if ( $packPointer-&gt;{arch} ne $arch ) {
+-	    $this-&gt;logMsg(&quot;W&quot;, &quot;     =&gt; package $packName not available for arch $arch in repo $packKey&quot;) if $this-&gt;{m_debug} &gt;= 4;
++	    $this-&gt;logMsg(&quot;W&quot;, &quot;     =&gt; package &lt;$packName&gt; not available for arch &lt;$arch&gt; in repo &lt;$packKey&gt;&quot;) if $this-&gt;{m_debug} &gt;= 4;
+             next PACKKEY;
+           }
+           if($nofallback==0 &amp;&amp; $mode ne 2) {
+ 	    my $follow = $this-&gt;{m_archlist}-&gt;arch($arch)-&gt;follower();
+ 	    if(defined($follow)) { 
+-	      $this-&gt;logMsg(&quot;W&quot;, &quot;     =&gt; falling back to $follow from $packKey instead&quot;) if $this-&gt;{m_debug} &gt;= 3;
++	      $this-&gt;logMsg(&quot;W&quot;, &quot;     =&gt; falling back to &lt;$follow&gt; from &lt;$packKey&gt; instead&quot;) if $this-&gt;{m_debug} &gt;= 3;
+ 	    }
+ 	  }
+-	  if ( $packOptions-&gt;{requireVersion}
+-               &amp;&amp; $packOptions-&gt;{requireVersion}-&gt;{ $packPointer-&gt;{version}.&quot;-&quot;.$packPointer-&gt;{release} } )
++	  if ( scalar(keys %{$packOptions-&gt;{requireVersion}}) &gt; 0
++               &amp;&amp; ! defined( $packOptions-&gt;{requireVersion}-&gt;{$packPointer-&gt;{version}.&quot;-&quot;.$packPointer-&gt;{release}} ) )
+           {
+-	    $this-&gt;logMsg(&quot;W&quot;, &quot;     =&gt; package &quot;.$packName-$packPointer-&gt;{version}.&quot;-&quot;.$packPointer-&gt;{release}.&quot; not available for arch $arch in repo $packKey in this version&quot;) if $this-&gt;{m_debug} &gt;= 4;
++	    $this-&gt;logMsg(&quot;W&quot;, &quot;     =&gt; package &lt;&quot;.$packName-$packPointer-&gt;{version}.&quot;-&quot;.$packPointer-&gt;{release}.&quot;&gt; not available for arch &lt;$arch&gt; in repo &lt;$packKey&gt; in this version&quot;) if $this-&gt;{m_debug} &gt;= 4;
+             next PACKKEY;
+-          }else{
+-            # success, but remove key to avoid error message later
+-            delete( $packOptions-&gt;{requireVersion}-&gt;{$packPointer-&gt;{version}.&quot;-&quot;.$packPointer-&gt;{release}} );
+           }
+-
+           # Success, found a package !
+           my $medium = 1;
+           $medium = $packOptions-&gt;{'medium'} if( $packOptions-&gt;{'medium'});
+@@ -833,6 +830,7 @@
+           $packOptions-&gt;{'newfile'}  = &quot;$packName-$packPointer-&gt;{'version'}-$packPointer-&gt;{'release'}.$packPointer-&gt;{'arch'}.rpm&quot;;
+           $packOptions-&gt;{'newpath'} = &quot;$this-&gt;{m_basesubdir}-&gt;{$medium}/$base_on_cd/$packPointer-&gt;{'arch'}&quot;;
+           $packOptions-&gt;{'arch'}  = $packPointer-&gt;{'arch'};
++
+           # check for target directory:
+           if(!$this-&gt;{m_dirlist}-&gt;{&quot;$packOptions-&gt;{'newpath'}&quot;}) {
+             $this-&gt;{m_dirlist}-&gt;{&quot;$packOptions-&gt;{'newpath'}&quot;} = 1;
+@@ -841,40 +839,41 @@
+           # link it:
+           if(!-e &quot;$packOptions-&gt;{'newpath'}/$packOptions-&gt;{'newfile'}&quot; and !link $packPointer-&gt;{'localfile'}, &quot;$packOptions-&gt;{'newpath'}/$packOptions-&gt;{'newfile'}&quot;) {
+             $this-&gt;logMsg(&quot;E&quot;, &quot;  linking file $packPointer-&gt;{'localfile'} to $packOptions-&gt;{'newpath'}/$packOptions-&gt;{'newfile'} failed&quot;);
+-          } else {
++          }
++	  else {
+             $this-&gt;logMsg(&quot;I&quot;, &quot;  linked file $packPointer-&gt;{'localfile'} to $packOptions-&gt;{'newpath'}/$packOptions-&gt;{'newfile'}&quot;) if $this-&gt;{m_debug} &gt;= 4;
+-            if ($this-&gt;{m_debug} &gt;= 2) {
+-              if ($arch eq $requestedArch) {
+-                $this-&gt;logMsg(&quot;W&quot;, &quot;  package $packName found for architecture $arch as $packKey&quot;);
+-              }else{
+-                $this-&gt;logMsg(&quot;W&quot;, &quot;  package $packName found for architecture $arch (fallback of $requestedArch) as $packKey&quot;);
++            if($this-&gt;{m_debug} &gt;= 2) {
++              if($arch eq $requestedArch) {
++                $this-&gt;logMsg(&quot;I&quot;, &quot;  package $packName found for architecture $arch as $packKey&quot;);
+               }
++	      else {
++                $this-&gt;logMsg(&quot;I&quot;, &quot;  package $packName found for architecture $arch (fallback of $requestedArch) as $packKey&quot;);
++              }
+             }
+-            if ( $mode == 1 &amp;&amp; $packPointer-&gt;{sourcepackage} ) {
++            if($mode == 1 &amp;&amp; $packPointer-&gt;{sourcepackage}) {
+               my $srcname = $packPointer-&gt;{sourcepackage};
+               $srcname =~ s/-[^-]*-[^-]*\.rpm$//; # this strips everything, except main name
+-              # 
+-              if ( defined($this-&gt;{m_srcmedium}) &amp;&amp; $this-&gt;{m_srcmedium} &gt; 0 ) {
+-                if (!$this-&gt;{m_sourcePacks}-&gt;{$srcname}) {
++              if(defined($this-&gt;{m_srcmedium}) &amp;&amp; $this-&gt;{m_srcmedium} &gt; 0) {
++                if(!$this-&gt;{m_sourcePacks}-&gt;{$srcname}) {
+                   # FIXME: add forcerepo here
+                   $this-&gt;{m_sourcePacks}-&gt;{$srcname} = {
+                     'medium' =&gt; $this-&gt;{m_srcmedium},
+                     'onlyarch' =&gt; 'src,nosrc'
+                   };
+                 }
+-#                $this-&gt;{m_sourcePacks}-&gt;{$srcname}-&gt;{'requireVersion'} =
+-#                     { $packPointer-&gt;{'version'}.&quot;-&quot;.$packPointer-&gt;{'release'} =&gt; 1 };
++                $this-&gt;{m_sourcePacks}-&gt;{$srcname}-&gt;{'requireVersion'}-&gt;{ $packPointer-&gt;{'version'}.&quot;-&quot;.$packPointer-&gt;{'release'} } = 1;
+               }
+-              if ( defined($this-&gt;{m_debugmedium}) &amp;&amp; $this-&gt;{m_debugmedium} &gt; 0 ) {
++              if(defined($this-&gt;{m_debugmedium}) &amp;&amp; $this-&gt;{m_debugmedium} &gt; 0) {
+                 # Add debug packages, we do not know, if they exist at all
+                 my $suffix = &quot;&quot;;
+                 $suffix = &quot;-32bit&quot; if ( $packName =~ /-32bit$/ );
+                 $suffix = &quot;-64bit&quot; if ( $packName =~ /-64bit$/ );
+                 $suffix = &quot;-x86&quot;   if ( $packName =~ /-x86$/ );
+-                if ( $this-&gt;{m_debugPacks}-&gt;{$srcname.&quot;-debuginfo&quot;.$suffix} ){
++                if($this-&gt;{m_debugPacks}-&gt;{$srcname.&quot;-debuginfo&quot;.$suffix}) {
+                   $this-&gt;{m_debugPacks}-&gt;{$srcname.&quot;-debuginfo&quot;.$suffix}-&gt;{'onlyarch'} .= &quot;,$arch&quot;;
+                   $this-&gt;{m_debugPacks}-&gt;{$srcname.&quot;-debugsource&quot;.$suffix}-&gt;{'onlyarch'} .= &quot;,$arch&quot;;
+-                } else {
++                }
++		else {
+                   $this-&gt;{m_debugPacks}-&gt;{$srcname.&quot;-debuginfo&quot;.$suffix} = {
+                     'medium' =&gt; $this-&gt;{m_debugmedium},
+                     'onlyarch' =&gt; $arch
+@@ -883,20 +882,18 @@
+                     'medium' =&gt; $this-&gt;{m_debugmedium},
+                     'onlyarch' =&gt; $arch
+                   };
+-                };
+-#                $this-&gt;{m_debugPacks}-&gt;{$srcname.&quot;-debuginfo&quot;.$suffix}-&gt;{'requireVersion'} =
+-#                     { $packPointer-&gt;{'version'}.&quot;-&quot;.$packPointer-&gt;{'release'} =&gt; 1 };
+-#                $this-&gt;{m_debugPacks}-&gt;{$srcname.&quot;-debugsource&quot;.$suffix}-&gt;{'requireVersion'} =
+-#                     { $packPointer-&gt;{'version'}.&quot;-&quot;.$packPointer-&gt;{'release'} =&gt; 1 };
+-              };
++                }
++                $this-&gt;{m_debugPacks}-&gt;{$srcname.&quot;-debuginfo&quot;.$suffix}-&gt;{'requireVersion'}-&gt;{ $packPointer-&gt;{'version'}.&quot;-&quot;.$packPointer-&gt;{'release'} } = 1;
++                $this-&gt;{m_debugPacks}-&gt;{$srcname.&quot;-debugsource&quot;.$suffix}-&gt;{'requireVersion'}-&gt;{ $packPointer-&gt;{'version'}.&quot;-&quot;.$packPointer-&gt;{'release'} } = 1;
++              }
+             }
+           }
+-	  next PACKKEY if ( scalar(keys %{$packOptions-&gt;{requireVersion}}) &gt; 0 );
++	  next PACKKEY if(scalar(keys %{$packOptions-&gt;{requireVersion}}) &gt; 0);
+ 	  next ARCH; # package processed, jump to the next request arch or package
+ 	}
+-	$this-&gt;logMsg(&quot;W&quot;, &quot;     =&gt; package $packName not available for arch $arch in any repo&quot;) if $this-&gt;{m_debug} &gt;= 3;
++	$this-&gt;logMsg(&quot;W&quot;, &quot;     =&gt; package &lt;$packName&gt; not available for arch &lt;$arch&gt; in any repo&quot;) if $this-&gt;{m_debug} &gt;= 3;
+       } # /@fallbackarch
+-      $this-&gt;logMsg(&quot;W&quot;, &quot;    =&gt; package $packName not available for $requestedArch nor its fallbacks&quot;) if $this-&gt;{m_debug} &gt;= 3;
++      $this-&gt;logMsg(&quot;W&quot;, &quot;    =&gt; package &lt;$packName&gt; not available for &lt;$requestedArch&gt; nor its fallbacks&quot;) if $this-&gt;{m_debug} &gt;= 3;
+     } # /@archs
+   }
+   return $retval;
+@@ -922,7 +919,7 @@
+ {
+   my $this = shift;
+ 
+-  my $retval = undef;
++  my $retval = 0;
+   my $rfailed = 0;
+   my $mfailed = 0;
+ 
+@@ -930,9 +927,8 @@
+   ### step 1
+   # expand dir lists (setup in constructor for each repo) to filenames
+   if($this-&gt;{m_debug}) {
+-    $this-&gt;{m_logger}-&gt;info(&quot;&quot;);
+-    $this-&gt;logMsg(&quot;W&quot;, &quot;STEP 1 [collectPackages]&quot; );
+-    $this-&gt;logMsg(&quot;W&quot;, &quot;expand dir lists for all repositories&quot;);
++    $this-&gt;logMsg(&quot;I&quot;, &quot;STEP 1 [collectPackages]&quot; );
++    $this-&gt;logMsg(&quot;I&quot;, &quot;expand dir lists for all repositories&quot;);
+   }
+   foreach my $r(keys(%{$this-&gt;{m_repos}})) {
+     my $tmp_ref = \%{$this-&gt;{m_repos}-&gt;{$r}-&gt;{'srcdirs'}};
+@@ -950,8 +946,10 @@
+   my $result = $this-&gt;lookUpAllPackages();
+   if( $result == -1) {
+     $this-&gt;logMsg(&quot;E&quot;, &quot;lookUpAllPackages failed !&quot;);
+-    die(&quot;[E] lookUpAllPackages failed !&quot;);
++    $retval++;
++    return $retval;
+   }
++
+   # Just for nicer output
+   $this-&gt;{m_repoPacks}-&gt;{_name}   = { label =&gt; &quot;main&quot; };
+   $this-&gt;{m_sourcePacks}-&gt;{_name} = { label =&gt; &quot;source&quot; };
+@@ -959,37 +957,38 @@
+ 
+   ### step 2:
+   if($this-&gt;{m_debug}) {
+-    $this-&gt;{m_logger}-&gt;info(&quot;&quot;);
+-    $this-&gt;logMsg(&quot;W&quot;, &quot;STEP 2 [collectPackages]&quot; );
+-    $this-&gt;logMsg(&quot;W&quot;, &quot;Select packages and create links&quot;);
++    $this-&gt;logMsg(&quot;I&quot;, &quot;STEP 2 [collectPackages]&quot; );
++    $this-&gt;logMsg(&quot;I&quot;, &quot;Select packages and create links&quot;);
+   }
+ 
+   # Setup the package FS layout
+   my $setupFiles = $this-&gt;setupPackageFiles(1, $this-&gt;{m_repoPacks});
+   if($setupFiles &gt; 0) {
+-    $this-&gt;logMsg(&quot;E&quot;, &quot;[collectPackages] $setupFiles RPM packages could not be setup&quot;);
++    $this-&gt;logMsg(&quot;E&quot;, &quot;[collectPackages] &lt;$setupFiles&gt; RPM packages could not be setup&quot;);
+     $retval++;
++    return $retval; # really? TODO
+   }
+-  if ( defined($this-&gt;{m_srcmedium}) &amp;&amp; $this-&gt;{m_srcmedium} &gt; 0 ) {
++  if(defined($this-&gt;{m_srcmedium}) and $this-&gt;{m_srcmedium} &gt; 0) {
+     $setupFiles = $this-&gt;setupPackageFiles(2, $this-&gt;{m_sourcePacks});
+     if($setupFiles &gt; 0) {
+-      $this-&gt;logMsg(&quot;E&quot;, &quot;[collectPackages] $setupFiles SOURCE RPM packages could not be setup&quot;);
++      $this-&gt;logMsg(&quot;E&quot;, &quot;[collectPackages] &lt;$setupFiles&gt; SOURCE RPM packages could not be setup&quot;);
+       $retval++;
++      return $retval; # really? TODO
+     }
+   }
+-  if ( defined($this-&gt;{m_debugmedium}) &amp;&amp; $this-&gt;{m_debugmedium} &gt; 0 ) {
++  if(defined($this-&gt;{m_debugmedium}) and $this-&gt;{m_debugmedium} &gt; 0) {
+     $setupFiles = $this-&gt;setupPackageFiles(0, $this-&gt;{m_debugPacks});
+     if($setupFiles &gt; 0) {
+-      $this-&gt;logMsg(&quot;E&quot;, &quot;[collectPackages] $setupFiles DEBUG RPM packages could not be setup&quot;);
++      $this-&gt;logMsg(&quot;E&quot;, &quot;[collectPackages] &lt;$setupFiles&gt; DEBUG RPM packages could not be setup&quot;);
+       $retval++;
++      return $retval; #	really? TODO
+     }
+   }
+ 
+   ### step 3: NOW I know where you live...
+   if($this-&gt;{m_debug}) {
+-    $this-&gt;{m_logger}-&gt;info(&quot;&quot;);
+-    $this-&gt;logMsg(&quot;W&quot;, &quot;STEP 3 [collectPackages]&quot; );
+-    $this-&gt;logMsg(&quot;W&quot;, &quot;Handle scripts for metafiles and metapackages&quot;);
++    $this-&gt;logMsg(&quot;I&quot;, &quot;STEP 3 [collectPackages]&quot; );
++    $this-&gt;logMsg(&quot;I&quot;, &quot;Handle scripts for metafiles and metapackages&quot;);
+   }
+   # unpack metapackages and download metafiles to the {m_united} path
+   # (or relative path from there if specified) &lt;- according to rnc file
+@@ -1001,13 +1000,16 @@
+   $this-&gt;{m_scriptbase} = &quot;$this-&gt;{m_united}/scripts&quot;;
+   if(!mkpath($this-&gt;{m_scriptbase}, { mode =&gt; umask } )) {
+     $this-&gt;logMsg(&quot;E&quot;, &quot;[collectPackages] Cannot create script directory!&quot;);
+-    die;  # TODO clean exit somehow
++    $retval++;
++    return $retval;
+   }
+ 
+   my @metafiles = keys(%{$this-&gt;{m_metafiles}});
+-  if(!$this-&gt;executeMetafileScripts(@metafiles)) {
+-    $this-&gt;logMsg(&quot;E&quot;, &quot;[collectPackages] executing metafile scripts failed!&quot;);
++  my $mf_failed = $this-&gt;executeMetafileScripts(@metafiles);
++  if($mf_failed) {
++    $this-&gt;logMsg(&quot;E&quot;, &quot;[collectPackages] executing metafile scripts failed for &lt;$mf_failed&gt; scripts!&quot;);
+     $retval++;
++    return $retval;
+   }
+ 
+   # create some dirs needed for metapackage handling:
+@@ -1020,9 +1022,10 @@
+ 
+ 
+   my @packagelist = sort(keys(%{$this-&gt;{m_metaPacks}}));
+-  if(!$this-&gt;unpackMetapackages(@packagelist)) {
++  if($this-&gt;unpackMetapackages(@packagelist)) {
+     $this-&gt;logMsg(&quot;E&quot;, &quot;[collectPackages] executing scripts failed!&quot;);
+     $retval++;
++    return $retval;
+   }
+ 
+ 
+@@ -1045,7 +1048,7 @@
+ # I'd very much like to setup a chroot environment for that, but then
+ # all binaries that will be used need to be copied/linked beneath the
+ # new root.
+-# - metaPACKAGES _could_ define dependencies through RPM's
++# - metaPACKAGES _could_ define dependencies through RPMs
+ #   REQUIRES mecahnism. Lars is working on that so this will come soon.
+ # - different for metaFILES because they are loose and don't have any
+ #   install mechanism yet. We think about this.
+@@ -1083,7 +1086,8 @@
+     }
+     if(!mkpath(&quot;$tmp&quot;, { mode =&gt; umask } )) {
+       $this-&gt;logMsg(&quot;E&quot;, &quot;can't create dir &lt;$tmp&gt;&quot;);
+-      return $retval;;
++      $retval++;
++      return $retval;
+     }
+ 
+     my $nofallback = 0;
+@@ -1106,7 +1110,7 @@
+             qx(cp -a $tmp/CD1/* $this-&gt;{m_basesubdir}-&gt;{$medium});
+           }
+ 	  else {
+-            $this-&gt;logMsg(&quot;W&quot;, &quot;No CD1 directory on $packPointer-&gt;{name}&quot;);
++            $this-&gt;logMsg(&quot;I&quot;, &quot;No CD1 directory on &lt;$packPointer-&gt;{name}&gt;&quot;);
+           }
+ 
+ 	  # read rmlist files. These files should be erased from the cdtree
+@@ -1127,20 +1131,20 @@
+           for(2..10) {
+             if(-d &quot;$tmp/CD$_&quot; and defined $this-&gt;{m_basesubdir}-&gt;{$_}) {
+               qx(cp -a $tmp/CD$_/* $this-&gt;{m_basesubdir}-&gt;{$_});
+-              $this-&gt;logMsg(&quot;W&quot;, &quot;Unpack CD$_ for $packPointer-&gt;{name} &quot;);
++              $this-&gt;logMsg(&quot;I&quot;, &quot;Unpack CD$_ for $packPointer-&gt;{name} &quot;);
+             }
+             ## add handling for &quot;DVD&lt;i&gt;&quot; subdirs if necessary FIXME
+           }
+ 
+           ## THEMING
+-          $this-&gt;logMsg(&quot;W&quot;, &quot;Handling theming for package $metapack&quot;) if $this-&gt;{m_debug};
++          $this-&gt;logMsg(&quot;I&quot;, &quot;Handling theming for package $metapack&quot;) if $this-&gt;{m_debug};
+           my $thema = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_THEME&quot;);
+ 
+-          $this-&gt;logMsg(&quot;I&quot;, &quot;\ttarget theme $thema&quot;);
++          $this-&gt;logMsg(&quot;I&quot;, &quot;\ttarget theme &lt;$thema&gt;&quot;);
+ 
+           if(-d &quot;$tmp/SuSE&quot;) {
+             if(not opendir(TD, &quot;$tmp/SuSE&quot;)) {
+-              $this-&gt;logMsg(&quot;W&quot;, &quot;[unpackMetapackages] Can't open theme directory for reading!\nSkipping themes for package $metapack&quot;);
++              $this-&gt;logMsg(&quot;W&quot;, &quot;[unpackMetapackages] Can't open theme directory for reading!\nSkipping themes for package &lt;$metapack&gt;&quot;);
+               next;
+             }
+             my @themes = readdir(TD);
+@@ -1148,7 +1152,7 @@
+             my $found=0;
+             foreach my $d(@themes) {
+               if($d =~ m{$thema}i) {
+-                $this-&gt;logMsg(&quot;W&quot;, &quot;Using thema $d&quot;);
++                $this-&gt;logMsg(&quot;I&quot;, &quot;Using thema &lt;$d&gt;&quot;);
+                 $thema = $d;	# changed after I saw that yast2-slideshow has a thema &quot;SuSE-SLES&quot; (matches &quot;SuSE&quot;, but not in line 831)
+                 $found=1;
+                 last;
+@@ -1157,7 +1161,7 @@
+             if($found==0) {
+               foreach my $d(@themes) {
+                 if($d =~ m{linux|sles|suse}i) {
+-                  $this-&gt;logMsg(&quot;W&quot;, &quot;Using fallback theme $d instead of $thema&quot;);
++                  $this-&gt;logMsg(&quot;I&quot;, &quot;Using fallback theme $d instead of $thema&quot;);
+                   $thema = $d;
+                   last;
+                 }
+@@ -1181,28 +1185,28 @@
+               $scriptfile = $1;
+             }
+             else {
+-              $this-&gt;logMsg(&quot;W&quot;, &quot;[executeScripts] malformed script name: $packOptions{'script'}&quot;);
++              $this-&gt;logMsg(&quot;W&quot;, &quot;[executeScripts] malformed script name &lt;$packOptions{'script'}&gt;&quot;);
+               next;
+             }
+ 
+-            print &quot;Downloading script $packOptions{'script'} to $this-&gt;{m_scriptbase}:&quot;;
++            $this-&gt;logMsg(&quot;I&quot;, &quot;Downloading script $packOptions{'script'} to $this-&gt;{m_scriptbase}:&quot;);
+             $this-&gt;{m_xml}-&gt;getInstSourceFile($packOptions{'script'}, &quot;$this-&gt;{m_scriptbase}/$scriptfile&quot;);
+ 
+             # TODO I don't like this. Not at all. use chroot in next version!
+             qx(chmod u+x &quot;$this-&gt;{m_scriptbase}/$scriptfile&quot;);
+-            $this-&gt;logMsg(&quot;W&quot;, &quot;[executeScripts] Execute script $this-&gt;{m_scriptbase}/$scriptfile:&quot;);
++            $this-&gt;logMsg(&quot;I&quot;, &quot;[executeScripts] Execute script $this-&gt;{m_scriptbase}/$scriptfile:&quot;);
+             if(-f &quot;$this-&gt;{m_scriptbase}/$scriptfile&quot; and -x &quot;$this-&gt;{m_scriptbase}/$scriptfile&quot;) {
+               my $status = qx($this-&gt;{m_scriptbase}/$scriptfile);
+               my $retcode = $? &gt;&gt; 8;
+-              print &quot;STATUS:\n$status\n&quot;;
+-              print &quot;RETURNED:\n$retcode\n&quot;;
++              $this-&gt;logMsg(&quot;I&quot;, &quot;STATUS:\n$status\n&quot;);
++              $this-&gt;logMsg(&quot;I&quot;, &quot;RETURNED:\n$retcode\n&quot;);
+             }
+             else {
+-              $this-&gt;logMsg(&quot;W&quot;, &quot;[executeScripts] script &quot;.$this-&gt;{m_scriptbase}.&quot;/$scriptfile for metapackage $metapack could not be executed successfully!&quot;);
++              $this-&gt;logMsg(&quot;W&quot;, &quot;[executeScripts] script &lt;&quot;.$this-&gt;{m_scriptbase}.&quot;/$scriptfile&gt; for metapackage &lt;$metapack&gt; could not be executed successfully!&quot;);
+             }
+           }
+           else {
+-            $this-&gt;logMsg(&quot;W&quot;, &quot;No script defined for metapackage $metapack&quot;);
++            $this-&gt;logMsg(&quot;I&quot;, &quot;No script defined for metapackage &lt;$metapack&gt;&quot;);
+           }
+ 
+ #          if($nokeep == 1) {
+@@ -1222,7 +1226,7 @@
+         }
+       }
+       # we should not reach this ...
+-      $this-&gt;logMsg(&quot;W&quot;, &quot;Metapackage &lt;$metapack&gt; not available for architecure &lt;$reqArch&gt;!&quot;);
++      #$this-&gt;logMsg(&quot;W&quot;, &quot;Metapackage &lt;$metapack&gt; not available for architecure &lt;$reqArch&gt;!&quot;);
+     }
+   }
+ 
+@@ -1237,16 +1241,19 @@
+   }
+   return $retval;
+ }
+-# /executeScripts
++# /unpackMetapackages
+ 
+ 
+ 
+ #==========================================
+ # executeMetafileScripts
+ #------------------------------------------
++# returns the number of failed metafile scripts
++#------------------------------------------
+ sub executeMetafileScripts
+ {
+   my $this = shift;
++  my $retval = 0;
+ 
+   # the second (first explicit) parameter is a list of either packages or files
+   # for which scripts shall be executed.
+@@ -1279,14 +1286,15 @@
+ 	print &quot;RETURNED:\n$retcode\n&quot;;
+       }
+       else {
+-	$this-&gt;logMsg(&quot;W&quot;, &quot;[executeScripts] script $this-&gt;{m_scriptbase}/$scriptfile for metafile $metafile could not be executed successfully!&quot;);
++	$this-&gt;logMsg(&quot;W&quot;, &quot;[executeScripts] script &lt;$this-&gt;{m_scriptbase}/$scriptfile&gt; for metafile &lt;$metafile&gt; could not be executed successfully!&quot;);
++	$retval++;
+       }
+     }
+     else {
+-      $this-&gt;logMsg(&quot;W&quot;, &quot;No script defined for metafile $metafile&quot;);
+-      
++      $this-&gt;logMsg(&quot;I&quot;, &quot;No script defined for metafile &lt;$metafile&gt;&quot;);
+     }
+   }
++  return $retval;
+ }
+ # /executeScripts
+ 
+@@ -1586,12 +1594,14 @@
+ {
+   my $this = shift;
+ 
++  my $ret = 0;
+   my %plugins = $this-&gt;{m_metacreator}-&gt;getPluginList(); # retrieve a complete list of all loaded plugins
++  my $num_plugins = scalar(keys(%plugins));
+ 
+   # create required directories if necessary:
+   foreach my $i(keys(%plugins)) {
+     my $p = $plugins{$i};
+-    $this-&gt;logMsg(&quot;W&quot;, &quot;Processing plugin &quot;.$p-&gt;name().&quot;&quot;);
++    $this-&gt;logMsg(&quot;I&quot;, &quot;Processing plugin &quot;.$p-&gt;name().&quot;&quot;);
+     my @requireddirs = $p-&gt;requiredDirs();
+     # this may be a list and each entry may look like &quot;/foo/bar/baz/&quot; in the worst case.
+     foreach my $dir(@requireddirs) {
+@@ -1604,33 +1614,39 @@
+       }
+     }
+   }
+-  # that should be all, bit by bit and in order ;)
++
+   $this-&gt;createDirectoryStructure();
+-  #$this-&gt;logMsg(&quot;W&quot;, &quot;Enabling all plugins...&quot;);
+-  #$this-&gt;{m_metacreator}-&gt;enableAllPlugins();
+ 
+-  $this-&gt;logMsg(&quot;W&quot;, &quot;Executing all plugins...&quot;);
+-  $this-&gt;{m_metacreator}-&gt;createMetadata();
+-  # creates the patters file. Rest will follow later
++  $this-&gt;logMsg(&quot;I&quot;, &quot;Executing all plugins...&quot;);
++  ## Skipped counts as &quot;success&quot; because only deactivated plugins are skipped!
++  my $num_success = $this-&gt;{m_metacreator}-&gt;createMetadata();
++  if($num_success &lt; $num_plugins) {
++    $this-&gt;logMsg(&quot;E&quot;, &quot;Only &lt;$num_success/$num_plugins&gt; were successful.&quot;);
++    $ret = 1;
++    return $ret;
++  }
++  else {
++    $this-&gt;logMsg(&quot;I&quot;, &quot;All &lt;$num_success&gt; plugins executed successfully.&quot;);
++  }
+ 
+ ### ALTLASTEN ###
+ ### TODO more plugins
+ 
+ # moved to beginnig after diffing with autobuild:
+   ## STEP 11: ChangeLog file
+-  $this-&gt;logMsg(&quot;W&quot;, &quot;Running mk_changelog for base directory&quot;);
++  $this-&gt;logMsg(&quot;I&quot;, &quot;Running mk_changelog for base directory&quot;);
+   my $mk_cl = &quot;/usr/bin/mk_changelog&quot;;
+   if(! (-f $mk_cl or -x $mk_cl)) {
+-    $this-&gt;logMsg(&quot;W&quot;, &quot;[createMetadata] excutable `$mk_cl` not found. Maybe package `inst-source-utils` is not installed?&quot;);
+-    return;
++    $this-&gt;logMsg(&quot;E&quot;, &quot;[createMetadata] excutable &lt;$mk_cl&gt; not found. Maybe package `inst-source-utils` is not installed?&quot;);
++    return 10;
+   }
+   my @data = qx($mk_cl $this-&gt;{m_basesubdir}-&gt;{'1'});
+   my $res = $? &gt;&gt; 8;
+   if($res == 0) {
+-    $this-&gt;logMsg(&quot;W&quot;, &quot;$mk_cl finished successfully.&quot;);
++    $this-&gt;logMsg(&quot;I&quot;, &quot;$mk_cl finished successfully.&quot;);
+   }
+   else {
+-    $this-&gt;logMsg(&quot;W&quot;, &quot;$mk_cl finished with errors: returncode was $res&quot;);
++    $this-&gt;logMsg(&quot;W&quot;, &quot;&lt;$mk_cl&gt; finished with errors: returncode was &lt;$res&gt;&quot;);
+   }
+   $this-&gt;logMsg(&quot;W&quot;, &quot;[createMetadata] $mk_cl output:&quot;);
+   foreach(@data) {
+@@ -1642,34 +1658,49 @@
+ 
+ 
+   ## step 5: media file
+-  $this-&gt;logMsg(&quot;W&quot;, &quot;Creating media file in all media:&quot;);
++  $this-&gt;logMsg(&quot;I&quot;, &quot;Creating media file in all media:&quot;);
+   my $manufacturer = $this-&gt;{m_proddata}-&gt;getVar(&quot;VENDOR&quot;);
+   if($manufacturer) {
+     my @media = $this-&gt;getMediaNumbers();
++    my $debugmedium = $this-&gt;{m_proddata}-&gt;getOpt(&quot;DEBUGMEDIUM&quot;);
+     for my $n(@media) {
+       my $num = $n;
+-      $num = 1 if ( $this-&gt;{m_proddata}-&gt;getVar(&quot;FLAVOR&quot;) eq &quot;ftp&quot; );
+-      my $mediafile = &quot;$this-&gt;{m_basesubdir}-&gt;{$n}/media.$num/media&quot;;
++      if($this-&gt;{m_proddata}-&gt;getVar(&quot;FLAVOR&quot;) =~ m{ftp}i or $n == $debugmedium) {
++	$num = 1;
++      }
++      my $mediadir = &quot;$this-&gt;{m_basesubdir}-&gt;{$n}/media.$num&quot;;
++      if(! -d $mediadir) {
++	$this-&gt;logMsg(&quot;W&quot;, &quot;Missing directory &lt;$mediadir&gt;, creating...&quot;);
++	$this-&gt;{m_dirlist}-&gt;{&quot;$mediadir&quot;} = 1;
++	$this-&gt;createDirectoryStructure();
++	qx(rm -rf $this-&gt;{m_basesubdir}-&gt;{$n}/media.$n);
++      }
++	
++      my $mediafile = &quot;$mediadir/media&quot;;
+       if(not open(MEDIA, &quot;&gt;&quot;, $mediafile)) {
+ 	$this-&gt;logMsg(&quot;E&quot;, &quot;Cannot create file &lt;$mediafile&gt;&quot;);
+-	return undef;
++	$ret = 2;
++	return $ret;
+       }
+       print MEDIA &quot;$manufacturer\n&quot;;
+       print MEDIA qx(date +%Y%m%d%H%M%S);
+       if($num == 1) {
+ 	# some specialities for medium number 1: contains a line with the number of media
+-        if ( $this-&gt;{m_proddata}-&gt;getVar(&quot;FLAVOR&quot;) eq &quot;ftp&quot; ) {
++        if($this-&gt;{m_proddata}-&gt;getVar(&quot;FLAVOR&quot;) =~ m{ftp}i or $n == $debugmedium) {
+           print MEDIA &quot;1\n&quot;;
+-        } else {
++        }
++	else {
+           print MEDIA @media.&quot;\n&quot;;
+         }
+       }
+       close(MEDIA);
++
+       ## Q&amp;D patch: create build file:
+       my $bfile = &quot;$this-&gt;{m_basesubdir}-&gt;{$n}/media.$num/build&quot;;
+       if(not open(BUILD, &quot;&gt;&quot;, $bfile)) {
+ 	$this-&gt;logMsg(&quot;E&quot;, &quot;Cannot create file &lt;$bfile&gt;!&quot;);
+-	return undef;
++	$ret = 3;
++	return $ret;
+       }
+       print BUILD $this-&gt;{m_proddata}-&gt;getVar(&quot;BUILD_ID&quot;).&quot;\n&quot;;
+       close(BUILD);
+@@ -1681,25 +1712,27 @@
+   }
+ 
+   ## step 5b: create info.txt for Beta releases.
+-  $this-&gt;logMsg(&quot;W&quot;, &quot;Handling Beta information on media:&quot;);
++  $this-&gt;logMsg(&quot;I&quot;, &quot;Handling Beta information on media:&quot;);
+   my $beta_version = $this-&gt;{m_proddata}-&gt;getOpt(&quot;BETA_VERSION&quot;);
+   if (defined($beta_version)) {
+     my $dist_string = $this-&gt;{m_proddata}-&gt;getVar(&quot;DISTNAME&quot;).&quot; &quot;.$this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_VERSION&quot;).&quot; &quot;.${beta_version};
+     if (system(&quot;sed&quot;,&quot;-i&quot;,&quot;s/BETA_DIST_VERSION/$dist_string/&quot;,&quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/README.BETA&quot;) == 0 ) {
+       if (system(&quot;ln&quot;, &quot;-sf&quot;, &quot;../README.BETA&quot;, &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/media.1/info.txt&quot;) != 0 ) {
+         $this-&gt;logMsg(&quot;W&quot;, &quot;Failed to symlink README.BETA file!&quot;);
+-      };
+-    }else{
++      }
++    }
++    else {
+       $this-&gt;logMsg(&quot;W&quot;, &quot;Failed to replace beta version in README.BETA file!&quot;);
+-    };
+-  }else{
+-    if (system(&quot;rm&quot;, &quot;-f&quot;, &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/README.BETA&quot;) != 0 ) {
++    }
++  }
++  else {
++    if(system(&quot;rm&quot;, &quot;-f&quot;, &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/README.BETA&quot;) != 0) {
+       $this-&gt;logMsg(&quot;W&quot;, &quot;Failed to remove README.BETA file!&quot;);
+-    };
+-  };
++    }
++  }
+ 
+   ## step 6: products file
+-  $this-&gt;logMsg(&quot;W&quot;, &quot;Creating products file in all media:&quot;);
++  $this-&gt;logMsg(&quot;I&quot;, &quot;Creating products file in all media:&quot;);
+   my $proddir  = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_DIR&quot;);
+   my $prodname = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_NAME&quot;);
+   my $summary = $this-&gt;{m_proddata}-&gt;getInfo(&quot;SUMMARY&quot;);
+@@ -1710,12 +1743,18 @@
+   $prodver .= &quot;.$sp_ver&quot; if defined($sp_ver);
+   if(defined($proddir) and defined($prodname) and defined($prodver) and defined($summary)) {
+     $summary =~ s{\s+}{-}g; # replace space(s) by a single dash
+-    for my $n($this-&gt;getMediaNumbers()) {
++    my @media = $this-&gt;getMediaNumbers();
++    my $debugmedium = $this-&gt;{m_proddata}-&gt;getOpt(&quot;DEBUGMEDIUM&quot;);
++    for my $n(@media) {
+       my $num = $n;
+-      $num = 1 if ( $this-&gt;{m_proddata}-&gt;getVar(&quot;FLAVOR&quot;) eq &quot;ftp&quot; );
++      if($this-&gt;{m_proddata}-&gt;getVar(&quot;FLAVOR&quot;) =~ m{ftp}i or $n == $debugmedium) {
++	$num = 1;
++      }
+       my $productsfile = &quot;$this-&gt;{m_basesubdir}-&gt;{$n}/media.$num/products&quot;;
+       if(not open(PRODUCT, &quot;&gt;&quot;, $productsfile)) {
+-	die &quot;Cannot create $productsfile&quot;;
++	$this-&gt;logMsg(&quot;E&quot;, &quot;Cannot create &lt;$productsfile&gt;&quot;);
++	$ret = 4;
++	return $ret;
+       }
+       print PRODUCT &quot;$proddir $summary $prodver-$prodrel\n&quot;;
+       close(PRODUCT);
+@@ -1730,27 +1769,40 @@
+     $this-&gt;logMsg(&quot;W&quot;, &quot;[createMetadata] skipping products file due to missing vars!&quot;);
+   }
+ 
+-  #$this-&gt;createBootPackageLinks();
+   my %bplink = $this-&gt;createBootPackageLinks();
+   if($bplink{'status'} != 0) {
+-    $this-&gt;{m_logger}-&gt;error(&quot;[E] Creating boot package links failed:&quot;);
++    $this-&gt;logMsg(&quot;E&quot;, &quot;Creating boot package links failed:&quot;);
+     foreach my $list(keys(%bplink)) {
+       next if $list =~ m{status}i;
+-      $this-&gt;{m_logger}-&gt;error(&quot;\tMissing files for rpmlist file &lt;$list&gt;:&quot;);
+-      foreach my $file(@{$bplink{$list}}) {
+-	$this-&gt;{m_logger}-&gt;error(&quot;\t\t$file&quot;);
++      $this-&gt;logMsg(&quot;E&quot;, &quot;list file &lt;$list&gt; fails for the following reason:&quot;);
++      foreach my $failedrpm(keys(%{$bplink{$list}})) {
++	my $reason = $bplink{$list}{$failedrpm};
++	if($reason == 1) {
++	  $this-&gt;logMsg(&quot;E&quot;, &quot;\tfile &lt;$failedrpm&gt; is missing in config file!&quot;);
++	}
++	elsif($reason == 2) {
++	  $this-&gt;logMsg(&quot;E&quot;, &quot;\tfile &lt;$failedrpm&gt; is not on medium 1!&quot;);
++	}
++	elsif($reason == 3) {
++	  $this-&gt;logMsg(&quot;E&quot;, &quot;\tfile &lt;$failedrpm&gt; not available for reauired architecture!&quot;);
++	}
++	else {
++	  $this-&gt;logMsg(&quot;E&quot;, &quot;\tThis state doesn't exist, something wrecked your data structures!!&quot;);
++	}
+       }
+     }
+-    return $bplink{'status'};
++    $ret = $bplink{'status'};
++    return $ret; 
+   }
+ 
+ 
+   ## step 9: LISTINGS
+-  $this-&gt;logMsg(&quot;W&quot;, &quot;Calling mk_listings:&quot;);
++  $this-&gt;logMsg(&quot;I&quot;, &quot;Calling mk_listings:&quot;);
+   my $listings = &quot;/usr/bin/mk_listings&quot;;
+   if(! (-f $listings or -x $listings)) {
+-    $this-&gt;logMsg(&quot;W&quot;, &quot;[createMetadata] excutable `$listings` not found. Maybe package `inst-source-utils` is not installed?&quot;);
+-    return;
++    $this-&gt;logMsg(&quot;E&quot;, &quot;[createMetadata] excutable &lt;$listings&gt; not found. Maybe package &lt;inst-source-utils&gt; is not installed?&quot;);
++    $ret = 5;
++    return $ret;
+   }
+   my $cmd = &quot;$listings &quot;.$this-&gt;{m_basesubdir}-&gt;{'1'};
+   @data = qx($cmd);
+@@ -1765,7 +1817,7 @@
+ 
+ 
+   ## step 7: SHA1SUMS
+-  $this-&gt;logMsg(&quot;W&quot;, &quot;Calling create_sha1sums:&quot;);
++  $this-&gt;logMsg(&quot;I&quot;, &quot;Calling create_sha1sums:&quot;);
+   my $csha1sum = &quot;/usr/bin/create_sha1sums&quot;;
+   my $s1sum_opts = $this-&gt;{m_proddata}-&gt;getVar(&quot;SHA1OPT&quot;);
+   if(not defined($s1sum_opts)) {
+@@ -1773,7 +1825,8 @@
+   }
+   if(! (-f $csha1sum or -x $csha1sum)) {
+     $this-&gt;logMsg(&quot;W&quot;, &quot;[createMetadata] excutable `$csha1sum` not found. Maybe package `inst-source-utils` is not installed?&quot;);
+-    return;
++    $ret = 5;
++    return $ret;
+   }
+   for my $sd($this-&gt;getMediaNumbers()) {
+     my @data = qx($csha1sum $s1sum_opts $this-&gt;{m_basesubdir}-&gt;{$sd});
+@@ -1785,43 +1838,21 @@
+   }
+ 
+ 
+-  ### step 8: MD5SUMS
+-  #$this-&gt;logMsg(&quot;W&quot;, &quot;Calling create_md5sums:&quot;);
+-  #my $md5sums = &quot;/usr/bin/create_md5sums&quot;;
+-  #my $md5opt = $this-&gt;{m_proddata}-&gt;getVar(&quot;MD5OPT&quot;);
+-  ## available option: '--meta'
+-  #if(not defined($md5opt)) {
+-  #  $md5opt = &quot;&quot;;
+-  #}
+-  #if(! (-f $md5sums or -x $md5sums)) {
+-  #  $this-&gt;logMsg(&quot;W&quot;, &quot;[createMetadata] excutable `$md5sums` not found. Maybe package `inst-source-utils` is not installed?&quot;);
+-  #  return;
+-  #}
+-  #my $cmd = &quot;$md5sums $md5opt &quot;;
+-  #$cmd .= $this-&gt;{m_basesubdir}-&gt;{1}.&quot;/&quot;.$this-&gt;{m_proddata}-&gt;getInfo(&quot;DATADIR&quot;);
+-  #my @data = qx($cmd);
+-  #undef $cmd;
+-  #$this-&gt;logMsg(&quot;W&quot;, &quot;[createMetadata] $md5sums output:&quot;);
+-  #foreach(@data) {
+-  #  chomp $_;
+-  #  $this-&gt;{m_logger}-&gt;info(&quot;\t$_\n&quot;);
+-  #}
+-  #@data = (); # clear list
+-
+-
+   ## step 10: DIRECTORY.YAST FILES
+   $this-&gt;logMsg(&quot;W&quot;, &quot;Calling create_directory.yast:&quot;);
+   my $dy = &quot;/usr/bin/create_directory.yast&quot;;
+   if(! (-f $dy or -x $dy)) {
+-    $this-&gt;logMsg(&quot;W&quot;, &quot;[createMetadata] excutable `$dy` not found. Maybe package `inst-source-utils` is not installed?&quot;);
+-    return;
++    $this-&gt;logMsg(&quot;E&quot;, &quot;[createMetadata] excutable &lt;$dy&gt; not found. Maybe package &lt;inst-source-utils&gt; is not installed?&quot;);
++    $ret = 5;
++    return $ret;
+   }
+ 
+   my $datadir = $this-&gt;{m_proddata}-&gt;getInfo(&quot;DATADIR&quot;);
+   my $descrdir = $this-&gt;{m_proddata}-&gt;getInfo(&quot;DESCRDIR&quot;);
+   if(not defined($datadir) or not defined($descrdir)) {
+     $this-&gt;logMsg(&quot;E&quot;, &quot;variables DATADIR and/or DESCRDIR are missing&quot;);
+-    die &quot;MISSING VARIABLES!&quot;;
++    $ret = 6;
++    return $ret;
+   }
+ 
+   foreach my $d($this-&gt;getMediaNumbers()) {
+@@ -1847,7 +1878,7 @@
+     foreach (@dlist) {
+       if(-d $_) {
+ 	@data = qx($dy $_);
+-	$this-&gt;logMsg(&quot;W&quot;, &quot;[createMetadata] $dy output for directory $_:&quot;);
++	$this-&gt;logMsg(&quot;I&quot;, &quot;[createMetadata] $dy output for directory $_:&quot;);
+ 	foreach(@data) {
+ 	  chomp $_;
+ 	  $this-&gt;logMsg(&quot;I&quot;, &quot;\t$_&quot;);
+@@ -1855,6 +1886,7 @@
+       }
+     }
+   }
++  return $ret;
+ }
+ # createMetadata
+ 
+@@ -1870,7 +1902,17 @@
+ #---------------------------
+ # returns a hash containing the following info:
+ # status =&gt; 0 (ok) / not 0 = error
+-# rpmlistname =&gt; [ list of missing packages ]
++# rpmlistname =&gt; { hash of missing packages }
++# - key: name of the package
++# - value: type of error:
++#   - 1 rpm file is missing in config.xml (fatal, a respective error MUST be logged)
++#   - 2 rpm is on the wrong medium (fatal: Medium 1 can't boot then)
++#   - 3	rpm is there but not for required architecture (fatal) 
++# statuscodes:
++# 0 OK
++# 1 /boot directory not found (fatal)
++# 2 rpmlist file not readable (fatal, bug in installation-images package)
++# 3 something is wrong with the rpms (find status per rpm in hash)
+ #---------------------------
+ sub createBootPackageLinks
+ {
+@@ -1881,8 +1923,9 @@
+   my $datadir = $this-&gt;{m_proddata}-&gt;getInfo('DATADIR');
+ 
+   my %retval;
++  $retval{'status'} = 0;
+   if(! -d &quot;$base/boot&quot;) {
+-    $this-&gt;{m_logger}-&gt;warning(&quot;[W] There is no /boot subdirectory. This may be ok for some media, but might indicate errors in metapackages!&quot;);
++    $this-&gt;logMsg(&quot;W&quot;, &quot;There is no /boot subdirectory. This may be ok for some media, but might indicate errors in metapackages!&quot;);
+     $retval{'status'} = 1;
+     return %retval;
+   }
+@@ -1893,27 +1936,32 @@
+   foreach my $arch(keys(%rpmlist_files)) {
+     my $filename = $rpmlist_files{$arch};
+     if(not open(RPMLIST, $filename)) {
+-      $this-&gt;{m_logger}-&gt;warning(&quot;[W] cannot open file $base/boot/$arch/$filename!&quot;);
++      $this-&gt;logMsg(&quot;W&quot;, &quot;cannot open file $base/boot/$arch/$filename!&quot;);
+       $retval{'status'} = 2;
+       return %retval;
+     }
+ 
+-    $retval{$filename} = []; # new empty list
++    $retval{$filename} = {}; # new empty hash
++    #my %packs;
+     RPM:foreach my $rpmname(&lt;RPMLIST&gt;) {
++      #$retval{$filename}{'status'} = 0; #default result=ok
+       chomp $rpmname;
+       if(not defined($rpmname) or not defined($this-&gt;{m_repoPacks}-&gt;{$rpmname})) {
+-	$this-&gt;{m_logger}-&gt;error(&quot;[E] broken repo: rpmlist=&lt;$filename&gt; file=&lt;$rpmname&gt; is missing in repo!&quot;);
++	$this-&gt;logMsg(&quot;E&quot;, &quot;broken repo: rpmlist=&lt;$filename&gt; file=&lt;$rpmname&gt; is missing in repo!&quot;);
++	$retval{$filename}{$rpmname} = 1; # package missing completely
+ 	$retval{'status'} = 3;
+-	push @{$retval{$filename}}, $rpmname;
++	#push @{$retval{$filename}}, $rpmname;
+ 	next RPM;
+       }
+ 
+       if(defined($this-&gt;{m_repoPacks}-&gt;{$rpmname}-&gt;{'medium'}) and $this-&gt;{m_repoPacks}-&gt;{$rpmname}-&gt;{'medium'} != 1) {
+-	$this-&gt;{m_logger}-&gt;error(&quot;[E] broken repo: file &lt;$rpmname&gt; is on wrong medium!&quot;);
+-	push @{$retval{$filename}}, $rpmname;
++	$this-&gt;logMsg(&quot;E&quot;, &quot;broken repo: file &lt;$rpmname&gt; is on wrong medium!&quot;);
++	#push @{$retval{$filename}}, $rpmname;
++	$retval{$filename}{$rpmname} = 2; # package is on wrong medium
++	$retval{'status'} = 3;
+ 	next RPM;
+       }
+-      my %tmp = %{$this-&gt;{m_repoPacks}-&gt;{$rpmname}};
++      #my %tmp = %{$this-&gt;{m_repoPacks}-&gt;{$rpmname}};
+ 
+       # FIXME: This is just a hack, where do we get the upper architecture from ?
+       my $targetarch = $arch;
+@@ -1923,14 +1971,25 @@
+       # End of hack
+ 
+       my @fallb = $this-&gt;{m_archlist}-&gt;fallbacks($targetarch);
++      my $found = 0;
++      my $foundarch = $targetarch;
+       FARCH:foreach my $fa(@fallb) {
+-	if(not defined($this-&gt;{m_repoPacks}-&gt;{$rpmname}-&gt;{$fa})) {
+-	  next FARCH;
++	if($this-&gt;{m_repoPacks}-&gt;{$rpmname}-&gt;{'arch'} =~ $fa) {
++	  $found = 1;
++	  $foundarch = $fa;
++	  last FARCH;
+ 	}
+-	symlink(&quot;../../$datadir/$fa/&quot;.$this-&gt;{m_repoPacks}-&gt;{$rpmname}-&gt;{$fa}-&gt;{'newfile'}, &quot;$base/boot/$arch/$rpmname.rpm&quot;);
+-	#symlink(&quot;../../$datadir/$fa/&quot;.$tmp{$fa}-&gt;{'newfile'}, &quot;$base/boot/$arch/$rpmname.rpm&quot;);
+-	next RPM;
+       }
++      if($found) {
++	symlink(&quot;../../$datadir/$foundarch/&quot;.$this-&gt;{m_repoPacks}-&gt;{$rpmname}-&gt;{$foundarch}-&gt;{'newfile'}, &quot;$base/boot/$arch/$rpmname.rpm&quot;);
++	#$retval{$filename}{$rpmname} = 0; # package ok
++      }
++      else {
++	#push @{$retval{$filename}}, $rpmname;
++	$retval{$filename}{$rpmname} = 3; # package not available for required architecture
++	$retval{'status'} = 3;
++      }
++      next RPM;
+     }
+   }
+   return %retval;
+@@ -1972,8 +2031,6 @@
+ #  }
+ #  return %src;
+ #
+-#  error:
+-#  $this-&gt;logMsg(&quot;W&quot;, &quot;[getSrcList] source not defined, method called before downloads complete!&quot;);
+ #  return undef;
+ #}
+ #
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000980.html">[Kiwi-devel] r1864 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool
+</A></li>
+	<LI>Next message: <A HREF="000992.html">[Kiwi-devel] r1866 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#991">[ date ]</a>
+              <a href="thread.html#991">[ thread ]</a>
+              <a href="subject.html#991">[ subject ]</a>
+              <a href="author.html#991">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,457 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1402 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1402%20-%20kiwi-head/modules&In-Reply-To=%3C200806231640.m5NGePMG006990%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000491.html">
+   <LINK REL="Next"  HREF="000493.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1402 - kiwi-head/modules</H1>
+    <B>jcborn at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1402%20-%20kiwi-head/modules&In-Reply-To=%3C200806231640.m5NGePMG006990%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1402 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Mon Jun 23 18:40:25 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000491.html">[Kiwi-devel] [SVN:KIWI-Team] r1401 - kiwi-head/modules
+</A></li>
+        <LI>Next message: <A HREF="000493.html">[Kiwi-devel] [SVN:KIWI-Team] r1403 - kiwi-head/modules/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#492">[ date ]</a>
+              <a href="thread.html#492">[ thread ]</a>
+              <a href="subject.html#492">[ subject ]</a>
+              <a href="author.html#492">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: Mon Jun 23 18:40:13 2008
+New Revision: 1402
+
+Modified:
+   kiwi-head/modules/KIWICollect.pm
+
+Log:
+- integration of KIWIProductData module
+
+
+Modified: kiwi-head/modules/KIWICollect.pm
+==============================================================================
+--- kiwi-head/modules/KIWICollect.pm	(original)
++++ kiwi-head/modules/KIWICollect.pm	Mon Jun 23 18:40:13 2008
+@@ -30,6 +30,7 @@
+ use KIWIUtil;
+ use KIWIURL;
+ use KIWIRepoMetaHandler;
++use KIWIProductData;
+ 
+ use RPMQ;
+ 
+@@ -119,6 +120,9 @@
+ 
+   $this-&gt;{m_urlparser} = new KIWIURL($this-&gt;{m_logger});
+ 
++  # create the product variables administrator object.
++  # This must be incubated with the respective data in the Init() method
++  $this-&gt;{m_proddata} = new KIWIProductData($this);
+   #$this-&gt;Init(); # let the caller do this
+ 
+   return $this;
+@@ -186,6 +190,17 @@
+ 
+ 
+ 
++sub productData
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  return $this-&gt;{m_proddata};
++}
++
++
++
+ #=================
+ # other methods:
+ #-----------------
+@@ -266,58 +281,58 @@
+     close(DUMP);
+   }
+ 
+-  ## hash of varname=value pairs necessary for scripts (ENV)
+-  %{$this-&gt;{m_prodinfo}}      = $this-&gt;{m_xml}-&gt;getInstSourceProductInfo();
+-  if($this-&gt;{m_debug}) {
+-    open(DUMP, &quot;&gt;&quot;, &quot;$this-&gt;{m_basedir}/prodinfo.dump.pl&quot;);
+-    print DUMP Dumper($this-&gt;{m_prodinfo});
+-    close(DUMP);
+-  }
+-
+-  %{$this-&gt;{m_prodinfo_trans}} = map { $_-&gt;[0] =&gt; $_-&gt;[1] } values(%{$this-&gt;{m_prodinfo}});
+-
+-  %{$this-&gt;{m_prodvars}}      = $this-&gt;{m_xml}-&gt;getInstSourceProductVar();
+-  if($this-&gt;{m_debug}) {
+-    open(DUMP, &quot;&gt;&quot;, &quot;$this-&gt;{m_basedir}/prodvars.dump.pl&quot;);
+-    print DUMP Dumper($this-&gt;{m_prodvars});
+-    close(DUMP);
+-  }
++  $this-&gt;{m_proddata}-&gt;addSet(&quot;ProductInfo stuff&quot;, {$this-&gt;{m_xml}-&gt;getInstSourceProductInfo()}, &quot;prodinfo&quot;);
++  $this-&gt;{m_proddata}-&gt;addSet(&quot;ProductVar stuff&quot;, {$this-&gt;{m_xml}-&gt;getInstSourceProductVar()}, &quot;prodvars&quot;);
++  $this-&gt;{m_proddata}-&gt;addSet(&quot;ProductOption stuff&quot;, {$this-&gt;{m_xml}-&gt;getInstSourceProductOption()}, &quot;prodopts&quot;);
++  $this-&gt;{m_proddata}-&gt;_expand(); #once should be it, now--
+ 
+-  %{$this-&gt;{m_prodopts}}      = $this-&gt;{m_xml}-&gt;getInstSourceProductOption();
++  # this breaks &quot;private&quot; access, only used for DEBUG! This is not an example!!!
+   if($this-&gt;{m_debug}) {
+-    open(DUMP, &quot;&gt;&quot;, &quot;$this-&gt;{m_basedir}/prodopts.dump.pl&quot;);
+-    print DUMP Dumper($this-&gt;{m_prodopts});
++    open(DUMP, &quot;&gt;&quot;, &quot;$this-&gt;{m_basedir}/productdata.pl&quot;);
++    print DUMP &quot;# PRODUCTINFO:&quot;;
++    print DUMP Dumper($this-&gt;{m_proddata}-&gt;{m_prodinfo});
++    print DUMP &quot;# PRODUCTVARS:&quot;;
++    print DUMP Dumper($this-&gt;{m_proddata}-&gt;{m_prodvars});
++    print DUMP &quot;# PRODUCTOPTIONS:&quot;;
++    print DUMP Dumper($this-&gt;{m_proddata}-&gt;{m_prodopts});
+     close(DUMP);
+   }
+ 
+-
+   ### THIS IS ONLY FIRST SHOT! TODO FIXME
+   ## set env vars according to &quot;productinfo&quot; elements:
+-  while(my ($name,$value) = each(%{$this-&gt;{m_prodvars}})) {
+-    $ENV{$name} = $value;
+-  }
++  #while(my ($name,$value) = each(%{$this-&gt;{m_prodvars}})) {
++  #  $ENV{$name} = $value;
++  #}
+ 
+   $this-&gt;{m_united} = &quot;$this-&gt;{m_basedir}/main&quot;;
+   $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}&quot;} = 1;
++  my $mediumname = $this-&gt;{m_proddata}-&gt;getVar(&quot;MEDIUM_NAME&quot;);
++  if(not defined($mediumname)) {
++    $this-&gt;{m_logger}-&gt;error(&quot;[ERROR] Variable MEDIUM_NAME is not specified correctly!&quot;);
++    return undef;
++  }
++
+   foreach my $n($this-&gt;getMediaNumbers()) {
+-    $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/$this-&gt;{m_prodvars}-&gt;{MEDIUM_NAME}$n&quot;} = 1;
+-    $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/$this-&gt;{m_prodvars}-&gt;{MEDIUM_NAME}$n/suse&quot;} = 1;
+-    $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/$this-&gt;{m_prodvars}-&gt;{MEDIUM_NAME}$n/script&quot;} = 1;
+-    $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/$this-&gt;{m_prodvars}-&gt;{MEDIUM_NAME}$n/temp&quot;} = 1;
+-    $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/$this-&gt;{m_prodvars}-&gt;{MEDIUM_NAME}$n/media.$n&quot;} = 1;
+-    $this-&gt;{m_basesubdir}-&gt;{$n} = &quot;$this-&gt;{m_united}/$this-&gt;{m_prodvars}-&gt;{MEDIUM_NAME}$n&quot;;
++    $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/$mediumname$n&quot;} = 1;
++    $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/$mediumname$n/suse&quot;} = 1;
++    $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/$mediumname$n/script&quot;} = 1;
++    $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/$mediumname$n/temp&quot;} = 1;
++    $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/$mediumname$n/media.$n&quot;} = 1;
++    $this-&gt;{m_basesubdir}-&gt;{$n} = &quot;$this-&gt;{m_united}/$mediumname$n&quot;;
+     $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_basesubdir}-&gt;{$n}&quot;} = 1;
+   }
+   
+   # we also need a basesubdir &quot;0&quot; for the metapackages that shall _not_ be put to the CD.
+   # Those specify medium number &quot;0&quot;, which means we only need a dir to download scripts.
+-  $this-&gt;{m_basesubdir}-&gt;{'0'} = &quot;$this-&gt;{m_united}/$this-&gt;{m_prodvars}-&gt;{MEDIUM_NAME}0&quot;;
+-  $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/$this-&gt;{m_prodvars}-&gt;{MEDIUM_NAME}0/temp&quot;} = 1;
++  $this-&gt;{m_basesubdir}-&gt;{'0'} = &quot;$this-&gt;{m_united}/&quot;.$mediumname.&quot;0&quot;;
++  $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/&quot;.$mediumname.&quot;0/temp&quot;} = 1;
+   
+   $this-&gt;createDirectoryStructure();
+ 
+   # for debugging:
+-  $this-&gt;dumpPackageList(&quot;$this-&gt;{m_basedir}/packagelist.txt&quot;);
++  if($this-&gt;{m_debug}) {
++    $this-&gt;dumpPackageList(&quot;$this-&gt;{m_basedir}/packagelist.txt&quot;);
++  }
+ 
+   $this-&gt;{m_browser} = new LWP::UserAgent;
+ 
+@@ -491,6 +506,11 @@
+ 
+   my $retval = 0;
+ 
++  my $base_on_cd = $this-&gt;{m_proddata}-&gt;getInfo(&quot;DATADIR&quot;);
++  if(not defined($base_on_cd)) {
++    $this-&gt;{m_logger}-&gt;error(&quot;[ERROR] queryRpmHeaders: variable DATADIR must be set!&quot;);
++    return $retval;
++  }
+ 
+   foreach my $pack(sort(keys(%{$this-&gt;{m_packages}}))) {
+     my $tmp = $this-&gt;{m_packages}-&gt;{$pack}; #optimisation
+@@ -536,7 +556,6 @@
+ 	}
+ 
+ 
+-	#my $dstfile = &quot;$this-&gt;{'m_united'}/$this-&gt;{m_prodinfo}-&gt;{'MEDIUM_NAME'}$medium/$ad/$tmp-&gt;{$a}-&gt;{'targetfile'}&quot;;
+ 	my $dstfile = &quot;$this-&gt;{'m_basesubdir'}-&gt;{$medium}/suse/$ad/$tmp-&gt;{$a}-&gt;{'targetfile'}&quot;;
+ 	$dstfile =~ m{(.*/)(.*?/)(.*?/)(.*)[.]([rs]pm)$};
+ 	if(not(defined($1) and defined($2) and defined($3) and defined($4) and defined($5))) {
+@@ -544,7 +563,7 @@
+ 	}
+ 	else {
+ 	  $tmp-&gt;{$a}-&gt;{'newfile'}  = &quot;$pack-$flags{'VERSION'}-&gt;[0]-$flags{'RELEASE'}-&gt;[0].$ad.$5&quot;;
+-	  $tmp-&gt;{$a}-&gt;{'newpath'} = &quot;$this-&gt;{m_basesubdir}-&gt;{$medium}/suse/$ad&quot;;
++	  $tmp-&gt;{$a}-&gt;{'newpath'} = &quot;$this-&gt;{m_basesubdir}-&gt;{$medium}/$base_on_cd/$ad&quot;;
+ 	  $tmp-&gt;{$a}-&gt;{'arch'}  = $ad;
+ 	  
+ 	  # move and rename:
+@@ -785,8 +804,12 @@
+       ## THEMING
+       $this-&gt;{m_logger}-&gt;info(&quot;[INFO] Handling theming for package $metapack\n&quot;);
+       $this-&gt;{m_logger}-&gt;info(&quot;\ttarget theme $this-&gt;{m_prodvars}-&gt;{PRODUCT_THEME}\n&quot;);
+-      my $thema = $this-&gt;{m_prodvars}-&gt;{'PRODUCT_THEME'};
+-      if(-d &quot;$tmp/SuSE&quot;) { # and -d &quot;$tmp/SuSE/$thema&quot;) {
++      my $thema = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_THEME&quot;);
++      if(not defined($thema)) {
++	$this-&gt;{m_logger}-&gt;error(&quot;[ERROR] unpackMetapackages: PRODUCT_THEME undefined!&quot;);
++	die;# TODO clean solution
++      }
++      if(-d &quot;$tmp/SuSE&quot;) {
+ 	if(not opendir(TD, &quot;$tmp/SuSE&quot;)) {
+ 	  $this-&gt;{m_logger}-&gt;warning(&quot;[WARNING] [unpackMetapackages] Can't open theme directory for reading!\nSkipping themes for package $metapack\n&quot;);
+ 	  next;
+@@ -1489,7 +1512,7 @@
+   ## step 2: create_package_descr
+   #==============================
+   my @paths = values(%{$this-&gt;{m_basesubdir}});
+-  @paths = reverse map { $_.&quot;/suse&quot; =&gt; &quot;-d&quot; if $_ !~ m{.*0}} reverse @paths;
++  @paths = reverse map { $_.&quot;/&quot;.$this-&gt;{m_proddata}-&gt;getInfo(&quot;DATADIR&quot;) =&gt; &quot;-d&quot; if $_ !~ m{.*0}} reverse @paths;
+   my $pathlist = join(' ', @paths);
+ 
+   $this-&gt;{m_logger}-&gt;info(&quot;Calling create_package_descr for directories @paths:&quot;);
+@@ -1530,27 +1553,33 @@
+   if(not open(CONT, &quot;&gt;&quot;, $contentfile)) {
+     die &quot;Cannot create $contentfile&quot;;
+   }
+-  foreach my $i(sort {$a &lt;=&gt; $b } keys(%{$this-&gt;{m_prodinfo}})) {
+-    my $line = &quot;$this-&gt;{m_prodinfo}-&gt;{$i}-&gt;[0] $this-&gt;{m_prodinfo}-&gt;{$i}-&gt;[1]&quot;;
+-    while( $line =~ m{\$(DISTNAME|DISTVERSION|MANUFACTURER)}) {
+-      my $replace = $this-&gt;{m_prodvars}-&gt;{$1};
+-      $line =~ s|\$$1|$replace|;  # '|' char is not allowed in vars anyway
+-    }
+-    print CONT &quot;$line\n&quot;;
++  #foreach my $i(sort {$a &lt;=&gt; $b } keys(%{$this-&gt;{m_prodinfo}})) {
++  #  my $line = &quot;$this-&gt;{m_prodinfo}-&gt;{$i}-&gt;[0] $this-&gt;{m_prodinfo}-&gt;{$i}-&gt;[1]&quot;;
++  #  while( $line =~ m{\$(DISTNAME|DISTVERSION|MANUFACTURER)}) {
++  #    my $replace = $this-&gt;{m_prodvars}-&gt;{$1};
++  #    $line =~ s|\$$1|$replace|;  # '|' char is not allowed in vars anyway
++  #  }
++  #  print CONT &quot;$line\n&quot;;
++  #}
++  my $info = $this-&gt;{m_proddata}-&gt;getSet(&quot;prodinfo&quot;);
++  foreach my $i(sort { $a &lt;=&gt; $b } keys(%{$info})) {
++    print CONT &quot;$info-&gt;{$i}-&gt;[0] $info-&gt;{$i}-&gt;[1]\n&quot;;
+   }
+   close(CONT);
+ 
+ 
+   ## step 5: media file
+   $this-&gt;{m_logger}-&gt;info(&quot;Creating media file in all media:&quot;);
+-  if($this-&gt;{m_prodvars}-&gt;{'MANUFACTURER'}) {
++  my $manufacturer = $this-&gt;{m_proddata}-&gt;getVar(&quot;MANUFACTURER&quot;);
++  #if($this-&gt;{m_prodvars}-&gt;{'MANUFACTURER'}) {
++  if($manufacturer) {
+     my @media = $this-&gt;getMediaNumbers();
+     for my $n(@media) {
+       my $mediafile = &quot;$this-&gt;{m_basesubdir}-&gt;{$n}/media.$n/media&quot;;
+       if(not open(MEDIA, &quot;&gt;&quot;, $mediafile)) {
+ 	die &quot;Cannot create $mediafile&quot;;
+       }
+-      print MEDIA &quot;$this-&gt;{m_prodvars}-&gt;{'MANUFACTURER'}\n&quot;;
++      print MEDIA &quot;$manufacturer\n&quot;;
+       print MEDIA qx(date +%Y%m%d%H%M%S);
+       if($n == 1) {
+ 	# some specialities for medium number 1: contains a line with the number of media (? ask ma!)
+@@ -1567,26 +1596,30 @@
+ 
+   ## step 6: products file
+   $this-&gt;{m_logger}-&gt;info(&quot;Creating products file in all media:&quot;);
+-  if($this-&gt;{m_prodvars}-&gt;{'PRODUCT_DIR'} and
+-    $this-&gt;{m_prodvars}-&gt;{'PRODUCT_NAME'} and
+-    $this-&gt;{m_prodvars}-&gt;{'PRODUCT_VERSION'}
+-    ) {
++  my $proddir = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_DIR&quot;);
++  my $prodname = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_NAME&quot;);
++  my $prodver = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_VERSION&quot;);
++  #if($this-&gt;{m_prodvars}-&gt;{'PRODUCT_DIR'} and
++  #  $this-&gt;{m_prodvars}-&gt;{'PRODUCT_NAME'} and
++  #  $this-&gt;{m_prodvars}-&gt;{'PRODUCT_VERSION'}
++  #  ) {
++  if(defined($proddir) and defined($prodname) and defined($prodver)) {
+     for my $n($this-&gt;getMediaNumbers()) {
+       my $productsfile = &quot;$this-&gt;{m_basesubdir}-&gt;{$n}/media.$n/products&quot;;
+       if(not open(PRODUCT, &quot;&gt;&quot;, $productsfile)) {
+ 	die &quot;Cannot create $productsfile&quot;;
+       }
+-      for my $v(&quot;PRODUCT_DIR&quot;, &quot;PRODUCT_NAME&quot;, &quot;PRODUCT_VERSION&quot;) {
+-	my $line = $this-&gt;{m_prodvars}-&gt;{$v};
+-	while($line =~ m{\$(DISTNAME|DISTVERSION|MANUFACTURER)}) {
+-	  my $replace = $this-&gt;{m_prodvars}-&gt;{$1};
+-	  $line =~ s|\$$1|$replace|;
+-	}
+-	$this-&gt;{m_prodvars}-&gt;{$v} = $line;
+-      }
+-      print PRODUCT &quot;$this-&gt;{m_prodvars}-&gt;{'PRODUCT_DIR'}&quot;;
+-      print PRODUCT &quot; $this-&gt;{m_prodvars}-&gt;{'PRODUCT_NAME'}&quot;;
+-      print PRODUCT &quot; $this-&gt;{m_prodvars}-&gt;{'PRODUCT_VERSION'}\n&quot;;
++      #for my $v(&quot;PRODUCT_DIR&quot;, &quot;PRODUCT_NAME&quot;, &quot;PRODUCT_VERSION&quot;) {
++      #  my $line = $this-&gt;{m_prodvars}-&gt;{$v};
++      #  while($line =~ m{\$(DISTNAME|DISTVERSION|MANUFACTURER)}) {
++      #    my $replace = $this-&gt;{m_prodvars}-&gt;{$1};
++      #    $line =~ s|\$$1|$replace|;
++      #  }
++      #  $this-&gt;{m_prodvars}-&gt;{$v} = $line;
++      #}
++      print PRODUCT &quot;$proddir $prodname $prodver\n&quot;;
++      #print PRODUCT &quot; $this-&gt;{m_prodvars}-&gt;{'PRODUCT_NAME'}&quot;;
++      #print PRODUCT &quot; $this-&gt;{m_prodvars}-&gt;{'PRODUCT_VERSION'}\n&quot;;
+       close(PRODUCT);
+     }
+   }
+@@ -1602,9 +1635,9 @@
+   ## step 7: SHA1SUMS
+   $this-&gt;{m_logger}-&gt;info(&quot;Calling create_sha1sums:&quot;);
+   my $csha1sum = &quot;/usr/bin/create_sha1sums&quot;;
+-  my $s1sum_opts = &quot;&quot;;
+-  if($this-&gt;{m_prodvars}-&gt;{'SHA1OPT'}) {
+-    $s1sum_opts = $this-&gt;{m_prodvars}-&gt;{'SHA1OPT'};
++  my $s1sum_opts = $this-&gt;{m_proddata}-&gt;getVar(&quot;SHA1OPT&quot;);
++  if(not defined($s1sum_opts)) {
++    $s1sum_opts = &quot;&quot;;
+   }
+   if(! (-f $csha1sum or -x $csha1sum)) {
+     $this-&gt;{m_logger}-&gt;warning(&quot;[WARNING] [createMetadata] excutable `$csha1sum` not found. Maybe package `inst-source-utils` is not installed?&quot;);
+@@ -1623,10 +1656,10 @@
+   ## step 8: MD5SUMS
+   $this-&gt;{m_logger}-&gt;info(&quot;Calling create_md5sums:&quot;);
+   my $md5sums = &quot;/usr/bin/create_md5sums&quot;;
+-  my $md5opt = &quot;&quot;;
++  my $md5opt = $this-&gt;{m_proddata}-&gt;getVar(&quot;MD5OPT&quot;);
+   # available option: '--meta'
+-  if($this-&gt;{m_prodvars}-&gt;{'MD5OPT'}) {
+-    $md5opt = $this-&gt;{m_prodvars}-&gt;{'MD5OPT'};
++  if(not defined($md5opt)) {
++    $md5opt = &quot;&quot;;
+   }
+   if(! (-f $md5sums or -x $md5sums)) {
+     $this-&gt;{m_logger}-&gt;warning(&quot;[WARNING] [createMetadata] excutable `$md5sums` not found. Maybe package `inst-source-utils` is not installed?&quot;);
+@@ -1664,6 +1697,13 @@
+     $this-&gt;{m_logger}-&gt;warning(&quot;[WARNING] [createMetadata] excutable `$dy` not found. Maybe package `inst-source-utils` is not installed?&quot;);
+     return;
+   }
++
++  my $datadir = $this-&gt;{m_proddata}-&gt;getInfo(&quot;DATADIR&quot;);
++  my $descrdir = $this-&gt;{m_proddata}-&gt;getInfo(&quot;DESCRDIR&quot;);
++  if(not defined($datadir) or not defined($descrdir)) {
++    $this-&gt;{m_logger}-&gt;error(&quot;[ERROR] variables DATADIR and/or DESCRDIR are missing&quot;);
++    die &quot;MISSING VARIABLES!&quot;;
++  }
+   foreach my $d($this-&gt;getMediaNumbers()) {
+     my $dbase = $this-&gt;{m_basesubdir}-&gt;{$d};
+     my @dlist;
+@@ -1674,8 +1714,8 @@
+     push @dlist, &quot;$dbase/media.1&quot;;
+     push @dlist, &quot;$dbase/media.1/license&quot;;
+     push @dlist, &quot;$dbase/images&quot;;
+-    push @dlist, &quot;$dbase/$this-&gt;{m_prodinfo_trans}-&gt;{'DATADIR'}/setup/slide&quot;;
+-    push @dlist, &quot;$dbase/$this-&gt;{m_prodinfo_trans}-&gt;{'DESCRDIR'}&quot;;
++    push @dlist, &quot;$dbase/$datadir/setup/slide&quot;;
++    push @dlist, &quot;$dbase/$descrdir&quot;;
+ 
+     foreach (@dlist) {
+       if(-d $_) {
+@@ -1732,13 +1772,9 @@
+ {
+   my $this = shift;
+   my %dirs = %{$this-&gt;{m_dirlist}};
+-  #if(!%dirs) {
+-  #  $this-&gt;{m_logger}-&gt;info(&quot;[INFO] createDirectoryStructure: nothing to do at the moment.&quot;);
+-  #  return 0;
+-  #}
++
+   my $errors = 0;
+ 
+-  #for my $i(0..scalar(@dirs)-1) {
+   foreach my $d(keys(%dirs)) {
+ 		next if $dirs{$d} == 0;
+     if(-e $d and -d $d) {
+@@ -1754,12 +1790,10 @@
+     }
+     else {
+       $this-&gt;{m_logger}-&gt;info(&quot;[INFO] created directory $d&quot;);
+-			$dirs{$d} = 0;
++      $dirs{$d} = 0;
+     }
+   }
+ 
+-  #@{$this-&gt;{m_dirlist}} = grep { defined($_) } @dirs;
+-
+   if($errors) {
+     $this-&gt;{m_logger}-&gt;error(&quot;[ERROR] createDirectoryStructure failed. Abort recommended.&quot;);
+     $this-&gt;{m_kiwi}-&gt;kiwiExit(3);
+@@ -1772,13 +1806,6 @@
+ 
+ 
+ 
+-#sub getDirStatus
+-#{
+-#  my $this = shift;
+-#}
+-
+-
+-
+ #==========================================
+ # getMediaNumbers
+ #------------------------------------------
+@@ -1792,9 +1819,13 @@
+   return undef if not defined $this;
+   
+   my @media = (1);	# default medium is 1 (always)
+-	if($this-&gt;{m_prodopts} and $this-&gt;{m_prodopts}-&gt;{'SOURCEMEDIUM'}) {
+-		push @media, $this-&gt;{m_prodopts}-&gt;{'SOURCEMEDIUM'};
+-	}
++  my $srcmedium = $this-&gt;{m_proddata}-&gt;getOpt(&quot;SOURCEMEDIUM&quot;);
++  if(not defined($srcmedium)) {
++    $this-&gt;{m_kiwi}-&gt;error(&quot;[ERROR] getMediaNumbers: SOURCEMEDIUM is undefined!&quot;);
++    return undef;
++  }
++
++  push @media, $srcmedium;
+   foreach my $p(values(%{$this-&gt;{m_packages}}), values(%{$this-&gt;{m_metapackages}})) {
+     if(defined($p-&gt;{'medium'}) and $p-&gt;{'medium'} != 0) {
+       push @media, $p-&gt;{medium};
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000491.html">[Kiwi-devel] [SVN:KIWI-Team] r1401 - kiwi-head/modules
+</A></li>
+	<LI>Next message: <A HREF="000493.html">[Kiwi-devel] [SVN:KIWI-Team] r1403 - kiwi-head/modules/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#492">[ date ]</a>
+              <a href="thread.html#492">[ thread ]</a>
+              <a href="subject.html#492">[ subject ]</a>
+              <a href="author.html#492">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

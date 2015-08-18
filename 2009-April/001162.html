@@ -1,0 +1,189 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9d1bf9df2ed8f57899278ffad083b898ca15b50d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%209d1bf9df2ed8f57899278ffad083b898ca15b50d&In-Reply-To=%3C200904020738.n327c179026659%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001161.html">
+   <LINK REL="Next"  HREF="001163.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9d1bf9df2ed8f57899278ffad083b898ca15b50d</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%209d1bf9df2ed8f57899278ffad083b898ca15b50d&In-Reply-To=%3C200904020738.n327c179026659%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9d1bf9df2ed8f57899278ffad083b898ca15b50d">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Apr  2 09:38:01 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001161.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 212b96d25b2fea42c38192ce6547c20ba58c0faf
+</A></li>
+        <LI>Next message: <A HREF="001163.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b5f5ea98edad62107d023945931a8dff0e1baca7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1162">[ date ]</a>
+              <a href="thread.html#1162">[ thread ]</a>
+              <a href="subject.html#1162">[ subject ]</a>
+              <a href="author.html#1162">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  9d1bf9df2ed8f57899278ffad083b898ca15b50d (commit)
+      from  de2fa0932de6cab5dad8905a4f368ea90056a877 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 9d1bf9df2ed8f57899278ffad083b898ca15b50d
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Apr 2 09:37:52 2009 +0200
+
+    - fixed xen config creation for bootprofile=xen and image type vmx
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 4e2cdca..e61d0e3 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -1038,8 +1038,15 @@ sub createImageVMX {
+ 		return undef;
+ 	}
+ 	#==========================================
+-	# Create virtual disk configuration
++	# Create virtual disk configuration for Xen
+ 	#------------------------------------------
++	if ($type{bootprofile} eq &quot;xen&quot;) {
++		# Xen config file
++		if (! $this -&gt; buildXenConfig ($main::Destination,$name,\%xenc, &quot;VMX&quot;)) {
++			$main::Survive = &quot;default&quot;;
++			return undef;
++		}
++	}
+ 	if (defined $main::BootVMFormat) {
+ 		#==========================================
+ 		# VMware virtual disk description
+@@ -1054,12 +1061,6 @@ sub createImageVMX {
+ 				$main::Survive = &quot;default&quot;;
+ 				return undef;
+ 			}
+-		} elsif ($type{bootprofile} eq &quot;xen&quot;) {
+-			# Xen config file
+-			if (! $this -&gt; buildXenConfig ($main::Destination,$name,\%xenc)) {
+-				$main::Survive = &quot;default&quot;;
+-				return undef;
+-			}
+ 		}
+ 		#==========================================
+ 		# VMware open virtual format image
+@@ -1132,7 +1133,7 @@ sub createImageXen {
+ 	#==========================================
+ 	# Create image xenconfig
+ 	#------------------------------------------
+-	if (! $this -&gt; buildXenConfig ($main::Destination,$name,\%xenc)) {
++	if (! $this -&gt; buildXenConfig ($main::Destination,$name,\%xenc, &quot;XEN&quot;)) {
+ 		$main::Survive = &quot;default&quot;;
+ 		return undef;
+ 	}
+@@ -3390,6 +3391,7 @@ sub buildXenConfig {
+ 	my $dest   = shift;
+ 	my $name   = shift;
+ 	my $xenref = shift;
++	my $text   = shift;
+ 	my $kiwi   = $this-&gt;{kiwi};
+ 	my $file   = $dest.&quot;/&quot;.$name-&gt;{systemImage}.&quot;.xenconfig&quot;;
+ 	my $initrd = $name-&gt;{bootImage}.&quot;.splash.gz&quot;;
+@@ -3397,6 +3399,10 @@ sub buildXenConfig {
+ 	$kernel    = readlink ($kernel);
+ 	$kernel    = basename ($kernel);
+ 	my %xenconfig = %{$xenref};
++	my $format = &quot;raw&quot;;
++	if (defined $main::BootVMFormat) {
++		$format = $main::BootVMFormat;
++	}
+ 	$kiwi -&gt; info (&quot;Creating image Xen configuration file...&quot;);
+ 	if (! %xenconfig) {
+ 		$kiwi -&gt; skipped ();
+@@ -3416,23 +3422,23 @@ sub buildXenConfig {
+ 	my $device = $xenconfig{xen_diskdevice};
+ 	$device =~ s/\/dev\///;
+ 	my $part = $device.&quot;1&quot;;
+-	if (! defined $main::BootVMFormat) {
++	if ($text eq &quot;XEN&quot;) {
+ 		$device = $device.&quot;1&quot;;
+ 	}
+ 	my $memory = $xenconfig{xen_memory};
+ 	my $image  = $name-&gt;{systemImage};
+-	if (defined $main::BootVMFormat) {
+-		$image .= &quot;.&quot;.$main::BootVMFormat;
++	if ($text eq &quot;VMX&quot;) {
++		$image .= &quot;.&quot;.$format;
+ 	}
+ 	print FD '#  -*- mode: python; -*-'.&quot;\n&quot;;
+ 	print FD &quot;name=\&quot;&quot;.$this-&gt;{xml}-&gt;getImageDisplayName().&quot;\&quot;\n&quot;;
+-	if (! defined $main::BootVMFormat) {
++	if ($text eq &quot;XEN&quot;) {
+ 		print FD 'kernel=&quot;'.$kernel.'&quot;'.&quot;\n&quot;;
+ 		print FD 'ramdisk=&quot;'.$initrd.'&quot;'.&quot;\n&quot;;
+ 	}
+ 	print FD 'memory='.$memory.&quot;\n&quot;;
+-	if (defined $main::BootVMFormat) {
+-		my $tap = $main::BootVMFormat;
++	if ($text eq &quot;VMX&quot;) {
++		my $tap = $format;
+ 		if ($tap eq &quot;raw&quot;) {
+ 			$tap = &quot;aio&quot;;
+ 		}
+@@ -3463,7 +3469,7 @@ sub buildXenConfig {
+ 	#==========================================
+ 	# xen console
+ 	#------------------------------------------
+-	if (!defined $main::BootVMFormat) {
++	if ($text eq &quot;XEN&quot;) {
+ 		print FD 'root=&quot;'.$part.' ro&quot;'.&quot;\n&quot;;
+ 		print FD 'extra=&quot; xencons=tty &quot;'.&quot;\n&quot;;
+ 	}
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001161.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 212b96d25b2fea42c38192ce6547c20ba58c0faf
+</A></li>
+	<LI>Next message: <A HREF="001163.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b5f5ea98edad62107d023945931a8dff0e1baca7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1162">[ date ]</a>
+              <a href="thread.html#1162">[ thread ]</a>
+              <a href="subject.html#1162">[ subject ]</a>
+              <a href="author.html#1162">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,298 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b3ec1363d575cc7a41ba83e121f9023bb183d0e2
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b3ec1363d575cc7a41ba83e121f9023bb183d0e2&In-Reply-To=%3C200910071601.n97G193I001939%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001495.html">
+   <LINK REL="Next"  HREF="001497.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b3ec1363d575cc7a41ba83e121f9023bb183d0e2</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b3ec1363d575cc7a41ba83e121f9023bb183d0e2&In-Reply-To=%3C200910071601.n97G193I001939%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b3ec1363d575cc7a41ba83e121f9023bb183d0e2">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Oct  7 18:01:09 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001495.html">[Kiwi-devel] improved USB stick partition unmounting patch
+</A></li>
+        <LI>Next message: <A HREF="001497.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a5135156d0f6d4e21e0e22c424be97e759fd4667
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1496">[ date ]</a>
+              <a href="thread.html#1496">[ thread ]</a>
+              <a href="subject.html#1496">[ subject ]</a>
+              <a href="author.html#1496">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  b3ec1363d575cc7a41ba83e121f9023bb183d0e2 (commit)
+      from  b325ce8037e28510841dd200371e7fad5d844cde (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b3ec1363d575cc7a41ba83e121f9023bb183d0e2
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Oct 7 18:00:54 2009 +0200
+
+    - improved umount code for auto mount of removable storage
+      devices. The function umountDevice() takes over the task
+      of umounting all filesystems associated with the given
+      device
+    - use searchBIOSBootDevice for usbboot instead of USBStickDevice
+      since we have the unique MBR ID in place this is the better
+      method to search for the boot device
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 8c46fcf..695d230 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -751,9 +751,7 @@ sub setupBootStick {
+ 	#==========================================
+ 	# umount stick mounted by hal before lock
+ 	#------------------------------------------
+-	for (my $i=1;$i&lt;=4;$i++) {
+-		qxx (&quot;umount $stick$i 2&gt;&amp;1&quot;);
+-	}
++	$this -&gt; umountDevice ($stick);
+ 	#==========================================
+ 	# Wait for umount to settle
+ 	#------------------------------------------
+@@ -942,12 +940,7 @@ sub setupBootStick {
+ 		#==========================================
+ 		# Umount possible mounted stick partitions
+ 		#------------------------------------------
+-		for (my $i=1;$i&lt;=3;$i++) {
+-			qxx (&quot;umount $deviceMap{$i} 2&gt;&amp;1&quot;);
+-			if ($deviceMap{fat}) {
+-				qxx (&quot;umount $deviceMap{fat} 2&gt;&amp;1&quot;);
+-			}
+-		}
++		$this -&gt; umountDevice ($stick);
+ 		$status = qxx ( &quot;/sbin/blockdev --rereadpt $stick 2&gt;&amp;1&quot; );
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+@@ -965,12 +958,7 @@ sub setupBootStick {
+ 		#==========================================
+ 		# Umount possible mounted stick partitions
+ 		#------------------------------------------
+-		for (my $i=1;$i&lt;=3;$i++) {
+-			qxx (&quot;umount $deviceMap{$i} 2&gt;&amp;1&quot;);
+-			if ($deviceMap{fat}) {
+-				qxx (&quot;umount $deviceMap{fat} 2&gt;&amp;1&quot;);
+-			}
+-		}
++		$this -&gt; umountDevice ($stick);
+ 		#==========================================
+ 		# setup volume group if requested
+ 		#------------------------------------------
+@@ -4717,4 +4705,36 @@ sub luksClose {
+ 	return $this;
+ }
+ 
++#==========================================
++# umountDevice
++#------------------------------------------
++sub umountDevice {
++	# ...
++	# umount all mounted filesystems from the given
++	# storage device. The functions searches the 
++	# /proc/mounts table and umounts all corresponding
++	# mount entries
++	# ----
++	my $this = shift;
++	my $disk = shift;
++	my $kiwi = $this-&gt;{kiwi};
++	my $MOUNTS;
++	if (! defined $disk) {
++		$kiwi -&gt; loginfo (&quot;umountDevice: no disk prefix provided, skipped&quot;);
++		return undef;
++	}
++	if (! open ($MOUNTS, '&lt;', '/proc/mounts')) {
++		$kiwi -&gt; loginfo (&quot;umountDevice: failed to open proc/mounts: $!&quot;);
++		return undef;
++	}
++	my @mounts = &lt;$MOUNTS&gt;; close $MOUNTS;
++	for my $mount (@mounts) {
++		if ($mount =~ /^$disk/) {
++			my ($device, $mountpoint, $rest) = split / /, $mount, 3;
++			qxx (&quot;umount $device 2&gt;&amp;1&quot;);
++		}
++	}
++	return $this;
++}
++
+ 1; 
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 30dddf5..cd4a57e 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -4245,7 +4245,6 @@ function activateImage {
+ 	mount --move /dev /mnt/dev
+ 	udevKill
+ 	umount -t devpts /mnt/dev/pts
+-	udevPending
+ 	#======================================
+ 	# copy boot log file into system image
+ 	#--------------------------------------
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 4922f2b..4eb5309 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,15 @@
+ -------------------------------------------------------------------
++Wed Oct  7 15:52:46 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- improved umount code for auto mount of removable storage
++  devices. The function umountDevice() takes over the task
++  of umounting all filesystems associated with the given
++  device
++- use searchBIOSBootDevice for usbboot instead of USBStickDevice
++  since we have the unique MBR ID in place this is the better
++  method to search for the boot device 
++
++-------------------------------------------------------------------
+ Tue Oct  6 10:44:25 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed race condition in waitForStorageDevice()
+diff --git a/system/boot/ix86/usbboot/suse-linuxrc b/system/boot/ix86/usbboot/suse-linuxrc
+index 8f38377..dcc39c7 100755
+--- a/system/boot/ix86/usbboot/suse-linuxrc
++++ b/system/boot/ix86/usbboot/suse-linuxrc
+@@ -28,7 +28,6 @@ export DEBUG=0
+ #--------------------------------------
+ export LOCAL_BOOT=no
+ export systemIntegrity=&quot;clean&quot;
+-export stickFound=0
+ 
+ #======================================
+ # Functions...
+@@ -75,15 +74,14 @@ probeDevices
+ #======================================
+ # 6) Setup device names...
+ #--------------------------------------
+-USBStickDevice
+-if [ $stickFound = 0 ];then
+-	systemException \
+-		&quot;No USB stick found... abort&quot; \
+-	&quot;reboot&quot;
++if ! searchBIOSBootDevice;then
++	systemException &quot;$biosBootDevice&quot; &quot;reboot&quot;
+ fi
+-Echo &quot;Searching for kiwiVG volume group...&quot;
++export stickRoot=$biosBootDevice
++export stickDevice=$(ddn $stickRoot 1)
+ export stickRWDevice=$(ddn $stickRoot 2)
+ export stickRODevice=$(ddn $stickRoot 1)
++Echo &quot;Searching for kiwiVG volume group...&quot;
+ if searchVolumeGroup; then
+ 	export haveLVM=yes
+ 	if [ -e /dev/kiwiVG/LVComp ];then
+diff --git a/template/suse-11.2-JeOS/config.xml b/template/suse-11.2-JeOS/config.xml
+index e8fb43f..cd0be7f 100644
+--- a/template/suse-11.2-JeOS/config.xml
++++ b/template/suse-11.2-JeOS/config.xml
+@@ -17,9 +17,7 @@
+ 	&lt;/profiles&gt;
+ 	&lt;!-- Image Type and Preferences --&gt;
+ 	&lt;preferences&gt;
+-		&lt;type primary=&quot;true&quot; boot=&quot;isoboot/suse-11.2&quot;
+-			  flags=&quot;clic&quot; hybrid=&quot;true&quot;
+-		&gt;iso&lt;/type&gt;
++		&lt;type primary=&quot;true&quot; boot=&quot;isoboot/suse-11.2&quot; flags=&quot;clic&quot; hybrid=&quot;true&quot;&gt;iso&lt;/type&gt;
+ 		&lt;version&gt;1.11.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+@@ -31,25 +29,16 @@
+ 		&lt;oem-systemsize&gt;2048&lt;/oem-systemsize&gt;
+ 	&lt;/preferences&gt;
+ 	&lt;preferences profiles=&quot;xenFlavour&quot;&gt;
+-		&lt;type filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.2&quot;
+-			  bootprofile=&quot;xen&quot; bootkernel=&quot;nex&quot;
+-		&gt;vmx&lt;/type&gt;
+-		&lt;type filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-11.2&quot;
+-			bootprofile=&quot;xen&quot; bootkernel=&quot;nex&quot; format=&quot;iso&quot;
+-		&gt;oem&lt;/type&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.2&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;nex&quot;&gt;vmx&lt;/type&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-11.2&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;nex&quot; format=&quot;iso&quot;&gt;oem&lt;/type&gt;
+ 	&lt;/preferences&gt;
+ 	&lt;preferences profiles=&quot;vmxFlavour&quot;&gt;
+-		&lt;type filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.2&quot;
+-			  format=&quot;vmdk&quot;
+-		&gt;vmx&lt;/type&gt;
+-		&lt;type filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-11.2&quot;
+-			  format=&quot;iso&quot;
+-		&gt;oem&lt;/type&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.2&quot; format=&quot;vmdk&quot;&gt;vmx&lt;/type&gt;
++		&lt;type filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-11.2&quot; format=&quot;iso&quot;&gt;oem&lt;/type&gt;
+     &lt;/preferences&gt;
+ 	&lt;!-- Users setup --&gt;
+ 	&lt;users group=&quot;root&quot;&gt;
+-		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot;
+-			  home=&quot;/root&quot; name=&quot;root&quot;/&gt;
++		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;!-- Package Repositories --&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+@@ -57,10 +46,8 @@
+ 	&lt;/repository&gt;
+ 	&lt;!-- Packages and Patterns --&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+-		&lt;package name=&quot;bootsplash-branding-openSUSE&quot;
+-				 bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;gfxboot-branding-openSUSE&quot;
+-				 bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
++		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
++		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+ 		&lt;package name=&quot;grub&quot;/&gt;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001495.html">[Kiwi-devel] improved USB stick partition unmounting patch
+</A></li>
+	<LI>Next message: <A HREF="001497.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a5135156d0f6d4e21e0e22c424be97e759fd4667
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1496">[ date ]</a>
+              <a href="thread.html#1496">[ thread ]</a>
+              <a href="subject.html#1496">[ subject ]</a>
+              <a href="author.html#1496">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

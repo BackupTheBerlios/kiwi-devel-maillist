@@ -1,0 +1,237 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1be121e914016a055135454b080793511ca8a527
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%201be121e914016a055135454b080793511ca8a527&In-Reply-To=%3C201001181139.o0IBdUaX026410%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001784.html">
+   <LINK REL="Next"  HREF="001786.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1be121e914016a055135454b080793511ca8a527</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%201be121e914016a055135454b080793511ca8a527&In-Reply-To=%3C201001181139.o0IBdUaX026410%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1be121e914016a055135454b080793511ca8a527">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Jan 18 12:39:30 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001784.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. da70318d82d2a1a117d2b27ce7bad77f9833a437
+</A></li>
+        <LI>Next message: <A HREF="001786.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1b8a7cf4029a5e5ef0cfc4afe3efe3f2db520d2c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1785">[ date ]</a>
+              <a href="thread.html#1785">[ thread ]</a>
+              <a href="subject.html#1785">[ subject ]</a>
+              <a href="author.html#1785">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  1be121e914016a055135454b080793511ca8a527 (commit)
+      from  da70318d82d2a1a117d2b27ce7bad77f9833a437 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 1be121e914016a055135454b080793511ca8a527
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Jan 18 12:39:09 2010 +0100
+
+    - don't let xsltproc write into fixed /tmp location (bnc #571558)
+    - prevent USB device scan for pxe boot images (bnc #570961)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 8ad8f70..20c1356 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -99,9 +99,7 @@ our $KMigrate = $BasePath.&quot;/modules/KIWIMigrate.txt&quot;;
+ our $KSplit   = $BasePath.&quot;/modules/KIWISplit.txt&quot;;
+ our $Revision = $BasePath.&quot;/.revision&quot;;
+ our $TestBase = $BasePath.&quot;/tests&quot;;
+-our @SchemaCVT= (
+-	$BasePath.&quot;/xsl/master.xsl&quot;
+-);
++our $SchemaCVT= $BasePath.&quot;/xsl/master.xsl&quot;;
+ 
+ #==========================================
+ # Globals (Supported filesystem names)
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index b12acec..9c93ee6 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -1921,17 +1921,20 @@ function waitForUSBDeviceScan {
+ 	if [ ! &quot;$HAVE_USB&quot; = &quot;yes&quot; ];then
+ 		return
+ 	fi
+-	Echo -n &quot;Waiting for USB device scan to complete...&quot;
+-	while \
+-		[ $(dmesg | grep -c 'usb-storage: device scan complete') -lt 1 ] &amp;&amp; \
+-		[ $devices -lt 15 ]
+-	do
+-		echo -n .
+-		sleep 1
+-		devices=$(( $devices + 1 ))
+-	done
+-	echo
+-	udevPending
++	if [ ! &quot;$SCAN_USB&quot; = &quot;complete&quot; ];then
++		Echo -n &quot;Waiting for USB device scan to complete...&quot;
++		while \
++			[ $(dmesg|grep -c 'usb-storage: device scan complete') -lt 1 ] &amp;&amp; \
++			[ $devices -lt 15 ]
++		do
++			echo -n .
++			sleep 1
++			devices=$(( $devices + 1 ))
++		done
++		echo
++		udevPending
++		SCAN_USB=complete
++	fi
+ }
+ #======================================
+ # probeUSB
+@@ -1941,6 +1944,7 @@ function probeUSB {
+ 	local stdevs=&quot;&quot;
+ 	local hwicmd=&quot;/usr/sbin/hwinfo&quot;
+ 	export HAVE_USB=&quot;no&quot;
++	export SCAN_USB=&quot;not-started&quot;
+ 	if [ $HAVE_MODULES_ORDER = 0 ];then
+ 		#======================================
+ 		# load host controller modules
+@@ -2005,10 +2009,13 @@ function probeUSB {
+ # probeDevices
+ #--------------------------------------
+ function probeDevices {
++	local skipUSB=$1
+ 	#======================================
+ 	# probe USB devices and load modules
+ 	#--------------------------------------
+-	probeUSB
++	if [ -z &quot;$skipUSB&quot; ];then
++		probeUSB
++	fi
+ 	#======================================
+ 	# probe Disk devices and load modules
+ 	#--------------------------------------
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index a2c442c..40034e4 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -103,24 +103,6 @@ sub new {
+ 		}
+ 	}
+ 	#==========================================
+-	# Check/Transform due to XSL stylesheet(s)
+-	#------------------------------------------
+-	foreach my $template (@main::SchemaCVT) {
+-		my $data = qxx (
+-			&quot;xsltproc -o /tmp/config.xml $template $controlFile 2&gt;&amp;1&quot;
+-		);
+-		my $code = $? &gt;&gt; 8;
+-		if (($code == 0) &amp;&amp; (-f &quot;/tmp/config.xml&quot;)) {
+-			$controlFile = &quot;/tmp/config.xml&quot;;
+-		} elsif ($code &gt; 10) {
+-			$kiwi -&gt; error (&quot;XSL: $data&quot;);
+-			$kiwi -&gt; failed ();
+-			return undef;
+-		} else {
+-			$kiwi -&gt; loginfo (&quot;XSL: $data&quot;);
+-		}
+-	}
+-	#==========================================
+ 	# Check image md5 sum
+ 	#------------------------------------------
+ 	if (-f $checkmdFile) {
+@@ -156,9 +138,16 @@ sub new {
+ 	my $vmwarecNodeList;
+ 	my $xenconfNodeList;
+ 	my $volumesNodeList;
++	my $XML;
++	if (! open ($XML,&quot;xsltproc $main::SchemaCVT $controlFile|&quot;)) {
++		$kiwi -&gt; error (&quot;XSL: Failed to open xslt processor&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	binmode $XML;
+ 	eval {
+ 		$systemTree = $systemXML
+-			-&gt; parse_file ( $controlFile );
++			-&gt; parse_fh ( $XML );
+ 		$this-&gt;{xmlOrigString} = $systemTree -&gt; toString();
+ 		$this-&gt;{xmlOrigFile}   = $controlFile;
+ 		$optionsNodeList = $systemTree -&gt; getElementsByTagName (&quot;preferences&quot;);
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 6814de6..3894169 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -2,7 +2,9 @@
+ Fri Jan 15 14:11:37 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.93
++- don't let xsltproc write into fixed /tmp location (bnc #571558)
+ - added config function to disable Ctrl-Alt-Del in inittab
++- prevent USB device scan for pxe boot images (bnc #570961)
+ - allow AOEROOT to contain the read-write device (bnc #570960)
+ - moved package deletion into own function and adapt
+   the examples. remove --noscripts for deleting packages
+diff --git a/system/boot/ix86/netboot/suse-linuxrc b/system/boot/ix86/netboot/suse-linuxrc
+index 1f56cc8..937e8c3 100755
+--- a/system/boot/ix86/netboot/suse-linuxrc
++++ b/system/boot/ix86/netboot/suse-linuxrc
+@@ -347,7 +347,7 @@ fi
+ # 10) Load Device modules
+ #--------------------------------------
+ runHook preprobe
+-probeDevices
++probeDevices &quot;skipUSB&quot;
+ runHook postprobe
+ 
+ export systemIntegrity=&quot;unknown&quot;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001784.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. da70318d82d2a1a117d2b27ce7bad77f9833a437
+</A></li>
+	<LI>Next message: <A HREF="001786.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1b8a7cf4029a5e5ef0cfc4afe3efe3f2db520d2c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1785">[ date ]</a>
+              <a href="thread.html#1785">[ thread ]</a>
+              <a href="subject.html#1785">[ subject ]</a>
+              <a href="author.html#1785">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

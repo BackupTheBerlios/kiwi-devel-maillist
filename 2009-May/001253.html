@@ -1,0 +1,154 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 38c63f70a80c2af081b03890f28f0458fbf5eb9a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-301-SuSE-11-1-Devel%2C%0A%09updated.%2038c63f70a80c2af081b03890f28f0458fbf5eb9a&In-Reply-To=%3C200905221034.n4MAYpkP027628%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001252.html">
+   <LINK REL="Next"  HREF="001254.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 38c63f70a80c2af081b03890f28f0458fbf5eb9a</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-301-SuSE-11-1-Devel%2C%0A%09updated.%2038c63f70a80c2af081b03890f28f0458fbf5eb9a&In-Reply-To=%3C200905221034.n4MAYpkP027628%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 38c63f70a80c2af081b03890f28f0458fbf5eb9a">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri May 22 12:34:51 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001252.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 772cba2fcbb6d4f7fbe8724bfc4b7c6971998422
+</A></li>
+        <LI>Next message: <A HREF="001254.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2807f376249f51308a966033ab336fbb54f901e1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1253">[ date ]</a>
+              <a href="thread.html#1253">[ thread ]</a>
+              <a href="subject.html#1253">[ subject ]</a>
+              <a href="author.html#1253">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-301-SuSE-11-1-Devel has been updated
+       via  38c63f70a80c2af081b03890f28f0458fbf5eb9a (commit)
+      from  5711cba6330369a13ce810deb687b98f897bfc33 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 38c63f70a80c2af081b03890f28f0458fbf5eb9a
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri May 22 12:29:12 2009 +0200
+
+    - fixed volid setup in case of spaces (bnc #500501)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index fc42160..82bcde8 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -1171,14 +1171,25 @@ sub setupInstallCD {
+ 	my $zipped    = $this-&gt;{zipped};
+ 	my $isxen     = $this-&gt;{isxen};
+ 	my $xengz     = $this-&gt;{xengz};
++	my $xml       = $this-&gt;{xml};
+ 	my $md5name   = $system;
+ 	my $imgtype   = &quot;oem&quot;;
+ 	my $gotsys    = 1;
++	my $volid     = &quot;-V \&quot;KIWI CD/DVD Installation\&quot;&quot;;
+ 	my $status;
+ 	my $result;
+ 	my $ibasename;
+ 	my $tmpdir;
+ 	#==========================================
++	# check type parameters for mkisofs call
++	#------------------------------------------
++	if (defined $xml) {
++		my %type = %{$xml-&gt;getImageTypeAndAttributes()};
++		if ($type{volid}) {
++			$volid = &quot; -V \&quot;$type{volid}\&quot;&quot;;
++		}
++	}
++	#==========================================
+ 	# create tmp directory
+ 	#------------------------------------------
+ 	my $basedir = dirname ($system);
+@@ -1381,7 +1392,7 @@ sub setupInstallCD {
+ 	} else {
+ 		$name =~ s/gz$/iso/;
+ 	}
+-	my $base = &quot;-R -b boot/grub/stage2 -no-emul-boot&quot;;
++	my $base = &quot;-R -b boot/grub/stage2 -no-emul-boot $volid&quot;;
+ 	my $opts = &quot;-boot-load-size 4 -boot-info-table -udf -allow-limited-size&quot;;
+ 	if ($name !~ /^\//) {
+ 		my $workingDir = qxx ( &quot;pwd&quot; ); chomp $workingDir;
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 5a7b6b8..c9a5cb1 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -1865,7 +1865,7 @@ sub createImageLiveCD {
+ 		$attr .= &quot; -iso-level 4&quot;; 
+ 	}
+ 	if ($type{volid}) {
+-		$attr .= &quot; -V $type{volid}&quot;;
++		$attr .= &quot; -V \&quot;$type{volid}\&quot;&quot;;
+ 	}
+ 	my $isolinux = new KIWIIsoLinux (
+ 		$kiwi,$main::RootTree.&quot;/CD&quot;,$name,undef,undef,$attr
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 11af8bc..3c76fee 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,9 @@
+ -------------------------------------------------------------------
++Tue May 19 12:16:03 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed volid setup in case of spaces (bnc #500501)
++
++-------------------------------------------------------------------
+ Sun May 17 09:47:19 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed group setup with correct group id (bnc #503117)
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001252.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 772cba2fcbb6d4f7fbe8724bfc4b7c6971998422
+</A></li>
+	<LI>Next message: <A HREF="001254.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2807f376249f51308a966033ab336fbb54f901e1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1253">[ date ]</a>
+              <a href="thread.html#1253">[ thread ]</a>
+              <a href="subject.html#1253">[ subject ]</a>
+              <a href="author.html#1253">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

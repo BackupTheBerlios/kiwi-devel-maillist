@@ -1,0 +1,280 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a5135156d0f6d4e21e0e22c424be97e759fd4667
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a5135156d0f6d4e21e0e22c424be97e759fd4667&In-Reply-To=%3C200910080847.n988lnqG001007%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001496.html">
+   <LINK REL="Next"  HREF="001498.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a5135156d0f6d4e21e0e22c424be97e759fd4667</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a5135156d0f6d4e21e0e22c424be97e759fd4667&In-Reply-To=%3C200910080847.n988lnqG001007%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a5135156d0f6d4e21e0e22c424be97e759fd4667">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Oct  8 10:47:49 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001496.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b3ec1363d575cc7a41ba83e121f9023bb183d0e2
+</A></li>
+        <LI>Next message: <A HREF="001498.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 493fd3235ae8f3cd3eb5f431840ba5a1330b643a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1497">[ date ]</a>
+              <a href="thread.html#1497">[ thread ]</a>
+              <a href="subject.html#1497">[ subject ]</a>
+              <a href="author.html#1497">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  a5135156d0f6d4e21e0e22c424be97e759fd4667 (commit)
+      from  b3ec1363d575cc7a41ba83e121f9023bb183d0e2 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit a5135156d0f6d4e21e0e22c424be97e759fd4667
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Oct 8 10:47:36 2009 +0200
+
+    - added boot timer for kiwi boot images like the kernel does
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 607e711..9691074 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -984,7 +984,7 @@ function suseStripInitrd {
+ 		pvchange pvresize pvscan vgscan vgchange vgextend vgdisplay
+ 		lvchange lvresize lvextend lvcreate grub dcounter tty
+ 		dmsetup dialog awk gawk clicfs cryptsetup clear blkid fbiterm
+-		gettext diff bc
++		gettext diff bc utimer
+ 	&quot;
+ 	tools=&quot;$tools $@&quot;
+ 	for path in /sbin /usr/sbin /usr/bin /bin;do
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index cd4a57e..b22a1b9 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -32,6 +32,15 @@ export DIALOG_LANG=ask
+ export UFONT=/usr/share/fbiterm/fonts/b16.pcf.gz
+ export TERM=linux
+ export LANG=en_US.utf8
++export UTIMER=0
++
++#======================================
++# Start boot timer
++#--------------------------------------
++if [ -x /usr/bin/utimer ];then
++	/usr/bin/utimer
++	export UTIMER=$(cat /var/run/utimer.pid)
++fi
+ 
+ #======================================
+ # Update library path
+@@ -78,8 +87,14 @@ function Echo {
+ 	# /.../
+ 	# print a message to the controling terminal
+ 	# ----
++	set +x
++	if [ ! $UTIMER = 0 ];then
++		kill -HUP $UTIMER
++		local prefix=$(cat /tmp/utimer)
++	else
++		local prefix=&quot;===&gt;&quot;
++	fi
+ 	local option=&quot;&quot;
+-	local prefix=&quot;===&gt;&quot;
+ 	local optn=&quot;&quot;
+ 	local opte=&quot;&quot;
+ 	while getopts &quot;bne&quot; option;do
+@@ -93,6 +108,7 @@ function Echo {
+ 	shift $(($OPTIND - 1))
+ 	echo $optn $opte &quot;$prefix $1&quot;
+ 	OPTIND=1
++	set -x
+ }
+ #======================================
+ # WaitKey
+@@ -341,7 +357,7 @@ function errorLogStart {
+ 		killproc tail
+ 		echo &quot;KIWI PreInit Log&quot; &gt;&gt; $ELOG_FILE
+ 	fi
+-	Echo &quot;Boot-Logging enabled on $ELOG_CONSOLE&quot;
++	echo &quot;Boot-Logging enabled on $ELOG_CONSOLE&quot;
+ 	setctsid -f $ELOG_CONSOLE /bin/bash -i -c &quot;tail -f $ELOG_FILE&quot; &amp;
+ 	exec 2&gt;&gt;$ELOG_FILE
+ 	if [ -f .profile ];then
+@@ -4304,6 +4320,9 @@ function bootImage {
+ 	# we already checked the filesystem
+ 	# no reason for boot.rootfsck to try again
+ 	# ----
++	if [ ! $UTIMER = 0 ];then
++		kill $UTIMER
++	fi
+ 	export ROOTFS_FSCK=&quot;0&quot;
+ 	mount -n -o remount,rw / &amp;&gt;/dev/null
+ 	exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 4eb5309..86ed4db 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,9 @@
+ -------------------------------------------------------------------
++Thu Oct  8 10:46:43 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- added boot timer for kiwi boot images like the kernel does
++
++-------------------------------------------------------------------
+ Wed Oct  7 15:52:46 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - improved umount code for auto mount of removable storage
+diff --git a/tools/Makefile b/tools/Makefile
+index 670c029..bf76f29 100644
+--- a/tools/Makefile
++++ b/tools/Makefile
+@@ -2,6 +2,7 @@ all:
+ 	${MAKE} -C startshell all
+ 	${MAKE} -C dcounter all
+ 	${MAKE} -C driveready all
++	${MAKE} -C utimer all
+ 	${MAKE} -C dbuslock -f Makefile.swig all
+ 	${MAKE} -C dbuslock BINDLIB=${bindlib} all
+ 	( \
+@@ -20,6 +21,7 @@ install:
+ 	install -m 755 dcounter/dcounter ${TOOLSVZ}
+ 	install -m 755 startshell/startshell ${TOOLSVZ}
+ 	install -m 755 driveready/driveready ${TOOLSVZ}
++	install -m 755 utimer/utimer ${TOOLSVZ}
+ 	${MAKE} -C dbuslock DESTDIR=${buildroot} install_vendor
+ 	( \
+ 		if test -d /usr/include/satsolver;then \
+@@ -38,5 +40,6 @@ clean:
+ 	test -f burner/Makefile &amp;&amp; ${MAKE} -C burner clean || true
+ 	${MAKE} -C startshell clean
+ 	${MAKE} -C driveready clean
++	${MAKE} -C utimer clean
+ 	${MAKE} -C satplugin -f Makefile.swig clean
+ 	${MAKE} -C dbuslock -f Makefile.swig clean
+diff --git a/tools/utimer/Makefile b/tools/utimer/Makefile
+new file mode 100644
+index 0000000..97f4e63
+--- /dev/null
++++ b/tools/utimer/Makefile
+@@ -0,0 +1,10 @@
++OBJ = utimer
++CC  = gcc -Wall -fpic -O2
++
++all:${OBJ}
++
++utimer: utimer.c
++	${CC} ${CFLAGS} utimer.c -o utimer
++
++clean:
++	rm -f utimer
+diff --git a/tools/utimer/utimer.c b/tools/utimer/utimer.c
+new file mode 100644
+index 0000000..a3340c2
+--- /dev/null
++++ b/tools/utimer/utimer.c
+@@ -0,0 +1,53 @@
++#include &lt;stdio.h&gt;
++#include &lt;stdlib.h&gt;
++#include &lt;signal.h&gt;
++#include &lt;sys/time.h&gt;
++#include &lt;sys/types.h&gt;
++#include &lt;sys/stat.h&gt;
++#include &lt;unistd.h&gt;
++#include &lt;fcntl.h&gt;
++
++#define PATH_DEV_NULL &quot;/dev/null&quot;
++
++static double time_start = 0;
++void printTime (int);
++
++int main (void) {
++	struct timeval tv;
++	gettimeofday (&amp;tv,NULL);
++	time_start = tv.tv_sec + tv.tv_usec*1E-6;
++	signal (SIGHUP,printTime);
++	int child = fork();
++	FILE* fd;
++	switch (child) {
++		case -1:
++			printf (&quot;%d\n&quot;,-1);
++			exit (-1);
++		case 0:
++			// child waiting for signals
++			while (1) {
++				pause();
++			}
++		default:
++			// parent exiting with child pid
++			if ((fd = fopen (&quot;/var/run/utimer.pid&quot;,&quot;w&quot;)) == NULL) {
++				kill (child,SIGTERM); exit (1);
++			}
++			fprintf (fd,&quot;%d\n&quot;,child);
++			fclose (fd);
++			exit (0);
++	}
++	return 0;
++}
++
++void printTime (int s) {
++	struct timeval tv;
++	gettimeofday (&amp;tv,NULL);
++	double time_next = tv.tv_sec + tv.tv_usec*1E-6 - time_start;
++	FILE* fd;
++	if ((fd = fopen (&quot;/tmp/utimer&quot;,&quot;w&quot;)) != NULL) {
++		fprintf (fd,&quot;[%12f]\n&quot;,time_next);
++		fclose (fd);
++	}
++}
++
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001496.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b3ec1363d575cc7a41ba83e121f9023bb183d0e2
+</A></li>
+	<LI>Next message: <A HREF="001498.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 493fd3235ae8f3cd3eb5f431840ba5a1330b643a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1497">[ date ]</a>
+              <a href="thread.html#1497">[ thread ]</a>
+              <a href="subject.html#1497">[ subject ]</a>
+              <a href="author.html#1497">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

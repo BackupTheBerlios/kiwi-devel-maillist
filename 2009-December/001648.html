@@ -1,0 +1,186 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. de460d2d94848124b727677366a6735b1ac55c5a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20de460d2d94848124b727677366a6735b1ac55c5a&In-Reply-To=%3C200912031311.nB3DBI7A024804%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001647.html">
+   <LINK REL="Next"  HREF="001649.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. de460d2d94848124b727677366a6735b1ac55c5a</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20de460d2d94848124b727677366a6735b1ac55c5a&In-Reply-To=%3C200912031311.nB3DBI7A024804%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. de460d2d94848124b727677366a6735b1ac55c5a">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Dec  3 14:11:18 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001647.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ce47e8c55dcc4934d284d0656b53dc75911241ed
+</A></li>
+        <LI>Next message: <A HREF="001649.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9844d13d45504783bcceac1efddfd92a5e419893
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1648">[ date ]</a>
+              <a href="thread.html#1648">[ thread ]</a>
+              <a href="subject.html#1648">[ subject ]</a>
+              <a href="author.html#1648">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-374-SuSE-11-1-SLE-SP-Devel has been updated
+       via  de460d2d94848124b727677366a6735b1ac55c5a (commit)
+      from  0a47e00abe4268ef63cb18ec28f8795de06dbcf9 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit de460d2d94848124b727677366a6735b1ac55c5a
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Dec 3 14:11:09 2009 +0100
+
+    - fixed boot device activation
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/system/boot/ix86/oemboot/suse-repart b/system/boot/ix86/oemboot/suse-repart
+index 1e1d4f7..0181b8f 100755
+--- a/system/boot/ix86/oemboot/suse-repart
++++ b/system/boot/ix86/oemboot/suse-repart
+@@ -517,7 +517,13 @@ function OEMRepartLVM {
+ 	local VGSwapMBytes=0
+ 	local VGSpareMBytes=100
+ 	local VGSystemMBytes=10240
++	local disk1MBytes=`partitionSize $(ddn $imageDiskDevice 1)`
++	local disk1MBytes=`expr $disk1MBytes / 1024`
++	local disk2MBytes=`partitionSize $(ddn $imageDiskDevice 2)`
++	local disk2MBytes=`expr $disk2MBytes / 1024`
+ 	local diskXMBytes=`partitionSize $imageDiskDevice`
++	local diskXMBytes=`expr $diskXMBytes / 1024`
++	local diskRMBytes=$(expr $recoMByte + $disk1MBytes + $disk2MBytes)
+ 	if [ ! -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+ 		VGSystemMBytes=$OEM_SYSTEMSIZE
+ 	fi
+@@ -525,11 +531,13 @@ function OEMRepartLVM {
+ 		VGSwapMBytes=$swapsize
+ 	fi
+ 	# /.../
+-	# prevent recovery partition if requested
+-	# system size is bigger than the whole disk
++	# prevent recovery partition if current partitions plus
++	# recovery is bigger than the whole disk
+ 	# ----
+-	if [ $VGSystemMBytes -gt $diskXMBytes ];then
+-		unset OEM_RECOVERY
++	if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
++		if [ $diskRMBytes -gt $diskXMBytes ];then
++			unset OEM_RECOVERY
++		fi
+ 	fi
+ 	#======================================
+ 	# Extend vgroup to max physical space
+@@ -542,20 +550,22 @@ function OEMRepartLVM {
+ 			n p 3 . +&quot;$recoMByte&quot;M \
+ 			n p . . \
+ 			t 3 $recoID \
+-			t 4 8e \
+-			a 2 w
++			t 4 8e w
+ 		extendID=4
+ 	else
+ 		createPartitionerInput \
+-			n p 3 . . t 3 8e a 2 w
++			n p 3 . . t 3 8e w
+ 		extendID=3
+ 	fi
+ 	callPartitioner $input
++	waitForStorageDevice $(ddn $imageDiskDevice $extendID)
+ 	dd if=/dev/zero of=$(ddn $imageDiskDevice $extendID) bs=1024 count=5
++	vgchange -an
+ 	#======================================
+ 	# Set boot id
+ 	#--------------------------------------
+ 	bootid=2
++	activateBootPartition
+ 	vgchange -a y $VGROUP
+ 	pvcreate $(ddn $imageDiskDevice $extendID)
+ 	vgextend $VGROUP $(ddn $imageDiskDevice $extendID)
+@@ -601,7 +611,7 @@ function OEMRepartLVM {
+ 		if [ -z &quot;$OEM_WITHOUTHOME&quot; ];then
+ 			lvcreate -l 100%FREE -n LVHome $VGROUP
+ 			export imageHomeDevice=/dev/$VGROUP/LVHome
+-		else
++		elif [ -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+ 			lvextend -l 100%FREE /dev/$VGROUP/LVRoot
+ 		fi
+ 	fi
+@@ -874,18 +884,17 @@ function activateBootPartition {
+ 	# ----
+ 	local input=/part.input
+ 	Echo &quot;Set boot flag to partition ID: $bootid [ $imageDiskDevice ]&quot;
+-	if [ $PARTITIONER = &quot;sfdisk&quot; ];then
+-		rm -f $input
+-		for cmd in a $bootid w q; do
+-			echo $cmd &gt;&gt; $input
+-		done
+-		fdisk $imageDiskDevice &lt; $input 1&gt;&amp;2
+-	else
+-		parted -m $imageDiskDevice set $bootid boot on
+-	fi
++	parted -m $imageDiskDevice set $bootid boot on
+ 	if test $? != 0; then
+ 		systemException &quot;Failed to set boot flag&quot; &quot;reboot&quot;
+ 	fi
++	blockdev --rereadpt $imageDiskDevice
++	local deviceTest=$(ddn $imageDiskDevice 1)
++	if ! waitForStorageDevice $deviceTest;then
++		systemException \
++			&quot;Partition $deviceTest doesn't appear... fatal !&quot; \
++		&quot;reboot&quot;
++	fi
+ }
+ 
+ #======================================
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001647.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ce47e8c55dcc4934d284d0656b53dc75911241ed
+</A></li>
+	<LI>Next message: <A HREF="001649.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9844d13d45504783bcceac1efddfd92a5e419893
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1648">[ date ]</a>
+              <a href="thread.html#1648">[ thread ]</a>
+              <a href="subject.html#1648">[ subject ]</a>
+              <a href="author.html#1648">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

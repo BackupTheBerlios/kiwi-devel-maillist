@@ -1,0 +1,207 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7fdaa3e0adb2fc11d44e98d912a07fdb2855ae73
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%207fdaa3e0adb2fc11d44e98d912a07fdb2855ae73&In-Reply-To=%3C200912090920.nB99K3m7015081%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001666.html">
+   <LINK REL="Next"  HREF="001668.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7fdaa3e0adb2fc11d44e98d912a07fdb2855ae73</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%207fdaa3e0adb2fc11d44e98d912a07fdb2855ae73&In-Reply-To=%3C200912090920.nB99K3m7015081%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7fdaa3e0adb2fc11d44e98d912a07fdb2855ae73">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Dec  9 10:20:03 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001666.html">[Kiwi-devel] JFYI: About KIWI's RELAX NG Schema
+</A></li>
+        <LI>Next message: <A HREF="001668.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a9bc28b83910e55c70950f44d953713c965a9d39
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1667">[ date ]</a>
+              <a href="thread.html#1667">[ thread ]</a>
+              <a href="subject.html#1667">[ subject ]</a>
+              <a href="author.html#1667">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  7fdaa3e0adb2fc11d44e98d912a07fdb2855ae73 (commit)
+      from  c907bccd9e6cde99edc30f5ec8de7eea6249b51b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 7fdaa3e0adb2fc11d44e98d912a07fdb2855ae73
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Dec 9 10:19:24 2009 +0100
+
+    - added information about repo solvable creation
+    - fixed solvable creation if only one URL is used
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 1eb87bc..f546820 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -3361,6 +3361,7 @@ sub getInstSourceSatSolvable {
+ 	my $arch  = qxx (&quot;uname -m&quot;); chomp $arch;
+ 	my $sdir  = &quot;/var/cache/kiwi/satsolver&quot;;
+ 	my @index = ();
++	my $count = 0;
+ 	my $solv;
+ 	#==========================================
+ 	# check/create main solvable file
+@@ -3387,16 +3388,19 @@ sub getInstSourceSatSolvable {
+ 			return undef;
+ 		}
+ 		push @index,$solvable;
++		$count++;
+ 	}
+ 	#==========================================
+ 	# merge all solvables into one
+ 	#------------------------------------------
+-	my $data = qxx (&quot;mergesolv @index &gt; $solv&quot;);
+-	my $code = $? &gt;&gt; 8;
+-	if ($code != 0) {
+-		$kiwi -&gt; error  (&quot;--&gt; Couldn't merge solve files&quot;);
+-		$kiwi -&gt; failed ();
+-		return undef
++	if ($count &gt; 1) {
++		my $data = qxx (&quot;mergesolv @index &gt; $solv&quot;);
++		my $code = $? &gt;&gt; 8;
++		if ($code != 0) {
++			$kiwi -&gt; error  (&quot;--&gt; Couldn't merge solve files&quot;);
++			$kiwi -&gt; failed ();
++			return undef
++		}
+ 	}
+ 	return $solv;
+ }
+@@ -3414,6 +3418,7 @@ sub getSingleInstSourceSatSolvable {
+ 	# ----
+ 	my $kiwi = shift;
+ 	my $repo = shift;
++	$kiwi -&gt; info (&quot;--&gt; Loading $repo...&quot;);
+ 	#==========================================
+ 	# one of the following for a base solvable
+ 	#------------------------------------------
+@@ -3443,6 +3448,7 @@ sub getSingleInstSourceSatSolvable {
+ 		(! -x &quot;/usr/bin/susetags2solv&quot;) ||
+ 		(! -x &quot;/usr/bin/rpmmd2solv&quot;)
+ 	) {
++		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;--&gt; Can't find satsolver tools&quot;);
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+@@ -3455,6 +3461,7 @@ sub getSingleInstSourceSatSolvable {
+ 		my $data = qxx (&quot;mkdir -p $sdir 2&gt;&amp;1&quot;);
+ 		my $code = $? &gt;&gt; 8;
+ 		if ($code != 0) {
++			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error  (&quot;--&gt; Couldn't create cache dir: $data&quot;);
+ 			$kiwi -&gt; failed ();
+ 			return undef;
+@@ -3471,6 +3478,7 @@ sub getSingleInstSourceSatSolvable {
+ 	$index = $sdir.&quot;/&quot;.$index; chomp $index;
+ 	$index=~ s/ +$//;
+ 	if (-f $index) {
++		$kiwi -&gt; done();
+ 		return $index;
+ 	}
+ 	#==========================================
+@@ -3498,6 +3506,7 @@ sub getSingleInstSourceSatSolvable {
+ 		}
+ 	}
+ 	if (! $foundDist) {
++		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;--&gt; Can't find a distribution solvable&quot;);
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+@@ -3548,6 +3557,7 @@ sub getSingleInstSourceSatSolvable {
+ 			my $data = qxx (&quot;gzip -cd $file | rpmmd2solv &gt; $destfile 2&gt;&amp;1&quot;);
+ 			my $code = $? &gt;&gt; 8;
+ 			if ($code != 0) {
++				$kiwi -&gt; failed ();
+ 				$kiwi -&gt; error  (&quot;--&gt; Can't create SaT solvable file&quot;);
+ 				$kiwi -&gt; failed ();
+ 				$error = 1;
+@@ -3589,6 +3599,7 @@ sub getSingleInstSourceSatSolvable {
+ 		my $data = qxx (&quot;($scommand) | susetags2solv &gt; $destfile 2&gt;/dev/null&quot;);
+ 		my $code = $? &gt;&gt; 8;
+ 		if ($code != 0) {
++			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error  (&quot;--&gt; Can't create SaT solvable file&quot;);
+ 			$kiwi -&gt; failed ();
+ 			$error = 1;
+@@ -3604,6 +3615,7 @@ sub getSingleInstSourceSatSolvable {
+ 			my $data = qxx (&quot;gzip -cd $file | rpmmd2solv &gt; $destfile 2&gt;&amp;1&quot;);
+ 			my $code = $? &gt;&gt; 8;
+ 			if ($code != 0) {
++				$kiwi -&gt; failed ();
+ 				$kiwi -&gt; error  (&quot;--&gt; Can't create SaT solvable file&quot;);
+ 				$kiwi -&gt; failed ();
+ 				$error = 1;
+@@ -3623,6 +3635,7 @@ sub getSingleInstSourceSatSolvable {
+ 			my $data = qxx (&quot;mergesolv $sdir/primary-* &gt; $index&quot;);
+ 			my $code = $? &gt;&gt; 8;
+ 			if ($code != 0) {
++				$kiwi -&gt; failed ();
+ 				$kiwi -&gt; error  (&quot;--&gt; Couldn't merge solve files&quot;);
+ 				$kiwi -&gt; failed ();
+ 				$error = 1;
+@@ -3638,6 +3651,7 @@ sub getSingleInstSourceSatSolvable {
+ 	qxx (&quot;rm -f $sdir/packages-*&quot;);
+ 	qxx (&quot;rm -f $sdir/*.pat*&quot;);
+ 	if (! $error) {
++		$kiwi -&gt; done();
+ 		return $index;
+ 	}
+ 	return undef;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001666.html">[Kiwi-devel] JFYI: About KIWI's RELAX NG Schema
+</A></li>
+	<LI>Next message: <A HREF="001668.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a9bc28b83910e55c70950f44d953713c965a9d39
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1667">[ date ]</a>
+              <a href="thread.html#1667">[ thread ]</a>
+              <a href="subject.html#1667">[ subject ]</a>
+              <a href="author.html#1667">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

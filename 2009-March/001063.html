@@ -1,0 +1,143 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1941 - in kiwi-head: rpm system/boot/ix86/oemboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1941%20-%20in%20kiwi-head%3A%20rpm%20system/boot/ix86/oemboot&In-Reply-To=%3C200903021710.n22HA1j6023969%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001062.html">
+   <LINK REL="Next"  HREF="001064.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1941 - in kiwi-head: rpm system/boot/ix86/oemboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1941%20-%20in%20kiwi-head%3A%20rpm%20system/boot/ix86/oemboot&In-Reply-To=%3C200903021710.n22HA1j6023969%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1941 - in kiwi-head: rpm system/boot/ix86/oemboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Mar  2 18:10:01 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001062.html">[Kiwi-devel] r1940 - in kiwi-head/doc: . LaTex
+</A></li>
+        <LI>Next message: <A HREF="001064.html">[Kiwi-devel] r1942 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel: doc	doc/LaTex modules rpm system/boot/ix86/oemboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1063">[ date ]</a>
+              <a href="thread.html#1063">[ thread ]</a>
+              <a href="subject.html#1063">[ subject ]</a>
+              <a href="author.html#1063">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-03-02 18:09:57 +0100 (Mon, 02 Mar 2009)
+New Revision: 1941
+
+Modified:
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/system/boot/ix86/oemboot/suse-dump
+Log:
+
+- if only one disk is available let the oem install code
+  use this disk without asking further questions (bnc #479842)
+
+
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2009-03-02 17:01:02 UTC (rev 1940)
++++ kiwi-head/rpm/kiwi.changes	2009-03-02 17:09:57 UTC (rev 1941)
+@@ -2,6 +2,8 @@
+ Mon Mar  2 10:19:09 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.24
++- if only one disk is available let the oem install code
++  use this disk without asking further questions (bnc #479842)
+ - allow setting up the kernel vga value (bnc #480336)
+ - added replaces=&quot;name&quot; attribute to the package element.
+   This allows you to install/upgrade a package by replacing
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-dump
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-dump	2009-03-02 17:01:02 UTC (rev 1940)
++++ kiwi-head/system/boot/ix86/oemboot/suse-dump	2009-03-02 17:09:57 UTC (rev 1941)
+@@ -67,7 +67,7 @@
+ 			cut -f1 -d&quot;(&quot;`
+ 	fi
+ 	export deviceDisks=`echo $deviceDisks`
+-	if [ -z $deviceDisks ];then
++	if [ -z &quot;$deviceDisks&quot; ];then
+ 		systemException \
+ 			&quot;No device(s) for installation found... abort&quot; \
+ 		&quot;reboot&quot;
+@@ -79,18 +79,28 @@
+ 		deviceArray[$count]=$i
+ 		count=`expr $count + 1`
+ 	done
+-	while true;do
+-		Echo -n &quot;Enter device name to select disk for installation: &quot;
+-		read deviceInput
+-		count=0
+-		for instDisk in $deviceDisks;do
+-			if [ ${deviceArray[$count]} = $deviceInput ];then
+-				break 2
+-			fi
+-			count=`expr $count + 1`
++	if [ &quot;$count&quot; = &quot;1&quot; ];then
++		#======================================
++		# Found one single disk... use it
++		#--------------------------------------
++		instDisk=${deviceArray[0]}
++	else
++		#======================================
++		# Found multiple disks... ask for it
++		#--------------------------------------
++		while true;do
++			Echo -n &quot;Enter device name to select disk for installation: &quot;
++			read deviceInput
++			count=0
++			for instDisk in $deviceDisks;do
++				if [ ${deviceArray[$count]} = $deviceInput ];then
++					break 2
++				fi
++				count=`expr $count + 1`
++			done
++			Echo &quot;Given device is not in the list !&quot;
+ 		done
+-		Echo &quot;Given device is not in the list !&quot;
+-	done
++	fi
+ 	Echo &quot;Entering installation mode for disk: $instDisk&quot;
+ 	#======================================
+ 	# Import vmx configuration file
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001062.html">[Kiwi-devel] r1940 - in kiwi-head/doc: . LaTex
+</A></li>
+	<LI>Next message: <A HREF="001064.html">[Kiwi-devel] r1942 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel: doc	doc/LaTex modules rpm system/boot/ix86/oemboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1063">[ date ]</a>
+              <a href="thread.html#1063">[ thread ]</a>
+              <a href="subject.html#1063">[ subject ]</a>
+              <a href="author.html#1063">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

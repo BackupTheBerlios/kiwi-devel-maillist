@@ -1,0 +1,447 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1624 - in kiwi-head: modules rpm tools/satplugin
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1624%20-%20in%20kiwi-head%3A%20modules%20rpm%20tools/satplugin&In-Reply-To=%3C200810080836.m988aA0U015675%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000719.html">
+   <LINK REL="Next"  HREF="000721.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1624 - in kiwi-head: modules rpm tools/satplugin</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1624%20-%20in%20kiwi-head%3A%20modules%20rpm%20tools/satplugin&In-Reply-To=%3C200810080836.m988aA0U015675%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1624 - in kiwi-head: modules rpm tools/satplugin">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Oct  8 10:36:10 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000719.html">[Kiwi-devel] r1623 - kiwi-head/modules
+</A></li>
+        <LI>Next message: <A HREF="000721.html">[Kiwi-devel] r1625 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#720">[ date ]</a>
+              <a href="thread.html#720">[ thread ]</a>
+              <a href="subject.html#720">[ subject ]</a>
+              <a href="author.html#720">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-08 10:36:07 +0200 (Wed, 08 Oct 2008)
+New Revision: 1624
+
+Modified:
+   kiwi-head/modules/KIWISatSolver.pm
+   kiwi-head/modules/KIWIXML.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/tools/satplugin/SaT.i
+   kiwi-head/tools/satplugin/example.pl
+   kiwi-head/tools/satplugin/sat.c
+Log:
+
+- fixed creation of sat solvable (bnc #32477)
+
+
+
+Modified: kiwi-head/modules/KIWISatSolver.pm
+===================================================================
+--- kiwi-head/modules/KIWISatSolver.pm	2008-10-07 16:35:44 UTC (rev 1623)
++++ kiwi-head/modules/KIWISatSolver.pm	2008-10-08 08:36:07 UTC (rev 1624)
+@@ -136,9 +136,19 @@
+ 		$queue -&gt; queuePush ( $id );
+ 	}
+ 	#==========================================
++	# Store object data
++	#------------------------------------------
++	$this-&gt;{kiwi}    = $kiwi;
++	$this-&gt;{queue}   = $queue;
++	$this-&gt;{solver}  = $solver;
++	#==========================================
+ 	# Solve the job(s)
+ 	#------------------------------------------
+ 	$solver -&gt; solve ($queue);
++	if ($this -&gt; getProblemsCount()) {
++		my $solution = $this -&gt; getSolutions();
++		$kiwi -&gt; warning (&quot;--&gt; Solver Problems:\n$solution&quot;);
++	}
+ 	my $list = $solver -&gt; getInstallList ($pool);
+ 	foreach my $name (@{$list}) {
+ 		if ($name =~ /^((pattern|product):.*)/) {
+@@ -151,13 +161,10 @@
+ 	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
+-	$this-&gt;{kiwi}    = $kiwi;
+ 	$this-&gt;{urllist} = $urlref;
+ 	$this-&gt;{plist}   = $pref;
+-	$this-&gt;{queue}   = $queue;
+ 	$this-&gt;{repo}    = $repo;
+ 	$this-&gt;{pool}    = $pool;
+-	$this-&gt;{solver}  = $solver;
+ 	$this-&gt;{result}  = \@solved;
+ 	return $this;
+ }
+@@ -185,6 +192,40 @@
+ }
+ 
+ #==========================================
++# getProblemsCount
++#------------------------------------------
++sub getProblemsCount {
++	my $this   = shift;
++	my $solver = $this-&gt;{solver};
++	return $solver-&gt;getProblemsCount();
++}
++
++#==========================================
++# getSolutions
++#------------------------------------------
++sub getSolutions {
++	my $this   = shift;
++	my $kiwi   = $this-&gt;{kiwi};
++	my $solver = $this-&gt;{solver};
++	my $queue  = $this-&gt;{queue};
++	my $oldout;
++	if (! $solver-&gt;getProblemsCount()) {
++		return undef;
++	}
++	my $solution = $solver-&gt;getSolutions ($queue);
++	local $/;
++	if (! open (FD, &quot;&lt;$solution&quot;)) {
++		$kiwi -&gt; error  (&quot;Can't open $solution for reading: $!&quot;);
++		$kiwi -&gt; failed ();
++		unlink $solution;
++		return undef;
++	}
++	my $result = &lt;FD&gt;; close FD;
++	unlink $solution;
++	return $result;
++}
++
++#==========================================
+ # getPackages
+ #------------------------------------------
+ sub getPackages {
+
+Modified: kiwi-head/modules/KIWIXML.pm
+===================================================================
+--- kiwi-head/modules/KIWIXML.pm	2008-10-07 16:35:44 UTC (rev 1623)
++++ kiwi-head/modules/KIWIXML.pm	2008-10-08 08:36:07 UTC (rev 1624)
+@@ -2801,10 +2801,28 @@
+ 	# ----
+ 	my $kiwi     = shift;
+ 	my $repos    = shift;
+-	my $patterns = &quot;/suse/setup/descr/patterns&quot;;
+-	my $packages = &quot;/suse/setup/descr/packages.gz&quot;;
+-	my $solvable = &quot;/suse/repodata/primary.xml.gz&quot;;
+-	my $project  = &quot;/repodata/patterns.xml.gz&quot;;
++	#==========================================
++	# one of the following to match...
++	#------------------------------------------
++	my @valid    = (
++		&quot;/suse/setup/descr/patterns&quot;,
++		&quot;/repodata/patterns.xml.gz&quot;
++	);
++	#==========================================
++	# one of the following for a base solvable
++	#------------------------------------------
++	my %distro;
++	$distro{&quot;/suse/setup/descr/packages.gz&quot;} = &quot;packages&quot;;
++	$distro{&quot;/suse/repodata/primary.xml.gz&quot;} = &quot;distxml&quot;;
++	#==========================================
++	# all existing pattern files
++	#------------------------------------------
++	my %patterns;
++	$patterns{&quot;/suse/setup/descr/patterns&quot;} = &quot;patterns&quot;;
++	$patterns{&quot;/repodata/patterns.xml.gz&quot;}  = &quot;projectxml&quot;;
++	#==========================================
++	# common data variables
++	#------------------------------------------
+ 	my $arch     = qxx (&quot;uname -m&quot;); chomp $arch;
+ 	my $count    = 0;
+ 	my $index    = 0;
+@@ -2842,9 +2860,9 @@
+ 		# check if this is a valid suse repo
+ 		#------------------------------------------
+ 		my $destfile = $sdir.&quot;/listing&quot;;
+-		my @testfile = ($repo.$patterns,$repo.$project);
+ 		my $isValid  = 0;
+-		foreach my $test (@testfile) {
++		foreach my $valid (@valid) {
++			my $test = $repo.$valid;
+ 			if (KIWIXML::getInstSourceFile ($kiwi,$test,$destfile)) {
+ 				$isValid = 1; last;
+ 			}
+@@ -2871,72 +2889,62 @@
+ 	}
+ 	my $destfile;
+ 	my $scommand;
++	#==========================================
++	# download distro solvable(s)
++	#------------------------------------------
++	my $foundDist = 0;
+ 	foreach my $repo (@{$repos}) {
+ 		$count++;
+-		#==========================================
+-		# check for pre-created solvable first
+-		#------------------------------------------
+-		my $foundFile = 0;
+-		$destfile = $sdir.&quot;/distxml-&quot;.$count.&quot;.gz&quot;;
+-		if (KIWIXML::getInstSourceFile ($kiwi,$repo.$solvable,$destfile)) {
+-			$foundFile = 1;
++		foreach my $dist (keys %distro) {
++			my $name = $distro{$dist};
++			$destfile = $sdir.&quot;/$name-&quot;.$count.&quot;.gz&quot;;
++			if (KIWIXML::getInstSourceFile ($kiwi,$repo.$dist,$destfile)) {
++				$foundDist = 1; last;
++			}
+ 		}
+-		#==========================================
+-		# check for opensuse project pattern
+-		#------------------------------------------
+-		$destfile = $sdir.&quot;/projectxml-&quot;.$count.&quot;.gz&quot;;
+-		if (KIWIXML::getInstSourceFile ($kiwi,$repo.$project,$destfile)) {
+-			$foundFile = 1;
+-		}
+-		#==========================================
+-		# skip if we already have solvable
+-		#------------------------------------------
+-		if ($foundFile) {
+-			next;
+-		}
+-		#==========================================
+-		# get patterns file next
+-		#------------------------------------------
+-		$destfile = $sdir.&quot;/patterns-&quot;.$count;
+-		if (! KIWIXML::getInstSourceFile ($kiwi,$repo.$patterns,$destfile)) {
+-			$kiwi -&gt; warning (&quot;--&gt; No patterns file on repo: $repo&quot;);
+-			$kiwi -&gt; skipped ();
+-			next;
+-		}
+-		#==========================================
+-		# get files listed in patterns
+-		#------------------------------------------
+-		my $patfile = $destfile;
+-		if (! open (FD,$patfile)) {
+-			$kiwi -&gt; warning (&quot;--&gt; Couldn't open patterns file: $!&quot;);
+-			$kiwi -&gt; skipped ();
+-			unlink $patfile;
+-			next;
+-		}
+-		foreach my $line (&lt;FD&gt;) {
+-			chomp $line; $destfile = $sdir.&quot;/&quot;.$line;
+-			if ($line !~ /\.$arch\./) {
+-				next;
++	}
++	if (! $foundDist) {
++		$kiwi -&gt; error  (&quot;--&gt; Can't find a distribution solvable&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	#==========================================
++	# download pattern solvable(s)
++	#------------------------------------------
++	foreach my $repo (@{$repos}) {
++		$count++;
++		foreach my $patt (keys %patterns) {
++			my $name = $patterns{$patt};
++			$destfile = $sdir.&quot;/$name-&quot;.$count.&quot;.gz&quot;;
++			my $ok = KIWIXML::getInstSourceFile ($kiwi,$repo.$patt,$destfile);
++			if (($ok) &amp;&amp; ($name eq &quot;patterns&quot;)) {
++				#==========================================
++				# get files listed in patterns
++				#------------------------------------------
++				my $patfile = $destfile;
++				if (! open (FD,$patfile)) {
++					$kiwi -&gt; warning (&quot;--&gt; Couldn't open patterns file: $!&quot;);
++					$kiwi -&gt; skipped ();
++					unlink $patfile;
++					next;
++				}
++				foreach my $line (&lt;FD&gt;) {
++					chomp $line; $destfile = $sdir.&quot;/&quot;.$line;
++					if ($line !~ /\.$arch\./) {
++						next;
++					}
++					my $base = dirname $patt;
++					my $file = $repo.&quot;/&quot;.$base.&quot;/&quot;.$line;
++					if (! KIWIXML::getInstSourceFile($kiwi,$file,$destfile)) {
++						$kiwi -&gt; warning (&quot;--&gt; Pattern file $line not found&quot;);
++						$kiwi -&gt; skipped ();
++						next;
++					}
++				}
++				close FD;
++				unlink $patfile;
+ 			}
+-			my $base = dirname $patterns;
+-			my $file = $repo.&quot;/&quot;.$base.&quot;/&quot;.$line;
+-			if (! KIWIXML::getInstSourceFile($kiwi,$file,$destfile)) {
+-				$kiwi -&gt; warning (&quot;--&gt; Pattern file $line not found&quot;);
+-				$kiwi -&gt; skipped ();
+-				next;
+-			}
+ 		}
+-		close FD;
+-		unlink $patfile;
+-		#==========================================
+-		# get packages.gz file next
+-		#------------------------------------------
+-		$destfile = $sdir.&quot;/packages-&quot;.$count.&quot;.gz&quot;;
+-		if (! KIWIXML::getInstSourceFile ($kiwi,$repo.$packages,$destfile)) {
+-			$kiwi -&gt; warning (&quot;--&gt; No packages.gz file on repo: $repo&quot;);
+-			$kiwi -&gt; skipped ();
+-			next;
+-		}
+ 	}
+ 	$count++;
+ 	#==========================================
+@@ -2953,6 +2961,7 @@
+ 			$error = 1;
+ 		}
+ 	}
++	$count++;
+ 	#==========================================
+ 	# create solvable from suse tags data
+ 	#------------------------------------------
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-07 16:35:44 UTC (rev 1623)
++++ kiwi-head/rpm/kiwi.changes	2008-10-08 08:36:07 UTC (rev 1624)
+@@ -3,6 +3,7 @@
+ 
+ - v2.87
+ - fixed permissions of live iso root (bnc #432971)
++- fixed creation of sat solvable (bnc #32477)
+ 
+ -------------------------------------------------------------------
+ Tue Oct  7 16:13:22 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+Modified: kiwi-head/tools/satplugin/SaT.i
+===================================================================
+--- kiwi-head/tools/satplugin/SaT.i	2008-10-07 16:35:44 UTC (rev 1623)
++++ kiwi-head/tools/satplugin/SaT.i	2008-10-08 08:36:07 UTC (rev 1624)
+@@ -15,6 +15,7 @@
+ #include &quot;pooltypes.h&quot;
+ #include &quot;queue.h&quot;
+ #include &quot;solvable.h&quot;
++#include &quot;solverdebug.h&quot;
+ #include &quot;solver.h&quot;
+ #include &quot;repo.h&quot;
+ #include &quot;repo_solv.h&quot;
+@@ -42,6 +43,7 @@
+ %include &quot;pooltypes.h&quot;
+ %include &quot;pool.h&quot;
+ %include &quot;queue.h&quot;
++%include &quot;solverdebug.h&quot;
+ %include &quot;solvable.h&quot;
+ %include &quot;solver.h&quot;
+ %include &quot;repo.h&quot;
+@@ -220,6 +222,26 @@
+         sv_2mortal (res);
+         return res;
+     }
++
++    int getProblemsCount (void) {
++        Solver* solv = self;
++        return solv-&gt;problems.count;
++    }
++
++    char* getSolutions (Queue *job) {
++        Solver* solv = self;
++        char name[]  = &quot;/tmp/sat-XXXXXX&quot;;
++        char* result = (char*)malloc(strlen(name));
++        int origout;
++        mkstemp (name);
++        origout = dup2 (1,origout);
++        FILE* fp = freopen(name,&quot;w&quot;,stdout);
++        solver_printsolutions(solv, job);
++        fclose (fp);
++        dup2 (origout,1);
++        strcpy (result,name);   
++        return result;
++    }
+ };
+ 
+ //==================================
+
+Modified: kiwi-head/tools/satplugin/example.pl
+===================================================================
+--- kiwi-head/tools/satplugin/example.pl	2008-10-07 16:35:44 UTC (rev 1623)
++++ kiwi-head/tools/satplugin/example.pl	2008-10-08 08:36:07 UTC (rev 1624)
+@@ -43,6 +43,17 @@
+ # Solve the jobs
+ $solver -&gt; solve ($queue);
+ 
++if ($solver-&gt;getProblemsCount()) {
++	$a = $solver-&gt;getSolutions ($queue);
++	open FD,$a;
++	while (&lt;FD&gt;) {
++		print $_;
++	}
++	close FD;
++	unlink $a;
++}
++
++
+ # Print packages to install
+ $a = $solver -&gt; getInstallList($pool);
+ foreach my $c (@{$a}) {
+
+Modified: kiwi-head/tools/satplugin/sat.c
+===================================================================
+--- kiwi-head/tools/satplugin/sat.c	2008-10-07 16:35:44 UTC (rev 1623)
++++ kiwi-head/tools/satplugin/sat.c	2008-10-08 08:36:07 UTC (rev 1624)
+@@ -3,6 +3,7 @@
+ #include &lt;fcntl.h&gt;
+ #include &lt;unistd.h&gt;
+ #include &lt;satsolver/solver.h&gt;
++#include &lt;satsolver/solverdebug.h&gt;
+ #include &lt;satsolver/repo_solv.h&gt;
+ #include &lt;satsolver/policy.h&gt;
+ 
+@@ -47,6 +48,9 @@
+ 
+ 	solver_solve (solver, &amp;queue);
+ 	
++	if (solver-&gt;problems.count) {
++		solver_printsolutions(solver, &amp;queue);
++	}
+ 
+ 	for (b = 0; b &lt; solver-&gt;decisionq.count; b++) {
+ 		Id p = solver-&gt;decisionq.elements[b];
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000719.html">[Kiwi-devel] r1623 - kiwi-head/modules
+</A></li>
+	<LI>Next message: <A HREF="000721.html">[Kiwi-devel] r1625 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#720">[ date ]</a>
+              <a href="thread.html#720">[ thread ]</a>
+              <a href="subject.html#720">[ subject ]</a>
+              <a href="author.html#720">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

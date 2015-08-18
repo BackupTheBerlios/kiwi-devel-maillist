@@ -1,0 +1,167 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b325ce8037e28510841dd200371e7fad5d844cde
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b325ce8037e28510841dd200371e7fad5d844cde&In-Reply-To=%3C200910070853.n978r5XJ005713%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001491.html">
+   <LINK REL="Next"  HREF="001493.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b325ce8037e28510841dd200371e7fad5d844cde</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b325ce8037e28510841dd200371e7fad5d844cde&In-Reply-To=%3C200910070853.n978r5XJ005713%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b325ce8037e28510841dd200371e7fad5d844cde">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Oct  7 10:53:05 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001491.html">[Kiwi-devel] Magic 3 - what does it mean?
+</A></li>
+        <LI>Next message: <A HREF="001493.html">[PATCH] improved unmounting for USB stick partitions
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1489">[ date ]</a>
+              <a href="thread.html#1489">[ thread ]</a>
+              <a href="subject.html#1489">[ subject ]</a>
+              <a href="author.html#1489">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  b325ce8037e28510841dd200371e7fad5d844cde (commit)
+      from  508a5614d3bff6bd2dd53654f92eb60bdabac309 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b325ce8037e28510841dd200371e7fad5d844cde
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Oct 7 10:52:56 2009 +0200
+
+    - create backup files for /etc and /home only in Recovery mode
+      This is done to reduce the runtime the recovery process takes
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 23690a9..4922f2b 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,13 @@
+ -------------------------------------------------------------------
++Tue Oct  6 10:44:25 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed race condition in waitForStorageDevice()
++- create backup files for /etc and /home only in Recovery mode
++  This is done to reduce the runtime the recovery process takes
++- deactivate automatic filesystem check for clicfs based
++  livesystems
++
++-------------------------------------------------------------------
+ Tue Oct  6 09:41:43 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - Add cancel/reboot menu item in recovery bootloader configuration.
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index 96d384a..acb4a37 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -403,30 +403,36 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 		fi
+ 		cd /mnt
+ 		#======================================
++		# create backup diffs
++		#--------------------------------------
++		if [ -z &quot;$RESTORE&quot; ];then
++			rFilesBackup=0
++			getText &quot;Clean sweep...&quot; &gt; /progress
++			for src in $(find etc/ home/ -type f);do
++				rFilesBackup=$((rFilesBackup + 1))
++				dst=$src&quot;.backup&quot;; cp -a $src $dst
++			done
++		fi
++		#======================================
+ 		# extract root archive
+ 		#--------------------------------------
+ 		rFiles=$(cat /reco-save/recovery.tar.files)
+-		if [ ! -z &quot;$RESTORE&quot; ];then
+-			tar --numeric-owner -xvpf /reco-save/recovery.tar.gz &gt;/tmp/rFiles &amp;
+-		else
+-			tar --numeric-owner -xvpf /reco-save/recovery.tar.gz \
+-				--backup=simple &gt;/tmp/rFiles &amp;
+-		fi
++		tar --numeric-owner -xvpf /reco-save/recovery.tar.gz &gt;/tmp/rFiles &amp;
+ 		rPID=$!
+ 		while kill -0 $rPID &amp;&gt;/dev/null;do
+-			rReady=$(cat /tmp/rFiles | grep -v ^Renaming | wc -l)
++			rReady=$(cat /tmp/rFiles | wc -l)
+ 			#Echo -e -n &quot;$rReady files from $rFiles restored...\r&quot;
+ 			getText &quot;%1 files from %2 restored...&quot; $rReady $rFiles &gt; /progress
+ 			sleep 1
+ 		done
+ 		#======================================
+-		# create backup files
++		# create backup diffs
+ 		#--------------------------------------
+ 		if [ -z &quot;$RESTORE&quot; ];then
+ 			rReady=0
+ 			getText &quot;backing up: %1...&quot; &quot;0%&quot; &gt; /progress
+-			for backup in $(find -type f -name &quot;*~&quot;);do
+-				origin=$(echo $backup | tr -d &quot;~&quot;)
++			for backup in $(find -type f -name &quot;*.backup&quot;);do
++				origin=$(echo $backup | sed -e <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">s at .backup</A>@@)
+ 				txdiff=$(diff -u $origin $backup 2&gt;/dev/null)
+ 				if [ $? = 1 ];then
+ 					printf &quot;%s\n&quot; &quot;$txdiff&quot; &gt; $backup
+@@ -434,7 +440,7 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 					rm $backup
+ 				fi
+ 				rReady=$((rReady + 1))
+-				rPDone=$(echo &quot;scale=4; $rFiles / $rReady&quot; | bc)
++				rPDone=$(echo &quot;scale=4; $rFilesBackup / $rReady&quot; | bc)
+ 				rPDone=$(echo &quot;scale=0; 100 / $rPDone&quot; | bc)
+ 				getText &quot;backing up: %1...&quot; &quot;$rPDone%&quot; &gt; /progress
+ 			done
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001491.html">[Kiwi-devel] Magic 3 - what does it mean?
+</A></li>
+	<LI>Next message: <A HREF="001493.html">[PATCH] improved unmounting for USB stick partitions
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1489">[ date ]</a>
+              <a href="thread.html#1489">[ thread ]</a>
+              <a href="subject.html#1489">[ subject ]</a>
+              <a href="author.html#1489">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

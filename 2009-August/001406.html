@@ -1,0 +1,137 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. aaee0dad4a72f95bb7d24ada33abbf373e446d12
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20aaee0dad4a72f95bb7d24ada33abbf373e446d12&In-Reply-To=%3C200908121339.n7CDd92F003376%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001405.html">
+   <LINK REL="Next"  HREF="001407.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. aaee0dad4a72f95bb7d24ada33abbf373e446d12</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20aaee0dad4a72f95bb7d24ada33abbf373e446d12&In-Reply-To=%3C200908121339.n7CDd92F003376%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. aaee0dad4a72f95bb7d24ada33abbf373e446d12">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Aug 12 15:39:09 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001405.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 05cffa76c192078eb79c57181c7405040ba0958c
+</A></li>
+        <LI>Next message: <A HREF="001407.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 88d69d58640b4e96d2780ed9b4639d948c00a026
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1406">[ date ]</a>
+              <a href="thread.html#1406">[ thread ]</a>
+              <a href="subject.html#1406">[ subject ]</a>
+              <a href="author.html#1406">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  aaee0dad4a72f95bb7d24ada33abbf373e446d12 (commit)
+      from  05cffa76c192078eb79c57181c7405040ba0958c (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit aaee0dad4a72f95bb7d24ada33abbf373e446d12
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Aug 12 15:38:54 2009 +0200
+
+    - run fsck and resize2fs only on first boot of a clic mount
+    - don't wait for storage device if it's a loop
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 57b500d..904a1c8 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -3418,7 +3418,10 @@ function mountSystemClicFS {
+ 		# no reserved blocks for ram only usage...
+ 		tune2fs -m 0 $roDir/fsdata.ext3
+ 	fi
+-	resize2fs $roDir/fsdata.ext3 $size
++	if [ $LOCAL_BOOT = &quot;no&quot; ];then
++		e2fsck -p $roDir/fsdata.ext3
++		resize2fs $roDir/fsdata.ext3 $size
++	fi
+ 	mount -o loop,noatime,nodiratime,errors=remount-ro,barrier=0 \
+ 		$roDir/fsdata.ext3 /mnt
+ 	if [ ! $? = 0 ];then
+@@ -3592,7 +3595,7 @@ function mountSystem {
+ 	#======================================
+ 	# wait for storage device to appear
+ 	#--------------------------------------
+-	if echo $mountDevice | grep -q ^/;then
++	if ! echo $mountDevice | grep -q loop;then
+ 		waitForStorageDevice $mountDevice
+ 	fi
+ 	#======================================
+@@ -3754,6 +3757,9 @@ function waitForStorageDevice {
+ 	# ----
+ 	local device=$1
+ 	local check=0
++	if [ ! -e $device ];then
++		return 1
++	fi
+ 	while true;do
+ 		partitionSize $device &amp;&gt;/dev/null
+ 		if [ $? = 0 ];then
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 35259aa..4bafe65 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -3,6 +3,8 @@ Tue Aug 11 18:33:29 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.74
+ - fixed VMFindSystem function in xenboot (bnc #530200)
++- run fsck and resize2fs only on first boot of a clic mount
++- don't wait for storage device if it's a loop
+ - use resize2fs -M if possible ( &gt;= v1.41 )
+ 
+ -------------------------------------------------------------------
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001405.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 05cffa76c192078eb79c57181c7405040ba0958c
+</A></li>
+	<LI>Next message: <A HREF="001407.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 88d69d58640b4e96d2780ed9b4639d948c00a026
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1406">[ date ]</a>
+              <a href="thread.html#1406">[ thread ]</a>
+              <a href="subject.html#1406">[ subject ]</a>
+              <a href="author.html#1406">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

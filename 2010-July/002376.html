@@ -1,0 +1,238 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. fe3af8f43f19059e6d25dc61ef6adb6a204a3c5d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20fe3af8f43f19059e6d25dc61ef6adb6a204a3c5d&In-Reply-To=%3C20100706163738.8CA10480C24%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002375.html">
+   <LINK REL="Next"  HREF="002377.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. fe3af8f43f19059e6d25dc61ef6adb6a204a3c5d</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20fe3af8f43f19059e6d25dc61ef6adb6a204a3c5d&In-Reply-To=%3C20100706163738.8CA10480C24%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. fe3af8f43f19059e6d25dc61ef6adb6a204a3c5d">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jul  6 18:37:38 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002375.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a328a0459bf4089e5122b2b35855b9e629f3293a
+</A></li>
+        <LI>Next message: <A HREF="002377.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 034bbac2abb1d9a16e989486c28510fa63c12b8b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2376">[ date ]</a>
+              <a href="thread.html#2376">[ thread ]</a>
+              <a href="subject.html#2376">[ subject ]</a>
+              <a href="author.html#2376">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  fe3af8f43f19059e6d25dc61ef6adb6a204a3c5d (commit)
+      from  a328a0459bf4089e5122b2b35855b9e629f3293a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit fe3af8f43f19059e6d25dc61ef6adb6a204a3c5d
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Jul 6 18:37:17 2010 +0200
+
+    - don't let it diverge too much between x86 and s390 suse-preinit
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/system/boot/s390/oemboot/suse-preinit b/system/boot/s390/oemboot/suse-preinit
+index 9f705ed..31bd8a2 100755
+--- a/system/boot/s390/oemboot/suse-preinit
++++ b/system/boot/s390/oemboot/suse-preinit
+@@ -44,7 +44,12 @@ udevSystemStart
+ updateMTAB
+ 
+ #======================================
+-# 5) create initrd on diskful
++# 5) create framebuffer devices
++#--------------------------------------
++createFramebufferDevices
++
++#======================================
++# 6) create initrd on diskful
+ #--------------------------------------
+ if \
+ 	[ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ] &amp;&amp; \
+@@ -62,14 +67,41 @@ else
+ fi
+ 
+ #======================================
+-# 6) Install boot loader if ok
++# 7) Check FAT requires on syslinux
++#--------------------------------------
++if [ &quot;$loader&quot; = &quot;syslinux&quot; ];then
++	# /.../
++	# if syslinux is used we need to make sure that the
++	# filename on the boot partition is correct 8+3
++	# ----
++	count=1
++	IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
++		if test -z &quot;$i&quot;;then
++			continue
++		fi
++		kernel=`echo $i | cut -f1 -d:`
++		initrd=`echo $i | cut -f2 -d:`
++		mv /boot/$kernel /boot/linux.$count
++		mv /boot/$initrd /boot/initrd.$count
++		running=$(uname -r)
++		rlinux=vmlinuz-$running
++		rinitrd=initrd-$running
++		ln -s /boot/linux.$count  /boot/$rlinux
++		ln -s /boot/initrd.$count /boot/$rinitrd
++		count=`expr $count + 1`
++	done
++	IFS=$IFS_ORIG
++fi
++
++#======================================
++# 8) Install boot loader if ok
+ #--------------------------------------
+ if [ $bootLoaderOK = 1 ];then
+ 	installBootLoader
+ fi
+ 
+ #======================================
+-# 7) copy recovery related files
++# 9) copy recovery related files
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ] &amp;&amp; [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ 	IFS=$IFS_ORIG
+@@ -104,7 +136,7 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ] &amp;&amp; [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ fi
+ 
+ #======================================
+-# 8) create /etc/ImagePackages
++# 10) create /etc/ImagePackages
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	if [ -x /bin/rpm ];then
+@@ -114,7 +146,7 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ fi
+ 
+ #======================================
+-# 9) kill udev
++# 11) kill udev
+ #--------------------------------------
+ udevSystemStop
+ umountSystemFilesystems
+diff --git a/system/boot/s390/vmxboot/suse-preinit b/system/boot/s390/vmxboot/suse-preinit
+index e266f66..93aebad 100755
+--- a/system/boot/s390/vmxboot/suse-preinit
++++ b/system/boot/s390/vmxboot/suse-preinit
+@@ -44,7 +44,12 @@ udevSystemStart
+ updateMTAB
+ 
+ #======================================
+-# 5) create /etc/ImagePackages
++# 5) create framebuffer devices
++#--------------------------------------
++createFramebufferDevices
++
++#======================================
++# 6) create /etc/ImagePackages
+ #--------------------------------------
+ if [ -x /bin/rpm ];then
+ 	Echo &quot;Creating initial image package info file&quot;
+@@ -52,21 +57,48 @@ if [ -x /bin/rpm ];then
+ fi
+ 
+ #======================================
+-# 6) create initrd on diskful
++# 7) create initrd on diskful
+ #--------------------------------------
+ if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+ 	setupSUSEInitrd
+ fi
+ 
+ #======================================
+-# 7) Install boot loader if ok
++# 8) Check FAT requires on syslinux
++#--------------------------------------
++if [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
++	# /.../
++	# if syslinux is used we need to make sure that the
++	# filename on the boot partition is correct 8+3
++	# ----
++	count=1
++	IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
++		if test -z &quot;$i&quot;;then
++			continue
++		fi
++		kernel=`echo $i | cut -f1 -d:`
++		initrd=`echo $i | cut -f2 -d:`
++		mv /boot/$kernel /boot/linux.$count
++		mv /boot/$initrd /boot/initrd.$count
++		running=$(uname -r)
++		rlinux=vmlinuz-$running
++		rinitrd=initrd-$running
++		ln -s /boot/linux.$count  /boot/$rlinux
++		ln -s /boot/initrd.$count /boot/$rinitrd
++		count=`expr $count + 1`
++	done
++	IFS=$IFS_ORIG
++fi
++
++#======================================
++# 9) Install boot loader if ok
+ #--------------------------------------
+ if [ $bootLoaderOK = 1 ];then
+ 	installBootLoader
+ fi
+ 
+ #======================================
+-# 8) kill udev
++# 10) kill udev
+ #--------------------------------------
+ udevSystemStop
+ umountSystemFilesystems
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002375.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a328a0459bf4089e5122b2b35855b9e629f3293a
+</A></li>
+	<LI>Next message: <A HREF="002377.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 034bbac2abb1d9a16e989486c28510fa63c12b8b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2376">[ date ]</a>
+              <a href="thread.html#2376">[ thread ]</a>
+              <a href="subject.html#2376">[ subject ]</a>
+              <a href="author.html#2376">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,122 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1615 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1615%20-%20kiwi-head/modules&In-Reply-To=%3C200810071152.m97Bqrn8026760%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000710.html">
+   <LINK REL="Next"  HREF="000712.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1615 - kiwi-head/modules</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1615%20-%20kiwi-head/modules&In-Reply-To=%3C200810071152.m97Bqrn8026760%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1615 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Tue Oct  7 13:52:53 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000710.html">[Kiwi-devel] r1612 - kiwi-head/rpm
+</A></li>
+        <LI>Next message: <A HREF="000712.html">[Kiwi-devel] r1616 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#711">[ date ]</a>
+              <a href="thread.html#711">[ thread ]</a>
+              <a href="subject.html#711">[ subject ]</a>
+              <a href="author.html#711">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2008-10-07 13:52:51 +0200 (Tue, 07 Oct 2008)
+New Revision: 1615
+
+Modified:
+   kiwi-head/modules/KIWICollect.pm
+Log:
+- added some paranoid sanity checks for arch strings
+
+
+Modified: kiwi-head/modules/KIWICollect.pm
+===================================================================
+--- kiwi-head/modules/KIWICollect.pm	2008-10-07 11:40:45 UTC (rev 1614)
++++ kiwi-head/modules/KIWICollect.pm	2008-10-07 11:52:51 UTC (rev 1615)
+@@ -588,18 +588,30 @@
+     my $nofallback = 0;
+     if(defined($tmp-&gt;{'onlyarch'})) {
+       # allow 'onlyarch=&quot;x86_64,i586&quot;'
+-      push @archs, split(',', $tmp-&gt;{'onlyarch'});
++      $tmp-&gt;{'onlyarch'} =~ s{,\s*,}{,}g;
++      $tmp-&gt;{'onlyarch'} =~ s{,\s*}{,}g;
++      $tmp-&gt;{'onlyarch'} =~ s{,\s*$}{};
++      $tmp-&gt;{'onlyarch'} =~ s{^\s*,}{};
++      push @archs, split(/,\s/, $tmp-&gt;{'onlyarch'});
+       $nofallback = 1;
+     }
+     elsif(defined($tmp-&gt;{'addarch'})) {
+       push @archs, $this-&gt;{m_archlist}-&gt;headList();
+       if(not(grep(/$tmp-&gt;{'addarch'}/, @archs))) {
+-	push @archs, split(',', $tmp-&gt;{'addarch'});
++      $tmp-&gt;{'addarch'} =~ s{,\s*,}{,}g;
++      $tmp-&gt;{'addarch'} =~ s{,\s*}{,}g;
++      $tmp-&gt;{'addarch'} =~ s{,\s*$}{};
++      $tmp-&gt;{'addarch'} =~ s{^\s*,}{};
++	push @archs, split(/,\s/, $tmp-&gt;{'addarch'});
+       }
+     }
+     elsif(defined($tmp-&gt;{'removearch'})) {
++      $tmp-&gt;{'removearch'} =~ s{,\s*,}{,}g;
++      $tmp-&gt;{'removearch'} =~ s{,\s*}{,}g;
++      $tmp-&gt;{'removearch'} =~ s{,\s*$}{};
++      $tmp-&gt;{'removearch'} =~ s{^\s*,}{};
+       push @archs, $this-&gt;{m_archlist}-&gt;headList();
+-      @omits = split(',', $tmp-&gt;{'removearch'});
++      @omits = split(/,\s/, $tmp-&gt;{'removearch'});
+       my @rl;
+       foreach my $x(@omits) {
+ 	push @rl, grep(/$x/, @archs);
+@@ -1138,11 +1150,9 @@
+     @repos = keys(%{$this-&gt;{m_repos}});
+   }
+ 
+-  #REPO:foreach my $r(keys(%{$this-&gt;{m_repos}})) {
+   REPO:foreach my $r(@repos) {
+     DIR:foreach my $d(keys(%{$this-&gt;{m_repos}-&gt;{$r}-&gt;{'srcdirs'}})) {
+       next DIR  if(! $this-&gt;{m_repos}-&gt;{$r}-&gt;{'srcdirs'}-&gt;{$d}-&gt;[0]);
+-      #next DIR if($d ne &quot;/&quot; and $d !~ m{$fa});
+ 
+       my $subdirname = undef;
+       my $archinfo;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000710.html">[Kiwi-devel] r1612 - kiwi-head/rpm
+</A></li>
+	<LI>Next message: <A HREF="000712.html">[Kiwi-devel] r1616 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#711">[ date ]</a>
+              <a href="thread.html#711">[ thread ]</a>
+              <a href="subject.html#711">[ subject ]</a>
+              <a href="author.html#711">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,307 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1845 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1845%20-%0A%09kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules&In-Reply-To=%3C200901131714.n0DHEkD0011059%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000960.html">
+   <LINK REL="Next"  HREF="000962.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1845 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1845%20-%0A%09kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules&In-Reply-To=%3C200901131714.n0DHEkD0011059%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1845 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Tue Jan 13 18:14:46 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000960.html">[Kiwi-devel] r1844 - kiwi-head/doc/examples/suse-11.1/suse-vm-guest
+</A></li>
+        <LI>Next message: <A HREF="000962.html">[Kiwi-devel] r1846 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#961">[ date ]</a>
+              <a href="thread.html#961">[ thread ]</a>
+              <a href="subject.html#961">[ subject ]</a>
+              <a href="author.html#961">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2009-01-13 18:14:45 +0100 (Tue, 13 Jan 2009)
+New Revision: 1845
+
+Modified:
+   kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect_local.pm
+Log:
+- implemented new return type for createBootPackageLinks
+- changed FLAVOR from &lt;productinfo&gt; to &lt;productvar&gt; (sync with plugin
+  packages)
+-- these changes will be committed to trunk as soon as they're tested
+through home:helcaraxe:playground!
+
+
+Modified: kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect_local.pm
+===================================================================
+--- kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect_local.pm	2009-01-13 13:45:18 UTC (rev 1844)
++++ kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect_local.pm	2009-01-13 17:14:45 UTC (rev 1845)
+@@ -510,7 +510,7 @@
+       $this-&gt;{m_dirlist}-&gt;{&quot;$curdir&quot;} = 1;
+     }
+     my $num = $n;
+-    $num = 1 if ( $this-&gt;{m_proddata}-&gt;getInfo(&quot;FLAVOR&quot;) eq &quot;ftp&quot; );
++    $num = 1 if ( $this-&gt;{m_proddata}-&gt;getVar(&quot;FLAVOR&quot;) eq &quot;ftp&quot; );
+     $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/media.$num&quot;} = 1;
+     $this-&gt;{m_basesubdir}-&gt;{$n} = &quot;$dirbase&quot;;
+     $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_basesubdir}-&gt;{$n}&quot;} = 1;
+@@ -1108,22 +1108,21 @@
+ 	  else {
+             $this-&gt;logMsg(&quot;W&quot;, &quot;No CD1 directory on $packPointer-&gt;{name}&quot;);
+           }
+-          #for my $sub(&quot;usr&quot;, &quot;etc&quot;) {
+-            #if(-d &quot;$tmp/$sub&quot;) {
+-            #  qx(cp -r $tmp/$sub $this-&gt;{m_basesubdir}-&gt;{$medium});
+-            #}
+-	    if(-f &quot;$tmp/usr/share/mini-iso-rmlist&quot;) {
+-	      if(!open(RMLIST, &quot;$tmp/usr/share/mini-iso-rmlist&quot;)) {
+-		$this-&gt;logMsg(&quot;W&quot;, &quot;cant open &lt;$tmp/usr/share/mini-iso-rmlist&gt;&quot;);
+-	      }
+-	      else {
+-		my @rmfiles = &lt;RMLIST&gt;;
+-		chomp(@rmfiles);
+-		$this-&gt;{m_rmlists}-&gt;{$arch} = [@rmfiles];
+-		close RMLIST;
+-	      }
++
++	  # read rmlist files. These files should be erased from the cdtree
++	  # for mini-iso media.
++	  if(-f &quot;$tmp/usr/share/mini-iso-rmlist&quot;) {
++	    if(!open(RMLIST, &quot;$tmp/usr/share/mini-iso-rmlist&quot;)) {
++	      $this-&gt;logMsg(&quot;W&quot;, &quot;cant open &lt;$tmp/usr/share/mini-iso-rmlist&gt;&quot;);
+ 	    }
+-          #}
++	    else {
++	      my @rmfiles = &lt;RMLIST&gt;;
++	      chomp(@rmfiles);
++	      $this-&gt;{m_rmlists}-&gt;{$arch} = [@rmfiles];
++	      close RMLIST;
++	    }
++	  }
++
+           ## copy content of CD2 ... CD&lt;i&gt; subdirs if exists:
+           for(2..10) {
+             if(-d &quot;$tmp/CD$_&quot; and defined $this-&gt;{m_basesubdir}-&gt;{$_}) {
+@@ -1649,7 +1648,7 @@
+     my @media = $this-&gt;getMediaNumbers();
+     for my $n(@media) {
+       my $num = $n;
+-      $num = 1 if ( $this-&gt;{m_proddata}-&gt;getInfo(&quot;FLAVOR&quot;) eq &quot;ftp&quot; );
++      $num = 1 if ( $this-&gt;{m_proddata}-&gt;getVar(&quot;FLAVOR&quot;) eq &quot;ftp&quot; );
+       my $mediafile = &quot;$this-&gt;{m_basesubdir}-&gt;{$n}/media.$num/media&quot;;
+       if(not open(MEDIA, &quot;&gt;&quot;, $mediafile)) {
+ 	$this-&gt;logMsg(&quot;E&quot;, &quot;Cannot create file &lt;$mediafile&gt;&quot;);
+@@ -1659,7 +1658,7 @@
+       print MEDIA qx(date +%Y%m%d%H%M%S);
+       if($num == 1) {
+ 	# some specialities for medium number 1: contains a line with the number of media
+-        if ( $this-&gt;{m_proddata}-&gt;getInfo(&quot;FLAVOR&quot;) eq &quot;ftp&quot; ) {
++        if ( $this-&gt;{m_proddata}-&gt;getVar(&quot;FLAVOR&quot;) eq &quot;ftp&quot; ) {
+           print MEDIA &quot;1\n&quot;;
+         } else {
+           print MEDIA @media.&quot;\n&quot;;
+@@ -1713,7 +1712,7 @@
+     $summary =~ s{\s+}{-}g; # replace space(s) by a single dash
+     for my $n($this-&gt;getMediaNumbers()) {
+       my $num = $n;
+-      $num = 1 if ( $this-&gt;{m_proddata}-&gt;getInfo(&quot;FLAVOR&quot;) eq &quot;ftp&quot; );
++      $num = 1 if ( $this-&gt;{m_proddata}-&gt;getVar(&quot;FLAVOR&quot;) eq &quot;ftp&quot; );
+       my $productsfile = &quot;$this-&gt;{m_basesubdir}-&gt;{$n}/media.$num/products&quot;;
+       if(not open(PRODUCT, &quot;&gt;&quot;, $productsfile)) {
+ 	die &quot;Cannot create $productsfile&quot;;
+@@ -1731,8 +1730,21 @@
+     $this-&gt;logMsg(&quot;W&quot;, &quot;[createMetadata] skipping products file due to missing vars!&quot;);
+   }
+ 
+-  $this-&gt;createBootPackageLinks();
++  #$this-&gt;createBootPackageLinks();
++  my %bplink = $this-&gt;createBootPackageLinks();
++  if($bplink{'status'} != 0) {
++    $this-&gt;{m_logger}-&gt;error(&quot;[E] Creating boot package links failed:&quot;);
++    foreach my $list(keys(%bplink)) {
++      next if $list =~ m{status}i;
++      $this-&gt;{m_logger}-&gt;error(&quot;\tMissing files for rpmlist file &lt;$list&gt;:&quot;);
++      foreach my $file(@{$bplink{$list}}) {
++	$this-&gt;{m_logger}-&gt;error(&quot;\t\t$file&quot;);
++      }
++    }
++    return $bplink{'status'};
++  }
+ 
++
+   ## step 9: LISTINGS
+   $this-&gt;logMsg(&quot;W&quot;, &quot;Calling mk_listings:&quot;);
+   my $listings = &quot;/usr/bin/mk_listings&quot;;
+@@ -1823,6 +1835,9 @@
+       push @dlist, glob(&quot;$dbase/boot/*&quot;);
+       push @dlist, glob(&quot;$dbase/boot/*/loader&quot;);
+     }
++    if(-d &quot;$dbase/docu&quot;) {
++      push @dlist, &quot;$dbase/docu&quot;;
++    }
+     push @dlist, &quot;$dbase/media.1&quot;;
+     push @dlist, &quot;$dbase/media.1/license&quot;;
+     push @dlist, &quot;$dbase/images&quot;;
+@@ -1845,7 +1860,18 @@
+ 
+ 
+ 
+-# returns the number of links created
++#===========================
++# createBootPackageLinks
++#---------------------------
++# reads a list of files named &quot;rpmlist&quot;
++# for each of those files all rpms listed
++# in the resp file for one arch must be linked
++# under ./boot/&lt;arch&gt;
++#---------------------------
++# returns a hash containing the following info:
++# status =&gt; 0 (ok) / not 0 = error
++# rpmlistname =&gt; [ list of missing packages ]
++#---------------------------
+ sub createBootPackageLinks
+ {
+   my $this = shift;
+@@ -1854,57 +1880,65 @@
+   my $base = $this-&gt;{m_basesubdir}-&gt;{'1'};
+   my $datadir = $this-&gt;{m_proddata}-&gt;getInfo('DATADIR');
+ 
+-  my $retval = 0;
++  my %retval;
+   if(! -d &quot;$base/boot&quot;) {
+-    $this-&gt;logMsg(&quot;W&quot;, &quot;There is no /boot subdirectory. This may be ok for some media, but might indicate errors in metapackages!&quot;);
+-    return $retval;
++    $this-&gt;{m_logger}-&gt;warning(&quot;[W] There is no /boot subdirectory. This may be ok for some media, but might indicate errors in metapackages!&quot;);
++    $retval{'status'} = 1;
++    return %retval;
+   }
+ 
+   my %rpmlist_files;
+   find( sub { rpmlist_find_cb($this, \%rpmlist_files) }, &quot;$base/boot&quot;);
+ 
+   foreach my $arch(keys(%rpmlist_files)) {
+-    if(not open(RPMLIST, $rpmlist_files{$arch})) {
+-      $this-&gt;logMsg(&quot;W&quot;, &quot;cannot open file $base/boot/$arch/$rpmlist_files{$arch}!&quot;);
+-      return -1;
++    my $filename = $rpmlist_files{$arch};
++    if(not open(RPMLIST, $filename)) {
++      $this-&gt;{m_logger}-&gt;warning(&quot;[W] cannot open file $base/boot/$arch/$filename!&quot;);
++      $retval{'status'} = 2;
++      return %retval;
+     }
+-    else {
+-      RPM:foreach my $rpmname(&lt;RPMLIST&gt;) {
+-	chomp $rpmname;
+-	if(not defined($rpmname) or not defined($this-&gt;{m_repoPacks}-&gt;{$rpmname})) {
+-	  $this-&gt;logMsg(&quot;W&quot;, &quot;something wrong with rpmlist: undefined value $rpmname&quot;);
+-	  next RPM;
++
++    $retval{$filename} = []; # new empty list
++    RPM:foreach my $rpmname(&lt;RPMLIST&gt;) {
++      chomp $rpmname;
++      if(not defined($rpmname) or not defined($this-&gt;{m_repoPacks}-&gt;{$rpmname})) {
++	$this-&gt;{m_logger}-&gt;error(&quot;[E] broken repo: rpmlist=&lt;$filename&gt; file=&lt;$rpmname&gt; is missing in repo!&quot;);
++	$retval{'status'} = 3;
++	push @{$retval{$filename}}, $rpmname;
++	next RPM;
++      }
++
++      if(defined($this-&gt;{m_repoPacks}-&gt;{$rpmname}-&gt;{'medium'}) and $this-&gt;{m_repoPacks}-&gt;{$rpmname}-&gt;{'medium'} != 1) {
++	$this-&gt;{m_logger}-&gt;error(&quot;[E] broken repo: file &lt;$rpmname&gt; is on wrong medium!&quot;);
++	push @{$retval{$filename}}, $rpmname;
++	next RPM;
++      }
++      my %tmp = %{$this-&gt;{m_repoPacks}-&gt;{$rpmname}};
++
++      # FIXME: This is just a hack, where do we get the upper architecture from ?
++      my $targetarch = $arch;
++      if ( $arch eq 'i386' ) {
++	 $targetarch = &quot;i586&quot;;
++      }
++      # End of hack
++
++      my @fallb = $this-&gt;{m_archlist}-&gt;fallbacks($targetarch);
++      FARCH:foreach my $fa(@fallb) {
++	if(not defined($this-&gt;{m_repoPacks}-&gt;{$rpmname}-&gt;{$fa})) {
++	  next FARCH;
+ 	}
+-	if(!%{$this-&gt;{m_packagePool}-&gt;{$rpmname}}) {
+-	  $this-&gt;logMsg(&quot;W&quot;, &quot;No package hash entry for package $rpmname in packages hash! Package missing?&quot;);
+-	}
+-	else {
+-          # FIXME: This is just a hack, where do we get the upper architecture from ?
+-          my $targetarch = $arch;
+-          if ( $arch eq 'i386' ) {
+-             $targetarch = &quot;i586&quot;;
+-          }
+-          # End of hack
+-	  my @fallb = $this-&gt;{m_archlist}-&gt;fallbacks($targetarch);
+-	  FARCH:foreach my $fa(@fallb) {
+-	    PACKKEY:foreach my $p(keys %{$this-&gt;{m_packagePool}-&gt;{$rpmname}}) {
+-              my $pPointer = $this-&gt;{m_packagePool}-&gt;{$rpmname}-&gt;{$p};
+-  	      next PACKKEY unless $pPointer-&gt;{'arch'} eq $fa;
+-  	      next PACKKEY unless (-e $pPointer-&gt;{'localfile'});
+-	      link($pPointer-&gt;{'localfile'}, &quot;$base/boot/$arch/$rpmname.rpm&quot;);
+-	      $retval++;
+-	      next RPM;
+-	    }
+-	  }
+-	}
++	symlink(&quot;../../$datadir/$fa/&quot;.$this-&gt;{m_repoPacks}-&gt;{$rpmname}-&gt;{$fa}-&gt;{'newfile'}, &quot;$base/boot/$arch/$rpmname.rpm&quot;);
++	#symlink(&quot;../../$datadir/$fa/&quot;.$tmp{$fa}-&gt;{'newfile'}, &quot;$base/boot/$arch/$rpmname.rpm&quot;);
++	next RPM;
+       }
+     }
+   }
+-  return $retval;
++  return %retval;
+ }
+ 
+ 
+ 
++
+ sub rpmlist_find_cb
+ {
+   my $this = shift;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000960.html">[Kiwi-devel] r1844 - kiwi-head/doc/examples/suse-11.1/suse-vm-guest
+</A></li>
+	<LI>Next message: <A HREF="000962.html">[Kiwi-devel] r1846 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#961">[ date ]</a>
+              <a href="thread.html#961">[ thread ]</a>
+              <a href="subject.html#961">[ subject ]</a>
+              <a href="author.html#961">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

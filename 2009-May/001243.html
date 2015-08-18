@@ -1,0 +1,198 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 5711cba6330369a13ce810deb687b98f897bfc33
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-301-SuSE-11-1-Devel%2C%0A%09updated.%205711cba6330369a13ce810deb687b98f897bfc33&In-Reply-To=%3C200905170752.n4H7qKPQ001526%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001242.html">
+   <LINK REL="Next"  HREF="001244.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 5711cba6330369a13ce810deb687b98f897bfc33</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-301-SuSE-11-1-Devel%2C%0A%09updated.%205711cba6330369a13ce810deb687b98f897bfc33&In-Reply-To=%3C200905170752.n4H7qKPQ001526%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 5711cba6330369a13ce810deb687b98f897bfc33">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Sun May 17 09:52:20 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001242.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. eb5f13ab0f0651b2f9e0a7a9bd5f1aee5fef828d
+</A></li>
+        <LI>Next message: <A HREF="001244.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0aab899814e998fdaca0dbfc12a1c05f0651717e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1243">[ date ]</a>
+              <a href="thread.html#1243">[ thread ]</a>
+              <a href="subject.html#1243">[ subject ]</a>
+              <a href="author.html#1243">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-301-SuSE-11-1-Devel has been updated
+       via  5711cba6330369a13ce810deb687b98f897bfc33 (commit)
+      from  ac59bc6a6aee62460a4bf18eb4159e2f258fa115 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 5711cba6330369a13ce810deb687b98f897bfc33
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Sun May 17 09:52:05 2009 +0200
+
+    - fixed group setup with correct group id (bnc #503117)
+    - added optional volid setup for iso's (bnc #500501)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIConfigure.pm b/modules/KIWIConfigure.pm
+index ee38795..b5eac41 100644
+--- a/modules/KIWIConfigure.pm
++++ b/modules/KIWIConfigure.pm
+@@ -174,7 +174,10 @@ sub setupUsersGroups {
+ 				$group = quoteshell ($group);
+ 				if ($code != 0) {
+ 					$kiwi -&gt; info (&quot;Adding group: $group&quot;);
+-					my $data = qxx ( &quot;chroot $root $addgroup \&quot;$group\&quot;&quot; );
++					if (defined $gid) {
++						$addgroup .= &quot; -g $gid&quot;;
++					}
++					my $data = qxx (&quot;chroot $root $addgroup \&quot;$group\&quot;&quot;);
+ 					my $code = $? &gt;&gt; 8;
+ 					if ($code != 0) {
+ 						$kiwi -&gt; failed ();
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index f92a700..5a7b6b8 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -1864,6 +1864,9 @@ sub createImageLiveCD {
+ 	if (! defined $gzip) {
+ 		$attr .= &quot; -iso-level 4&quot;; 
+ 	}
++	if ($type{volid}) {
++		$attr .= &quot; -V $type{volid}&quot;;
++	}
+ 	my $isolinux = new KIWIIsoLinux (
+ 		$kiwi,$main::RootTree.&quot;/CD&quot;,$name,undef,undef,$attr
+ 	);
+diff --git a/modules/KIWIScheme.rnc b/modules/KIWIScheme.rnc
+index b562f0d..35e2d33 100644
+--- a/modules/KIWIScheme.rnc
++++ b/modules/KIWIScheme.rnc
+@@ -1077,6 +1077,11 @@ div {
+ 		## Activates whether KIWI should search for a prebuild boot
+ 		## image or not
+ 		attribute checkprebuilt { xsd:boolean }
++	k.type.volid.attribute =
++		## for the iso type only:
++		## Specifies the volume ID (volume name or label) to be written
++		## into the master block. There is space for 32 characters.
++		attribute volid { text }
+ 	k.type.flags.attribute =
+ 		## Specifies flags for the image type. This could be compressed
+ 		## or unified and applies to the iso type only
+@@ -1126,6 +1131,7 @@ div {
+ 		k.type.checkprebuilt.attribute? &amp;
+ 		k.type.bootprofile.attribute? &amp;
+ 		k.type.boot.attribute? &amp;
++		k.type.volid.attribute? &amp;
+ 		k.type.vga.attribute? &amp;
+ 		k.type.flags.attribute? &amp;
+ 		k.type.filesystem.attribute? &amp;
+diff --git a/modules/KIWIScheme.rng b/modules/KIWIScheme.rng
+index efa00ac..f150e2f 100644
+--- a/modules/KIWIScheme.rng
++++ b/modules/KIWIScheme.rng
+@@ -1450,6 +1450,13 @@ image or not&lt;/a:documentation&gt;
+         &lt;data type=&quot;boolean&quot;/&gt;
+       &lt;/attribute&gt;
+     &lt;/define&gt;
++    &lt;define name=&quot;k.type.volid.attribute&quot;&gt;
++      &lt;attribute name=&quot;volid&quot;&gt;
++        &lt;a:documentation&gt;for the iso type only:
++Specifies the volume ID (volume name or label) to be written
++into the master block. There is space for 32 characters.&lt;/a:documentation&gt;
++      &lt;/attribute&gt;
++    &lt;/define&gt;
+     &lt;define name=&quot;k.type.flags.attribute&quot;&gt;
+       &lt;attribute name=&quot;flags&quot;&gt;
+         &lt;a:documentation&gt;Specifies flags for the image type. This could be compressed
+@@ -1558,6 +1565,9 @@ vmx/oem types only.&lt;/a:documentation&gt;
+           &lt;ref name=&quot;k.type.boot.attribute&quot;/&gt;
+         &lt;/optional&gt;
+         &lt;optional&gt;
++          &lt;ref name=&quot;k.type.volid.attribute&quot;/&gt;
++        &lt;/optional&gt;
++        &lt;optional&gt;
+           &lt;ref name=&quot;k.type.vga.attribute&quot;/&gt;
+         &lt;/optional&gt;
+         &lt;optional&gt;
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 1ca149d..ceb71ad 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -649,6 +649,7 @@ sub getImageTypeAndAttributes {
+ 		}
+ 		$record{type}   = $node -&gt; string_value();
+ 		$record{boot}   = $node -&gt; getAttribute(&quot;boot&quot;);
++		$record{volid}  = $node -&gt; getAttribute(&quot;volid&quot;);
+ 		$record{flags}  = $node -&gt; getAttribute(&quot;flags&quot;);
+ 		$record{format} = $node -&gt; getAttribute(&quot;format&quot;);
+ 		$record{vga}    = $node -&gt; getAttribute(&quot;vga&quot;);
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index aa7dd39..11af8bc 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Sun May 17 09:47:19 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed group setup with correct group id (bnc #503117)
++- added optional volid setup for iso's (bnc #500501)
++
++-------------------------------------------------------------------
+ Thu May  7 09:33:48 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed quotation of realname for user setup (bnc #500537)
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001242.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. eb5f13ab0f0651b2f9e0a7a9bd5f1aee5fef828d
+</A></li>
+	<LI>Next message: <A HREF="001244.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0aab899814e998fdaca0dbfc12a1c05f0651717e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1243">[ date ]</a>
+              <a href="thread.html#1243">[ thread ]</a>
+              <a href="subject.html#1243">[ subject ]</a>
+              <a href="author.html#1243">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

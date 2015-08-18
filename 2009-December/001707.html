@@ -1,0 +1,174 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 80be42eac26d5558ea9cf35848a2c067705b93f0
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-301-SuSE-11-1-Devel%2C%0A%09updated.%2080be42eac26d5558ea9cf35848a2c067705b93f0&In-Reply-To=%3C200912161023.nBGANu94001968%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001706.html">
+   <LINK REL="Next"  HREF="001708.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 80be42eac26d5558ea9cf35848a2c067705b93f0</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-301-SuSE-11-1-Devel%2C%0A%09updated.%2080be42eac26d5558ea9cf35848a2c067705b93f0&In-Reply-To=%3C200912161023.nBGANu94001968%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 80be42eac26d5558ea9cf35848a2c067705b93f0">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Dec 16 11:23:56 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001706.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0f20393d83ed6409a74f8ce3f80a4993abe001a4
+</A></li>
+        <LI>Next message: <A HREF="001708.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. d3d3a75dac21c78615a3a9638c60db032aa49533
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1707">[ date ]</a>
+              <a href="thread.html#1707">[ thread ]</a>
+              <a href="subject.html#1707">[ subject ]</a>
+              <a href="author.html#1707">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-301-SuSE-11-1-Devel has been updated
+       via  80be42eac26d5558ea9cf35848a2c067705b93f0 (commit)
+      from  c7b687a395fb30c2fc878f8dd5e4d3e4fb1c8ed9 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 80be42eac26d5558ea9cf35848a2c067705b93f0
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Dec 16 11:23:48 2009 +0100
+
+    - fixed root tree creation build inconsistencies due to missing
+      libraries at the beginning of the root tree creation. Any glibc
+      linked program uses /etc/nsswitch.conf and from there requires
+      /lib(64)/libnss* libraries to do user/group to id resolution.
+      If the operation happens chrooted, the libs needs to be there.
+      The fix will install the glibc package which provides these
+      libraries in a $root/baselibs directory first and moves them
+      to $root. After that process the package manager is again called
+      to install the bootstrap listed packages follewed by the rest
+      of the specified packages (bnc #536256)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIManager.pm b/modules/KIWIManager.pm
+index b410579..a5d4ad1 100644
+--- a/modules/KIWIManager.pm
++++ b/modules/KIWIManager.pm
+@@ -139,6 +139,10 @@ sub new {
+ 		&quot;-o rpm-root=$root&quot;,
+ 		&quot;-o deb-root=$root&quot;,
+ 	];
++	$this-&gt;{smartrootlib}= [
++		&quot;-o rpm-root=$root/baselibs&quot;,
++		&quot;-o deb-root=$root/baselibs&quot;,
++	];
+ 	$this-&gt;{zypper}      = [
+ 		$packageManager{zypper},
+ 		&quot;--non-interactive&quot;,
+@@ -1382,6 +1386,7 @@ sub setupRootSystem {
+ 	my @zypper = @{$this-&gt;{zypper}};
+ 	my @smart  = @{$this-&gt;{smart}};
+ 	my @rootdir= @{$this-&gt;{smartroot}};
++	my @rootlib= @{$this-&gt;{smartrootlib}};
+ 	my @ensconce = @{$this-&gt;{ensconce}};
+ 	my @channelList = @{$this-&gt;{channelList}};
+ 	my $screenCall  = $this-&gt;{screenCall};
+@@ -1428,6 +1433,14 @@ sub setupRootSystem {
+ 			print $fd &quot;test \$? = 0 &amp;&amp; @smart @rootdir update &quot;;
+ 			print $fd &quot;@channelList || false &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
++			# Install glibc for baselibs first, assumes a distro glibc package
++			print $fd &quot;mkdir $root/baselibs\n&quot;;
++			print $fd &quot;test \$? = 0 &amp;&amp; @smart @rootlib install &quot;;
++			print $fd &quot;glibc @installOpts &amp;&gt;/dev/null &amp;\n&quot;;
++			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
++			print $fd &quot;test \$? = 0 &amp;&amp; mv $root/baselibs/lib* $root\n&quot;;
++			print $fd &quot;test \$? = 0 &amp;&amp; rm -rf $root/baselibs\n&quot;;
++			# Install the rest with requires libs on board
+ 			print $fd &quot;test \$? = 0 &amp;&amp; @smart @rootdir install &quot;;
+ 			print $fd &quot;@packs @installOpts &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+@@ -1530,6 +1543,15 @@ sub setupRootSystem {
+ 			print $fd &quot;@zypper --root $root refresh &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
++			# Install glibc for baselibs first, assumes a distro glibc package
++			print $fd &quot;mkdir $root/baselibs\n&quot;;
++			print $fd &quot;@zypper --disable-system-resolvables -R $root/baselibs &quot;;
++			print $fd &quot;install @installOpts glibc &amp;&gt;/dev/null &amp;\n&quot;;
++			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
++			print $fd &quot;test \$? = 0 &amp;&amp; mv $root/baselibs/lib* $root\n&quot;;
++			print $fd &quot;test \$? = 0 &amp;&amp; rm -rf $root/baselibs\n&quot;;
++			print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
++			# Install the rest with required libs on board
+ 			if (@newprods) {
+ 				print $fd &quot;@zypper --root $root install &quot;;
+ 				print $fd &quot;@installOpts -t product @newprods &amp;\n&quot;;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index c545dc7..dfeb4a6 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,18 @@
+ -------------------------------------------------------------------
++Wed Dec 16 11:23:07 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed root tree creation build inconsistencies due to missing
++  libraries at the beginning of the root tree creation. Any glibc
++  linked program uses /etc/nsswitch.conf and from there requires
++  /lib(64)/libnss* libraries to do user/group to id resolution.
++  If the operation happens chrooted, the libs needs to be there.
++  The fix will install the glibc package which provides these
++  libraries in a $root/baselibs directory first and moves them
++  to $root. After that process the package manager is again called
++  to install the bootstrap listed packages follewed by the rest
++  of the specified packages (bnc #536256)
++
++-------------------------------------------------------------------
+ Tue Dec 15 12:34:53 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - bind mount /var/run/dbus into chroot (bnc #519764)
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001706.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0f20393d83ed6409a74f8ce3f80a4993abe001a4
+</A></li>
+	<LI>Next message: <A HREF="001708.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. d3d3a75dac21c78615a3a9638c60db032aa49533
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1707">[ date ]</a>
+              <a href="thread.html#1707">[ thread ]</a>
+              <a href="subject.html#1707">[ subject ]</a>
+              <a href="author.html#1707">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

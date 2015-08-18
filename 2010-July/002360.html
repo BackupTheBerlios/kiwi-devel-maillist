@@ -1,0 +1,144 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b68f15eac0acfeca200e25f600a64e428dbe2036
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b68f15eac0acfeca200e25f600a64e428dbe2036&In-Reply-To=%3C20100706091501.2D944480A99%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002359.html">
+   <LINK REL="Next"  HREF="002361.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b68f15eac0acfeca200e25f600a64e428dbe2036</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b68f15eac0acfeca200e25f600a64e428dbe2036&In-Reply-To=%3C20100706091501.2D944480A99%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b68f15eac0acfeca200e25f600a64e428dbe2036">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jul  6 11:15:01 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002359.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9b7661a18091c9e02b443d683661b4512b8939cc
+</A></li>
+        <LI>Next message: <A HREF="002361.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 13ac7c90a2f61fea7be0be780c4ac8048dc5f1e8
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2360">[ date ]</a>
+              <a href="thread.html#2360">[ thread ]</a>
+              <a href="subject.html#2360">[ subject ]</a>
+              <a href="author.html#2360">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  b68f15eac0acfeca200e25f600a64e428dbe2036 (commit)
+      from  9b7661a18091c9e02b443d683661b4512b8939cc (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b68f15eac0acfeca200e25f600a64e428dbe2036
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Jul 6 11:14:50 2010 +0200
+
+    - don't exit with an error if 'zypper rm' can't find the package
+    - check for profiles when searching for foreign packages also
+      search in type=image and type=bootstrap package sections
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIManager.pm b/modules/KIWIManager.pm
+index f02f42e..541e9eb 100644
+--- a/modules/KIWIManager.pm
++++ b/modules/KIWIManager.pm
+@@ -1279,7 +1279,7 @@ sub removePackages {
+ 		print $fd &quot;@kchroot @zypper refresh &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		print $fd &quot;test \$? = 0 &amp;&amp; @kchroot @zypper remove &quot;;
+-		print $fd &quot;@installOpts @removePackages &amp;\n&quot;;
++		print $fd &quot;@installOpts @removePackages || true &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		print $fd &quot;ECODE=\$?\n&quot;;
+ 		print $fd &quot;echo \$ECODE &gt; $screenCall.exit\n&quot;;
+@@ -1445,7 +1445,7 @@ sub setupUpgrade {
+ 			my @removePackages = @{$delPacks};
+ 			if (@removePackages) {
+ 				print $fd &quot;@kchroot @zypper remove &quot;;
+-				print $fd &quot;--force-resolution @removePackages &amp;\n&quot;;
++				print $fd &quot;--force-resolution @removePackages || true &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 				print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+ 			}
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 500c8f3..8d0a4fe 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -308,7 +308,10 @@ sub new {
+ 			for (my $i=1;$i&lt;= $nodes-&gt;size();$i++) {
+ 				my $node = $nodes -&gt; get_node($i);
+ 				my $type = $node  -&gt; getAttribute (&quot;type&quot;);
+-				if ($type eq &quot;image&quot;) {
++				if (! $this -&gt; requestedProfile ($node)) {
++					next;
++				}
++				if (($type eq &quot;image&quot;) || ($type eq &quot;bootstrap&quot;)) {
+ 					push (@plist,$node-&gt;getElementsByTagName (&quot;package&quot;));
+ 					push (@alist,$node-&gt;getElementsByTagName (&quot;archive&quot;));
+ 				}
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index f590bc0..b241293 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Tue Jul  6 11:12:29 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- don't exit with an error if 'zypper rm' can't find the package
++- check for profiles when searching for foreign packages also
++  search in type=image and type=bootstrap package sections
++
++-------------------------------------------------------------------
+ Mon Jul  5 13:08:24 UTC 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">adrian at suse.de</A>
+ 
+ - simplify iso volume labels for inst-source medias
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002359.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9b7661a18091c9e02b443d683661b4512b8939cc
+</A></li>
+	<LI>Next message: <A HREF="002361.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 13ac7c90a2f61fea7be0be780c4ac8048dc5f1e8
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2360">[ date ]</a>
+              <a href="thread.html#2360">[ thread ]</a>
+              <a href="subject.html#2360">[ subject ]</a>
+              <a href="author.html#2360">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

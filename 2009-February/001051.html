@@ -1,0 +1,845 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1929 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel: .	modules rpm system/boot/ix86/oemboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1929%20-%20in%20kiwi-branches/KIWI-301-SuSE-11-1-Devel%3A%20.%0A%09modules%20rpm%20system/boot/ix86/oemboot&In-Reply-To=%3C200902261742.n1QHgldF011626%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001050.html">
+   <LINK REL="Next"  HREF="001052.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1929 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel: .	modules rpm system/boot/ix86/oemboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1929%20-%20in%20kiwi-branches/KIWI-301-SuSE-11-1-Devel%3A%20.%0A%09modules%20rpm%20system/boot/ix86/oemboot&In-Reply-To=%3C200902261742.n1QHgldF011626%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1929 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel: .	modules rpm system/boot/ix86/oemboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Feb 26 18:42:47 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001050.html">[Kiwi-devel] r1928 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel:	modules rpm
+</A></li>
+        <LI>Next message: <A HREF="001052.html">[Kiwi-devel] r1930 - in kiwi-head: . modules rpm	system/boot/ix86/oemboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1051">[ date ]</a>
+              <a href="thread.html#1051">[ thread ]</a>
+              <a href="subject.html#1051">[ subject ]</a>
+              <a href="author.html#1051">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-02-26 18:41:53 +0100 (Thu, 26 Feb 2009)
+New Revision: 1929
+
+Modified:
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/kiwi.pl
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWIBoot.pm
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWIConfig.sh
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWIConfigure.pm
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWILinuxRC.sh
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/rpm/kiwi.changes
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/oemboot/suse-dump
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/oemboot/suse-linuxrc
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/oemboot/suse-repart
+Log:
+
+- fixed this path evaluation in upgrade mode
+- added md5 checksum test in OEM install mode (bnc #479842)
+- added progress information in recovery mode (bnc #479844)
+- fixed handling of oem-boot-title. If the title is set it
+  is prefered over the displayname attribute. Additionally
+  the given string is used as complete title name when oemboot
+  reconfigures the bootloader (bnc #479838)
+
+
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/kiwi.pl
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/kiwi.pl	2009-02-26 09:36:46 UTC (rev 1928)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/kiwi.pl	2009-02-26 17:41:53 UTC (rev 1929)
+@@ -423,7 +423,7 @@
+ 			qxx (&quot;rm -f $Create/rootfs.tar&quot;);
+ 		}
+ 		if (-f &quot;$Create/recovery.tar.gz&quot;) {
+-			qxx (&quot;rm -f $Create/recovery.tar.gz&quot;);
++			qxx (&quot;rm -f $Create/recovery.tar.*&quot;);
+ 		}
+ 		#==========================================
+ 		# Check for overlay requirements
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWIBoot.pm	2009-02-26 09:36:46 UTC (rev 1928)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWIBoot.pm	2009-02-26 17:41:53 UTC (rev 1929)
+@@ -1138,6 +1138,7 @@
+ 	my $zipped    = $this-&gt;{zipped};
+ 	my $isxen     = $this-&gt;{isxen};
+ 	my $xengz     = $this-&gt;{xengz};
++	my $md5name   = $system;
+ 	my $imgtype   = &quot;oem&quot;;
+ 	my $gotsys    = 1;
+ 	my $status;
+@@ -1233,17 +1234,38 @@
+ 	}
+ 	$this-&gt;{imgtype} = $imgtype;
+ 	#==========================================
++	# Build md5sum of system image
++	#------------------------------------------
++	$this -&gt; buildMD5Sum ($system);
++	#==========================================
++	# Compress system image
++	#------------------------------------------
++	$kiwi -&gt; info (&quot;Compressing installation image...&quot;);
++	$md5name=~ s/\.raw$/\.md5/;
++	$status = qxx (&quot;$main::Gzip $system 2&gt;&amp;1&quot;);
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Failed to compress system image: $status&quot;);
++		$kiwi -&gt; failed ();
++		$this -&gt; cleanTmp ();
++		return undef;
++	}
++	$kiwi -&gt; done();
++	$system = $system.&quot;.gz&quot;;
++	#==========================================
+ 	# Setup image basename
+ 	#------------------------------------------
+ 	my $namecd = basename ($system);
+ 	if ($gotsys) {
+-		if ($namecd !~ /(.*)-(\d+\.\d+\.\d+)\.raw$/) {
++		if ($namecd !~ /(.*)-(\d+\.\d+\.\d+)\.raw\.gz$/) {
+ 			$kiwi -&gt; error  (&quot;Couldn't extract version information&quot;);
+ 			$kiwi -&gt; failed ();
+ 			$this -&gt; cleanTmp ();
++			qxx ( &quot;$main::Gzip -d $system&quot; );
+ 			return undef;
+ 		}
+-		$ibasename = $1;
++		$ibasename = $1.&quot;.gz&quot;;
+ 	}
+ 	#==========================================
+ 	# Setup initrd for install purpose
+@@ -1251,6 +1273,7 @@
+ 	$initrd = $this -&gt; setupInstallFlags();
+ 	if (! defined $initrd) {
+ 		$this -&gt; cleanTmp ();
++		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		return undef;
+ 	}
+ 	#==========================================
+@@ -1260,6 +1283,7 @@
+ 	if (! $this -&gt; createBootStructure()) {
+ 		$this-&gt;{initrd} = $oldird;
+ 		$this -&gt; cleanTmp ();
++		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		return undef;
+ 	}
+ 	#==========================================
+@@ -1267,6 +1291,7 @@
+ 	#------------------------------------------
+ 	if (! $this -&gt; setupBootLoaderStages (&quot;grub&quot;,&quot;iso&quot;)) {
+ 		$this -&gt; cleanTmp ();
++		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		return undef;
+ 	}
+ 	qxx (&quot;rm -rf $tmpdir/usr 2&gt;&amp;1&quot;);
+@@ -1281,6 +1306,7 @@
+ 	}
+ 	if (! $this -&gt; setupBootLoaderConfiguration (&quot;grub&quot;,$title)) {
+ 		$this -&gt; cleanTmp ();
++		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		return undef;
+ 	}
+ 	#==========================================
+@@ -1295,8 +1321,21 @@
+ 			$kiwi -&gt; error  (&quot;Failed importing system image: $status&quot;);
+ 			$kiwi -&gt; failed ();
+ 			$this -&gt; cleanTmp ();
++			qxx ( &quot;$main::Gzip -d $system&quot; );
+ 			return undef;
+ 		}
++		$status = qxx (&quot;cp $md5name $tmpdir/$ibasename.md5 2&gt;&amp;1&quot;);
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Failed importing system md5 sum: $status&quot;);
++			$kiwi -&gt; failed ();
++			$this -&gt; cleanTmp ();
++			qxx ( &quot;$main::Gzip -d $system&quot; );
++			return undef;
++		}
++		qxx ( &quot;$main::Gzip -d $system&quot; );
++		$system =~ s/\.gz$//;
+ 		$kiwi -&gt; done();
+ 	}
+ 	#==========================================
+@@ -1354,6 +1393,7 @@
+ 	my $xengz     = $this-&gt;{xengz};
+ 	my $irdsize   = -s $initrd;
+ 	my $diskname  = $system.&quot;.install.raw&quot;;
++	my $md5name   = $system;
+ 	my %deviceMap = ();
+ 	my @commands  = ();
+ 	my $imgtype   = &quot;oem&quot;;
+@@ -1363,14 +1403,6 @@
+ 	my $ibasename;
+ 	my $tmpdir;
+ 	#==========================================
+-	# setup required disk size
+-	#------------------------------------------
+-	$irdsize= ($irdsize / 1e6) + 10;
+-	$irdsize= sprintf (&quot;%.0f&quot;, $irdsize);
+-	$vmsize = $this-&gt;{vmmbyte} + $irdsize;
+-	$vmsize = sprintf (&quot;%.0f&quot;, $vmsize);
+-	$vmsize = $vmsize.&quot;M&quot;;
+-	#==========================================
+ 	# create tmp directory
+ 	#------------------------------------------
+ 	$tmpdir = qxx ( &quot;mktemp -q -d /tmp/kiwistickinst.XXXXXX&quot; ); chomp $tmpdir;
+@@ -1460,17 +1492,47 @@
+ 	}
+ 	$this-&gt;{imgtype} = $imgtype;
+ 	#==========================================
++	# Build md5sum of system image
++	#------------------------------------------
++	$this -&gt; buildMD5Sum ($system);
++	#==========================================
++	# Compress system image
++	#------------------------------------------
++	$kiwi -&gt; info (&quot;Compressing installation image...&quot;);
++	$md5name=~ s/\.raw$/\.md5/;
++	$status = qxx (&quot;$main::Gzip $system 2&gt;&amp;1&quot;);
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Failed to compress system image: $status&quot;);
++		$kiwi -&gt; failed ();
++		$this -&gt; cleanTmp ();
++		return undef;
++	}
++	$kiwi -&gt; done();
++	$system = $system.&quot;.gz&quot;;
++	#==========================================
++	# setup required disk size
++	#------------------------------------------
++	$irdsize= ($irdsize / 1e6) + 10;
++	$irdsize= sprintf (&quot;%.0f&quot;, $irdsize);
++	$vmsize = -s $system;
++	$vmsize = ($vmsize / 1e6) * 1.1 + $irdsize;
++	$vmsize = sprintf (&quot;%.0f&quot;, $vmsize);
++	$vmsize = $vmsize.&quot;M&quot;;
++	#==========================================
+ 	# Setup image basename
+ 	#------------------------------------------
+ 	my $nameusb = basename ($system);
+ 	if ($gotsys) {
+-		if ($nameusb !~ /(.*)-(\d+\.\d+\.\d+)\.raw$/) {
++		if ($nameusb !~ /(.*)-(\d+\.\d+\.\d+)\.raw\.gz$/) {
+ 			$kiwi -&gt; error  (&quot;Couldn't extract version information&quot;);
+ 			$kiwi -&gt; failed ();
+ 			$this -&gt; cleanTmp ();
++			qxx ( &quot;$main::Gzip -d $system&quot; );
+ 			return undef;
+ 		}
+-		$ibasename = $1;
++		$ibasename = $1.&quot;.gz&quot;;
+ 	}
+ 	#==========================================
+ 	# Setup initrd for install purpose
+@@ -1478,6 +1540,7 @@
+ 	$initrd = $this -&gt; setupInstallFlags();
+ 	if (! defined $initrd) {
+ 		$this -&gt; cleanTmp ();
++		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		return undef;
+ 	}
+ 	$this-&gt;{initrd} = $initrd;
+@@ -1487,6 +1550,7 @@
+ 	if (! $this -&gt; createBootStructure(&quot;vmx&quot;)) {
+ 		$this-&gt;{initrd} = $oldird;
+ 		$this -&gt; cleanTmp ();
++		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		return undef;
+ 	}
+ 	#==========================================
+@@ -1494,6 +1558,7 @@
+ 	#------------------------------------------
+ 	if (! $this -&gt; setupBootLoaderStages (&quot;grub&quot;)) {
+ 		$this -&gt; cleanTmp ();
++		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		return undef;
+ 	}
+ 	#==========================================
+@@ -1505,6 +1570,7 @@
+ 	}
+ 	if (! $this -&gt; setupBootLoaderConfiguration (&quot;grub&quot;,$title)) {
+ 		$this -&gt; cleanTmp ();
++		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		return undef;
+ 	}
+ 	$this-&gt;{initrd} = $oldird;
+@@ -1519,6 +1585,7 @@
+ 		$kiwi -&gt; error  (&quot;Failed creating virtual disk: $status&quot;);
+ 		$kiwi -&gt; failed ();
+ 		$this -&gt; cleanTmp ();
++		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		return undef;
+ 	}
+ 	$kiwi -&gt; done();
+@@ -1526,6 +1593,7 @@
+ 	if (! $this -&gt; bindLoopDevice ($diskname)) {
+ 		$kiwi -&gt; failed ();
+ 		$this -&gt; cleanTmp ();
++		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		return undef;
+ 	}
+ 	$kiwi -&gt; done();
+@@ -1550,6 +1618,7 @@
+ 		$kiwi -&gt; error  (&quot;Couldn't create partition table&quot;);
+ 		$kiwi -&gt; failed ();
+ 		$this -&gt; cleanLoop();
++		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		return undef;
+ 	}
+ 	$kiwi -&gt; done();
+@@ -1568,6 +1637,7 @@
+ 		$kiwi -&gt; error  (&quot;Failed mapping virtual partition: $status&quot;);
+ 		$kiwi -&gt; failed ();
+ 		$this -&gt; cleanLoop ();
++		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		return undef;
+ 	}
+ 	my $boot = $deviceMap{1};
+@@ -1592,6 +1662,7 @@
+ 			$kiwi -&gt; error  (&quot;Failed creating filesystem: $status&quot;);
+ 			$kiwi -&gt; failed ();
+ 			$this -&gt; cleanLoop ();
++			qxx ( &quot;$main::Gzip -d $system&quot; );
+ 			return undef;
+ 		}
+ 		$kiwi -&gt; done();
+@@ -1607,6 +1678,7 @@
+ 		$kiwi -&gt; error  (&quot;Couldn't mount boot partition: $status&quot;);
+ 		$kiwi -&gt; failed ();
+ 		$this -&gt; cleanLoop ();
++		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		return undef;
+ 	}
+ 	$status = qxx (&quot;cp -a $tmpdir/boot $loopdir 2&gt;&amp;1&quot;);
+@@ -1616,6 +1688,7 @@
+ 		$kiwi -&gt; error  (&quot;Couldn't install boot data: $status&quot;);
+ 		$kiwi -&gt; failed ();
+ 		$this -&gt; cleanLoop ();
++		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		return undef;
+ 	}
+ 	qxx ( &quot;umount $loopdir 2&gt;&amp;1&quot; );
+@@ -1632,6 +1705,7 @@
+ 			$kiwi -&gt; error  (&quot;Couldn't mount data partition: $status&quot;);
+ 			$kiwi -&gt; failed ();
+ 			$this -&gt; cleanLoop ();
++			qxx ( &quot;$main::Gzip -d $system&quot; );
+ 			return undef;
+ 		}
+ 		$status = qxx (&quot;cp $system $loopdir/$ibasename 2&gt;&amp;1&quot;);
+@@ -1641,9 +1715,21 @@
+ 			$kiwi -&gt; error  (&quot;Failed importing system image: $status&quot;);
+ 			$kiwi -&gt; failed ();
+ 			$this -&gt; cleanLoop ();
++			qxx ( &quot;$main::Gzip -d $system&quot; );
+ 			return undef;
+ 		}
++		$status = qxx (&quot;cp $md5name $loopdir/$ibasename.md5 2&gt;&amp;1&quot;);
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Failed importing system md5 sum: $status&quot;);
++			$kiwi -&gt; failed ();
++			$this -&gt; cleanLoop ();
++			qxx ( &quot;$main::Gzip -d $system&quot; );
++			return undef;
++		}
+ 		qxx ( &quot;umount $loopdir 2&gt;&amp;1&quot; );
++		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		$kiwi -&gt; done();
+ 	}
+ 	#==========================================
+@@ -1771,15 +1857,6 @@
+ 		}
+ 	}
+ 	#==========================================
+-	# build bootfix for the bootloader on oem
+-	#------------------------------------------
+-	if ($initrd =~ /oemboot/) {
+-		my $oemtitle = $xml -&gt; getOEMBootTitle();
+-		if ($oemtitle) {
+-			$bootfix = $oemtitle;
+-		}
+-	}
+-	#==========================================
+ 	# build disk name and label from xml data
+ 	#------------------------------------------
+ 	$destdir  = dirname ($initrd);
+@@ -1791,6 +1868,16 @@
+ 	$this-&gt;{imgtype}  = $imgtype;
+ 	$this-&gt;{bootlabel}= $label;
+ 	#==========================================
++	# build bootfix for the bootloader on oem
++	#------------------------------------------
++	if ($initrd =~ /oemboot/) {
++		my $oemtitle = $xml -&gt; getOEMBootTitle();
++		if ($oemtitle) {
++			$this-&gt;{bootlabel} = $oemtitle;
++			$bootfix = &quot;OEM&quot;;
++		}
++	}
++	#==========================================
+ 	# check image split portion
+ 	#------------------------------------------
+ 	if ($imgtype eq &quot;split&quot;) {
+@@ -2218,26 +2305,33 @@
+ 	# Create image described by given format
+ 	#------------------------------------------
+ 	if (defined $format) {
+-		if ($format eq &quot;ovf&quot;) {
+-			$format = &quot;vmdk&quot;;
+-		}
+-		if ($format eq &quot;iso&quot;) {
+-			$this -&gt; {system} = $diskname;
+-			$kiwi -&gt; info (&quot;Creating install ISO image\n&quot;);
+-			$this -&gt; buildMD5Sum ($diskname);
+-			qxx (&quot;/sbin/losetup -d $this-&gt;{loop}&quot;);
+-			if (! $this -&gt; setupInstallCD()) {
+-				return undef;
++		if ($imgtype eq &quot;oem&quot;) {
++			#==========================================
++			# OEM formats...
++			#------------------------------------------
++			if ($format eq &quot;iso&quot;) {
++				$this -&gt; {system} = $diskname;
++				$kiwi -&gt; info (&quot;Creating install ISO image\n&quot;);
++				qxx (&quot;/sbin/losetup -d $this-&gt;{loop}&quot;);
++				if (! $this -&gt; setupInstallCD()) {
++					return undef;
++				}
+ 			}
+-		} elsif ($format eq &quot;usb&quot;) {
+-			$this -&gt; {system} = $diskname;
+-			$kiwi -&gt; info (&quot;Creating install USB Stick image\n&quot;);
+-			$this -&gt; buildMD5Sum ($diskname);
+-			qxx (&quot;/sbin/losetup -d $this-&gt;{loop}&quot;);
+-			if (! $this -&gt; setupInstallStick()) {
+-				return undef;
++			if ($format eq &quot;usb&quot;) {
++				$this -&gt; {system} = $diskname;
++				$kiwi -&gt; info (&quot;Creating install USB Stick image\n&quot;);
++				qxx (&quot;/sbin/losetup -d $this-&gt;{loop}&quot;);
++				if (! $this -&gt; setupInstallStick()) {
++					return undef;
++				}
+ 			}
+ 		} else {
++			#==========================================
++			# VMX formats...
++			#------------------------------------------
++			if ($format eq &quot;ovf&quot;) {
++				$format = &quot;vmdk&quot;;
++			}
+ 			$kiwi -&gt; info (&quot;Creating $format image&quot;);
+ 			my %vmwc  = ();
+ 			my $fname = $diskname;
+@@ -2384,7 +2478,7 @@
+ 			qxx (&quot;rm -rf $irddir&quot;);
+ 			return undef;
+ 		}
+-		print FD &quot;IMAGE=nope;$ibasename;$iversion\n&quot;;
++		print FD &quot;IMAGE=nope;$ibasename;$iversion;compressed\n&quot;;
+ 		close FD;
+ 	}
+ 	#==========================================
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWIConfig.sh
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWIConfig.sh	2009-02-26 09:36:46 UTC (rev 1928)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWIConfig.sh	2009-02-26 17:41:53 UTC (rev 1929)
+@@ -247,7 +247,7 @@
+ 	fi
+ 	if [ ! -z &quot;$kiwi_oemtitle&quot; ];then
+ 		echo &quot;Setting up OEM_BOOT_TITLE=$kiwi_oemtitle&quot;
+-		echo &quot;OEM_BOOT_TITLE=$kiwi_oemtitle&quot; &gt;&gt; $oemfile
++		echo &quot;OEM_BOOT_TITLE=\&quot;$kiwi_oemtitle\&quot;&quot; &gt;&gt; $oemfile
+ 	fi
+ 	if [ ! -z &quot;$kiwi_oemkboot&quot; ];then
+ 		echo &quot;Setting up OEM_KIWI_INITRD=$kiwi_oemkboot&quot;
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWIConfigure.pm
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWIConfigure.pm	2009-02-26 09:36:46 UTC (rev 1928)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWIConfigure.pm	2009-02-26 17:41:53 UTC (rev 1929)
+@@ -98,6 +98,15 @@
+ 		$kiwi -&gt; error  (&quot;Failed to create recovery archive: $status&quot;);
+ 		return undef;
+ 	}
++	$status = qxx (
++		&quot;tar -tf $root/recovery.tar.gz | wc -l &gt; $root/recovery.tar.files&quot;
++	);
++	$code = $? &gt;&gt; 8;
++	if ($code != 0) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Failed to create file count: $status&quot;);
++		return undef;
++	}
+ 	$kiwi -&gt; done ();
+ 	return $this;
+ }
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWILinuxRC.sh	2009-02-26 09:36:46 UTC (rev 1928)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWILinuxRC.sh	2009-02-26 17:41:53 UTC (rev 1929)
+@@ -123,12 +123,15 @@
+ 	while read line;do
+ 		echo $line | grep -qi &quot;^#&quot; &amp;&amp; continue
+ 		key=`echo &quot;$line&quot; | cut -d '=' -f1`
+-		item=`echo &quot;$line&quot; | cut -d '=' -f2- | tr -d &quot;\'&quot; | tr -d &quot;\&quot;&quot;`
++		item=`echo &quot;$line&quot; | cut -d '=' -f2-`
+ 		if [ -z &quot;$key&quot; ] || [ -z &quot;$item&quot; ];then
+ 			continue
+ 		fi
++		if ! echo $item | grep -E -q &quot;^(\&quot;|')&quot;;then
++			item=&quot;'&quot;$item&quot;'&quot;
++		fi
+ 		Debug &quot;$key=$item&quot;
+-		eval export &quot;$key\=\&quot;$item\&quot;&quot;
++		eval export &quot;$key\=$item&quot;
+ 	done
+ 	if [ ! -z &quot;$ERROR_INTERRUPT&quot; ];then
+ 		Echo -e &quot;$ERROR_INTERRUPT&quot;
+@@ -668,7 +671,7 @@
+ 	# ----
+ 	local mountPrefix=$1  # mount path of the image
+ 	local destsPrefix=$2  # base dir for the config files
+-	local gfix=$3         # grub title postfix
++	local gfix=$3         # grub title
+ 	local menu=$destsPrefix/boot/grub/menu.lst
+ 	local kernel=&quot;&quot;
+ 	local initrd=&quot;&quot;
+@@ -691,7 +694,7 @@
+ 	# create recovery entry
+ 	#--------------------------------------
+ 	if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+-		echo &quot;title Recovery [ $gfix ]&quot;               &gt;&gt; $menu
++		echo &quot;title _Recovery_&quot;                           &gt;&gt; $menu
+ 		gdev_recovery=&quot;(hd0,3)&quot;
+ 		rdev_recovery=$OEM_RECOVERY
+ 		diskByID=`getDiskID $rdev_recovery`
+@@ -728,7 +731,7 @@
+ 	local destsPrefix=$2  # base dir for the config files
+ 	local gnum=$3         # grub boot partition ID
+ 	local rdev=$4         # grub root partition
+-	local gfix=$5         # grub title postfix
++	local gfix=$5         # grub title
+ 	local swap=$6         # optional swap partition
+ 	local menu=$destsPrefix/boot/grub/menu.lst
+ 	local conf=$destsPrefix/etc/grub.conf
+@@ -752,19 +755,19 @@
+ 	#======================================
+ 	# check for grub device
+ 	#--------------------------------------
+-	if test -z $gnum;then
++	if [ -z &quot;$gnum&quot; ];then
+ 		gnum=1
+ 	fi
+ 	#======================================
+ 	# check for grub title postfix
+ 	#--------------------------------------
+-	if test -z $gfix;then
++	if [ -z &quot;$gfix&quot; ];then
+ 		gfix=&quot;unknown&quot;
+ 	fi
+ 	#======================================
+ 	# check for boot TIMEOUT
+ 	#--------------------------------------
+-	if test -z $KIWI_BOOT_TIMEOUT;then
++	if [ -z &quot;$KIWI_BOOT_TIMEOUT&quot; ];then
+ 		KIWI_BOOT_TIMEOUT=10;
+ 	fi
+ 	#======================================
+@@ -803,10 +806,13 @@
+ 			kernel=`echo $i | cut -f1 -d:`
+ 			initrd=`echo $i | cut -f2 -d:`
+ 			kname=${KERNEL_NAME[$count]}
+-			if [ -z &quot;$kiwi_iname&quot; ];then
+-				echo &quot;title $kname [ $gfix ]&quot;                     &gt;&gt; $menu
++			if ! echo $gfix | grep -E -q &quot;OEM|USB|VMX|unknown&quot;;then
++				echo &quot;title _&quot;&quot;$gfix&quot;&quot;_&quot;                          &gt;&gt; $menu
++			elif [ -z &quot;$kiwi_iname&quot; ];then
++				echo &quot;title _&quot;&quot;$kname&quot;&quot; [ &quot;$gfix&quot; ]_&quot;             &gt;&gt; $menu
+ 			else
+-				echo &quot;title $kiwi_iname-$kname [ $gfix ]&quot;         &gt;&gt; $menu
++				echo -n &quot;title _&quot;&quot;$kiwi_iname&quot;                    &gt;&gt; $menu
++				echo &quot;-&quot;&quot;$kname&quot;&quot; [ &quot;&quot;$gfix&quot;&quot; ]_&quot;                 &gt;&gt; $menu
+ 			fi
+ 			if [ $kernel = &quot;vmlinuz-xen&quot; ];then
+ 				echo &quot; root $gdev&quot;                                &gt;&gt; $menu
+@@ -834,10 +840,14 @@
+ 			#======================================
+ 			# create failsafe entry
+ 			#--------------------------------------
+-			if [ -z &quot;$kiwi_iname&quot; ];then
+-				echo &quot;title Failsafe -- $kname [ $gfix ]&quot;         &gt;&gt; $menu
++			if ! echo $gfix | grep -E -q &quot;OEM|USB|VMX|unknown&quot;;then
++				echo &quot;title _Failsafe -- &quot;&quot;$gfix&quot;&quot;_&quot;             &gt;&gt; $menu
++			elif [ -z &quot;$kiwi_iname&quot; ];then
++				echo -n &quot;title _Failsafe -- &quot;                    &gt;&gt; $menu
++				echo &quot;$kname&quot;&quot; [ &quot;&quot;$gfix&quot;&quot; ]_&quot;                   &gt;&gt; $menu
+ 			else
+-				echo &quot;title Failsafe -- $kiwi_iname-$kname [ $gfix ]&quot; &gt;&gt; $menu
++				echo -n &quot;title _Failsafe -- &quot;&quot;$kiwi_iname&quot;       &gt;&gt; $menu
++				echo &quot;-&quot;&quot;$kname&quot;&quot; [ &quot;&quot;$gfix&quot;&quot; ]_&quot;                &gt;&gt; $menu
+ 			fi
+ 			if [ $kernel = &quot;vmlinuz-xen&quot; ];then
+ 				echo &quot; root $gdev&quot;                                &gt;&gt; $menu
+@@ -866,9 +876,8 @@
+ 			# create recovery entry
+ 			#--------------------------------------
+ 			if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+-				echo &quot;title Recovery [ $gfix ]&quot;                   &gt;&gt; $menu
++				echo &quot;title _Recovery_&quot;                           &gt;&gt; $menu
+ 				echo &quot; rootnoverify (hd0,3)&quot;                      &gt;&gt; $menu
+-				echo &quot; makeactive&quot;                                &gt;&gt; $menu
+ 				echo &quot; chainloader +1&quot;                            &gt;&gt; $menu
+ 			fi
+ 			count=`expr $count + 1`
+@@ -909,7 +918,7 @@
+ 	local destsPrefix=$2  # base dir for the config files
+ 	local gnum=$3         # lilo boot partition ID
+ 	local bdev=$4         # lilo root partition
+-	local gfix=$5         # lilo title postfix
++	local gfix=$5         # lilo title
+ 	local swap=$6         # optional swap partition
+ 	local conf=$destsPrefix/etc/lilo.conf
+ 	local sysb=$destsPrefix/etc/sysconfig/bootloader
+@@ -927,9 +936,15 @@
+ 		importFile &lt; $mountPrefix/image/.profile
+ 	fi
+ 	#======================================
++	# check for grub title postfix
++	#--------------------------------------
++	if [ -z &quot;$gfix&quot; ];then
++		gfix=&quot;unknown&quot;
++	fi
++	#======================================
+ 	# check for boot TIMEOUT
+ 	#--------------------------------------
+-	if test -z $KIWI_BOOT_TIMEOUT;then
++	if [ -z &quot;$KIWI_BOOT_TIMEOUT&quot; ];then
+ 		KIWI_BOOT_TIMEOUT=10;
+ 	fi
+ 	#======================================
+@@ -962,10 +977,16 @@
+ 			echo -n &quot;###Don't change this comment - YaST2 identifier:&quot;
+ 			echo &quot; Original name: linux###&quot;
+ 			echo &quot;# kiwi_iname $kiwi_iname&quot;
+-			echo &quot;    label=kiwi$count&quot;
++			if ! echo $gfix | grep -E -q &quot;OEM|USB|VMX|unknown&quot;;then
++				echo &quot;label=\&quot;$gfix\&quot;&quot;
++			elif [ -z &quot;$kiwi_iname&quot; ];then
++				echo &quot;label=\&quot;$kname [ $gfix ]\&quot;&quot;
++			else
++				echo &quot;label=\&quot;$kiwi_iname-$kname [ $gfix ]\&quot;&quot;
++			fi
+ 			echo &quot;    initrd=/boot/$initrd&quot;
+ 			echo &quot;    append=\&quot;quiet sysrq=1 panic=9 $KIWI_INITRD_PARAMS\&quot;&quot;
+-			echo &quot;&quot;
++			echo
+ 			count=`expr $count + 1`
+ 		fi
+ 	done
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/rpm/kiwi.changes
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/rpm/kiwi.changes	2009-02-26 09:36:46 UTC (rev 1928)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/rpm/kiwi.changes	2009-02-26 17:41:53 UTC (rev 1929)
+@@ -2,6 +2,12 @@
+ Thu Feb 26 10:36:00 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed this path evaluation in upgrade mode
++- added md5 checksum test in OEM install mode (bnc #479842)
++- added progress information in recovery mode (bnc #479844)
++- fixed handling of oem-boot-title. If the title is set it
++  is prefered over the displayname attribute. Additionally
++  the given string is used as complete title name when oemboot
++  reconfigures the bootloader (bnc #479838)
+ 
+ -------------------------------------------------------------------
+ Tue Feb 24 10:57:26 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/oemboot/suse-dump
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/oemboot/suse-dump	2009-02-26 09:36:46 UTC (rev 1928)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/oemboot/suse-dump	2009-02-26 17:41:53 UTC (rev 1929)
+@@ -112,13 +112,16 @@
+ 	case $field in
+ 		0) field=1 ;; 
+ 		1) imageName=$n   ; field=2 ;;
+-		2) imageVersion=$n;
++		2) imageVersion=$n; field=3 ;;
++		3) imageZipped=$n ;
+ 	esac
+ 	done
+-	imageName=&quot;/cdrom/$imageName&quot;
+-	echo $imageName | grep -qE &quot;.gz$&quot;
+-	if [ $? = 0 ];then
+-		imageZipped=&quot;compressed&quot;
++	if [ &quot;$imageZipped&quot; = &quot;compressed&quot; ];then
++		imageName=&quot;/cdrom/$imageName.gz&quot;
++		imageMD5=&quot;/cdrom/$imageName.gz.md5&quot;
++	else
++		imageName=&quot;/cdrom/$imageName&quot;
++		imageMD5=&quot;/cdrom/$imageName.md5&quot;
+ 	fi
+ 	IFS=&quot; &quot;
+ 	#======================================
+@@ -135,11 +138,8 @@
+ 		test ! -p /dev/compressed_image &amp;&amp; mkfifo /dev/compressed_image
+ 		cat /dev/compressed_image | gzip -d &gt; $imageDevice 2&gt;/dev/null &amp;
+ 		imageDevice_orig=$imageDevice
+-		imageName_orig=$imageName
+ 		imageDevice=&quot;/dev/compressed_image&quot;
+-		imageName=&quot;$imageName.gz&quot;
+-		needBytes=`gzip -l $imageName \|
+-			tail -n1 | sed -e &quot;s@ \+@:@g&quot; | cut -f3 -d:`
++		needBytes=`gzip -l $imageName|tail -n1|sed -e &quot;s@ \+@:@g&quot;|cut -f3 -d:`
+ 		needKByte=`expr $needBytes / 1024`
+ 	fi
+ 	#======================================
+@@ -158,13 +158,17 @@
+ 	haveMByte=`expr $haveKByte / 1024`
+ 	needMByte=`expr $needKByte / 1024`
+ 	Echo &quot;Have size: $imageDevice -&gt; $haveMByte MB&quot;
+-	Echo &quot;Need size: $imageName -&gt; $needMByte MB [ uncompressed ]&quot;
++	Echo &quot;Need size: $imageName -&gt; $needMByte MB [ $imageZipped ]&quot;
+ 	if [ $needMByte -gt $haveMByte ];then
+ 		systemException \
+ 			&quot;Not enough space available for this image&quot; \
+ 		&quot;reboot&quot;
+ 	fi
+ 	#======================================
++	# read MD5 information...
++	#--------------------------------------
++	read sum1 blocks blocksize zblocks zblocksize &lt; $imageMD5
++	#======================================
+ 	# Dump image on disk
+ 	#--------------------------------------
+ 	Echo &quot;Loading $imageName [$imageDevice]...&quot;
+@@ -173,12 +177,25 @@
+ 			&quot;Failed to install image: $imageName -&gt; $imageDevice&quot; \
+ 		&quot;reboot&quot;
+ 	fi
+-	if test &quot;$imageZipped&quot; = &quot;compressed&quot;; then
++	if [ &quot;$imageZipped&quot; = &quot;compressed&quot; ]; then
+ 		imageDevice=$imageDevice_orig
+-		imageName=$imageName_orig
+ 		rm -f /dev/compressed_image
+ 	fi
+ 	#======================================
++	# Check the md5sum of the raw disk
++	#--------------------------------------
++	Echo &quot;Download complete, checking data...&quot;
++	dd if=$imageDevice bs=1024 2&gt;/dev/null |\
++		head --bytes=$((blocks * blocksize)) |\
++		md5sum - &gt; /etc/ireal.md5
++	read sum2 dumy &lt; /etc/ireal.md5
++	if [ $sum1 != $sum2 ];then
++		systemException \
++			&quot;Image checksum test failed&quot; \
++		&quot;reboot&quot;
++	fi
++	Echo &quot;Image checksum test: fine :-)&quot;
++	#======================================
+ 	# Umount CD/DVD USB
+ 	#--------------------------------------
+ 	umount /cdrom
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/oemboot/suse-linuxrc
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/oemboot/suse-linuxrc	2009-02-26 09:36:46 UTC (rev 1928)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/oemboot/suse-linuxrc	2009-02-26 17:41:53 UTC (rev 1929)
+@@ -268,9 +268,15 @@
+ 	#--------------------------------------
+ 	Echo &quot;Restoring base operating system...&quot;
+ 	cd /mnt
+-	if ! tar -xvf /reco-save/recovery.tar.gz 1&gt;&amp;2;then
+-		systemException &quot;Failed to restore recovery archive&quot; &quot;reboot&quot;
+-	fi
++	rFiles=$(cat /reco-save/recovery.tar.files)
++	tar -xvf /reco-save/recovery.tar.gz &gt;/tmp/rFiles &amp;
++	rPID=$!
++	while kill -0 $rPID &amp;&gt;/dev/null;do
++		rReady=$(cat /tmp/rFiles | wc -l)
++		Echo -e -n &quot;$rReady files from $rFiles restored...\r&quot;
++		sleep 1
++	done
++	echo
+ 	#======================================
+ 	# 16.3) restore boot files
+ 	#--------------------------------------
+@@ -395,7 +401,7 @@
+ 	fi
+ 	setupBootLoader \
+ 		/mnt /config $bootid $imageRootDevice \
+-		$OEM_BOOT_TITLE $imageSwapDevice
++		&quot;$OEM_BOOT_TITLE&quot; $imageSwapDevice
+ 	setupKernelModules /config
+ fi
+ 
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/oemboot/suse-repart
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/oemboot/suse-repart	2009-02-26 09:36:46 UTC (rev 1928)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/system/boot/ix86/oemboot/suse-repart	2009-02-26 17:41:53 UTC (rev 1929)
+@@ -671,6 +671,9 @@
+ 		if ! mv /reco-root/recovery.tar.gz /reco-save &gt;/dev/null;then
+ 			systemException &quot;Failed to move recovery archive&quot; &quot;reboot&quot;
+ 		fi
++		if ! mv /reco-root/recovery.tar.files /reco-save &gt;/dev/null;then
++			systemException &quot;Failed to move recovery file count&quot; &quot;reboot&quot;
++		fi
+ 		mkdir /reco-save/boot
+ 		if ! cp /reco-root/boot/initrd.vmx /reco-save/boot/initrd;then
+ 			systemException &quot;Failed to copy recovery initrd&quot; &quot;reboot&quot;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001050.html">[Kiwi-devel] r1928 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel:	modules rpm
+</A></li>
+	<LI>Next message: <A HREF="001052.html">[Kiwi-devel] r1930 - in kiwi-head: . modules rpm	system/boot/ix86/oemboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1051">[ date ]</a>
+              <a href="thread.html#1051">[ thread ]</a>
+              <a href="subject.html#1051">[ subject ]</a>
+              <a href="author.html#1051">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,210 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4b27c0da2d5f8dc8a37f325f960be5a8f48efd8f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204b27c0da2d5f8dc8a37f325f960be5a8f48efd8f&In-Reply-To=%3C20101109141916.AC88A481122%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002787.html">
+   <LINK REL="Next"  HREF="002789.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4b27c0da2d5f8dc8a37f325f960be5a8f48efd8f</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204b27c0da2d5f8dc8a37f325f960be5a8f48efd8f&In-Reply-To=%3C20101109141916.AC88A481122%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4b27c0da2d5f8dc8a37f325f960be5a8f48efd8f">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Nov  9 15:19:16 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002787.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9030deb07979c7eeecf65a339b1d32cee0c72410
+</A></li>
+        <LI>Next message: <A HREF="002789.html">[Kiwi-devel] some refactoring in Image.pm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2788">[ date ]</a>
+              <a href="thread.html#2788">[ thread ]</a>
+              <a href="subject.html#2788">[ subject ]</a>
+              <a href="author.html#2788">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  4b27c0da2d5f8dc8a37f325f960be5a8f48efd8f (commit)
+       via  7f9699858855c76516221024bd447f162211490b (commit)
+      from  9030deb07979c7eeecf65a339b1d32cee0c72410 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 4b27c0da2d5f8dc8a37f325f960be5a8f48efd8f
+Merge: 7f96998 9030deb
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Nov 9 15:19:24 2010 +0100
+
+    Merge branch 'master' of <A HREF="ssh://git.berlios.de/gitroot/kiwi">ssh://git.berlios.de/gitroot/kiwi</A>
+
+commit 7f9699858855c76516221024bd447f162211490b
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Nov 9 14:58:40 2010 +0100
+
+    - netboot: added support for hardware maps. Hardware maps are
+      configuration files for a given range of MAC addresses. If a client
+      of the specified range boots up the corresponding hardware map
+      file will be loaded and merged with the default configuration.
+      That way you can specify in one config file configurations dedicated
+      to different machines. Example config.&lt;MAC&gt;
+    
+      ...
+      HARDWARE_MAP=&quot;vendor1, vendor2, vendor3&quot;
+      vendor1_HARDWARE_MAP=&quot;xx:xx:xx:xx:xx:x1, xx:xx:xx:xx:xx:x2&quot;
+      ...
+    
+      if client xx:xx:xx:xx:xx:x1 boots up the file hardware_config.vendor1
+      is additionally loaded from the pxe boot server
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 804c87b..6743cbd 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -4423,6 +4423,55 @@ function searchAlternativeConfig {
+ 	fi
+ }
+ #======================================
++# searchHardwareMapConfig
++#--------------------------------------
++function searchHardwareMapConfig {
++	local list_var
++	local mac_list
++	Echo &quot;Found hardware/vendor map configuration variable&quot;
++	Debug &quot;HARDWARE_MAP = '$HARDWARE_MAP'&quot;
++	#===========================================
++	# Evaluate the MAP list, and test for hwaddr
++	#-------------------------------------------
++	for i in `echo &quot;$HARDWARE_MAP&quot; | sed 's/,/ /g' | sed 's/[ \t]+/ /g'`; do
++		Echo &quot;Lookup MAC address: $localhwaddr in ${i}_HARDWARE_MAP&quot;
++		eval list_var=&quot;${i}_HARDWARE_MAP&quot;
++		eval mac_list=\$$list_var
++		Debug &quot;${i}_HARDWARE_MAP = '$mac_list'&quot;
++		searchHardwareMapHardwareAddress $i &quot;$mac_list&quot;
++		if [ -s $CONFIG ]; then
++			break
++		fi
++		unset list_var
++		unset mac_list
++	done
++}
++#======================================
++# searchHardwareMapHardwareAddress
++#--------------------------------------
++function searchHardwareMapHardwareAddress {
++	local HARDWARE_CONFIG=/etc/config.hardware
++	local localhwaddr=$DHCPCHADDR
++	local hardware_group=$1
++	local mac_list=$2
++	Debug &quot;hardware_group = '$hardware_group'&quot;
++	Debug &quot;mac_list = '$mac_list'&quot;
++	for j in `echo &quot;$mac_list&quot; | sed 's/,/ /g' | sed 's/[ \t]+/ /g'`; do
++		if [ &quot;$localhwaddr&quot; = &quot;$j&quot; ] ; then
++			Echo &quot;MAC address $localhwaddr found in group $hardware_group&quot;
++			Echo &quot;Checking for config file: hardware_config.$hardware_group&quot;
++			fetchFile KIWI/hardware_config.$hardware_group $HARDWARE_CONFIG
++			if [ ! -s $HARDWARE_CONFIG ]; then
++				systemException \
++					&quot;No configuration found for $j&quot; \
++				&quot;reboot&quot;
++			fi
++			importFile &lt; $HARDWARE_CONFIG
++			break
++		fi
++	done
++}
++#======================================
+ # runHook
+ #--------------------------------------
+ function runHook {
+diff --git a/system/boot/ix86/netboot/suse-linuxrc b/system/boot/ix86/netboot/suse-linuxrc
+index d5b43e8..5f55b8f 100755
+--- a/system/boot/ix86/netboot/suse-linuxrc
++++ b/system/boot/ix86/netboot/suse-linuxrc
+@@ -254,6 +254,12 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 		searchAlternativeConfig
+ 	fi
+ 	#======================================
++	# Check for Hardware Map Config
++	#--------------------------------------
++	if [ -n &quot;$HARDWARE_MAP&quot; ];then
++		searchHardwareMapConfig
++	fi
++	#======================================
+ 	# try to import configuration
+ 	#--------------------------------------
+ 	IMPORTED=0
+@@ -306,6 +312,9 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 			if test ! -s $CONFIG;then
+ 				searchAlternativeConfig
+ 			fi
++			if [ -n &quot;$HARDWARE_MAP&quot; ];then
++				searchHardwareMapConfig
++			fi
+ 			test -s $CONFIG || {
+ 				Echo &quot;Couldn't get image configuration&quot;
+ 				Echo &quot;sleeping [60 sec]...&quot;
+@@ -795,10 +804,10 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 		fetchFile $configSource /config/$configDest uncomp $configServer
+ 	done
+ 	IFS=$IFS_ORIG
++	#======================================
++	# Check for KIWI_INITRD
++	#--------------------------------------
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+-		#======================================
+-		# Check for KIWI_INITRD
+-		#--------------------------------------
+ 		if [ ! -z $KIWI_INITRD ];then
+ 			Echo &quot;Import KIWI initrd file: $KIWI_INITRD&quot;
+ 			rm -f /mnt/boot/initrd* &amp;&amp; mkdir -p /mnt/boot &gt;/dev/null 2&gt;&amp;1
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002787.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9030deb07979c7eeecf65a339b1d32cee0c72410
+</A></li>
+	<LI>Next message: <A HREF="002789.html">[Kiwi-devel] some refactoring in Image.pm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2788">[ date ]</a>
+              <a href="thread.html#2788">[ thread ]</a>
+              <a href="subject.html#2788">[ subject ]</a>
+              <a href="author.html#2788">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

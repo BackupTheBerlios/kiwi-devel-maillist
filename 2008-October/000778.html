@@ -1,0 +1,134 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1687 - in kiwi-head: rpm tools/satplugin
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1687%20-%20in%20kiwi-head%3A%20rpm%20tools/satplugin&In-Reply-To=%3C200810271523.m9RFNvIa024577%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000777.html">
+   <LINK REL="Next"  HREF="000780.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1687 - in kiwi-head: rpm tools/satplugin</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1687%20-%20in%20kiwi-head%3A%20rpm%20tools/satplugin&In-Reply-To=%3C200810271523.m9RFNvIa024577%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1687 - in kiwi-head: rpm tools/satplugin">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Oct 27 16:23:57 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000777.html">[Kiwi-devel] r1686 - kiwi-head
+</A></li>
+        <LI>Next message: <A HREF="000780.html">[Kiwi-devel] r1688 - in	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel: . modules	rpm tools/satplugin
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#778">[ date ]</a>
+              <a href="thread.html#778">[ thread ]</a>
+              <a href="subject.html#778">[ subject ]</a>
+              <a href="author.html#778">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-27 16:22:52 +0100 (Mon, 27 Oct 2008)
+New Revision: 1687
+
+Modified:
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+   kiwi-head/tools/satplugin/SaT.i
+Log:
+
+- fixed build and warnings
+
+
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-27 14:45:42 UTC (rev 1686)
++++ kiwi-head/rpm/kiwi.changes	2008-10-27 15:22:52 UTC (rev 1687)
+@@ -5,6 +5,7 @@
+ - fixed SaT plugin due to API changes (bnc #436249)
+ - added the same padding to tagmedia as used with mkisofs
+   by default this are 150 sectors (bnc #434563)
++- fixed build and warnings
+ 
+ -------------------------------------------------------------------
+ Wed Oct 22 15:43:26 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-10-27 14:45:42 UTC (rev 1686)
++++ kiwi-head/rpm/kiwi.spec	2008-10-27 15:22:52 UTC (rev 1687)
+@@ -343,9 +343,9 @@
+ %endif
+ #install
+ cd $RPM_BUILD_DIR/kiwi
+-mkdir -p $RPM_BUILD_ROOT/etc/permissions.d
+-echo &quot;/srv/tftpboot/upload root:root 0755&quot; \
+-	&gt; $RPM_BUILD_ROOT/etc/permissions.d/kiwi
++#mkdir -p $RPM_BUILD_ROOT/etc/permissions.d
++#echo &quot;/srv/tftpboot/upload/ root:root 0755&quot; \
++#	&gt; $RPM_BUILD_ROOT/etc/permissions.d/kiwi
+ make buildroot=$RPM_BUILD_ROOT \
+      doc_prefix=$RPM_BUILD_ROOT/%{_defaultdocdir} \
+      man_prefix=$RPM_BUILD_ROOT/%{_mandir} \
+@@ -434,7 +434,7 @@
+ %files -n kiwi-pxeboot -f kiwi.loader
+ %defattr(-, root, root)
+ %doc /srv/tftpboot/README
+-%config /etc/permissions.d/kiwi
++#%config /etc/permissions.d/kiwi
+ %dir /srv/tftpboot
+ %dir /srv/tftpboot/KIWI
+ %dir /srv/tftpboot/pxelinux.cfg
+
+Modified: kiwi-head/tools/satplugin/SaT.i
+===================================================================
+--- kiwi-head/tools/satplugin/SaT.i	2008-10-27 14:45:42 UTC (rev 1686)
++++ kiwi-head/tools/satplugin/SaT.i	2008-10-27 15:22:52 UTC (rev 1687)
+@@ -244,8 +244,12 @@
+         Solver* solv = self;
+         char name[]  = &quot;/tmp/sat-XXXXXX&quot;;
+         char* result = (char*)malloc(strlen(name));
++        memset (result,'\0',strlen(name));
+         int origout;
+-        mkstemp (name);
++        int status = mkstemp (name);
++        if (status == -1) {
++            return result;
++        }
+         origout = dup2 (1,origout);
+         FILE* fp = freopen(name,&quot;w&quot;,stdout);
+         solver_printsolutions(solv, job);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000777.html">[Kiwi-devel] r1686 - kiwi-head
+</A></li>
+	<LI>Next message: <A HREF="000780.html">[Kiwi-devel] r1688 - in	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel: . modules	rpm tools/satplugin
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#778">[ date ]</a>
+              <a href="thread.html#778">[ thread ]</a>
+              <a href="subject.html#778">[ subject ]</a>
+              <a href="author.html#778">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

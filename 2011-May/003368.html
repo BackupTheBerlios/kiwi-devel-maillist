@@ -1,0 +1,285 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 606453f0187e19657da4e2f4b718091bdce54b92
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20606453f0187e19657da4e2f4b718091bdce54b92&In-Reply-To=%3C20110502135041.5566E481273%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003367.html">
+   <LINK REL="Next"  HREF="003369.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 606453f0187e19657da4e2f4b718091bdce54b92</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20606453f0187e19657da4e2f4b718091bdce54b92&In-Reply-To=%3C20110502135041.5566E481273%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 606453f0187e19657da4e2f4b718091bdce54b92">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon May  2 15:50:41 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003367.html">[Kiwi-devel] move some code
+</A></li>
+        <LI>Next message: <A HREF="003369.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 16504163b37d2a38b56b2757216559bf4400c3e7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3368">[ date ]</a>
+              <a href="thread.html#3368">[ thread ]</a>
+              <a href="subject.html#3368">[ subject ]</a>
+              <a href="author.html#3368">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  606453f0187e19657da4e2f4b718091bdce54b92 (commit)
+      from  52eb170ca8aa9b809c3849e673f8e7e291c129c7 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 606453f0187e19657da4e2f4b718091bdce54b92
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon May 2 15:38:37 2011 +0200
+
+    - move the createTmpDirectory code from the XML object to the Locator.
+      Creating a directory really has nothing to do with XML processing,
+      the Locator now handles local file system interaction, thus this
+      is a better place.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index a2f9b64..4a7373a 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -2734,7 +2734,7 @@ sub createInstSource {
+ 	#==========================================
+ 	# Initialize installation source tree
+ 	#------------------------------------------
+-	my $root = $xml -&gt; createTmpDirectory ( undef, $RootTree );
++	my $root = $locator -&gt; createTmpDirectory ( undef, $RootTree );
+ 	if (! defined $root) {
+ 		$kiwi -&gt; error (&quot;Couldn't create instsource root&quot;);
+ 		$kiwi -&gt; failed ();
+diff --git a/modules/KIWILocator.pm b/modules/KIWILocator.pm
+index 8e758cb..0d4083f 100644
+--- a/modules/KIWILocator.pm
++++ b/modules/KIWILocator.pm
+@@ -8,8 +8,8 @@
+ #               :
+ # BELONGS TO    : Operating System images
+ #               :
+-# DESCRIPTION   : This module is used to perform operation to locate
+-#               : objects needed by Kiwi in the filesystem
++# DESCRIPTION   : This module is used to perform operations
++#               : on the local filesystem
+ #               :
+ # STATUS        : Development
+ #----------------
+@@ -27,7 +27,7 @@ use KIWIQX;
+ # Exports
+ #------------------------------------------
+ our @ISA    = qw (Exporter);
+-our @EXPORT = qw (getExecPath getControlFile );
++our @EXPORT = qw (createTmpDirectory getExecPath getControlFile );
+ 
+ #==========================================
+ # Constructor
+@@ -61,6 +61,61 @@ sub new {
+ }
+ 
+ #==========================================
++# createTmpDirectory
++#------------------------------------------
++sub createTmpDirectory {
++	my $this          = shift;
++	my $useRoot       = shift;
++	my $selfRoot      = shift;
++	my $rootError     = 1;
++	my $root;
++	my $code;
++	my $kiwi = $this-&gt;{kiwi};
++	if (! defined $useRoot) {
++		if (! defined $selfRoot) {
++			$root = qxx (&quot; mktemp -q -d /tmp/kiwi.XXXXXX &quot;);
++			$code = $? &gt;&gt; 8;
++			if ($code == 0) {
++				$rootError = 0;
++			}
++			chomp $root;
++		} else {
++			$root = $selfRoot;
++			rmdir $root;
++			if ( -e $root &amp;&amp; -d $root &amp;&amp; $main::ForceNewRoot ) {
++				$kiwi -&gt; info (&quot;Removing old root directory '$root'&quot;);
++				if (-e $root.&quot;/base-system&quot;) {
++					$kiwi -&gt; failed();
++					$kiwi -&gt; info  (&quot;Mount point /base-system exists&quot;);
++					$kiwi -&gt; failed();
++					return undef;
++				}
++				qxx (&quot;rm -R $root&quot;);
++				$kiwi -&gt; done();
++			}
++			if (mkdir $root) {
++				$rootError = 0;
++			}
++		}
++	} else {
++		if (-d $useRoot) {
++			$root = $useRoot;
++			$rootError = 0;
++		}
++	}
++	if ( $rootError ) {
++		if ($kiwi -&gt; trace()) {
++			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
++		}
++		return undef;
++	}
++	if ( $rootError ) {
++		return undef;
++	}
++	return $root;
++}
++
++#==========================================
+ # getControlFile
+ #------------------------------------------
+ sub getControlFile {
+diff --git a/modules/KIWIRoot.pm b/modules/KIWIRoot.pm
+index ecccf8c..e898ea8 100644
+--- a/modules/KIWIRoot.pm
++++ b/modules/KIWIRoot.pm
+@@ -23,11 +23,12 @@ use Carp qw (cluck);
+ use File::Glob ':glob';
+ use File::Find;
+ use FileHandle;
+-use KIWIURL;
++use KIWIConfigure;
++use KIWILocator;
+ use KIWILog;
+ use KIWIManager;
+-use KIWIConfigure;
+ use KIWIQX;
++use KIWIURL;
+ 
+ #==========================================
+ # Constructor
+@@ -190,7 +191,8 @@ sub new {
+ 	#==========================================
+ 	# Create root directory
+ 	#------------------------------------------
+-	my $root = $xml -&gt; createTmpDirectory (
++	my $locator = new KIWILocator ($this -&gt; {kiwi});
++	my $root = $locator -&gt; createTmpDirectory (
+ 		$useRoot,$selfRoot
+ 	);
+ 	if ( ! defined $root ) {
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 2721184..b783380 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -3420,61 +3420,6 @@ sub resolveArchitectur {
+ }
+ 
+ #==========================================
+-# createTmpDirectory
+-#------------------------------------------
+-sub createTmpDirectory {
+-	my $this          = shift;
+-	my $useRoot       = shift;
+-	my $selfRoot      = shift;
+-	my $rootError     = 1;
+-	my $root;
+-	my $code;
+-	my $kiwi = $this-&gt;{kiwi};
+-	if (! defined $useRoot) {
+-		if (! defined $selfRoot) {
+-			$root = qxx (&quot; mktemp -q -d /tmp/kiwi.XXXXXX &quot;);
+-			$code = $? &gt;&gt; 8;
+-			if ($code == 0) {
+-				$rootError = 0;
+-			}
+-			chomp $root;
+-		} else {
+-			$root = $selfRoot;
+-			rmdir $root;
+-			if ( -e $root &amp;&amp; -d $root &amp;&amp; $main::ForceNewRoot ) {
+-				$kiwi -&gt; info (&quot;Removing old root directory '$root'&quot;);
+-				if (-e $root.&quot;/base-system&quot;) {
+-					$kiwi -&gt; failed();
+-					$kiwi -&gt; info  (&quot;Mount point /base-system exists&quot;);
+-					$kiwi -&gt; failed();
+-					return undef;
+-				}
+-				qxx (&quot;rm -R $root&quot;);
+-				$kiwi -&gt; done();
+-			}
+-			if (mkdir $root) {
+-				$rootError = 0;
+-			}
+-		}
+-	} else {
+-		if (-d $useRoot) { 
+-			$root = $useRoot;
+-			$rootError = 0;
+-		}
+-	}
+-	if ( $rootError ) {
+-		if ($kiwi -&gt; trace()) {
+-			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+-		}
+-		return undef;
+-	}
+-	if ( $rootError ) {
+-		return undef;
+-	}
+-	return $root;
+-}
+-
+-#==========================================
+ # getInstSourceFile
+ #------------------------------------------
+ sub getInstSourceFile {
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003367.html">[Kiwi-devel] move some code
+</A></li>
+	<LI>Next message: <A HREF="003369.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 16504163b37d2a38b56b2757216559bf4400c3e7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3368">[ date ]</a>
+              <a href="thread.html#3368">[ thread ]</a>
+              <a href="subject.html#3368">[ subject ]</a>
+              <a href="author.html#3368">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

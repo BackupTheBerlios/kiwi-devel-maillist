@@ -1,0 +1,867 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 96ca08b1b03e3ed30c71e59d60f0d160f823910d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2096ca08b1b03e3ed30c71e59d60f0d160f823910d&In-Reply-To=%3C20110524114138.E7B4148137E%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003458.html">
+   <LINK REL="Next"  HREF="003460.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 96ca08b1b03e3ed30c71e59d60f0d160f823910d</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2096ca08b1b03e3ed30c71e59d60f0d160f823910d&In-Reply-To=%3C20110524114138.E7B4148137E%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 96ca08b1b03e3ed30c71e59d60f0d160f823910d">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue May 24 13:41:38 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003458.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9cbb2adca3ec0659bcbd7c0284d36be3c4824f73
+</A></li>
+        <LI>Next message: <A HREF="003460.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e58fdd8191dba1816ad0978254c100269383b92e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3459">[ date ]</a>
+              <a href="thread.html#3459">[ thread ]</a>
+              <a href="subject.html#3459">[ subject ]</a>
+              <a href="author.html#3459">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  96ca08b1b03e3ed30c71e59d60f0d160f823910d (commit)
+       via  87f6b3871a73a31ff5039b98c125b519eb7599e9 (commit)
+      from  9cbb2adca3ec0659bcbd7c0284d36be3c4824f73 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 96ca08b1b03e3ed30c71e59d60f0d160f823910d
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue May 24 13:28:23 2011 +0200
+
+    - eliminate use of global variable: ImageDescription
+    - pass commandline object reference (cmdL) to KIWIXML objects
+      and from there to KIWIURL objects.
+
+commit 87f6b3871a73a31ff5039b98c125b519eb7599e9
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue May 24 12:33:25 2011 +0200
+
+    - eliminate use of global vars: ImageCache and RecycleRoot
+    - added check for global object in constructors
+    - added perl-RPMQ as requirement for kiwi-instsource
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 0269a58..c060c75 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -61,6 +61,7 @@ our $BT;
+ #--------------------------------------------
+ our $global  = new KIWIGlobals();
+ our $locator = new KIWILocator();
++our $kiwi;
+ 
+ #============================================
+ # Variables (operation mode)
+@@ -69,7 +70,6 @@ my $migrate;    # Migration
+ my $kic;        # Image preparation / creation
+ my $icache;     # Image Cache creation
+ my $cmdL;       # Command line data container
+-my $kiwi;       # logger object
+ 
+ #============================================
+ # Globals
+@@ -80,7 +80,6 @@ our $RootTree;              # optional root tree destination
+ our $BootVMSystem;          # system image to be copied on a VM disk
+ our $BootVMSize;            # size of virtual disk
+ our $StripImage;            # strip shared objects and binaries
+-our $ImageCache;            # build an image cache for later re-use
+ our @ProfilesOrig;          # copy of original Profiles option value 
+ our $PrebuiltBootImage;     # directory where a prepared boot image may be found
+ our $ISOCheck;              # create checkmedia boot entry
+@@ -88,8 +87,6 @@ our $CheckKernel;           # check for kernel matches in boot and system image
+ our $LVM;                   # use LVM partition setup for virtual disk
+ our $GrubChainload;         # install grub loader in first partition not MBR
+ our %XMLChangeSet;          # internal data set for update of XML objects
+-our $ImageDescription;      # uniq path to image description due to caller opts
+-our $RecycleRoot;           # use existing root directory incl. contents
+ our $FatStorage;            # specify size of fat partition if syslinux is used
+ 
+ #==========================================
+@@ -166,9 +163,8 @@ sub main {
+ 		#==========================================
+ 		# Setup create 
+ 		#------------------------------------------
+-		$ImageDescription = $rootTarget;
+ 		$cmdL -&gt; setImagetargetDir ($Destination);
+-		$cmdL -&gt; setConfigDir ($ImageDescription);
++		$cmdL -&gt; setConfigDir ($rootTarget);
+ 		$cmdL -&gt; setForceNewRoot (0);
+ 		$kic  -&gt; initialize();
+ 		if (! $kic -&gt; createImage ($kiwi,$cmdL)) {
+@@ -187,7 +183,7 @@ sub main {
+ 		$kiwi -&gt; info (&quot;Reading image description [Cache]...\n&quot;);
+ 		my $xml = new KIWIXML (
+ 			$kiwi,$cmdL-&gt;getOperationMode(&quot;initCache&quot;),
+-			undef,$cmdL-&gt;getBuildProfiles()
++			undef,$cmdL-&gt;getBuildProfiles(),$cmdL
+ 		);
+ 		if (! defined $xml) {
+ 			kiwiExit (1);
+@@ -199,7 +195,7 @@ sub main {
+ 		#==========================================
+ 		# Create cache(s)...
+ 		#------------------------------------------
+-		my $cdir = $ImageCache;
++		my $cdir = $cmdL-&gt;getCacheDir();
+ 		if (! $cdir) {
+ 			$cdir = $locator -&gt; getDefaultCacheDir();
+ 		}
+@@ -642,6 +638,8 @@ sub init {
+ 	my $Format;                # format to convert to, vmdk, ovf, etc...
+ 	my $defaultAnswer;         # default answer to any questions
+ 	my $targetDevice;          # alternative device instead of a loop device
++	my $ImageCache;            # build an image cache for later re-use
++	my $RecycleRoot;           # use existing root directory incl. contents
+ 	my $PackageManager;        # package manager to use
+ 	my $Version;               # version information
+ 	#==========================================
+@@ -935,7 +933,6 @@ sub init {
+ 	# check if recycle-root is used
+ 	#----------------------------------------
+ 	if (defined $RecycleRoot) {
+-		$RecycleRoot = $RootTree;
+ 		$cmdL -&gt; setRootRecycle();
+ 	}
+ 	#============================================
+@@ -984,16 +981,13 @@ sub init {
+ 	# store uniq path to image description
+ 	#----------------------------------------
+ 	if (defined $Prepare) {
+-		$ImageDescription = $Prepare;
+-		$cmdL -&gt; setConfigDir ($ImageDescription);
++		$cmdL -&gt; setConfigDir ($Prepare);
+ 	}
+ 	if (defined $Upgrade) {
+-		$ImageDescription = $Upgrade;
+-		$cmdL -&gt; setConfigDir ($ImageDescription);
++		$cmdL -&gt; setConfigDir ($Upgrade);
+ 	}
+ 	if (defined $Create) {
+-		$ImageDescription = $Create;
+-		$cmdL -&gt; setConfigDir ($ImageDescription);
++		$cmdL -&gt; setConfigDir ($Create);
+ 	}
+ 	#========================================
+ 	# store operation modes
+@@ -1040,6 +1034,9 @@ sub init {
+ 	if (defined $TestImage) {
+ 		$cmdL -&gt; setOperationMode (&quot;testImage&quot;,$TestImage);
+ 	}
++	if (defined $ListXMLInfo) {
++		$cmdL -&gt; setOperationMode (&quot;listXMLInfo&quot;,$ListXMLInfo);
++	}
+ 	#========================================
+ 	# store original value of Profiles
+ 	#----------------------------------------
+@@ -1471,7 +1468,7 @@ sub listImage {
+ 		if ($controlFile) {
+ 			$kiwi -&gt; info ($image);
+ 			my $xml = new KIWIXML (
+-				$kiwi,$system.&quot;/&quot;.$image,undef,undef
++				$kiwi,$system.&quot;/&quot;.$image,undef,undef,$cmdL
+ 			);
+ 			if (! $xml) {
+ 				next;
+@@ -1834,7 +1831,7 @@ sub createInstSource {
+ 	}
+ 	$kiwi -&gt; info (&quot;Reading image description [InstSource]...\n&quot;);
+ 	my $xml = new KIWIXML (
+-		$kiwi,$idesc,undef,undef
++		$kiwi,$idesc,undef,undef,$cmdL
+ 	);
+ 	if (! defined $xml) {
+ 		kiwiExit (1);
+@@ -1855,7 +1852,7 @@ sub createInstSource {
+ 	#==========================================
+ 	# Create object...
+ 	#------------------------------------------
+-	my $collect = new KIWICollect ( $kiwi, $xml, $root, $vlevel );
++	my $collect = new KIWICollect ( $kiwi, $xml, $root, $vlevel,$cmdL );
+ 	if (! defined( $collect) ) {
+ 		$kiwi -&gt; error( &quot;Unable to create KIWICollect module.&quot; );
+ 		$kiwi -&gt; failed ();
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 20927b7..a87f920 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -207,6 +207,11 @@ sub new {
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+ 	}
++	if (! $main::global) {
++		$kiwi -&gt; error  (&quot;Globals object not found&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
+ 	#==========================================
+ 	# Store object data (1)
+ 	#------------------------------------------
+@@ -236,7 +241,7 @@ sub new {
+ 				return undef;
+ 			}
+ 			$xml = new KIWIXML (
+-				$kiwi,$system.&quot;/image&quot;,$cmdL-&gt;getBuildType(),$profile
++				$kiwi,$system.&quot;/image&quot;,$cmdL-&gt;getBuildType(),$profile,$cmdL
+ 			);
+ 		} else {
+ 			my %fsattr = $main::global -&gt; checkFileSystem ($system);
+@@ -294,7 +299,7 @@ sub new {
+ 					return undef;
+ 				}
+ 				$xml = new KIWIXML (
+-					$kiwi,$tmpdir.&quot;/image&quot;,$cmdL-&gt;getBuildType(),$profile
++					$kiwi,$tmpdir.&quot;/image&quot;,$cmdL-&gt;getBuildType(),$profile,$cmdL
+ 				);
+ 				#==========================================
+ 				# clean up
+@@ -331,7 +336,7 @@ sub new {
+ 					return undef;
+ 				}
+ 				$xml = new KIWIXML (
+-					$kiwi,$tmpdir.&quot;/image&quot;,$cmdL-&gt;getBuildType(),$profile
++					$kiwi,$tmpdir.&quot;/image&quot;,$cmdL-&gt;getBuildType(),$profile,$cmdL
+ 				);
+ 				#==========================================
+ 				# clean up
+diff --git a/modules/KIWICache.pm b/modules/KIWICache.pm
+index 81b9937..adca7e8 100644
+--- a/modules/KIWICache.pm
++++ b/modules/KIWICache.pm
+@@ -105,6 +105,11 @@ sub new {
+ 		$kiwi -&gt; failed();
+ 		return undef;
+ 	}
++	if (! $main::global) {
++		$kiwi -&gt; error  (&quot;Globals object not found&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
+ 	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
+@@ -291,7 +296,7 @@ sub createCache {
+ 		$kiwi -&gt; info (
+ 			&quot;--&gt; Building ext2 cache...\n&quot;
+ 		);
+-		my $cxml  = new KIWIXML ($kiwi,$base.&quot;/modules&quot;);
++		my $cxml  = new KIWIXML ($kiwi,$base.&quot;/modules&quot;,undef,undef,$cmdL);
+ 		my $pkgMgr = $cmdL -&gt; getPackageManager();
+ 		if ($pkgMgr) {
+ 			$cxml -&gt; setPackageManager($pkgMgr);
+diff --git a/modules/KIWICollect.pm b/modules/KIWICollect.pm
+index b85a324..3fa44f9 100644
+--- a/modules/KIWICollect.pm
++++ b/modules/KIWICollect.pm
+@@ -125,6 +125,7 @@ sub new {
+   $this-&gt;{m_xml}      = shift;
+   $this-&gt;{m_basedir}  = shift;
+   $this-&gt;{m_debug}    = shift || 0;
++  $this-&gt;{cmdL}       = shift;
+ 
+   if( !(defined($this-&gt;{m_xml})
+ 	and defined($this-&gt;{m_basedir})
+@@ -150,7 +151,7 @@ sub new {
+     $this-&gt;logMsg(&quot;I&quot;, &quot;Created new KIWIUtil object&quot;);
+   }
+ 
+-  $this-&gt;{m_urlparser} = new KIWIURL($this-&gt;{m_logger});
++  $this-&gt;{m_urlparser} = new KIWIURL($this-&gt;{m_logger},$this-&gt;{cmdL});
+   if(!$this-&gt;{m_urlparser}) {
+     $this-&gt;logMsg(&quot;E&quot;, &quot;Can't create KIWIURL object!&quot;);
+     return undef;
+@@ -1502,7 +1503,7 @@ sub getArchList
+     return @archs if ($packOptions-&gt;{'onlyarch'} eq &quot;skipit&quot;); # convinience for old hack
+   };
+ 
+-  my @archs = $this-&gt;{m_archlist}-&gt;headList();
++  @archs = $this-&gt;{m_archlist}-&gt;headList();
+   if(defined($packOptions-&gt;{'arch'})) {
+     # Check if this is a rule for this platform
+     $packOptions-&gt;{'arch'} =~ s{,\s*,}{,}g;
+diff --git a/modules/KIWICommandLine.pm b/modules/KIWICommandLine.pm
+index 6d934db..e8fd4fe 100644
+--- a/modules/KIWICommandLine.pm
++++ b/modules/KIWICommandLine.pm
+@@ -54,18 +54,23 @@ sub new {
+ 	if (! defined $kiwi) {
+ 		$kiwi = new KIWILog(&quot;tiny&quot;);
+ 	}
+-	my @supportedRepos = qw(
++	my @supportedRepos = qw (
+ 		apt-deb apt-rpm deb-dir mirrors red-carpet
+ 		rpm-dir rpm-md slack-site up2date-mirrors
+ 		urpmi yast2
+ 	);
+ 	#==========================================
+-	# Object initialize object member data
++	# Store Object data
+ 	#------------------------------------------
+ 	$this-&gt;{imageTgtDir}        = '';
+ 	$this-&gt;{kiwi}               = $kiwi;
+ 	$this-&gt;{supportedRepoTypes} = \@supportedRepos;
+-	$this-&gt;{gdata}              = $main::global -&gt; getGlobals();
++	#==========================================
++	# Store Object data
++	#------------------------------------------
++	if ($main::global) {
++		$this-&gt;{gdata} = $main::global -&gt; getGlobals();
++	}
+ 	return $this;
+ }
+ 
+diff --git a/modules/KIWIConfigure.pm b/modules/KIWIConfigure.pm
+index 9b3c245..77b0087 100644
+--- a/modules/KIWIConfigure.pm
++++ b/modules/KIWIConfigure.pm
+@@ -66,6 +66,11 @@ sub new {
+ 		$kiwi -&gt; failed (); 
+ 		return undef;
+ 	}
++	if (! $main::global) {
++		$kiwi -&gt; error  (&quot;Globals object not found&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
+ 	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 3df1d4b..31dae31 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -109,6 +109,11 @@ sub new {
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+ 	}
++	if (! $main::global) {
++		$kiwi -&gt; error  (&quot;Globals object not found&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
+ 	if (! defined $main::LogFile) {
+ 		$imageTree =~ s/\/$//;
+ 		if (defined $imageOrig) {
+@@ -280,6 +285,7 @@ sub checkAndSetupPrebuiltBootImage {
+ 	my $this = shift;
+ 	my $ixml = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
++	my $cmdL = $this-&gt;{cmdL};
+ 	my %type = %{$ixml-&gt;getImageTypeAndAttributes()};
+ 	my $pblt = $type{checkprebuilt};
+ 	my $boot = $type{boot};
+@@ -306,7 +312,7 @@ sub checkAndSetupPrebuiltBootImage {
+ 	if (! $isValid) {
+ 		return undef;
+ 	}
+-	my $bxml = new KIWIXML ( $kiwi,$bootpath );
++	my $bxml = new KIWIXML ( $kiwi,$bootpath,undef,undef,$cmdL );
+ 	if (! $bxml) {
+ 		return undef;
+ 	}
+@@ -2502,7 +2508,6 @@ sub createImageSplit {
+ 	#==========================================
+ 	# build boot image only if specified
+ 	#------------------------------------------
+-	$name-&gt;{systemImage} = $main::ImageName;
+ 	if (! defined $boot) {
+ 		return $this;
+ 	}
+diff --git a/modules/KIWIImageCreator.pm b/modules/KIWIImageCreator.pm
+index 457816e..ccdef36 100644
+--- a/modules/KIWIImageCreator.pm
++++ b/modules/KIWIImageCreator.pm
+@@ -73,6 +73,11 @@ sub new {
+ 		$kiwi -&gt; failed();
+ 		return undef;
+ 	}
++	if (! $main::global) {
++		$kiwi -&gt; error  (&quot;Globals object not found&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
+ 	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
+@@ -129,6 +134,7 @@ sub prepareBootImage {
+ 	my $configDir  = shift;
+ 	my $rootTgtDir = shift;
+ 	my $systemTree = shift;
++	my $cmdL       = $this-&gt;{cmdL};
+ 	my $kiwi       = $this-&gt;{kiwi};
+ 	if (! $configDir) {
+ 		$kiwi -&gt; error ('prepareBootImage: no configuration directory defined');
+@@ -155,7 +161,7 @@ sub prepareBootImage {
+ 	}
+ 	$kiwi -&gt; info (&quot;Prepare boot image (initrd)...\n&quot;);
+ 	my $xml = new KIWIXML (
+-		$kiwi,$configDir,undef,undef
++		$kiwi,$configDir,undef,undef,$cmdL
+ 	);
+ 	if (! defined $xml) {
+ 		return undef;
+@@ -176,6 +182,7 @@ sub upgradeImage {
+ 	my $this      = shift;
+ 	my $configDir = $this -&gt; {configDir};
+ 	my $kiwi      = $this -&gt; {kiwi};
++	my $cmdL      = $this -&gt; {cmdL};
+ 	if (! $configDir) {
+ 		$kiwi -&gt; error ('prepareBootImage: no configuration directory defined');
+ 		$kiwi -&gt; failed ();
+@@ -206,7 +213,7 @@ sub upgradeImage {
+ 	$kiwi -&gt; info (&quot;Reading image description [Upgrade]...\n&quot;);
+ 	my $buildProfs = $this -&gt; {buildProfiles};
+ 	my $xml = new KIWIXML (
+-		$kiwi, $configDir, undef, $buildProfs
++		$kiwi, $configDir, undef, $buildProfs,$cmdL
+ 	);
+ 	if (! defined $xml) {
+ 		return undef;
+@@ -238,6 +245,7 @@ sub prepareImage {
+ 	my $configDir = $this -&gt; {configDir};
+ 	my $rootTgtDir= $this -&gt; {rootTgtDir};
+ 	my $kiwi      = $this -&gt; {kiwi};
++	my $cmdL      = $this -&gt; {cmdL};
+ 	if (! $configDir) {
+ 		$kiwi -&gt; error ('prepareBootImage: no configuration directory defined');
+ 		$kiwi -&gt; failed ();
+@@ -267,7 +275,7 @@ sub prepareImage {
+ 	$kiwi -&gt; info (&quot;Reading image description [Prepare]...\n&quot;);
+ 	my $buildProfs = $this -&gt; {buildProfiles};
+ 	my $xml = new KIWIXML (
+-		$kiwi, $configDir, undef, $buildProfs
++		$kiwi, $configDir, undef, $buildProfs,$cmdL
+ 	);
+ 	if (! defined $xml) {
+ 		return undef;
+@@ -340,7 +348,7 @@ sub createBootImage {
+ 	}
+ 	$kiwi -&gt; info (&quot;Create boot image (initrd)...\n&quot;);
+ 	my $xml = new KIWIXML (
+-		$kiwi,$configDir,&quot;cpio&quot;,undef
++		$kiwi,$configDir,&quot;cpio&quot;,undef,$cmdL
+ 	);
+ 	if (! defined $xml) {
+ 		return undef;
+@@ -427,7 +435,7 @@ sub createImage {
+ 	}
+ 	$kiwi -&gt; info (&quot;Reading image description [Create]...\n&quot;);
+ 	my $xml = new KIWIXML (
+-		$kiwi,$configDir,$type,$buildProfs
++		$kiwi,$configDir,$type,$buildProfs,$cmdL
+ 	);
+ 	if (! defined $xml) {
+ 		return undef;
+diff --git a/modules/KIWIImageFormat.pm b/modules/KIWIImageFormat.pm
+index 4ed92ee..0a50bab 100644
+--- a/modules/KIWIImageFormat.pm
++++ b/modules/KIWIImageFormat.pm
+@@ -95,6 +95,14 @@ sub new {
+ 		}
+ 	}
+ 	#==========================================
++	# check global pointer
++	#------------------------------------------
++	if (! $main::global) {
++		$kiwi -&gt; error  (&quot;Globals object not found&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	#==========================================
+ 	# Read some XML data
+ 	#------------------------------------------
+ 	my %xenref = $xml -&gt; getXenConfig();
+diff --git a/modules/KIWIIsoLinux.pm b/modules/KIWIIsoLinux.pm
+index 93247e9..fa1a73f 100644
+--- a/modules/KIWIIsoLinux.pm
++++ b/modules/KIWIIsoLinux.pm
+@@ -83,6 +83,11 @@ sub new {
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+ 	}
++	if (! $main::global) {
++		$kiwi -&gt; error  (&quot;Globals object not found&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
+ 	#==========================================
+ 	# Find iso tool to use on this system
+ 	#------------------------------------------
+diff --git a/modules/KIWIMigrate.pm b/modules/KIWIMigrate.pm
+index fd131a8..de3bb6d 100644
+--- a/modules/KIWIMigrate.pm
++++ b/modules/KIWIMigrate.pm
+@@ -29,11 +29,14 @@ use File::Basename;
+ use File::Path;
+ use File::Copy;
+ use Storable;
+-use KIWILog;
+-use KIWIQX;
+ use File::Spec;
+ use Fcntl ':mode';
+ use Cwd 'abs_path';
++#==========================================
++# KIWI Modules
++#------------------------------------------
++use KIWILog;
++use KIWIQX;
+ 
+ #==========================================
+ # Constructor
+@@ -70,6 +73,11 @@ sub new {
+ 	if (! defined $kiwi) {
+ 		$kiwi = new KIWILog(&quot;tiny&quot;);
+ 	}
++	if (! $main::global) {
++		$kiwi -&gt; error  (&quot;Globals object not found&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
+ 	if (! defined $name) {
+ 		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;No image name for migration given&quot;);
+diff --git a/modules/KIWIOverlay.pm b/modules/KIWIOverlay.pm
+index 8b182a4..283e8b7 100644
+--- a/modules/KIWIOverlay.pm
++++ b/modules/KIWIOverlay.pm
+@@ -73,6 +73,11 @@ sub new {
+ 		}
+ 		$baseRO = &lt;$FD&gt;; close $FD; chomp $baseRO;
+ 	}
++	if (! $main::global) {
++		$kiwi -&gt; error  (&quot;Globals object not found&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
+ 	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
+diff --git a/modules/KIWIRoot.pm b/modules/KIWIRoot.pm
+index 04749c5..80a88c5 100644
+--- a/modules/KIWIRoot.pm
++++ b/modules/KIWIRoot.pm
+@@ -92,6 +92,11 @@ sub new {
+ 		$kiwi -&gt; failed ();
+ 		return undef; 
+ 	}
++	if (! $main::global) {
++		$kiwi -&gt; error  (&quot;Globals object not found&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
+ 	my $count = 1;
+ 	my %sourceChannel = ();
+ 	#==========================================
+@@ -104,7 +109,7 @@ sub new {
+ 		my $user = $repository{$source}[3];
+ 		my $pwd  = $repository{$source}[4];
+ 		my $plic = $repository{$source}[5];
+-		my $urlHandler  = new KIWIURL ($kiwi,$this,$user,$pwd);
++		my $urlHandler  = new KIWIURL ($kiwi,$cmdL,$this,$user,$pwd);
+ 		my $publics_url = $urlHandler -&gt; normalizePath ($source);
+ 		if ($publics_url =~ /^\//) {
+ 			my ( $publics_url_test ) = bsd_glob ( $publics_url );
+@@ -256,6 +261,7 @@ sub new {
+ 	#------------------------------------------
+ 	$this-&gt;{root}    = $root;
+ 	$this-&gt;{manager} = $manager;
++	$this-&gt;{cmdL}    = $cmdL;
+ 	return $this;
+ }
+ 
+@@ -316,6 +322,7 @@ sub init {
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $xml  = $this-&gt;{xml};
+ 	my $root = $this-&gt;{root};
++	my $cmdL = $this-&gt;{cmdL};
+ 	my $manager    = $this-&gt;{manager};
+ 	my $baseSystem = $this-&gt;{baseSystem};
+ 	my $FD;
+@@ -340,13 +347,13 @@ sub init {
+ 	#==================================
+ 	# Return early if existing root
+ 	#----------------------------------
+-	if (defined $main::RecycleRoot) {
++	if ($cmdL -&gt; getRecycleRootDir()) {
+ 		return $this;
+ 	}
+ 	#==================================
+ 	# Return early if cache is used
+ 	#----------------------------------
+-	if ((defined $main::ImageCache) &amp;&amp; (! defined $main::InitCache)) {
++	if (($cmdL-&gt; getCacheDir()) &amp;&amp; (! $cmdL-&gt;getOperationMode(&quot;initCache&quot;))) {
+ 		return $this;
+ 	}
+ 	#==========================================
+diff --git a/modules/KIWIURL.pm b/modules/KIWIURL.pm
+index 0d17b29..3d98e52 100644
+--- a/modules/KIWIURL.pm
++++ b/modules/KIWIURL.pm
+@@ -43,6 +43,7 @@ sub new {
+ 	# Module Parameters
+ 	#------------------------------------------	
+ 	my $kiwi = shift;
++	my $cmdL = shift;
+ 	my $root = shift;
+ 	my $user = shift;
+ 	my $pwd  = shift;
+@@ -60,7 +61,13 @@ sub new {
+ 	$this-&gt;{user} = $user;
+ 	$this-&gt;{pwd}  = $pwd;
+ 	$this-&gt;{type} = &quot;unknown&quot;;
+-	$this-&gt;{gdata}= $main::global -&gt; getGlobals();
++	$this-&gt;{cmdL} = $cmdL;
++	#==========================================
++	# Store object data
++	#------------------------------------------
++	if ($main::global) {
++		$this-&gt;{gdata}= $main::global -&gt; getGlobals();
++	}
+ 	return $this;
+ }
+ 
+@@ -254,12 +261,12 @@ sub thisPath {
+ 	# ---
+ 	my $this   = shift;
+ 	my $module = shift;
+-	my $kiwi;
+-	if (! defined $this-&gt;{kiwi}) {
+-		$kiwi = new KIWILog(&quot;tiny&quot;);
+-	} else {
+-		$kiwi = $this-&gt;{kiwi};
+-	}
++	my $cmdL   = $this-&gt;{cmdL};
++	my $kiwi   = $this-&gt;{kiwi};
++	my $cdir   = $cmdL-&gt;getConfigDir();
++	my $xmlinfo= $cmdL-&gt;getOperationMode (&quot;listXMLInfo&quot;);
++	my $create = $cmdL-&gt;getOperationMode (&quot;create&quot;);
++	my $upgrade= $cmdL-&gt;getOperationMode (&quot;upgrade&quot;);
+ 	#==========================================
+ 	# normalize URL data
+ 	#------------------------------------------
+@@ -271,26 +278,25 @@ sub thisPath {
+ 		return undef;
+ 	}
+ 	my $thisPath;
+-	if ((defined $main::ImageDescription) &amp;&amp; (-d $main::ImageDescription)) {
+-		$thisPath = $main::ImageDescription;
+-		$thisPath = &quot;$thisPath/$module&quot;;
+-	} elsif ((defined $main::ListXMLInfo) &amp;&amp; (-d $main::ListXMLInfo)) {
+-		$thisPath = $main::ListXMLInfo;
+-		$thisPath = &quot;$thisPath/$module&quot;;
+-	} elsif (defined $main::Create) {
+-		if (! open FD,&quot;$main::Create/image/main::Prepare&quot;) {
++	if ((defined $cdir) &amp;&amp; (-d $cdir)) {
++		$thisPath = $cdir.&quot;/&quot;.$module;
++	} elsif ((defined $xmlinfo) &amp;&amp; (-d $xmlinfo)) {
++		$thisPath = $xmlinfo.&quot;/&quot;.$module;
++	} elsif (defined $create) {
++		if (! open FD,&quot;$create/image/main::Prepare&quot;) {
+ 			return undef;
+ 		}
+ 		$thisPath = &lt;FD&gt;; close FD;
+-		$thisPath = &quot;$thisPath/$module&quot;;
+-	} elsif (defined $main::Upgrade) {
+-		if (! open FD,&quot;$main::Upgrade/image/main::Prepare&quot;) {
++		$thisPath = $thisPath.&quot;/&quot;.$module;
++	} elsif (defined $upgrade) {
++		if (! open FD,&quot;$upgrade/image/main::Prepare&quot;) {
+ 			return undef;
+ 		}
+ 		$thisPath = &lt;FD&gt;; close FD;
+-		$thisPath = &quot;$thisPath/$module&quot;;
++		$thisPath = $thisPath.&quot;/&quot;.$module;
+ 	} else {
+-		$thisPath = &quot;$main::Prepare/$module&quot;;
++		$thisPath = $cmdL-&gt;getOperationMode(&quot;prepare&quot;);
++		$thisPath.= &quot;/&quot;.$module;
+ 	}
+ 	if ($thisPath !~ /^\//) {
+ 		my $pwd = qxx (&quot;pwd&quot;); chomp $pwd;
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 240fdf4..65f90bd 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -87,6 +87,7 @@ sub new {
+ 	my $imageDesc   = shift;
+ 	my $imageType   = shift;
+ 	my $reqProfiles = shift;
++	my $cmdL        = shift;
+ 	#==========================================
+ 	# Constructor setup
+ 	#------------------------------------------
+@@ -102,12 +103,23 @@ sub new {
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+ 	}
++	if (! $main::global) {
++		$kiwi -&gt; error  (&quot;Globals object not found&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	if (! $cmdL) {
++		$kiwi -&gt; error  (&quot;No commandline reference specified&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
+ 	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
+ 	$this-&gt;{kiwi} = $kiwi;
+ 	$this-&gt;{arch} = $arch;
+ 	$this-&gt;{gdata}= $main::global -&gt; getGlobals();
++	$this-&gt;{cmdL} = $cmdL;
+ 	#==========================================
+ 	# Lookup XML configuration file
+ 	#------------------------------------------
+@@ -283,6 +295,7 @@ sub getConfigName {
+ sub createURLList {
+ 	my $this = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
++	my $cmdL = $this-&gt;{cmdL};
+ 	my %repository  = ();
+ 	my @urllist     = ();
+ 	my %urlhash     = ();
+@@ -299,7 +312,7 @@ sub createURLList {
+ 	foreach my $source (@sourcelist) {
+ 		my $user = $repository{$source}[3];
+ 		my $pwd  = $repository{$source}[4];
+-		my $urlHandler  = new KIWIURL ($kiwi,undef,$user,$pwd);
++		my $urlHandler  = new KIWIURL ($kiwi,$cmdL,undef,$user,$pwd);
+ 		my $publics_url = $urlHandler -&gt; normalizePath ($source);
+ 		push (@urllist,$publics_url);
+ 		$urlhash{$source} = $publics_url;
+@@ -1425,11 +1438,12 @@ sub getTypes {
+ 	# ---
+ 	my $this    = shift;
+ 	my $kiwi    = $this-&gt;{kiwi};
++	my $cmdL    = $this-&gt;{cmdL};
+ 	my @result  = ();
+ 	my @tnodes  = ();
+ 	my $gotprim = 0;
+ 	my @node    = $this-&gt;{optionsNodeList} -&gt; get_nodelist();
+-	my $urlhd   = new KIWIURL ($kiwi);
++	my $urlhd   = new KIWIURL ($kiwi,$cmdL);
+ 	foreach my $element (@node) {
+ 		if (! $this -&gt; __requestedProfile ($element)) {
+ 			next;
+@@ -4704,7 +4718,8 @@ sub __populateTypeInfo {
+ 	#
+ 	my $this   = shift;
+ 	my $kiwi   = $this-&gt;{kiwi};
+-	my $urlhd  = new KIWIURL ($kiwi);
++	my $cmdL   = $this-&gt;{cmdL};
++	my $urlhd  = new KIWIURL ($kiwi,$cmdL);
+ 	my @node   = $this-&gt;{optionsNodeList} -&gt; get_nodelist();
+ 	my @result = ();
+ 	my $first  = 1;
+diff --git a/modules/KIWIXMLInfo.pm b/modules/KIWIXMLInfo.pm
+index e5e0620..b055dc9 100644
+--- a/modules/KIWIXMLInfo.pm
++++ b/modules/KIWIXMLInfo.pm
+@@ -78,6 +78,11 @@ sub new {
+ 		$kiwi -&gt; failed();
+ 		return undef;
+ 	}
++	if (! $main::global) {
++		$kiwi -&gt; error  (&quot;Globals object not found&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
+ 	#==========================================
+ 	# Reset logging target if requested
+ 	#------------------------------------------
+@@ -99,6 +104,7 @@ sub new {
+ 	$this-&gt;{packageManager} = $cmdL -&gt; getPackageManager();
+ 	$this-&gt;{replRepo}       = $cmdL -&gt; getReplacementRepo();
+ 	$this-&gt;{gdata}          = $main::global -&gt; getGlobals();
++	$this-&gt;{cmdL}           = $cmdL;
+ 	return $this;
+ }
+ 
+@@ -502,6 +508,7 @@ sub __xmlSetup {
+ 	# ---
+ 	my $this = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
++	my $cmdL = $this-&gt;{cmdL};
+ 	#==========================================
+ 	# Setup the XML
+ 	#------------------------------------------
+@@ -523,7 +530,7 @@ sub __xmlSetup {
+ 		return undef;
+ 	}
+ 	my $xml = new KIWIXML (
+-		$kiwi, $configDir, undef, $buildProfs
++		$kiwi, $configDir, undef, $buildProfs, $cmdL
+ 	);
+ 	if (! defined $xml) {
+ 		return undef;
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index 0019a62..dcf3d72 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -93,7 +93,7 @@ Authors:
+ %package -n kiwi-instsource
+ License:        GPLv2
+ Requires:       kiwi = %{version}
+-Requires:       inst-source-utils createrepo build
++Requires:       inst-source-utils createrepo build perl-RPMQ
+ Summary:        Installation Source creation
+ Group:          System/Management
+ %if 0%{?suse_version} &gt; 1120
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003458.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9cbb2adca3ec0659bcbd7c0284d36be3c4824f73
+</A></li>
+	<LI>Next message: <A HREF="003460.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e58fdd8191dba1816ad0978254c100269383b92e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3459">[ date ]</a>
+              <a href="thread.html#3459">[ thread ]</a>
+              <a href="subject.html#3459">[ subject ]</a>
+              <a href="author.html#3459">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

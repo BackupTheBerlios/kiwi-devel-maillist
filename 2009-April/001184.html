@@ -1,0 +1,624 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. cad503ab4f100b121c6075a15ac16b375f12d169
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20cad503ab4f100b121c6075a15ac16b375f12d169&In-Reply-To=%3C200904211258.n3LCwONC001748%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001183.html">
+   <LINK REL="Next"  HREF="001185.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. cad503ab4f100b121c6075a15ac16b375f12d169</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20cad503ab4f100b121c6075a15ac16b375f12d169&In-Reply-To=%3C200904211258.n3LCwONC001748%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. cad503ab4f100b121c6075a15ac16b375f12d169">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Apr 21 14:58:24 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001183.html">[Kiwi-devel] Possible race condition?
+</A></li>
+        <LI>Next message: <A HREF="001185.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 085061933402c549b0efe81c1b3d9c81679f54ed
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1184">[ date ]</a>
+              <a href="thread.html#1184">[ thread ]</a>
+              <a href="subject.html#1184">[ subject ]</a>
+              <a href="author.html#1184">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  cad503ab4f100b121c6075a15ac16b375f12d169 (commit)
+      from  58a98dfe0fe25ac28ede80bb3cabecf5f8baa083 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit cad503ab4f100b121c6075a15ac16b375f12d169
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Apr 21 14:58:13 2009 +0200
+
+    - let udev load modules if modules.order is provided by
+      the kernel (bnc #493201)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 2e1a58f..e8ed87c 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -44,7 +44,7 @@ use KIWITest;
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.42&quot;;
++our $Version       = &quot;3.43&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 8a5a1a5..bef5698 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -550,12 +550,14 @@ sub setupBootStick {
+ 	my $bootloader= &quot;grub&quot;;
+ 	my $lvmsize;
+ 	my $syslsize;
++	my $dmsize;
+ 	my $FSTypeRW;
+ 	my $FSTypeRO;
+ 	my $status;
+ 	my $result;
+ 	my $hald;
+ 	my $xml;
++	my $root;
+ 	#==========================================
+ 	# use lvm together with system image only
+ 	#------------------------------------------
+@@ -612,7 +614,7 @@ sub setupBootStick {
+ 	#==========================================
+ 	# check for device mapper snapshot
+ 	#------------------------------------------
+-	if ($type{filesystem} == &quot;dmsquash&quot;) {
++	if ($type{filesystem} eq &quot;dmsquash&quot;) {
+ 		$this-&gt;{dmapper} = 1;
+ 		$dmapper  = 1;
+ 		$dmbootMB = 40;
+@@ -815,7 +817,20 @@ sub setupBootStick {
+ 							&quot;a&quot;,&quot;3&quot;,&quot;w&quot;,&quot;q&quot;
+ 						);
+ 					} elsif ($dmapper) {
+-						# TODO
++						$dmsize = $hardSize;
++						$dmsize /= 1000;
++						$dmsize -= $syszip;
++						$dmsize -= $dmbootMB;
++						$dmsize = sprintf (&quot;%.f&quot;,$dmsize);
++						@commands = (
++							&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$syszip.&quot;M&quot;,
++							&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;+&quot;.$dmsize.&quot;M&quot;,
++							&quot;n&quot;,&quot;p&quot;,&quot;3&quot;,&quot;.&quot;,&quot;.&quot;,
++							&quot;t&quot;,&quot;1&quot;,&quot;83&quot;,
++							&quot;t&quot;,&quot;2&quot;,&quot;83&quot;,
++							&quot;t&quot;,&quot;3&quot;,&quot;83&quot;,
++							&quot;a&quot;,&quot;3&quot;,&quot;w&quot;,&quot;q&quot;
++						);
+ 					} else {
+ 						@commands = (
+ 							&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$syszip.&quot;M&quot;,
+@@ -1163,38 +1178,58 @@ sub setupBootStick {
+ 		}
+ 	}
+ 	#==========================================
+-	# Dump boot image on virtual disk
+-	#------------------------------------------
+-	$kiwi -&gt; info (&quot;Copying boot data to stick&quot;);
+-	#==========================================
+-	# Mount system image / or rw partition
++	# create bootloader filesystem if needed
+ 	#------------------------------------------
+ 	if ($bootloader eq &quot;syslinux&quot;) {
+-		$status = qxx (&quot;/sbin/mkdosfs $deviceMap{fat} 2&gt;&amp;1&quot;);
++		$root = $deviceMap{fat};
++		$status = qxx (&quot;/sbin/mkdosfs $root 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+-		if ($result == 0) {
+-			$status = qxx (&quot;mount $deviceMap{fat} $loopdir 2&gt;&amp;1&quot;);
+-			$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; error  (&quot;Couldn't create DOS filesystem: $status&quot;);
++			$kiwi -&gt; failed ();
++			$this -&gt; cleanDbus();
++			$this -&gt; cleanLoop ();
++			return undef;
++		}
++	} elsif (($dmapper) || ($lvm)) {
++		$root = $deviceMap{0};
++		if ($dmapper) {
++			$root = $deviceMap{dmapper};
+ 		}
+-	} elsif ($dmapper) {
+-		# TODO
+-	} elsif ($lvm) {
+ 		my %FSopts = main::checkFSOptions();
+ 		my $fsopts = $FSopts{ext2};
+ 		$fsopts.= &quot;-F&quot;;
+-		$status = qxx (&quot;/sbin/mke2fs $fsopts $deviceMap{0} 2&gt;&amp;1&quot;);
++		$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+-		if ($result == 0) {
+-			$status = qxx (&quot;mount $deviceMap{0} $loopdir 2&gt;&amp;1&quot;);
+-			$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Couldn't create filesystem: $status&quot;);
++			$kiwi -&gt; failed ();
++			$this -&gt; cleanDbus();
++			$this -&gt; cleanLoop ();
++			return undef;
+ 		}
++	}
++	#==========================================
++	# Dump boot image on virtual disk
++	#------------------------------------------
++	$kiwi -&gt; info (&quot;Copying boot data to stick&quot;);
++	#==========================================
++	# Mount system image / or rw partition
++	#------------------------------------------
++	if ($bootloader eq &quot;syslinux&quot;) {
++		$root = $deviceMap{fat};
++	} elsif ($dmapper) {
++		$root = $deviceMap{dmapper};
++	} elsif ($lvm) {
++		$root = $deviceMap{0};
+ 	} elsif (($syszip) || ($haveSplit)) {
+-		$status = qxx (&quot;mount $deviceMap{2} $loopdir 2&gt;&amp;1&quot;);
+-		$result = $? &gt;&gt; 8;
++		$root = $deviceMap{2};
+ 	} else {
+-		$status = qxx (&quot;mount $deviceMap{1} $loopdir 2&gt;&amp;1&quot;);
+-		$result = $? &gt;&gt; 8;
++		$root = $deviceMap{1};
+ 	}
++	$status = qxx (&quot;mount $root $loopdir 2&gt;&amp;1&quot;);
++	$result = $? &gt;&gt; 8;
+ 	if ($result != 0) {
+ 		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;Couldn't mount stick image: $status&quot;);
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 15d8e29..c64cbbe 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -1211,6 +1211,12 @@ function suseStripKernel {
+ 			fi
+ 			/sbin/depmod -F /boot/System.map-$VERSION $VERSION
+ 			#==========================================
++			# check for modules.order and backup it
++			#------------------------------------------
++			if [ -f $kversion/modules.order ];then
++				mv $kversion/modules.order /tmp
++			fi
++			#==========================================
+ 			# strip the modules but take care for deps
+ 			#------------------------------------------
+ 			stripdir=/tmp/stripped_modules
+@@ -1270,6 +1276,9 @@ function suseStripKernel {
+ 			rm -rf $kversion
+ 			mv -v $stripdir/$kversion $kversion
+ 			rm -rf $stripdir
++			if [ -f /tmp/modules.order ];then
++				mv /tmp/modules.order $kversion
++			fi
+ 			#==========================================
+ 			# run depmod
+ 			#------------------------------------------
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 0a1f6f8..3e53326 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -27,6 +27,7 @@ export KLOG_DEFAULT=1
+ export PARTITIONER=sfdisk
+ export TRANSFER_ERRORS_FILE=/tmp/transfer.errors
+ export DEFAULT_VGA=0x314
++export HAVE_MODULES_ORDER=1
+ 
+ #======================================
+ # Debug
+@@ -353,18 +354,20 @@ function udevStart {
+ 	if [ -e /proc/sys/kernel/hotplug ];then
+ 		echo &quot;&quot; &gt; /proc/sys/kernel/hotplug
+ 	fi
+-	# /.../
+-	# At the moment we prevent udev from loading the storage
+-	# modules because it does not make a propper choice if
+-	# there are multiple possible modules available. Example
+-	# udev prefers ata_generic over ata_piix but the hwinfo
+-	# order is ata_piix first which also seems to make more
+-	# sense. I would love to let udev load the modules but
+-	# at the moment I don't see how I could solve that
+-	# problem in another way than:
+-	# -----
+-	rm -f /etc/udev/rules.d/*-drivers.rules
+-	rm -f /lib/udev/rules.d/*-drivers.rules
++	if ! ls /lib/modules/*/modules.order &amp;&gt;/dev/null;then
++		# /.../
++		# without modules.order in place we prevent udev from loading
++		# the storage modules because it does not make a propper
++		# choice if there are multiple possible modules available.
++		# Example:
++		# udev prefers ata_generic over ata_piix but the hwinfo
++		# order is ata_piix first which also seems to make more
++		# sense.
++		# -----
++		rm -f /etc/udev/rules.d/*-drivers.rules
++		rm -f /lib/udev/rules.d/*-drivers.rules
++		HAVE_MODULES_ORDER=0
++	fi
+ 	# start the udev daemon
+ 	udevd --daemon udev_log=&quot;debug&quot;
+ 	# wait for pending triggered udev events.
+@@ -1590,55 +1593,56 @@ function getSystemMD5Status {
+ # probeUSB
+ #--------------------------------------
+ function probeUSB {
+-	IFS=&quot;%&quot;
+ 	local module=&quot;&quot;
+ 	local stdevs=&quot;&quot;
+ 	local hwicmd=&quot;/usr/sbin/hwinfo&quot;
+-	#======================================
+-	# load host controller modules
+-	#--------------------------------------
+-	for i in \
+-		`$hwicmd --usb | grep &quot;Driver [IA]&quot; | 
+-		sed -es&quot;@modprobe\(.*\)\&quot;@\1%@&quot; | tr -d &quot;\n&quot;`
+-	do
+-		if echo $i | grep -q &quot;#0&quot;;then
+-			module=`echo $i | cut -f2 -d&quot;\&quot;&quot; | tr -d &quot; &quot;`
+-			module=`echo $module | sed -es&quot;@modprobe@@g&quot;`
+-			IFS=&quot;;&quot;
+-			for m in $module;do
+-				if ! echo $stdevs | grep -q $m;then
+-					stdevs=&quot;$stdevs $m&quot;
+-				fi
+-			done
+-		fi
+-	done
+-	IFS=&quot;%&quot;
+-	for i in \
+-		`$hwicmd --usb-ctrl | grep &quot;Driver [IA]&quot; | 
+-		sed -es&quot;@modprobe\(.*\)\&quot;@\1%@&quot; | tr -d &quot;\n&quot;`
+-	do
+-		if echo $i | grep -q &quot;#0&quot;;then
+-			module=`echo $i | cut -f2 -d&quot;\&quot;&quot; | tr -d &quot; &quot;`
+-			module=`echo $module | sed -es&quot;@modprobe@@g&quot;`
+-			IFS=&quot;;&quot;
+-			for m in $module;do
+-				if ! echo $stdevs | grep -q $m;then
+-					stdevs=&quot;$stdevs $m&quot;
+-				fi
+-			done
++	if [ $HAVE_MODULES_ORDER = 0 ];then
++		#======================================
++		# load host controller modules
++		#--------------------------------------
++		IFS=&quot;%&quot;
++		for i in \
++			`$hwicmd --usb | grep &quot;Driver [IA]&quot; | 
++			sed -es&quot;@modprobe\(.*\)\&quot;@\1%@&quot; | tr -d &quot;\n&quot;`
++		do
++			if echo $i | grep -q &quot;#0&quot;;then
++				module=`echo $i | cut -f2 -d&quot;\&quot;&quot; | tr -d &quot; &quot;`
++				module=`echo $module | sed -es&quot;@modprobe@@g&quot;`
++				IFS=&quot;;&quot;
++				for m in $module;do
++					if ! echo $stdevs | grep -q $m;then
++						stdevs=&quot;$stdevs $m&quot;
++					fi
++				done
++			fi
++		done
++		for i in \
++			`$hwicmd --usb-ctrl | grep &quot;Driver [IA]&quot; | 
++			sed -es&quot;@modprobe\(.*\)\&quot;@\1%@&quot; | tr -d &quot;\n&quot;`
++		do
++			if echo $i | grep -q &quot;#0&quot;;then
++				module=`echo $i | cut -f2 -d&quot;\&quot;&quot; | tr -d &quot; &quot;`
++				module=`echo $module | sed -es&quot;@modprobe@@g&quot;`
++				IFS=&quot;;&quot;
++				for m in $module;do
++					if ! echo $stdevs | grep -q $m;then
++						stdevs=&quot;$stdevs $m&quot;
++					fi
++				done
++			fi
++		done
++		IFS=$IFS_ORIG
++		stdevs=`echo $stdevs`
++		for module in $stdevs;do
++			Echo &quot;Probing module: $module&quot;
++			modprobe $module &gt;/dev/null
++		done
++		#======================================
++		# check load status for host controller
++		#--------------------------------------
++		if [ -z &quot;$stdevs&quot; ];then
++			return
+ 		fi
+-	done
+-	IFS=$IFS_ORIG
+-	stdevs=`echo $stdevs`
+-	for module in $stdevs;do
+-		Echo &quot;Probing module: $module&quot;
+-		modprobe $module &gt;/dev/null
+-	done
+-	#======================================
+-	# check load status for host controller
+-	#--------------------------------------
+-	if [ -z &quot;$stdevs&quot; ];then
+-		return
+ 	fi
+ 	#======================================
+ 	# manually load storage/input drivers
+@@ -1647,88 +1651,104 @@ function probeUSB {
+ 		modprobe $i &amp;&gt;/dev/null
+ 	done
+ 	#======================================
+-	# wait for device scan to complete
++	# wait for storage devices to appear
+ 	#--------------------------------------
+ 	Echo -n &quot;Waiting for USB devices to settle...&quot;
+ 	local storage=/sys/bus/usb/drivers/usb-storage
+-	while ! [ -d $storage ] &amp;&amp; [ $count -lt 5 ]; do
+-		echo -n .
+-		sleep 1
+-		count=`expr $count + 1`
+-	done
+-	count=0
+-	if [ -d $storage ]; then
+-		while \
+-			[ $(dmesg|grep -c 'usb-storage: device scan complete') -lt 1 ] &amp;&amp; \
+-			[ $count -lt 15 ]
+-		do
+-			echo -n .
+-			sleep 1
+-			count=`expr $count + 1`
++	local devices=0
++	while [ $devices -lt 5 ];do
++		for i in $storage/*;do
++			if [ -L $i ] &amp;&amp; [ ! $i = &quot;$storage/module&quot; ];then
++				devices=ok
++				break
++			fi
+ 		done
+-		count=0
++		if [ $devices = &quot;ok&quot; ];then
++			break
++		fi
++		echo -n . ; sleep 1
++		devices=$(( $devices + 1 ))
++	done
++	if [ ! $devices = &quot;ok&quot; ];then
++		echo ; return
+ 	fi
++	#======================================
++	# wait for storage scan to complete
++	#--------------------------------------
++	devices=0
++	while \
++		[ $(dmesg | grep -c 'usb-storage: device scan complete') -lt 1 ] &amp;&amp; \
++		[ $devices -lt 15 ]
++	do
++		echo -n . ; sleep 1
++		devices=$(( $devices + 1 ))
++	done
+ 	echo
+ }
+ #======================================
+ # probeDevices
+ #--------------------------------------
+ function probeDevices {
+-	Echo &quot;Including required kernel modules...&quot;
+-	IFS=&quot;%&quot;
+-	local module=&quot;&quot;
+-	local stdevs=&quot;&quot;
+-	local hwicmd=&quot;/usr/sbin/hwinfo&quot;
+-	for i in \
+-		`$hwicmd --storage | grep &quot;Driver [IA]&quot; | 
+-		sed -es&quot;@modprobe\(.*\)\&quot;@\1%@&quot; | tr -d &quot;\n&quot;`
+-	do
+-		if echo $i | grep -q &quot;#0&quot;;then
+-			module=`echo $i | cut -f2 -d&quot;\&quot;&quot; | tr -d &quot; &quot;`
+-			module=`echo $module | sed -es&quot;@modprobe@@g&quot;`
+-			IFS=&quot;;&quot;
+-			for m in $module;do
+-				if ! echo $stdevs | grep -q $m;then
+-					stdevs=&quot;$stdevs $m&quot;
+-				fi
++	if [ $HAVE_MODULES_ORDER = 0 ];then
++		Echo &quot;Including required kernel modules...&quot;
++		IFS=&quot;%&quot;
++		local module=&quot;&quot;
++		local stdevs=&quot;&quot;
++		local hwicmd=&quot;/usr/sbin/hwinfo&quot;
++		for i in \
++			`$hwicmd --storage | grep &quot;Driver [IA]&quot; | 
++			sed -es&quot;@modprobe\(.*\)\&quot;@\1%@&quot; | tr -d &quot;\n&quot;`
++		do
++			if echo $i | grep -q &quot;#0&quot;;then
++				module=`echo $i | cut -f2 -d&quot;\&quot;&quot; | tr -d &quot; &quot;`
++				module=`echo $module | sed -es&quot;@modprobe@@g&quot;`
++				IFS=&quot;;&quot;
++				for m in $module;do
++					if ! echo $stdevs | grep -q $m;then
++						stdevs=&quot;$stdevs $m&quot;
++					fi
++				done
++			fi
++		done
++		IFS=$IFS_ORIG
++		stdevs=`echo $stdevs`
++		if [ ! -z &quot;$kiwikernelmodule&quot; ];then
++			for module in $kiwikernelmodule;do
++				Echo &quot;Probing module (cmdline): $module&quot;
++				INITRD_MODULES=&quot;$INITRD_MODULES $module&quot;
++				modprobe $module &gt;/dev/null
+ 			done
+ 		fi
+-	done
+-	IFS=$IFS_ORIG
+-	stdevs=`echo $stdevs`
+-	if [ ! -z &quot;$kiwikernelmodule&quot; ];then
+-		for module in $kiwikernelmodule;do
+-			Echo &quot;Probing module (cmdline): $module&quot;
+-			INITRD_MODULES=&quot;$INITRD_MODULES $module&quot;
+-			modprobe $module &gt;/dev/null
+-		done
+-	fi
+-	for module in $stdevs;do
+-		loadok=1
+-		for broken in $kiwibrokenmodule;do
+-			if [ $broken = $module ];then
+-				Echo &quot;Prevent loading module: $module&quot;
+-				loadok=0; break
++		for module in $stdevs;do
++			loadok=1
++			for broken in $kiwibrokenmodule;do
++				if [ $broken = $module ];then
++					Echo &quot;Prevent loading module: $module&quot;
++					loadok=0; break
++				fi
++			done
++			if [ $loadok = 1 ];then
++				Echo &quot;Probing module: $module&quot;
++				INITRD_MODULES=&quot;$INITRD_MODULES $module&quot;
++				modprobe $module &gt;/dev/null
+ 			fi
+ 		done
+-		if [ $loadok = 1 ];then
+-			Echo &quot;Probing module: $module&quot;
+-			INITRD_MODULES=&quot;$INITRD_MODULES $module&quot;
+-			modprobe $module &gt;/dev/null
+-		fi
+-	done
+-	hwinfo --block &amp;&gt;/dev/null
++		hwinfo --block &amp;&gt;/dev/null
++	fi
+ 	# /.../
+ 	# older systems require ide-disk to be present at any time
+ 	# for details on this crappy call see bug: #250241
+ 	# ----
+-	modprobe ide-disk
+-	modprobe rd &amp;&gt;/dev/null
+-	modprobe brd &amp;&gt;/dev/null
+-	modprobe edd &amp;&gt;/dev/null
+-	modprobe dm-mod &amp;&gt;/dev/null
+-	modprobe xennet &amp;&gt;/dev/null
+-	modprobe xenblk &amp;&gt;/dev/null
++	modprobe ide-disk &amp;&gt;/dev/null
++	# /.../
++	# default loading of modules not loaded on demand
++	# ----
++	for i in rd brd edd dm-mod xennet xenblk;do
++		modprobe $i &amp;&gt;/dev/null
++	done
++	# /.../
++	# probe USB devices and load modules
++	# ----
+ 	probeUSB
+ }
+ #======================================
+@@ -1741,9 +1761,11 @@ function CDDevice {
+ 	# ----
+ 	local count=0
+ 	local h=/usr/sbin/hwinfo
+-	for module in sg sd_mod sr_mod cdrom ide-cd BusLogic vfat; do
+-		/sbin/modprobe $module
+-	done
++	if [ $HAVE_MODULES_ORDER = 0 ];then
++		for module in sg sd_mod sr_mod cdrom ide-cd BusLogic vfat; do
++			/sbin/modprobe $module
++		done
++	fi
+ 	Echo -n &quot;Waiting for CD/DVD device(s) to appear...&quot;
+ 	while true;do
+ 		cddevs=`$h --cdrom | grep &quot;Device File:&quot;|sed -e&quot;s@(.*)@@&quot; | cut -f2 -d:`
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 3094c54..fd968ea 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Tue Apr 21 11:46:11 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.43
++- let udev load modules if modules.order is provided by
++  the kernel (bnc #493201)
++
++-------------------------------------------------------------------
+ Mon Apr 20 13:08:32 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.42
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index a11e6c5..072642c 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.42)
++# spec file for package kiwi (Version 3.43)
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -46,7 +46,7 @@ Requires:       satsolver-tools
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.42
++Version:        3.43
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001183.html">[Kiwi-devel] Possible race condition?
+</A></li>
+	<LI>Next message: <A HREF="001185.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 085061933402c549b0efe81c1b3d9c81679f54ed
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1184">[ date ]</a>
+              <a href="thread.html#1184">[ thread ]</a>
+              <a href="subject.html#1184">[ subject ]</a>
+              <a href="author.html#1184">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,134 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1673 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1673%20-%20kiwi-head/modules&In-Reply-To=%3C200810241010.m9OAAZxQ004206%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000764.html">
+   <LINK REL="Next"  HREF="000766.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1673 - kiwi-head/modules</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1673%20-%20kiwi-head/modules&In-Reply-To=%3C200810241010.m9OAAZxQ004206%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1673 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Fri Oct 24 12:10:35 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000764.html">[Kiwi-devel] r1672 - in kiwi-head: modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000766.html">[Kiwi-devel] r1674 - in kiwi-head: . modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#765">[ date ]</a>
+              <a href="thread.html#765">[ thread ]</a>
+              <a href="subject.html#765">[ subject ]</a>
+              <a href="author.html#765">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2008-10-24 12:10:34 +0200 (Fri, 24 Oct 2008)
+New Revision: 1673
+
+Modified:
+   kiwi-head/modules/KIWICollect.pm
+Log:
+- mainly cosmetic changes, plus a defined return instead of die
+
+
+Modified: kiwi-head/modules/KIWICollect.pm
+===================================================================
+--- kiwi-head/modules/KIWICollect.pm	2008-10-24 10:10:05 UTC (rev 1672)
++++ kiwi-head/modules/KIWICollect.pm	2008-10-24 10:10:34 UTC (rev 1673)
+@@ -1015,6 +1015,8 @@
+   # the second (first explicit) parameter is a list of packages
+   my @packlist = @_;
+ 
++  my $retval = 0;
++
+   foreach my $metapack(@packlist) {
+     my %tmp = %{$this-&gt;{m_metapackages}-&gt;{$metapack}};
+ 
+@@ -1036,22 +1038,13 @@
+     my $tmp = &quot;$this-&gt;{m_basesubdir}-&gt;{$medium}/temp&quot;;
+     if(-d $tmp) {
+       qx(rm -rf $tmp);
+-      #rmdir -p $tmp; #no force available?
+     }
+     if(!mkpath(&quot;$tmp&quot;, { mode =&gt; umask } )) {
+-      $this-&gt;{m_logger}-&gt;error(&quot;[E] can't create dir $tmp\n&quot;);
+-      die;
++      $this-&gt;{m_logger}-&gt;error(&quot;[E] can't create dir &lt;$tmp&gt;\n&quot;);
++      return $retval;;
+     }
+     
+-    #my %dirs = $this-&gt;getSrcList($metapack);
+-    #if(!%dirs) {
+-    #  $this-&gt;{m_logger}-&gt;error(&quot;[E] [unpackMetapackages] dirs not defined!\n&quot;);
+-    #  next;
+-    #  #return undef; # rock hard exit here, can't proceed without the proper input
+-    #}
+-
+     foreach my $arch($this-&gt;getArchList($metapack, \$nofallback)) {
+-    #foreach my $dir(keys(%dirs)) {
+       next if($arch =~ m{(src|nosrc)});
+       if(!$this-&gt;{m_metapackages}-&gt;{$metapack}-&gt;{$arch}) {
+ 	$this-&gt;{m_logger}-&gt;warning(&quot;[W] Metapackage &lt;$metapack&gt; not available for architecure &lt;$arch&gt;!&quot;);
+@@ -1061,6 +1054,7 @@
+ 	$this-&gt;{m_logger}-&gt;error(&quot;[E] Metapackage &lt;$metapack&gt; has no source defined!&quot;);
+ 	next;
+       }
++
+       $this-&gt;{m_util}-&gt;unpac_package($this-&gt;{m_metapackages}-&gt;{$metapack}-&gt;{$arch}-&gt;{'source'}, &quot;$tmp&quot;);
+       ## all metapackages contain at least a CD1 dir and _may_ contain another /usr/share/&lt;name&gt; dir
+       qx(cp -r $tmp/CD1/* $this-&gt;{m_basesubdir}-&gt;{$medium});
+@@ -1161,6 +1155,7 @@
+ 	  }
+ 	  else {
+ 	    $this-&gt;{m_logger}-&gt;warning(&quot;[W] Undefined values in hash for package $metapack&quot;);
++	    #$this-&gt;{m_logger}-&gt;warning( Dumper($this-&gt;{$metapack}));
+ 	  }
+ 	}
+       }
+@@ -1176,6 +1171,7 @@
+       qx(rm -rf $this-&gt;{m_basesubdir}-&gt;{$index}/script);
+     }
+   }
++  return $retval;
+ }
+ # /executeScripts
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000764.html">[Kiwi-devel] r1672 - in kiwi-head: modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000766.html">[Kiwi-devel] r1674 - in kiwi-head: . modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#765">[ date ]</a>
+              <a href="thread.html#765">[ thread ]</a>
+              <a href="subject.html#765">[ subject ]</a>
+              <a href="author.html#765">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,136 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Having Problem with KIWI and suse-ec2-guest
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2012-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Having%20Problem%20with%20KIWI%20and%20suse-ec2-guest&In-Reply-To=%3C4F4BCD72.6010009%40suse.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003853.html">
+   <LINK REL="Next"  HREF="003855.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Having Problem with KIWI and suse-ec2-guest</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Having%20Problem%20with%20KIWI%20and%20suse-ec2-guest&In-Reply-To=%3C4F4BCD72.6010009%40suse.com%3E"
+       TITLE="[Kiwi-devel] Having Problem with KIWI and suse-ec2-guest">rjschwei at suse.com
+       </A><BR>
+    <I>Mon Feb 27 19:37:38 CET 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003853.html">[Kiwi-devel] Having Problem with KIWI and suse-ec2-guest
+</A></li>
+        <LI>Next message: <A HREF="003855.html">[Kiwi-devel] Having Problem with KIWI and suse-ec2-guest
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3854">[ date ]</a>
+              <a href="thread.html#3854">[ thread ]</a>
+              <a href="subject.html#3854">[ subject ]</a>
+              <a href="author.html#3854">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi,
+
+On 02/27/2012 12:28 PM, <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">matthew.palmer at uwclub.net</A> wrote:
+&gt;<i>
+</I>&gt;<i>
+</I>&gt;<i> On Mon   4:30 PM , &quot;MarcusSch&#228;fer&quot; <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A> sent:
+</I>&gt;<i> Hi Marcus,
+</I>&gt;<i>
+</I>&gt;<i> wow! thanks for the swift reply ;-)
+</I>&gt;<i>
+</I>&gt;<i> I have followed the tutorial steps at the URL you provided, that has got me this far.
+</I>&gt;<i>
+</I>&gt;<i> I can confirm that I have checked config.sh and config.xml to make sure that sshd service gets started.
+</I>&gt;<i>
+</I>&gt;<i> I also tried passing &quot;/etc/init.d/sshd restart&quot; in the AWS instance Userdata.
+</I>
+sshd needs to be running so you can access the running instance. 
+However, this has nothing to do with the host key.
+
+The errors with the ami-tools is a known bug: 721507
+
+ &gt; ec2:failed to retrieve ec2-ami-tools from S3
+
+&gt;<i> ec2:unable to update ec2-ami-tools
+</I>
+I've had not time to poke this yet, but Chris is now looking after the 
+problem and it should get addressed soon.
+
+ &gt; ec2:failed
+ec2:BEGIN SSH HOST KEY FINGERPRINTS
+
+&gt;<i> ec2:/etc/ssh/ssh_host_key.pub: no such file or directory
+</I> &gt; ec2:/etc/ssh/ssh_host_dsa_key.pub:no such file or directory
+
+&gt;<i> ec2:/etc/ssh/ssh_host_rsa_key.pub: no such file or directory
+</I>
+Host key generation, i.e. a key-pair by which the machine is identified, 
+and not the user, usually happens on firstboot/installation. When you 
+install a system from scratch, at the end you'll will see a message and 
+get a graphical representation of the host key. This mechanism is, in 
+general, independent of KIWI.
+
+There are some potrential culprits at play. Your host key is not getting 
+generated because
+
+- of recent changes in the suse-ami-tools package
+- you may be leaving out some basic package in config.xml
+- you have customized/overwritten scripts that usually generate the host 
+key.
+
+Sorry, but I forgot were exactly the host key gets generated. It is 
+probably easiest to work backwards from your setup and look at all the 
+files you have in your overlay tree.
+
+For information on host key generation see the following:
+
+<A HREF="http://www.geekride.com/how-to-generate-ssh-host-keys/">http://www.geekride.com/how-to-generate-ssh-host-keys/</A>
+
+You can also add a work around into /etc/init.d/boot.local, check the 
+presence of the host key, and if it does not exist create one. However, 
+that the host keys are missing indicates an underlying issue and the 
+boot.local hack is only a dirty work around.
+
+HTH,
+Robert
+
+
+-- 
+Robert Schweikert                           MAY THE SOURCE BE WITH YOU
+SUSE-IBM Software Integration Center                   LINUX
+Tech Lead
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rjschwei at suse.com</A>
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweik at ca.ibm.com</A>
+781-464-8147
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003853.html">[Kiwi-devel] Having Problem with KIWI and suse-ec2-guest
+</A></li>
+	<LI>Next message: <A HREF="003855.html">[Kiwi-devel] Having Problem with KIWI and suse-ec2-guest
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3854">[ date ]</a>
+              <a href="thread.html#3854">[ thread ]</a>
+              <a href="subject.html#3854">[ subject ]</a>
+              <a href="author.html#3854">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

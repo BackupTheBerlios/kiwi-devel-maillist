@@ -1,0 +1,307 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 006b78f3b511b8922330193f0771ebb5b0825857
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20006b78f3b511b8922330193f0771ebb5b0825857&In-Reply-To=%3C20110401092242.16A67480AAF%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003278.html">
+   <LINK REL="Next"  HREF="003280.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 006b78f3b511b8922330193f0771ebb5b0825857</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20006b78f3b511b8922330193f0771ebb5b0825857&In-Reply-To=%3C20110401092242.16A67480AAF%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 006b78f3b511b8922330193f0771ebb5b0825857">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Apr  1 11:22:41 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003278.html">[Kiwi-devel] [PATCH] Added system:// URLs and improved boot attribute.
+</A></li>
+        <LI>Next message: <A HREF="003280.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c8b8dce8bc1ea227b9606fd4c238877129c43491
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3279">[ date ]</a>
+              <a href="thread.html#3279">[ thread ]</a>
+              <a href="subject.html#3279">[ subject ]</a>
+              <a href="author.html#3279">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  006b78f3b511b8922330193f0771ebb5b0825857 (commit)
+       via  abf6e63b2cf8c298c0c0eef0e39ffd6f68012691 (commit)
+      from  3ce9b1d00c9723deef8343f8948a1987c9a52c55 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 006b78f3b511b8922330193f0771ebb5b0825857
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Apr 1 11:12:49 2011 +0200
+
+    - added normalizeBootPath() function which allows to use
+      the following boot attribute source locator prefixes:
+    
+      * <A HREF="this://">this://</A>    =&gt; pointing to the image description directory
+      * <A HREF="system://">system://</A>  =&gt; pointing to /usr/share/kiwi/image
+      * <A HREF="dir://">dir://</A>     =&gt; pointing to a directory
+    
+      if no source locator is set kiwi uses the path if it is an
+      absolute path and in case of a relative path it checks if
+      the path relative to the called directory exists and if not
+      it also checks if the path exists below /usr/share/kiwi/image
+
+commit abf6e63b2cf8c298c0c0eef0e39ffd6f68012691
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Apr 1 10:42:23 2011 +0200
+
+    - fixed repository setup for cache creation
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 71debe1..44b8af1 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -1979,9 +1979,11 @@ sub listXMLInfo {
+ 			# sources
+ 			#------------------------------------------
+ 			/^sources/       &amp;&amp; do {
+-				foreach my $url (@{$xml-&gt;{urllist}}) {
++				my %repos = $xml -&gt; getRepository();
++				foreach my $url (keys %repos) {
+ 					my $source = new XML::LibXML::Element (&quot;source&quot;);
+ 					$source -&gt; setAttribute (&quot;path&quot;,&quot;$url&quot;);
++					$source -&gt; setAttribute (&quot;type&quot;,$repos{$url}-&gt;[0]);
+ 					$scan -&gt; appendChild ($source);
+ 				}
+ 				last SWITCH;
+@@ -3054,7 +3056,7 @@ sub initializeCache {
+ 	# Create image package list
+ 	#------------------------------------------
+ 	$listXMLInfo = $mode;
+-	@listXMLInfoSelection = (&quot;packages&quot;);
++	@listXMLInfoSelection = (&quot;packages&quot;,&quot;sources&quot;);
+ 	$CacheScan = listXMLInfo (&quot;internal&quot;);
+ 	if (! $CacheScan) {
+ 		undef $ImageCache;
+@@ -3206,6 +3208,7 @@ sub createCache {
+ 	my $CacheDistro        = $init-&gt;[0];
+ 	my @CachePatterns      = @{$init-&gt;[1]};
+ 	my @CachePackages      = @{$init-&gt;[2]};
++	my $CacheScan          = $init-&gt;[3];
+ 	my $imageCacheDir      = $ImageCache;
+ 	my $imagePrepareDir    = $main::Prepare;
+ 	#==========================================
+@@ -3220,6 +3223,20 @@ sub createCache {
+ 	if (@CachePackages) {
+ 		push @CachePatterns,&quot;package-cache&quot;
+ 	}
++	#==========================================
++	# setup repositories for building
++	#------------------------------------------
++	$main::IgnoreRepos = 1;
++	my @repos = $CacheScan -&gt; getElementsByTagName (&quot;source&quot;);
++	foreach my $node (@repos) {
++		my $path = $node -&gt; getAttribute (&quot;path&quot;);
++		my $type = $node -&gt; getAttribute (&quot;type&quot;);
++		push @main::AddRepository, $path;
++		push @main::AddRepositoryType, $type;
++	}
++	#==========================================
++	# walk through cachable patterns
++	#------------------------------------------
+ 	foreach my $pattern (@CachePatterns) {
+ 		if ($pattern eq &quot;package-cache&quot;) {
+ 			$pattern = $xml -&gt; getImageName();
+@@ -3316,25 +3333,31 @@ sub createCache {
+ # createResetClosure
+ #------------------------------------------
+ sub createResetClosure {
+-	my $backupSurvive       = $main::Survive;
+-	my @backupProfiles      = @main::Profiles;
+-	my $backupCreate        = $main::Create;
+-	my $backupPrepare       = $main::Prepare;
+-	my $backupRootTree      = $main::RootTree;
+-	my $backupForceNewRoot  = $main::ForceNewRoot;
+-	my @backupPatterns      = @main::AddPattern;
+-	my @backupPackages      = @main::AddPackage;
+-	my @backupRemovePackages= @main::RemovePackage;
++	my $backupSurvive           = $main::Survive;
++	my @backupProfiles          = @main::Profiles;
++	my $backupCreate            = $main::Create;
++	my $backupPrepare           = $main::Prepare;
++	my $backupRootTree          = $main::RootTree;
++	my $backupForceNewRoot      = $main::ForceNewRoot;
++	my @backupPatterns          = @main::AddPattern;
++	my @backupPackages          = @main::AddPackage;
++	my @backupRemovePackages    = @main::RemovePackage;
++	my $backupIgnoreRepos       = $main::IgnoreRepos;
++	my @backupAddRepository     = @main::AddRepository;
++	my @backupAddRepositoryType = @main::AddRepositoryType;
+ 	return sub {
+-		@main::Profiles     = @backupProfiles;
+-		$main::Prepare      = $backupPrepare;
+-		$main::Create       = $backupCreate;
+-		$main::ForceNewRoot = $backupForceNewRoot;
+-		@main::AddPattern   = @backupPatterns;
+-		@main::AddPackage   = @backupPackages;
+-		@main::RemovePackage= @backupRemovePackages;
+-		$main::RootTree     = $backupRootTree;
+-		$main::Survive      = $backupSurvive;
++		@main::Profiles          = @backupProfiles;
++		$main::Prepare           = $backupPrepare;
++		$main::Create            = $backupCreate;
++		$main::ForceNewRoot      = $backupForceNewRoot;
++		@main::AddPattern        = @backupPatterns;
++		@main::AddPackage        = @backupPackages;
++		@main::RemovePackage     = @backupRemovePackages;
++		$main::IgnoreRepos       = $backupIgnoreRepos;
++		@main::AddRepository     = @backupAddRepository;
++		@main::AddRepositoryType = @backupAddRepositoryType;
++		$main::RootTree          = $backupRootTree;
++		$main::Survive           = $backupSurvive;
+ 	}
+ }
+ 
+diff --git a/modules/KIWIURL.pm b/modules/KIWIURL.pm
+index 487efad..871cf96 100644
+--- a/modules/KIWIURL.pm
++++ b/modules/KIWIURL.pm
+@@ -120,6 +120,39 @@ sub normalizePath {
+ }
+ 
+ #==========================================
++# normalizeBootPath
++#------------------------------------------
++sub normalizeBootPath {
++	# ...
++	# check local path functions and normalize the high level
++	# URLs if required. This function is meant to be called
++	# on the value of the boot attribute only
++	# ---
++	my $this   = shift;
++	my $module = shift;
++	my $kiwi   = $this-&gt;{kiwi};
++	my $path;
++	$module = $this -&gt; quote ($module);
++	$path = $this -&gt; thisPath ($module);
++	if (defined $path) {
++		return $path;
++	}
++	$path = $this -&gt; obsPath ($module,&quot;boot&quot;);
++	if (defined $path) {
++		return $path;
++	}
++	$path = $this -&gt; systemPath ($module);
++	if (defined $path) {
++		return $path;
++	}
++	$path = $this -&gt; dirPath ($module);
++	if (defined $path) {
++		return $path;
++	}
++	return $module;
++}
++
++#==========================================
+ # quote
+ #------------------------------------------
+ sub quote {
+@@ -186,6 +219,30 @@ sub quote {
+ }
+ 
+ #==========================================
++# systemPath
++#------------------------------------------
++sub systemPath {
++	#...
++	# This path uses the provided <A HREF="system://">system://</A> path and
++	# prefix it with kiwi's default module system dir
++	#---
++	my $this   = shift;
++	my $module = shift;
++	my $prefix = $main::System;
++	my $kiwi   = $this-&gt;{kiwi};
++	my $path    = undef;
++	#==========================================
++	# normalize URL data
++	#------------------------------------------
++	if ((! defined $module) || ($module !~ /^system:\/\//)) {
++		return undef;
++	}
++	$module =~ s/system:\/\///;
++	$path = $this -&gt; dirPath (&quot;<A HREF="dir://">dir://</A>&quot;.$prefix.&quot;/&quot;.$module);
++	return $path;
++}
++
++#==========================================
+ # thisPath
+ #------------------------------------------
+ sub thisPath {
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 30565f1..6d43fd0 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -1446,7 +1446,7 @@ sub getTypes {
+ 		my %record  = ();
+ 		$record{type} = $node -&gt; getAttribute(&quot;image&quot;);
+ 		$record{boot} = $node -&gt; getAttribute(&quot;boot&quot;);
+-		my $bootpath = $urlhd -&gt; obsPath ($record{boot},&quot;boot&quot;);
++		my $bootpath = $urlhd -&gt; normalizeBootPath ($record{boot});
+ 		if (defined $bootpath) {
+ 			$record{boot} = $bootpath;
+ 		}
+@@ -4840,7 +4840,7 @@ sub __populateTypeInfo {
+ 					$record{filesystem} = &quot;$filesystemRW,$filesystemRO&quot;;
+ 				}
+ 			}
+-			my $bootpath = $urlhd -&gt; obsPath ($record{boot},&quot;boot&quot;);
++			my $bootpath = $urlhd -&gt; normalizeBootPath ($record{boot});
+ 			if (defined $bootpath) {
+ 				$record{boot} = $bootpath;
+ 			}
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003278.html">[Kiwi-devel] [PATCH] Added system:// URLs and improved boot attribute.
+</A></li>
+	<LI>Next message: <A HREF="003280.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c8b8dce8bc1ea227b9606fd4c238877129c43491
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3279">[ date ]</a>
+              <a href="thread.html#3279">[ thread ]</a>
+              <a href="subject.html#3279">[ subject ]</a>
+              <a href="author.html#3279">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,162 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [PATCH] find and mount the active partition on /livecd
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BPATCH%5D%20find%20and%20mount%20the%20active%20partition%20on%0A%20/livecd&In-Reply-To=%3C20110315141554.2fbefe7b%40pre-sense.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003173.html">
+   <LINK REL="Next"  HREF="003241.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [PATCH] find and mount the active partition on /livecd</H1>
+    <B>Justus Winter</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BPATCH%5D%20find%20and%20mount%20the%20active%20partition%20on%0A%20/livecd&In-Reply-To=%3C20110315141554.2fbefe7b%40pre-sense.de%3E"
+       TITLE="[Kiwi-devel] [PATCH] find and mount the active partition on /livecd">winter at pre-sense.de
+       </A><BR>
+    <I>Tue Mar 15 14:15:54 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003173.html">[Kiwi-devel] [PATCH] find and mount the active partition on /livecd
+</A></li>
+        <LI>Next message: <A HREF="003241.html">[Kiwi-devel] [PATCH] add a --mbrid command line switch
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3192">[ date ]</a>
+              <a href="thread.html#3192">[ thread ]</a>
+              <a href="subject.html#3192">[ subject ]</a>
+              <a href="author.html#3192">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hey Marcus,
+
+On Wed, 9 Mar 2011 15:38:44 +0100
+Marcus Sch&#228;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>&gt; wrote:
+
+&gt;<i> Hi,
+</I>&gt;<i> 
+</I>&gt;<i> &gt; &gt; It looks like you have a use case which required this change.
+</I>&gt;<i> &gt; &gt; Would you mind to say some words about the background. Would be
+</I>&gt;<i> &gt; &gt; great
+</I>&gt;<i> &gt; Gladly. We use kiwi to produce appliances and desperately wanted a
+</I>&gt;<i> &gt; way to update them without having to replace the boot medium. We
+</I>&gt;<i> &gt; switched to isohybrid images because they are much easier to deploy
+</I>&gt;<i> &gt; (cat to medium without having to worry about kiwi being installed).
+</I>&gt;<i> &gt; 
+</I>&gt;<i> &gt; The image has to be postprocessed (similar to the things that
+</I>&gt;<i> &gt; isohybrid from isolinux does):
+</I>&gt;<i> &gt; 
+</I>&gt;<i> &gt;  - replacing the boot code (with a patched version of isolinux
+</I>&gt;<i> &gt;    first stage bootloader, see below)
+</I>&gt;<i> &gt;  - embedding the offset of the bootloader into the mbr
+</I>&gt;<i> &gt;  - setting the disk identifier
+</I>&gt;<i> &gt;  - creating two partitions, making them a bit larger to allow future
+</I>&gt;<i> &gt;    upgrades to grow
+</I>&gt;<i> &gt;  - (optional) creating an additional data partition
+</I>&gt;<i> &gt;  - marking the first partition bootable
+</I>&gt;<i> &gt; 
+</I>&gt;<i> &gt; The bootloader looks for the first partition marked as active and
+</I>&gt;<i> &gt; loads isolinux.bin from there. The patch against isolinux is
+</I>&gt;<i> &gt; attached (it is rather small and verbosely documented).
+</I>&gt;<i> &gt; 
+</I>&gt;<i> &gt; Once the image is written to an writable medium, it can be updated
+</I>&gt;<i> &gt; like this (while the system is up and running):
+</I>&gt;<i> &gt; 
+</I>&gt;<i> &gt; dd if=update.iso of=$DEVICE bs=512 seek=1 skip=1
+</I>&gt;<i> &gt; set_bootable $DEVICE
+</I>&gt;<i> &gt; reboot
+</I>&gt;<i> &gt; 
+</I>&gt;<i> &gt; with $DEVICE pointing to the partition *not* marked as active. The
+</I>&gt;<i> &gt; old system can be booted by toggling the bootable flags.
+</I>&gt;<i> 
+</I>&gt;<i> This is an interesting concept. So if I understand it correctly you
+</I>&gt;<i> always have two systems on the medium. Now I also understand why
+</I>&gt;<i> you need code in linuxrc to detect the active partition
+</I>Yes.
+
+&gt;<i> &gt; Limitations of this approach:
+</I>&gt;<i> &gt;  - the bootloader offset must match
+</I>&gt;<i> &gt;  - the disk identifier must match
+</I>&gt;<i> &gt; 
+</I>&gt;<i> &gt; One could overcome these limitations by also updating the first 446
+</I>&gt;<i> &gt; bytes of the bootsector (dd if=update.iso of=$WHOLEDISK bs=446
+</I>&gt;<i> &gt; count=1) at the cost of losing the ability to restore the old
+</I>&gt;<i> &gt; system by simply toggling the bootable flags.
+</I>&gt;<i> 
+</I>&gt;<i> You could store a copy of the bootcode (first 446 bytes) and restore
+</I>&gt;<i> that if the old system should be booted again. Don't know if it's
+</I>&gt;<i> possible but I think you can also store a copy of the mbr into the
+</I>&gt;<i> partition itself. So if you overwrite the mbr from update.iso
+</I>&gt;<i> you can restore the old mbr from the partition containing the old
+</I>&gt;<i> system
+</I>Sure, something like that should be possible, but just toggling the
+bootable flags is much simpler and can be done by someone who isn't
+familiar with the technical details.
+
+&gt;<i> &gt; I do have a feature request: There is one thing stopping us from
+</I>&gt;<i> &gt; creating updatable isohybrid images with kiwi without remastering
+</I>&gt;<i> &gt; them (or maybe it is already possible?), we need to be able to set
+</I>&gt;<i> &gt; the disk id (called mbrid in KIWIIsoLinux.pm) to a fixed value,
+</I>&gt;<i> &gt; preferably in the image configuration file.
+</I>&gt;<i> 
+</I>&gt;<i> I understand. There is only one MBR but two systems looking for
+</I>&gt;<i> different MBR id's. I would accept the following change:
+</I>&gt;<i> 
+</I>&gt;<i> * provide a kiwi option --mbrid &lt;value&gt; in kiwi.pl
+</I>&gt;<i> * change the function: getMBRDiskLabel() in KIWIBoot.pm
+</I>&gt;<i>   like this:
+</I>&gt;<i> 
+</I>&gt;<i>   if (defined $main::MBRID) {
+</I>&gt;<i>      $this-&gt;{mbrid} = your-id
+</I>&gt;<i>   } else {
+</I>&gt;<i>      current code
+</I>&gt;<i>   }
+</I>Okay, I'll prepare and test a patch.
+
+Thanks,
+Justus
+-- 
+Justus Winter                               <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">winter at pre-sense.de</A>
+
+PRESENSE Technologies GmbH            Sachsenstr. 5, D-20097 HH
+                                         USt-IdNr.: DE263765024
+Gesch&#228;ftsf&#252;hrer/Managing Directors       AG Hamburg, HRB 107844
+Till D&#246;rges           J&#252;rgen Sander              Axel Theilmann
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: signature.asc
+Type: application/pgp-signature
+Size: 198 bytes
+Desc: not available
+URL: &lt;<A HREF="https://lists.berlios.de/pipermail/kiwi-devel/attachments/20110315/35b17d24/attachment.pgp">https://lists.berlios.de/pipermail/kiwi-devel/attachments/20110315/35b17d24/attachment.pgp</A>&gt;
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003173.html">[Kiwi-devel] [PATCH] find and mount the active partition on /livecd
+</A></li>
+	<LI>Next message: <A HREF="003241.html">[Kiwi-devel] [PATCH] add a --mbrid command line switch
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3192">[ date ]</a>
+              <a href="thread.html#3192">[ thread ]</a>
+              <a href="subject.html#3192">[ subject ]</a>
+              <a href="author.html#3192">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

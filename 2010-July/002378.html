@@ -1,0 +1,193 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b0e45626848518f7ab0108d2a13a10fa8ceb5e4a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b0e45626848518f7ab0108d2a13a10fa8ceb5e4a&In-Reply-To=%3C20100707081452.E98824809E9%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002377.html">
+   <LINK REL="Next"  HREF="002379.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b0e45626848518f7ab0108d2a13a10fa8ceb5e4a</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b0e45626848518f7ab0108d2a13a10fa8ceb5e4a&In-Reply-To=%3C20100707081452.E98824809E9%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b0e45626848518f7ab0108d2a13a10fa8ceb5e4a">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jul  7 10:14:52 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002377.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 034bbac2abb1d9a16e989486c28510fa63c12b8b
+</A></li>
+        <LI>Next message: <A HREF="002379.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2f0c1a985499b6a6a56eeaafb289f9749bdc060c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2378">[ date ]</a>
+              <a href="thread.html#2378">[ thread ]</a>
+              <a href="subject.html#2378">[ subject ]</a>
+              <a href="author.html#2378">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  b0e45626848518f7ab0108d2a13a10fa8ceb5e4a (commit)
+      from  034bbac2abb1d9a16e989486c28510fa63c12b8b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b0e45626848518f7ab0108d2a13a10fa8ceb5e4a
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jul 7 10:14:27 2010 +0200
+
+    - added zipl install into disk image file code
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 3d7b4d7..d4ab195 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -4438,11 +4438,57 @@ sub installBootLoader {
+ 	# Zipl
+ 	#------------------------------------------
+ 	if ($loader eq &quot;zipl&quot;) {
+-		# TODO
+ 		$kiwi -&gt; info (&quot;Installing zipl on device: $diskname&quot;);
+-		$kiwi -&gt; skipped();
+-		$kiwi -&gt; info (&quot;*** not implemented ***&quot;);
+-		$kiwi -&gt; skipped();
++		#==========================================
++		# detect disk geometry of disk image file
++		#------------------------------------------
++		my @geometry = $this -&gt; diskGeometry ($diskname);
++		if (! @geometry) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Failed to detect disk geometry&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		#==========================================
++		# rewrite zipl.conf with additional params
++		#------------------------------------------
++		my $config = &quot;$tmpdir/boot/zipl.conf&quot;;
++		if (! open (FD,$config)) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Can't open config file for reading: $!&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		my @data = &lt;FD&gt;; close FD;
++		if (! open (FD,&quot;&gt;$config&quot;)) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Can't open config file for writing: $!&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		foreach my $line (@data) {
++			print FD $line;
++			if ($line =~ /^menu:/) {
++				print FD &quot;\t&quot;.&quot;targetbase = $diskname&quot;.&quot;\n&quot;;
++				print FD &quot;\t&quot;.&quot;targettype = SCSI&quot;.&quot;\n&quot;;
++				print FD &quot;\t&quot;.&quot;targetgeometry = $geometry[0]&quot;.&quot;\n&quot;;
++				print FD &quot;\t&quot;.&quot;targetblocksize = 512&quot;.&quot;\n&quot;;
++				print FD &quot;\t&quot;.&quot;targetoffset = $geometry[1]&quot;.&quot;\n&quot;;
++			}
++		}
++		close FD;
++		#==========================================
++		# call zipl...
++		#------------------------------------------
++		$status = qxx (&quot;zipl -c $config 2&gt;&amp;1&quot;);
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Couldn't install zipl on $diskname: $status&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		$kiwi -&gt; done();
+ 	}
+ 	#==========================================
+ 	# more boot managers to come...
+@@ -5324,4 +5370,38 @@ sub addBootNext {
+ 	return $this;
+ }
+ 
++#==========================================
++# diskGeometry
++#------------------------------------------
++sub diskGeometry {
++	# ...
++	# find disk geometry: CYLINDERS,HEADS,SECTORS and
++	# also the start sector of the boot partition which
++	# is in kiwi always the last partition in the table
++	# ---
++	my $this = shift;
++	my $disk = shift;
++	my $geometry;
++	my $bootsector;
++	my $bios  = qx (parted $disk unit cyl print | grep BIOS 2&gt;&amp;1);
++	my @table = qx (parted -m $disk unit s print 2&gt;&amp;1);
++	if ($bios =~ /geometry: (.*?)\./) {
++		$geometry = $1;
++	} else {
++		return undef;
++	}
++	chomp @table;
++	foreach my $entry (@table) {
++		if ($entry =~ /^[1-4]:/) {
++			my @items = split (/:/,$entry);
++			$bootsector = $items[1];
++			chop $bootsector;
++		}
++	}
++	if (! $bootsector) {
++		return undef;
++	}
++	return ($geometry,$bootsector);
++}
++
+ 1; 
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002377.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 034bbac2abb1d9a16e989486c28510fa63c12b8b
+</A></li>
+	<LI>Next message: <A HREF="002379.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2f0c1a985499b6a6a56eeaafb289f9749bdc060c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2378">[ date ]</a>
+              <a href="thread.html#2378">[ thread ]</a>
+              <a href="subject.html#2378">[ subject ]</a>
+              <a href="author.html#2378">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

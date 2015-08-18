@@ -1,0 +1,181 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] kiwi: Weekly report 2010-11-21 - 2010-11-26...
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20kiwi%3A%20Weekly%20report%202010-11-21%20-%202010-11-26...&In-Reply-To=%3C20101126150106.GA585%40D7.ddts.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002862.html">
+   <LINK REL="Next"  HREF="002867.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] kiwi: Weekly report 2010-11-21 - 2010-11-26...</H1>
+    <B>Marcus Sch&#228;fer</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20kiwi%3A%20Weekly%20report%202010-11-21%20-%202010-11-26...&In-Reply-To=%3C20101126150106.GA585%40D7.ddts.net%3E"
+       TITLE="[Kiwi-devel] kiwi: Weekly report 2010-11-21 - 2010-11-26...">ms at novell.com
+       </A><BR>
+    <I>Fri Nov 26 16:01:07 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002862.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ddd0faf5b07c2c87720543ac109b06a841825b43
+</A></li>
+        <LI>Next message: <A HREF="002867.html">[Kiwi-devel] remove use of getImageTypeAndAttributes from	KIWIImageFormat
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2864">[ date ]</a>
+              <a href="thread.html#2864">[ thread ]</a>
+              <a href="subject.html#2864">[ subject ]</a>
+              <a href="author.html#2864">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>==================================================
+Changes Report kiwi v4.66 2010-11-21 - 2010-11-26
+--------------------------------------------------
+most important changes for this weeks release...
+
+This is mostly a bugfix and cleanup release. I spent some
+time on the caching algorithm and while doing that I found
+several bugs in the clicfs code which could be solved with
+the help of the upstream maintainer. Thanks to Coolo for
+his time and effort. There is still one outstanding patch
+for clicfs which needs further testing so I plan to release
+a stable version of the cache feature by next week
+
+Robert continued his work on the XML restructuring and
+also added some new checks. Here is the log:
+
+commit a4122efc4b1cf1f9ac9e3b697aee74c509ffe295
+
+    - added the following consistency checks:
+      * only 1 profile may be marked as default via import=&quot;true&quot;
+      * only 1 type per &lt;preference&gt; spec may be set as default via primary=&quot;true&quot;
+      * only 1 &lt;preference&gt; spec may reference 1 &lt;profile&gt;
+      * only 1 &lt;preference&gt; specification without a profiles=... attribute
+      * check that all references used via profiles=&quot;aName&quot; attribute have
+        a definition of &lt;profile name=&quot;aName&quot;.../&gt;
+
+The rest are a list of bugfixes and I hope we didn't
+introduce regressions. According to this I'd like to ask people
+to give it a test if your appliances still build and if not
+complain :-) Here is the list of the most important fixes
+
+commit 9f963af5bdd06cf199d15f93a9aabed3da7aa1b2
+
+    - make sure bootstrap packages are handled when using a cache
+    - fixed time when KIWIImage.pm mounts the overlay and provide
+      a function getImageTree() which returns the currently used
+      root tree. Move the recovery creation, profile update, and
+      cleanup after the KIWIImage module creation
+
+commit e3bd374fe760f090285350f5dfb62485db933148
+
+    - fixed overlay setup for KIWIBoot modules. Only if a cow
+      file exists in the given system image path it's required to
+      setup the overlay mount
+
+commit 1966b515ff982e8ef53a90dd86cc4444394293d0
+
+    - fixed profile check in create mode
+
+commit 3d9d969d82f36c66b1bb9e789647ea85daf8063b
+
+    - cleanup xenconfig setup by removing conditions that no longer apply
+      due to the removal of the xen image type which is now handled
+      by the vmx/oem type flavoured with xen and xenk profiles
+
+commit 1b319c50d2f323d8bd504af66f7ed54f7cf6f36d
+
+    - make sure the package manager is added only once to the
+      list when in --info mode
+
+commit 58ce1d0894ca2d0f80d7d759cc0ccd6e6e12b8d1
+
+    - fixed dumpsolv regexp which searches for pattern names
+
+commit 6edf26eb6fd35bf412778a6b5f43fbac4183512a
+
+    - fixed creation of boot image caches. It's required to prevent
+      the kernel extraction from the cache because this is done in
+      the preparation process which uses the cache
+    
+    - don't allow logfile option when in init-cache mode. This is
+      because each cache has its own logfile living in the cache
+      directory
+
+commit 4911a239e18abec0d5624115e71be6ac627306b2
+
+    - fixed minor code duplication inside the RNC schema
+
+commit 8281ec029027ad1e37188be70cb1c0dc115588a9
+
+    - deactivate compression for clicfs caches (faster)
+    - fixed and cleaned up profile evaluation and use
+
+commit 03f3e800e5b8b8f4d2e44c0f9adf4bb9de3df943
+
+    - explicitly call SuSEconfig --module permissions. This module
+      is no longer called by the default SuSEconfig call so we need
+      to call it directly
+
+commit 034fc357064a3e6140bc2b6030724b6b8e924b94
+
+    - don't preserve rpm database on recovery. This could cause
+      an inconsistent rpm database. Not preserving it could cause
+      an incomplete but consistent database which is better. For
+      reference a copy of the old database is stored in
+      /var/lib/rpm.backup
+
+commit ef1ba679b0d4f5cd15bbeed33bc8484c74de80ce
+
+    - fixed cleanImage() function to cleanly umount partitions before
+      calling init. Also make sure cleanImage reports its actions
+      as part of the boot.kiwi logfile
+    
+    - make sure system filesystems and mount options corresponds with
+      the default settings we use in a standard installation with yast
+
+Have a nice weekend
+
+Regards
+Marcus
+--
+ Public Key available
+ gpg --keyserver gpg-keyserver.de --recv-keys 0xCCE3C6A2
+ -------------------------------------------------------
+ Marcus Sch&#228;fer (Res. &amp; Dev.)   SUSE LINUX Products GmbH
+ Tel: 0911-740 53 0             Maxfeldstrasse 5
+ FAX: 0911-740 53 479           D-90409 N&#252;rnberg
+ GF: Markus Rex                 HRB: 16746 (AG N&#252;rnberg)
+ <A HREF="http://www.suse.de">http://www.suse.de</A>             Germany
+ -------------------------------------------------------
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002862.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ddd0faf5b07c2c87720543ac109b06a841825b43
+</A></li>
+	<LI>Next message: <A HREF="002867.html">[Kiwi-devel] remove use of getImageTypeAndAttributes from	KIWIImageFormat
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2864">[ date ]</a>
+              <a href="thread.html#2864">[ thread ]</a>
+              <a href="subject.html#2864">[ subject ]</a>
+              <a href="author.html#2864">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

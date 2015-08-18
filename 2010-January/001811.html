@@ -1,0 +1,130 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a5979372f1f2e5277b22a0af78a182f5c180b7c8
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a5979372f1f2e5277b22a0af78a182f5c180b7c8&In-Reply-To=%3C201001270939.o0R9dVeA020409%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001810.html">
+   <LINK REL="Next"  HREF="001812.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a5979372f1f2e5277b22a0af78a182f5c180b7c8</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a5979372f1f2e5277b22a0af78a182f5c180b7c8&In-Reply-To=%3C201001270939.o0R9dVeA020409%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a5979372f1f2e5277b22a0af78a182f5c180b7c8">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jan 27 10:39:31 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001810.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 21ed7a5b8fac53fecb06c4b612db9b398709d7ab
+</A></li>
+        <LI>Next message: <A HREF="001812.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7299399ac851fa76897ab3c844b4f40ca8767c26
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1811">[ date ]</a>
+              <a href="thread.html#1811">[ thread ]</a>
+              <a href="subject.html#1811">[ subject ]</a>
+              <a href="author.html#1811">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  a5979372f1f2e5277b22a0af78a182f5c180b7c8 (commit)
+      from  21ed7a5b8fac53fecb06c4b612db9b398709d7ab (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit a5979372f1f2e5277b22a0af78a182f5c180b7c8
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jan 27 10:25:36 2010 +0100
+
+    - set XML element only if it's not already set with that value
+    - better XML diff output in logfile
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILog.pm b/modules/KIWILog.pm
+index 13efcc7..760b148 100644
+--- a/modules/KIWILog.pm
++++ b/modules/KIWILog.pm
+@@ -947,6 +947,7 @@ sub writeXML {
+ 	}
+ 	binmode $FX;
+ 	print $FX $data; close $FX;
++	qxx (&quot;sed -i -e 's!&gt;&lt;!&gt;\\n&lt;!'g $used&quot;);
+ 	my $diff = qxx (&quot;diff -uwB $orig $used 2&gt;&amp;1&quot;);
+ 	if ($diff) {
+ 		$this -&gt; loginfo (&quot;XML diff for $cmpf:\n$diff&quot;);
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index cd108df..0e272e2 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -1145,6 +1145,9 @@ sub setForeignOptionsElement {
+ 	my $opts = $this -&gt; getPreferencesNodeByTagName (&quot;$item&quot;);
+ 	my $node = $opts -&gt; getElementsByTagName (&quot;$item&quot;);
+ 	if ($node) {
++		if (&quot;$node&quot; eq &quot;$value&quot;) {
++			return $this;
++		}
+ 		$node = $node -&gt; get_node(1);
+ 		$opts -&gt; removeChild ($node);
+ 	}
+@@ -1219,9 +1222,13 @@ sub setPackageManager {
+ 	# ---
+ 	my $this  = shift;
+ 	my $value = shift;
++	my $opts = $this -&gt; getPreferencesNodeByTagName (&quot;packagemanager&quot;);
++	my $pmgr = $opts -&gt; getElementsByTagName (&quot;packagemanager&quot;);
++	if (($pmgr) &amp;&amp; (&quot;$pmgr&quot; eq &quot;$value&quot;)) {
++		return $this;
++	}
+ 	my $addElement = new XML::LibXML::Element (&quot;packagemanager&quot;);
+ 	$addElement -&gt; appendText ($value);
+-	my $opts = $this -&gt; getPreferencesNodeByTagName (&quot;packagemanager&quot;);
+ 	my $node = $opts -&gt; getElementsByTagName (&quot;packagemanager&quot;) -&gt; get_node(1);
+ 	$opts -&gt; removeChild ($node);
+ 	$opts -&gt; appendChild ($addElement);
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001810.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 21ed7a5b8fac53fecb06c4b612db9b398709d7ab
+</A></li>
+	<LI>Next message: <A HREF="001812.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7299399ac851fa76897ab3c844b4f40ca8767c26
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1811">[ date ]</a>
+              <a href="thread.html#1811">[ thread ]</a>
+              <a href="subject.html#1811">[ subject ]</a>
+              <a href="author.html#1811">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

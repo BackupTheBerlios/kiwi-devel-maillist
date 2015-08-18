@@ -1,0 +1,537 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1651 - in kiwi-branches/KIWI-265-Studio-Alpha1-Devel:	. modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1651%20-%20in%20kiwi-branches/KIWI-265-Studio-Alpha1-Devel%3A%0A%09.%20modules%20rpm&In-Reply-To=%3C200810171326.m9HDQwMr023005%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000742.html">
+   <LINK REL="Next"  HREF="000744.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1651 - in kiwi-branches/KIWI-265-Studio-Alpha1-Devel:	. modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1651%20-%20in%20kiwi-branches/KIWI-265-Studio-Alpha1-Devel%3A%0A%09.%20modules%20rpm&In-Reply-To=%3C200810171326.m9HDQwMr023005%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1651 - in kiwi-branches/KIWI-265-Studio-Alpha1-Devel:	. modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Oct 17 15:26:58 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000742.html">[Kiwi-devel] r1650 - in kiwi-head: modules rpm tools/dbuslock	tools/satplugin
+</A></li>
+        <LI>Next message: <A HREF="000744.html">[Kiwi-devel] r1652 - in kiwi-head: .	doc/examples/suse-11.1/suse-live-stick rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#743">[ date ]</a>
+              <a href="thread.html#743">[ thread ]</a>
+              <a href="subject.html#743">[ subject ]</a>
+              <a href="author.html#743">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-17 15:26:47 +0200 (Fri, 17 Oct 2008)
+New Revision: 1651
+
+Modified:
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/kiwi.pl
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIBoot.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIConfigure.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIImage.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWILog.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIManager.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIMigrate.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIOverlay.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIPattern.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIQX.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIRoot.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWISatSolver.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWISharedMem.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWISocket.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWITest.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWITestResult.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIURL.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIXML.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/rpm/kiwi.changes
+Log:
+
+- added backtrace in case of error (bnc #435991)
+
+
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/kiwi.pl
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/kiwi.pl	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/kiwi.pl	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -26,9 +26,17 @@
+ $DB::inhibit_exit = 0;
+ 
+ #============================================
++# Overwrite
++#--------------------------------------------
++BEGIN {
++	*CORE::GLOBAL::warn = sub { return $_[0]; };
++}
++
++#============================================
+ # Modules
+ #--------------------------------------------
+ use warnings;
++use Carp qw (cluck);
+ use Getopt::Long;
+ use KIWIRoot;
+ use KIWIXML;
+@@ -47,7 +55,10 @@
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+ our $ConfigFile    = &quot;$ENV{'HOME'}/.kiwirc&quot;;
+ our $ConfigName    = &quot;config.xml&quot;;
++our $TT            = &quot;Trace Level &quot;;
+ our $ConfigStatus  = 0;
++our $TL            = 1;
++our $BT;
+ #============================================
+ # Read $HOME/.kiwirc
+ #--------------------------------------------
+@@ -651,7 +662,7 @@
+ 				if (defined $BaseRoot) {
+ 					$overlay -&gt; resetOverlay();
+ 				}
+-				return undef;
++				my $code = kiwiExit (1); return $code;
+ 			}
+ 			if (! $configure -&gt; setupRecoveryArchive()) {
+ 				if (defined $BaseRoot) {
+@@ -1603,6 +1614,7 @@
+ 		return $code;
+ 	}
+ 	if ($code != 0) {
++		$kiwi -&gt; printBackTrace();
+ 		$kiwi -&gt; error  (&quot;KIWI exited with error(s)&quot;);
+ 		$kiwi -&gt; done ();
+ 	} else {
+@@ -1858,6 +1870,7 @@
+ 			my $code = $? &gt;&gt; 8;
+ 			my $type;
+ 			if ($code != 0) {
++				$main::BT.=cluck ($main::TT.$main::TL++);
+ 				return undef;
+ 			}
+ 			SWITCH: for ($data) {
+@@ -1893,6 +1906,7 @@
+ 				}
+ 			}
+ 		} else {
++			$main::BT.=cluck ($main::TT.$main::TL++);
+ 			return undef;
+ 		}
+ 	}
+@@ -1910,6 +1924,7 @@
+ 	my $dir    = shift;
+ 	my $config = &quot;$dir/$ConfigName&quot;;
+ 	if (! -d $dir) {
++		$main::BT.=cluck ($main::TT.$main::TL++);
+ 		return undef;
+ 	}
+ 	if (-f $config) {
+@@ -1918,8 +1933,10 @@
+ 	my @globsearch = glob ($dir.&quot;/*.kiwi&quot;);
+ 	my $globitems  = @globsearch;
+ 	if ($globitems == 0) {
++		$main::BT.=cluck ($main::TT.$main::TL++);
+ 		return undef;
+ 	} elsif ($globitems &gt; 1) {
++		$main::BT.=cluck ($main::TT.$main::TL++);
+ 		return undef;
+ 	} else {
+ 		$config = pop @globsearch;
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIBoot.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIBoot.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -25,6 +25,7 @@
+ # Modules
+ #------------------------------------------
+ use strict;
++use Carp qw (cluck);
+ use dbusdevice;
+ use KIWILog;
+ use FileHandle;
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIConfigure.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIConfigure.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIConfigure.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -18,6 +18,7 @@
+ # Modules
+ #------------------------------------------
+ use strict;
++use Carp qw (cluck);
+ use KIWILog;
+ use KIWIQX;
+ 
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIImage.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIImage.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIImage.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -20,6 +20,7 @@
+ # Modules
+ #------------------------------------------
+ use strict;
++use Carp qw (cluck);
+ use KIWILog;
+ use KIWIBoot;
+ use Math::BigFloat;
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWILog.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWILog.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWILog.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -19,14 +19,19 @@
+ # Modules
+ #------------------------------------------
+ use strict;
++use Carp qw (cluck);
+ use POSIX &quot;:sys_wait_h&quot;;
+-use Carp qw (cluck);
+ use KIWISocket;
+ use KIWISharedMem;
+ use FileHandle;
+ use KIWIQX;
+ 
+ #==========================================
++# Tracing
++#------------------------------------------
++$Carp::Internal{KIWILog}++;
++
++#==========================================
+ # Plugins
+ #------------------------------------------
+ BEGIN {
+@@ -137,6 +142,7 @@
+ 	my $level   = $this-&gt;{level};
+ 	my $date    = $this-&gt;{date};
+ 	if (! defined $smem) {
++		$main::BT.=cluck ($main::TT.$main::TL++);
+ 		return undef;
+ 	}
+ 	my $data;
+@@ -173,6 +179,7 @@
+ 	my $this = shift;
+ 	my $smem = $this-&gt;{smem};
+ 	if (! defined $smem) {
++		$main::BT.=cluck ($main::TT.$main::TL++);
+ 		return undef;
+ 	}
+ 	return $smem -&gt; get();
+@@ -398,6 +405,7 @@
+ 		return $this;
+ 	}
+ 	if (! (open EFD,&quot;&gt;&gt;$file&quot;)) {
++		$main::BT.=cluck ($main::TT.$main::TL++);
+ 		return undef;
+ 	}
+ 	binmode(EFD,':unix');
+@@ -481,10 +489,13 @@
+ 		if ($level != $lglevel) {
+ 			next;
+ 		}
+-		if (($lglevel == 1) || ($lglevel == 2) || ($lglevel == 3)) {
++		if (($lglevel == 1) || ($lglevel == 2)) {
+ 			$result = $needcr.$date.$logdata;
+ 		} elsif ($lglevel == 5) {
+ 			$result = $needcr.$logdata;
++		} elsif ($lglevel == 3) {
++			$result = $needcr.$date.$logdata;
++			$main::BT.=cluck ($main::TT.$main::TL++);
+ 		} else {
+ 			$result = Carp::longmess($needcr.$logdata);
+ 		}
+@@ -527,6 +538,33 @@
+ }
+ 
+ #==========================================
++# getBackTrace
++#------------------------------------------
++sub printBackTrace {
++	# ...
++	# return currently saved backtrace information
++	# if no information is present an empty string
++	# is returned
++	# ---
++	my $this = shift;
++	my $FD   = $this-&gt;{channel};
++	if (! $main::BT) {
++		return $this;
++	}
++	if (! defined $this-&gt;{nocolor}) {
++		print STDERR &quot;\033[1;31m[*** back trace follows ***]\n&quot;;
++		print STDERR &quot;\033[1;31m$main::BT&quot;;
++		print STDERR &quot;\033[1;31m[*** end ***]\n&quot;;
++		$this -&gt; doNorm();
++	} else {
++		print STDERR (&quot;[*** back trace follows ***]\n&quot;);
++		print STDERR $main::BT;
++		print STDERR &quot;[*** end ***]\n&quot;;
++	}
++	return $this;
++}
++
++#==========================================
+ # saveInCache
+ #------------------------------------------
+ sub saveInCache {
+@@ -636,6 +674,7 @@
+ 	}
+ 	if (! (open FD,&quot;&gt;$file&quot;)) {
+ 		$this -&gt; warning (&quot;Couldn't open log channel: $!\n&quot;);
++		$main::BT.=cluck ($main::TT.$main::TL++);
+ 		return undef;
+ 	}
+ 	binmode(FD,':unix');
+@@ -661,6 +700,7 @@
+ 	my $line = &quot;&quot;;
+ 	my $cr   = 0;
+ 	if (! open (FD, &quot;&gt;$rootLog&quot;)) {
++		$main::BT.=cluck ($main::TT.$main::TL++);
+ 		return undef;
+ 	}
+ 	foreach my $l (@stream) {
+@@ -813,6 +853,7 @@
+ 		$this -&gt; skipped ();
+ 		$this -&gt; {smem} -&gt; closeSegment();
+ 		undef $this -&gt; {smem};
++		$main::BT.=cluck ($main::TT.$main::TL++);
+ 		return undef;
+ 	}
+ 	if ($child) {
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIManager.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIManager.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIManager.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -19,6 +19,7 @@
+ #------------------------------------------
+ require Exporter;
+ use strict;
++use Carp qw (cluck);
+ use FileHandle;
+ use File::Basename;
+ use KIWILog;
+@@ -280,6 +281,7 @@
+ 			$kiwi -&gt; doNorm();
+ 		}
+ 		$this -&gt; resetInstallationSource();
++		$main::BT.=cluck ($main::TT.$main::TL++);
+ 		return undef;
+ 	}
+ 	$kiwi -&gt; done ();
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIMigrate.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIMigrate.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIMigrate.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -21,6 +21,7 @@
+ # Modules
+ #------------------------------------------
+ use strict;
++use Carp qw (cluck);
+ use File::Find;
+ use File::Basename;
+ use KIWILog;
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIOverlay.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIOverlay.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIOverlay.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -19,6 +19,7 @@
+ # Modules
+ #------------------------------------------
+ use strict;
++use Carp qw (cluck);
+ use KIWILog;
+ use KIWIQX;
+ 
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIPattern.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIPattern.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIPattern.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -18,6 +18,7 @@
+ # Modules
+ #------------------------------------------
+ use strict;
++use Carp qw (cluck);
+ use KIWILog;
+ use KIWIURL;
+ use File::Glob ':glob';
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIQX.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIQX.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIQX.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -19,6 +19,7 @@
+ # Modules
+ #------------------------------------------
+ require Exporter;
++use Carp qw (cluck);
+ use strict;
+ 
+ #==========================================
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIRoot.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIRoot.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIRoot.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -19,6 +19,7 @@
+ # Modules
+ #------------------------------------------
+ use strict;
++use Carp qw (cluck);
+ use KIWIURL;
+ use KIWILog;
+ use KIWIManager;
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWISatSolver.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWISatSolver.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWISatSolver.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -24,6 +24,7 @@
+ # Modules
+ #------------------------------------------
+ use strict;
++use Carp qw (cluck);
+ use KIWILog;
+ use KIWIQX;
+ 
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWISharedMem.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWISharedMem.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWISharedMem.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -21,6 +21,7 @@
+ # Modules
+ #------------------------------------------
+ use strict;
++use Carp qw (cluck);
+ use IPC::SysV qw(IPC_PRIVATE IPC_RMID IPC_CREAT S_IRWXU);
+ use IPC::Semaphore;
+ use KIWIQX;
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWISocket.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWISocket.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWISocket.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -20,6 +20,7 @@
+ # Modules
+ #------------------------------------------
+ use strict;
++use Carp qw (cluck);
+ use FileHandle;
+ use Socket;
+ use KIWIQX;
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWITest.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWITest.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWITest.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -20,6 +20,7 @@
+ # Modules
+ #------------------------------------------
+ use strict;
++use Carp qw (cluck);
+ use XML::LibXML;
+ use KIWITestResult;
+ 
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWITestResult.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWITestResult.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWITestResult.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -20,6 +20,7 @@
+ # Modules
+ #------------------------------------------
+ use strict;
++use Carp qw (cluck);
+ use XML::LibXML;
+ 
+ #==========================================
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIURL.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIURL.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIURL.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -18,6 +18,7 @@
+ # Modules
+ #------------------------------------------
+ use strict;
++use Carp qw (cluck);
+ use File::Basename;
+ use KIWILog;
+ use LWP;
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIXML.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIXML.pm	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIXML.pm	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -19,6 +19,7 @@
+ #------------------------------------------
+ require Exporter;
+ use strict;
++use Carp qw (cluck);
+ use XML::LibXML;
+ use LWP;
+ use KIWILog;
+@@ -2594,6 +2595,7 @@
+ 		}
+ 	}
+ 	if ( $rootError ) {
++		$main::BT.=cluck ($main::TT.$main::TL++);
+ 		return undef;
+ 	}
+ 	my $origroot = $root;
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/rpm/kiwi.changes
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/rpm/kiwi.changes	2008-10-17 13:12:21 UTC (rev 1650)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/rpm/kiwi.changes	2008-10-17 13:26:47 UTC (rev 1651)
+@@ -6,6 +6,7 @@
+ - fixed setupKernel to change the sysconfig.kernel template file
+   instead of creating a new one (bnc #435060)
+ - added check for possibly existing oem partition file
++- added backtrace in case of error (bnc #435991)
+ 
+ -------------------------------------------------------------------
+ Tue Sep 23 16:22:09 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000742.html">[Kiwi-devel] r1650 - in kiwi-head: modules rpm tools/dbuslock	tools/satplugin
+</A></li>
+	<LI>Next message: <A HREF="000744.html">[Kiwi-devel] r1652 - in kiwi-head: .	doc/examples/suse-11.1/suse-live-stick rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#743">[ date ]</a>
+              <a href="thread.html#743">[ thread ]</a>
+              <a href="subject.html#743">[ subject ]</a>
+              <a href="author.html#743">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

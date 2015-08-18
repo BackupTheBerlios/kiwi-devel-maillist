@@ -1,0 +1,130 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0d2b75690c9dc1824d78f7f1bf74271b469969cc
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%200d2b75690c9dc1824d78f7f1bf74271b469969cc&In-Reply-To=%3C20110624201728.A35AB48294E%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003559.html">
+   <LINK REL="Next"  HREF="003564.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0d2b75690c9dc1824d78f7f1bf74271b469969cc</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%200d2b75690c9dc1824d78f7f1bf74271b469969cc&In-Reply-To=%3C20110624201728.A35AB48294E%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0d2b75690c9dc1824d78f7f1bf74271b469969cc">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Jun 24 22:17:28 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003559.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5a287b61e1a4e09b63663ef51e7f386af8cf7aba
+</A></li>
+        <LI>Next message: <A HREF="003564.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. dabbd1bf6485ec1f829bf51035fe1fed421716a0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3562">[ date ]</a>
+              <a href="thread.html#3562">[ thread ]</a>
+              <a href="subject.html#3562">[ subject ]</a>
+              <a href="author.html#3562">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  0d2b75690c9dc1824d78f7f1bf74271b469969cc (commit)
+      from  5a287b61e1a4e09b63663ef51e7f386af8cf7aba (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 0d2b75690c9dc1824d78f7f1bf74271b469969cc
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Jun 24 22:14:46 2011 +0200
+
+    - fixed evaluation of buildtype in createImage(). There were
+      some places which did not reference the build type as it
+      is stored in the XML object. This could lead to the use of
+      an uninitialized value if no primary type was set in the
+      XML description and no type was explicitly selected
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIImageCreator.pm b/modules/KIWIImageCreator.pm
+index 67014bc..13bd60a 100644
+--- a/modules/KIWIImageCreator.pm
++++ b/modules/KIWIImageCreator.pm
+@@ -398,7 +398,6 @@ sub createImage {
+ 	my $this         = shift;
+ 	my $configDir    = $this -&gt; {configDir};
+ 	my $buildProfs   = $this -&gt; {buildProfiles};
+-	my $type         = $this -&gt; {buildType};
+ 	my $kiwi         = $this -&gt; {kiwi};
+ 	my $pkgMgr       = $this -&gt; {packageManager};
+ 	my $ignore       = $this -&gt; {ignoreRepos};
+@@ -436,7 +435,8 @@ sub createImage {
+ 	}
+ 	$kiwi -&gt; info (&quot;Reading image description [Create]...\n&quot;);
+ 	my $xml = new KIWIXML (
+-		$kiwi,$configDir,$type,$buildProfs,$cmdL
++		$kiwi,$configDir,$this-&gt;{buildType},
++		$buildProfs,$cmdL
+ 	);
+ 	if (! defined $xml) {
+ 		return undef;
+@@ -606,13 +606,13 @@ sub createImage {
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Updating type in .profile environment&quot;);
+ 	qxx (
+-		&quot;sed -i -e 's#kiwi_type=.*#kiwi_type=\&quot;$type\&quot;#' $tree/.profile&quot;
++		&quot;sed -i -e 's#kiwi_type=.*#kiwi_type=\&quot;$attr{type}\&quot;#' $tree/.profile&quot;
+ 	);
+ 	$kiwi -&gt; done();
+ 	#==========================================
+ 	# Create recovery archive if specified
+ 	#------------------------------------------
+-	if ((defined $type) &amp;&amp; ($type eq &quot;oem&quot;)) {
++	if ($attr{type} eq &quot;oem&quot;) {
+ 		my $configure = new KIWIConfigure (
+ 			$kiwi,$xml,$tree,$tree.&quot;/image&quot;,$destination
+ 		);
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003559.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5a287b61e1a4e09b63663ef51e7f386af8cf7aba
+</A></li>
+	<LI>Next message: <A HREF="003564.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. dabbd1bf6485ec1f829bf51035fe1fed421716a0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3562">[ date ]</a>
+              <a href="thread.html#3562">[ thread ]</a>
+              <a href="subject.html#3562">[ subject ]</a>
+              <a href="author.html#3562">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

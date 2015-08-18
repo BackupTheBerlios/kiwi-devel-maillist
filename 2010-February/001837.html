@@ -1,0 +1,965 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [PATCH] support auto upgrade of XML to 4.1 version
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BPATCH%5D%20support%20auto%20upgrade%20of%20XML%20to%204.1%20version&In-Reply-To=%3Cmailman.7.1331734620.4461.kiwi-devel%40lists.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001841.html">
+   <LINK REL="Next"  HREF="001836.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[PATCH] support auto upgrade of XML to 4.1 version</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BPATCH%5D%20support%20auto%20upgrade%20of%20XML%20to%204.1%20version&In-Reply-To=%3Cmailman.7.1331734620.4461.kiwi-devel%40lists.berlios.de%3E"
+       TITLE="[PATCH] support auto upgrade of XML to 4.1 version">rschweikert at novell.com
+       </A><BR>
+    <I>Tue Feb  2 21:51:15 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001841.html">[Kiwi-devel] XSL pretty printer swallows comments
+</A></li>
+        <LI>Next message: <A HREF="001836.html">[Kiwi-devel] XML auto upgrade
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1837">[ date ]</a>
+              <a href="thread.html#1837">[ thread ]</a>
+              <a href="subject.html#1837">[ subject ]</a>
+              <a href="author.html#1837">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>---
+ xsl/convert14to20.xsl |   75 +++++++++++++
+ xsl/convert20to24.xsl |   60 ++++++++++
+ xsl/convert24to35.xsl |   40 +++++++
+ xsl/convert35to37.xsl |   93 ++++++++++++++++
+ xsl/convert37to38.xsl |   41 +++++++
+ xsl/convert38to39.xsl |  145 ++++++++++++++++++++++++
+ xsl/convert39to41.xsl |  293 +++++++++++++++++++++++++++++++++++++++++++++++++
+ xsl/convert41toXX.xsl |   16 ---
+ xsl/master.xsl        |   51 ++++++++-
+ 9 files changed, 791 insertions(+), 23 deletions(-)
+ create mode 100644 xsl/convert14to20.xsl
+ create mode 100644 xsl/convert20to24.xsl
+ create mode 100644 xsl/convert24to35.xsl
+ create mode 100644 xsl/convert35to37.xsl
+ create mode 100644 xsl/convert37to38.xsl
+ create mode 100644 xsl/convert38to39.xsl
+ create mode 100644 xsl/convert39to41.xsl
+ delete mode 100644 xsl/convert41toXX.xsl
+
+diff --git a/xsl/convert14to20.xsl b/xsl/convert14to20.xsl
+new file mode 100644
+index 0000000..a45a13a
+--- /dev/null
++++ b/xsl/convert14to20.xsl
+@@ -0,0 +1,75 @@
++&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
++&lt;xsl:stylesheet version=&quot;1.0&quot;
++	xmlns:xsl=&quot;<A HREF="http://www.w3.org/1999/XSL/Transform">http://www.w3.org/1999/XSL/Transform</A>&quot;&gt;
++&lt;xsl:output method=&quot;xml&quot;
++	indent=&quot;yes&quot; omit-xml-declaration=&quot;no&quot; encoding=&quot;utf-8&quot;/&gt;
++&lt;xsl:strip-space elements=&quot;type&quot;/&gt;
++
++&lt;!-- default rule --&gt;
++&lt;xsl:template match=&quot;*|processing-instruction()|comment()&quot; mode=&quot;conv14to20&quot;&gt;
++	&lt;xsl:copy&gt;
++		&lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++		&lt;xsl:apply-templates mode=&quot;conv14to20&quot;/&gt;
++	&lt;/xsl:copy&gt;  
++&lt;/xsl:template&gt;
++
++&lt;!-- version update --&gt;
++&lt;para xmlns=&quot;<A HREF="http://docbook.org/ns/docbook">http://docbook.org/ns/docbook</A>&quot;&gt;
++	Changed attribute &lt;tag class=&quot;attribute&quot;&gt;schemeversion&lt;/tag&gt;
++	from &lt;literal&gt;1.4&lt;/literal&gt; to &lt;literal&gt;2.0&lt;/literal&gt;. 
++&lt;/para&gt;
++&lt;xsl:template match=&quot;image&quot; mode=&quot;conv14to20&quot;&gt;
++	&lt;image schemeversion=&quot;2.0&quot;&gt;
++		&lt;xsl:copy-of select=&quot;@*[local-name() != 'schemaversion']&quot;/&gt;
++		&lt;xsl:apply-templates mode=&quot;conv14to20&quot;/&gt;
++	&lt;/image&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- split section update --&gt;
++&lt;para xmlns=&quot;<A HREF="http://docbook.org/ns/docbook">http://docbook.org/ns/docbook</A>&quot;&gt;
++	Copy all attributes, when contents is NOT 'split'.
++	If contents contains 'split' and attribute &lt;tag class=&quot;attribute&quot;&gt;
++	filesystem&lt;/tag&gt; contains a comma, then split this attribute and
++	create two new attributes &lt;tag class=&quot;attribute&quot;&gt;fsreadwrite&lt;/tag&gt;
++	and &lt;tag class=&quot;attribute&quot;&gt;fsreadonly&lt;/tag&gt;.
++&lt;/para&gt;
++&lt;xsl:template match=&quot;type&quot; mode=&quot;conv14to20&quot; &gt;
++	&lt;xsl:variable name=&quot;fs&quot; select=&quot;normalize-space(@filesystem)&quot;/&gt;
++	&lt;xsl:variable name=&quot;contents&quot; select=&quot;.&quot;/&gt;
++	&lt;type&gt;
++	&lt;xsl:choose&gt;
++		&lt;xsl:when test=&quot;$contents != 'split'&quot;&gt;
++			&lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++			&lt;xsl:apply-templates mode=&quot;conv14to20&quot;/&gt;
++		&lt;/xsl:when&gt;
++		&lt;xsl:when test=&quot;$contents = 'split' and contains($fs, ',')&quot;&gt;
++			&lt;xsl:attribute name=&quot;fsreadwrite&quot;&gt;
++			&lt;xsl:value-of select=&quot;substring-before($fs, ',')&quot;/&gt;
++			&lt;/xsl:attribute&gt;
++			&lt;xsl:attribute name=&quot;fsreadonly&quot;&gt;
++			&lt;xsl:value-of select=&quot;substring-after($fs, ',')&quot;/&gt;
++			&lt;/xsl:attribute&gt;
++			&lt;xsl:copy-of select=&quot;@boot&quot;/&gt;
++			&lt;xsl:copy-of select=&quot;@format&quot;/&gt;
++			&lt;xsl:apply-templates mode=&quot;conv14to20&quot;/&gt;
++		&lt;/xsl:when&gt;
++		&lt;xsl:otherwise&gt;
++			&lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++			&lt;xsl:apply-templates mode=&quot;conv14to20&quot;/&gt;
++		&lt;/xsl:otherwise&gt;
++	&lt;/xsl:choose&gt;
++	&lt;/type&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- update boot / bootstrap --&gt;
++&lt;para xmlns=&quot;<A HREF="http://docbook.org/ns/docbook">http://docbook.org/ns/docbook</A>&quot;&gt; 
++	Change attribute value &lt;tag class=&quot;attribute&quot;&gt;boot&lt;/tag&gt; to 
++	&lt;tag class=&quot;attribute&quot;&gt;bootstrap&lt;/tag&gt;.
++&lt;/para&gt;
++&lt;xsl:template match=&quot;packages[@type='boot']&quot; mode=&quot;conv14to20&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot;&gt;
++		&lt;xsl:apply-templates mode=&quot;conv14to20&quot;/&gt;
++	&lt;/packages&gt;
++&lt;/xsl:template&gt;
++
++&lt;/xsl:stylesheet&gt;
+diff --git a/xsl/convert20to24.xsl b/xsl/convert20to24.xsl
+new file mode 100644
+index 0000000..88712dc
+--- /dev/null
++++ b/xsl/convert20to24.xsl
+@@ -0,0 +1,60 @@
++&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
++&lt;xsl:stylesheet version=&quot;1.0&quot;
++	xmlns:xsl=&quot;<A HREF="http://www.w3.org/1999/XSL/Transform">http://www.w3.org/1999/XSL/Transform</A>&quot;&gt;
++&lt;xsl:output method=&quot;xml&quot;
++	indent=&quot;yes&quot; omit-xml-declaration=&quot;no&quot; encoding=&quot;utf-8&quot;/&gt;
++&lt;xsl:strip-space elements=&quot;type&quot;/&gt;
++
++&lt;!-- default rule --&gt;
++&lt;xsl:template match=&quot;*|processing-instruction()|comment()&quot; mode=&quot;conv20to24&quot;&gt;
++	&lt;xsl:copy&gt;
++		&lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++		&lt;xsl:apply-templates mode=&quot;conv20to24&quot;/&gt;
++	&lt;/xsl:copy&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- update schama version --&gt;
++&lt;para xmlns=&quot;<A HREF="http://docbook.org/ns/docbook">http://docbook.org/ns/docbook</A>&quot;&gt;
++	Changed attribute &lt;tag class=&quot;attribute&quot;&gt;schemeversion&lt;/tag&gt;
++	from &lt;literal&gt;2.0&lt;/literal&gt; to &lt;literal&gt;2.4&lt;/literal&gt;. 
++&lt;/para&gt;
++&lt;xsl:template match=&quot;image&quot; mode=&quot;conv20to24&quot;&gt;
++	&lt;image schemeversion=&quot;2.4&quot;&gt;
++		&lt;xsl:copy-of select=&quot;@*[local-name() != 'schemaversion']&quot;/&gt;
++		&lt;xsl:apply-templates mode=&quot;conv20to24&quot;/&gt;
++	&lt;/image&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- remove attributes and add info --&gt;
++&lt;para xmlns=&quot;<A HREF="http://docbook.org/ns/docbook">http://docbook.org/ns/docbook</A>&quot;&gt;
++	Remove attributes memory,disk,HWversion,guestOS_32Bit and guestOS_64Bit
++	from the &lt;literal&gt;2.0&lt;/literal&gt; packages type [vmware|xen] version.
++	This information needs to be provided by an additional
++	&lt;tag class=&quot;element&quot;&gt;vmwareconfig&lt;/tag&gt; or
++	&lt;tag class=&quot;element&quot;&gt;xenconfig&lt;/tag&gt; element
++&lt;/para&gt;
++&lt;xsl:template match=&quot;packages&quot; mode=&quot;conv20to24&quot;&gt;
++	&lt;packages&gt;
++	&lt;xsl:if test=&quot;@memory or 
++		@disk or 
++		@HWversion or 
++		@guestOS_32Bit or 
++		@guestOS_64Bit&quot;&gt;
++	&lt;xsl:message&gt;
++		&lt;xsl:text&gt;NOTE: You need to setup a vmwareconfig and/or&#10;&lt;/xsl:text&gt;
++		&lt;xsl:text&gt;      xenconfig section in order to setup an&#10;&lt;/xsl:text&gt;
++		&lt;xsl:text&gt;      appropriate guest configuration. For&#10;&lt;/xsl:text&gt;
++		&lt;xsl:text&gt;      details see the 'KIWI image description'&#10;&lt;/xsl:text&gt;
++		&lt;xsl:text&gt;      chapter of the kiwi cookbook&lt;/xsl:text&gt;
++	&lt;/xsl:message&gt;
++	&lt;/xsl:if&gt;
++	&lt;xsl:copy-of select=&quot;@*[not(local-name(.) = 'memory' or
++		local-name(.) = 'disk' or
++		local-name(.) = 'HWversion' or
++		local-name(.) = 'guestOS_32Bit' or
++		local-name(.) = 'guestOS_64Bit')]&quot;/&gt;
++	&lt;xsl:apply-templates mode=&quot;conv20to24&quot;/&gt;
++	&lt;/packages&gt;
++&lt;/xsl:template&gt;
++
++&lt;/xsl:stylesheet&gt;
+diff --git a/xsl/convert24to35.xsl b/xsl/convert24to35.xsl
+new file mode 100644
+index 0000000..54b893d
+--- /dev/null
++++ b/xsl/convert24to35.xsl
+@@ -0,0 +1,40 @@
++&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
++&lt;xsl:stylesheet version=&quot;1.0&quot;
++	xmlns:xsl=&quot;<A HREF="http://www.w3.org/1999/XSL/Transform">http://www.w3.org/1999/XSL/Transform</A>&quot;&gt;
++&lt;xsl:output method=&quot;xml&quot;
++	indent=&quot;yes&quot; omit-xml-declaration=&quot;no&quot; encoding=&quot;utf-8&quot;/&gt;
++&lt;xsl:strip-space elements=&quot;type&quot;/&gt;
++
++&lt;!-- default rule --&gt;
++&lt;xsl:template match=&quot;*|processing-instruction()|comment()&quot; mode=&quot;conv24to35&quot;&gt;
++	&lt;xsl:copy&gt;
++		&lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++		&lt;xsl:apply-templates mode=&quot;conv24to35&quot;/&gt;
++	&lt;/xsl:copy&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- update schema version --&gt;
++&lt;para xmlns=&quot;<A HREF="http://docbook.org/ns/docbook">http://docbook.org/ns/docbook</A>&quot;&gt;
++	Changed attribute &lt;tag class=&quot;attribute&quot;&gt;schemeversion&lt;/tag&gt;
++	to &lt;tag class=&quot;attribute&quot;&gt;schemaversion&lt;/tag&gt; from
++	&lt;literal&gt;2.4&lt;/literal&gt; to &lt;literal&gt;3.5&lt;/literal&gt;.
++&lt;/para&gt;
++&lt;xsl:template match=&quot;image&quot; mode=&quot;conv24to35&quot;&gt;
++	&lt;image schemaversion=&quot;3.5&quot;&gt;
++		&lt;xsl:copy-of select=&quot;@*[local-name() != 'schemeversion']&quot;/&gt;
++		&lt;xsl:apply-templates mode=&quot;conv24to35&quot;/&gt;
++	&lt;/image&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- remove compressed element --&gt;
++&lt;para xmlns=&quot;<A HREF="http://docbook.org/ns/docbook">http://docbook.org/ns/docbook</A>&quot;&gt;
++	Remove compressed element as it was moved into the type
++&lt;/para&gt;
++&lt;xsl:template match=&quot;node()|@*&quot;&gt;
++	&lt;xsl:copy&gt;
++		&lt;xsl:apply-templates select=&quot;node()|@*&quot; mode=&quot;conv24to35&quot;/&gt;
++	&lt;/xsl:copy&gt;
++&lt;/xsl:template&gt;
++&lt;xsl:template match=&quot;compressed&quot; mode=&quot;conv24to35&quot;/&gt;
++
++&lt;/xsl:stylesheet&gt;
+diff --git a/xsl/convert35to37.xsl b/xsl/convert35to37.xsl
+new file mode 100644
+index 0000000..1b91eaa
+--- /dev/null
++++ b/xsl/convert35to37.xsl
+@@ -0,0 +1,93 @@
++&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
++&lt;!DOCTYPE xsl:stylesheet [
++	&lt;!ENTITY lowercase &quot;'abcdefghijklmnopqrstuvwxyz'&quot;&gt;
++	&lt;!ENTITY uppercase &quot;'ABCDEFGHIJKLMNOPQRSTUVWXYZ'&quot;&gt;
++]&gt;
++&lt;xsl:stylesheet version=&quot;1.0&quot;
++	xmlns:xsl=&quot;<A HREF="http://www.w3.org/1999/XSL/Transform">http://www.w3.org/1999/XSL/Transform</A>&quot;&gt;
++&lt;xsl:output method=&quot;xml&quot;
++	indent=&quot;yes&quot; omit-xml-declaration=&quot;no&quot; encoding=&quot;utf-8&quot;/&gt;
++&lt;xsl:strip-space elements=&quot;type&quot;/&gt;
++
++&lt;!-- default rule --&gt;
++&lt;xsl:template match=&quot;*|processing-instruction()|comment()&quot; mode=&quot;conv35to37&quot;&gt;
++	&lt;xsl:copy&gt;
++		&lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++		&lt;xsl:apply-templates mode=&quot;conv35to37&quot;/&gt;
++	&lt;/xsl:copy&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- update schema version --&gt;
++&lt;para xmlns=&quot;<A HREF="http://docbook.org/ns/docbook">http://docbook.org/ns/docbook</A>&quot;&gt;
++	Changed attribute &lt;tag class=&quot;attribute&quot;&gt;schemaversion&lt;/tag&gt;
++	to &lt;tag class=&quot;attribute&quot;&gt;schemaversion&lt;/tag&gt; from
++	&lt;literal&gt;3.5&lt;/literal&gt; to &lt;literal&gt;3.7&lt;/literal&gt;.
++&lt;/para&gt;
++&lt;xsl:template match=&quot;image&quot; mode=&quot;conv35to37&quot;&gt;
++	&lt;image schemaversion=&quot;3.7&quot;&gt;
++		&lt;xsl:copy-of select=&quot;@*[local-name() != 'schemaversion']&quot;/&gt;
++		&lt;xsl:apply-templates mode=&quot;conv35to37&quot;/&gt;
++	&lt;/image&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- update bool types --&gt;
++&lt;para xmlns=&quot;<A HREF="http://docbook.org/ns/docbook">http://docbook.org/ns/docbook</A>&quot;&gt;
++	Change possible mixed cases into lowercase and
++	normalize any whitespaces
++&lt;/para&gt;
++&lt;xsl:template name=&quot;oem-change-content&quot; mode=&quot;conv35to37&quot;&gt;
++	&lt;xsl:variable name=&quot;content&quot;
++		select=&quot;translate(normalize-space(.), &uppercase;, &lowercase;)&quot;
++	/&gt;
++	&lt;xsl:copy&gt;
++		&lt;xsl:copy-of select=&quot;@*&quot;/&gt;&lt;!-- Copy attributes --&gt;
++		&lt;xsl:choose&gt;
++			&lt;xsl:when test=&quot;$content = 'false'&quot;&gt;false&lt;/xsl:when&gt;
++			&lt;xsl:when test=&quot;$content = 'true'&quot;&gt;true&lt;/xsl:when&gt;
++			&lt;xsl:when test=&quot;$content = 'yes'&quot;&gt;true&lt;/xsl:when&gt;
++			&lt;xsl:when test=&quot;$content = 'no'&quot;&gt;false&lt;/xsl:when&gt;
++			&lt;xsl:otherwise&gt;
++			&lt;!-- Should not happen --&gt;
++			&lt;xsl:message&gt;Wrong value!&lt;/xsl:message&gt;
++		&lt;/xsl:otherwise&gt;
++		&lt;/xsl:choose&gt;
++	&lt;/xsl:copy&gt;
++&lt;/xsl:template&gt;
++
++&lt;xsl:template match=&quot;oem-swap&quot; mode=&quot;conv35to37&quot;&gt;
++	&lt;xsl:call-template name=&quot;oem-change-content&quot;/&gt;
++&lt;/xsl:template&gt;
++
++&lt;xsl:template match=&quot;oem-home&quot; mode=&quot;conv35to37&quot;&gt;
++	&lt;xsl:call-template name=&quot;oem-change-content&quot;/&gt;
++&lt;/xsl:template&gt;
++
++&lt;xsl:template match=&quot;rpm-check-signatures&quot; mode=&quot;conv35to37&quot;&gt;
++    &lt;xsl:call-template name=&quot;oem-change-content&quot;/&gt;
++&lt;/xsl:template&gt;
++
++&lt;xsl:template match=&quot;rpm-excludedocs&quot; mode=&quot;conv35to37&quot;&gt;
++    &lt;xsl:call-template name=&quot;oem-change-content&quot;/&gt;
++&lt;/xsl:template&gt;
++
++&lt;xsl:template match=&quot;rpm-force&quot; mode=&quot;conv35to37&quot;&gt;
++    &lt;xsl:call-template name=&quot;oem-change-content&quot;/&gt;
++&lt;/xsl:template&gt;
++
++&lt;xsl:template match=&quot;oem-recovery&quot; mode=&quot;conv35to37&quot;&gt;
++    &lt;xsl:call-template name=&quot;oem-change-content&quot;/&gt;
++&lt;/xsl:template&gt;
++
++&lt;xsl:template match=&quot;oem-kiwi-initrd&quot; mode=&quot;conv35to37&quot;&gt;
++    &lt;xsl:call-template name=&quot;oem-change-content&quot;/&gt;
++&lt;/xsl:template&gt;
++
++&lt;xsl:template match=&quot;oem-sap-install&quot; mode=&quot;conv35to37&quot;&gt;
++    &lt;xsl:call-template name=&quot;oem-change-content&quot;/&gt;
++&lt;/xsl:template&gt;
++
++&lt;xsl:template match=&quot;oem-reboot&quot; mode=&quot;conv35to37&quot;&gt;
++    &lt;xsl:call-template name=&quot;oem-change-content&quot;/&gt;
++&lt;/xsl:template&gt;
++
++&lt;/xsl:stylesheet&gt;
+diff --git a/xsl/convert37to38.xsl b/xsl/convert37to38.xsl
+new file mode 100644
+index 0000000..2bbe927
+--- /dev/null
++++ b/xsl/convert37to38.xsl
+@@ -0,0 +1,41 @@
++&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
++&lt;xsl:stylesheet version=&quot;1.0&quot;
++	xmlns:xsl=&quot;<A HREF="http://www.w3.org/1999/XSL/Transform">http://www.w3.org/1999/XSL/Transform</A>&quot;&gt;
++&lt;xsl:output method=&quot;xml&quot;
++	indent=&quot;yes&quot; omit-xml-declaration=&quot;no&quot; encoding=&quot;utf-8&quot;/&gt;
++&lt;xsl:strip-space elements=&quot;type&quot;/&gt;
++
++&lt;!-- default rule --&gt;
++&lt;xsl:template match=&quot;*|processing-instruction()|comment()&quot; mode=&quot;conv37to38&quot;&gt;
++	&lt;xsl:copy&gt;
++		&lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++		&lt;xsl:apply-templates mode=&quot;conv37to38&quot;/&gt;
++	&lt;/xsl:copy&gt;  
++&lt;/xsl:template&gt;
++
++&lt;!-- update schema version --&gt;
++&lt;para xmlns=&quot;<A HREF="http://docbook.org/ns/docbook">http://docbook.org/ns/docbook</A>&quot;&gt;
++	Changed attribute &lt;tag class=&quot;attribute&quot;&gt;schemaversion&lt;/tag&gt;
++	to &lt;tag class=&quot;attribute&quot;&gt;schemaversion&lt;/tag&gt; from
++	&lt;literal&gt;3.7&lt;/literal&gt; to &lt;literal&gt;3.8&lt;/literal&gt;.
++&lt;/para&gt;
++&lt;xsl:template match=&quot;image&quot; mode=&quot;conv37to38&quot;&gt;
++    &lt;image schemaversion=&quot;3.8&quot;&gt;
++		&lt;xsl:copy-of select=&quot;@*[local-name() != 'schemaversion']&quot;/&gt;
++        &lt;xsl:apply-templates mode=&quot;conv37to38&quot;/&gt;
++    &lt;/image&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- update deploy / pxedeploy --&gt;
++&lt;para xmlns=&quot;<A HREF="http://docbook.org/ns/docbook">http://docbook.org/ns/docbook</A>&quot;&gt; 
++	Change attribute value &lt;tag class=&quot;attribute&quot;&gt;deploy&lt;/tag&gt; to 
++	&lt;tag class=&quot;attribute&quot;&gt;pxedeploy&lt;/tag&gt;.
++&lt;/para&gt;
++&lt;xsl:template match=&quot;deploy&quot; mode=&quot;conv37to38&quot;&gt;
++	&lt;pxedeploy&gt;
++		&lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++		&lt;xsl:apply-templates mode=&quot;conv37to38&quot;/&gt;
++	&lt;/pxedeploy&gt;
++&lt;/xsl:template&gt;
++
++&lt;/xsl:stylesheet&gt;
+diff --git a/xsl/convert38to39.xsl b/xsl/convert38to39.xsl
+new file mode 100644
+index 0000000..4dd53de
+--- /dev/null
++++ b/xsl/convert38to39.xsl
+@@ -0,0 +1,145 @@
++&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
++&lt;xsl:stylesheet version=&quot;1.0&quot; xmlns:xsl=&quot;<A HREF="http://www.w3.org/1999/XSL/Transform">http://www.w3.org/1999/XSL/Transform</A>&quot;&gt;
++&lt;xsl:output method=&quot;xml&quot;
++    indent=&quot;yes&quot; omit-xml-declaration=&quot;no&quot; encoding=&quot;utf-8&quot;/&gt;
++&lt;xsl:strip-space elements=&quot;type&quot;/&gt;
++&lt;xsl:strip-space elements=&quot;preferences&quot;/&gt;
++
++&lt;!-- default rule --&gt;
++&lt;xsl:template match=&quot;*|processing-instruction()|comment()&quot; mode=&quot;conv38to39&quot;&gt;
++   	&lt;xsl:copy&gt;
++  	    &lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++           &lt;xsl:apply-templates mode=&quot;conv38to39&quot;/&gt;
++    &lt;/xsl:copy&gt;  
++&lt;/xsl:template&gt;
++
++&lt;!-- variables for the OEM settings --&gt;
++&lt;xsl:variable name=&quot;boottitle&quot; select=&quot;/image/preferences/oem-boot-title&quot;/&gt;
++&lt;xsl:variable name=&quot;home&quot; select=&quot;/image/preferences/oem-home&quot;/&gt;
++&lt;xsl:variable name=&quot;initrd&quot; select=&quot;/image/preferences/oem-kiwi-initrd&quot;/&gt;
++&lt;xsl:variable name=&quot;reboot&quot; select=&quot;/image/preferences/oem-reboot&quot;/&gt;
++&lt;xsl:variable name=&quot;recovery&quot; select=&quot;/image/preferences/oem-recovery&quot;/&gt;
++&lt;xsl:variable name=&quot;recoveryid&quot; select=&quot;/image/preferences/oem-recoveryID&quot;/&gt;
++&lt;xsl:variable name=&quot;sapinstall&quot; select=&quot;/image/preferences/oem-sap-install&quot;/&gt;
++&lt;xsl:variable name=&quot;swap&quot; select=&quot;/image/preferences/oem-swap&quot;/&gt;
++&lt;xsl:variable name=&quot;swapsize&quot; select=&quot;/image/preferences/oem-swapsize&quot;/&gt;
++&lt;xsl:variable name=&quot;systemsize&quot; select=&quot;/image/preferences/oem-systemsize&quot;/&gt;
++
++&lt;!-- update schema version and create new element oemconfig --&gt;
++&lt;para xmlns=&quot;<A HREF="http://docbook.org/ns/docbook">http://docbook.org/ns/docbook</A>&quot;&gt;
++    Changed attribute &lt;tag class=&quot;attribute&quot;&gt;schemaversion&lt;/tag&gt;
++    to &lt;tag class=&quot;attribute&quot;&gt;schemaversion&lt;/tag&gt; from
++    &lt;literal&gt;3.8&lt;/literal&gt; to &lt;literal&gt;3.9&lt;/literal&gt;. Created new
++    &lt;tag class=&quot;element&quot;&gt;oemconfig&lt;/tag&gt; element to collect all
++    &lt;tag class=&quot;element&quot;&gt;oem-*&lt;/tag&gt; elements in one place and remove 
++    them from the &lt;tag class=&quot;element&quot;&gt;preferences&lt;/tag&gt; element.
++&lt;/para&gt;
++&lt;xsl:template match=&quot;image&quot; mode=&quot;conv38to39&quot;&gt;
++    &lt;image schemaversion=&quot;3.9&quot;&gt;
++    &lt;xsl:copy-of select=&quot;@*[local-name() != 'schemaversion']&quot;/&gt;
++    &lt;xsl:apply-templates mode=&quot;conv38to39&quot;/&gt;
++    &lt;xsl:if test=&quot;$boottitle or $home or $initrd or $reboot or $recovery or $recoveryid or $sapinstall or $swap or $swapsize or $systemsize&quot;&gt;
++        &lt;xsl:text&gt;&amp;#x9;&lt;/xsl:text&gt;
++        &lt;oemconfig&gt;
++        &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++        &lt;xsl:if test=&quot;$boottitle&quot;&gt;
++            &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++            &lt;xsl:copy-of select=&quot;$boottitle&quot;/&gt;
++            &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;              
++        &lt;/xsl:if&gt;
++
++         &lt;xsl:if test=&quot;$home&quot;&gt;
++              &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++              &lt;xsl:copy-of select=&quot;$home&quot;/&gt;
++              &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;              
++         &lt;/xsl:if&gt;
++
++         &lt;xsl:if test=&quot;$initrd&quot;&gt;
++             &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++             &lt;xsl:copy-of select=&quot;$initrd&quot;/&gt;
++             &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;              
++         &lt;/xsl:if&gt;
++
++         &lt;xsl:if test=&quot;$reboot&quot;&gt;
++             &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++             &lt;xsl:copy-of select=&quot;$reboot&quot;/&gt;
++             &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;              
++         &lt;/xsl:if&gt;
++
++         &lt;xsl:if test=&quot;$recovery&quot;&gt;
++             &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++             &lt;xsl:copy-of select=&quot;$recovery&quot;/&gt;
++             &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;              
++         &lt;/xsl:if&gt;
++
++         &lt;xsl:if test=&quot;$recoveryid&quot;&gt;
++             &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++             &lt;xsl:copy-of select=&quot;$recoveryid&quot;/&gt;
++             &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;              
++         &lt;/xsl:if&gt;
++
++         &lt;xsl:if test=&quot;$sapinstall&quot;&gt;
++             &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++             &lt;xsl:copy-of select=&quot;$sapinstall&quot;/&gt;
++             &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;              
++         &lt;/xsl:if&gt;
++
++         &lt;xsl:if test=&quot;$swap&quot;&gt;
++             &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++             &lt;xsl:copy-of select=&quot;$swap&quot;/&gt;
++             &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;              
++         &lt;/xsl:if&gt;
++
++         &lt;xsl:if test=&quot;$swapsize&quot;&gt;
++             &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++             &lt;xsl:copy-of select=&quot;$swapsize&quot;/&gt;
++             &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;              
++         &lt;/xsl:if&gt;
++
++         &lt;xsl:if test=&quot;$systemsize&quot;&gt;
++             &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++             &lt;xsl:copy-of select=&quot;$systemsize&quot;/&gt;
++             &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;              
++         &lt;/xsl:if&gt;
++         &lt;xsl:text&gt;&amp;#x9;&lt;/xsl:text&gt;
++         &lt;/oemconfig&gt;
++    &lt;/xsl:if&gt;
++&lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++&lt;/image&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- swallow the output for the OEM settings in their current position --&gt;
++&lt;xsl:template match=&quot;preferences/oem-boot-title&quot; mode=&quot;conv38to39&quot;/&gt;
++&lt;xsl:template match=&quot;preferences/oem-home&quot; mode=&quot;conv38to39&quot;/&gt;
++&lt;xsl:template match=&quot;preferences/oem-kiwi-initrd&quot; mode=&quot;conv38to39&quot;/&gt;
++&lt;xsl:template match=&quot;preferences/oem-reboot&quot; mode=&quot;conv38to39&quot;/&gt;
++&lt;xsl:template match=&quot;preferences/oem-recovery&quot; mode=&quot;conv38to39&quot;/&gt;
++&lt;xsl:template match=&quot;preferences/oem-recoveryID&quot; mode=&quot;conv38to39&quot;/&gt;
++&lt;xsl:template match=&quot;preferences/oem-sap-install&quot; mode=&quot;conv38to39&quot;/&gt;
++&lt;xsl:template match=&quot;preferences/oem-swap&quot; mode=&quot;conv38to39&quot;/&gt;
++&lt;xsl:template match=&quot;preferences/oem-swapsize&quot; mode=&quot;conv38to39&quot;/&gt;
++&lt;xsl:template match=&quot;preferences/oem-systemsize&quot; mode=&quot;conv38to39&quot;/&gt;
++
++&lt;!-- handle the preferences element to swalow the oem settings --&gt;
++&lt;xsl:template match=&quot;preferences&quot; mode=&quot;conv38to39&quot;&gt;
++    &lt;preferences&gt;
++        &lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++        &lt;xsl:apply-templates mode=&quot;conv38to39&quot;/&gt;
++        &lt;xsl:text&gt;&amp;#x9;&lt;/xsl:text&gt;
++    &lt;/preferences&gt;
++&lt;/xsl:template&gt;
++
++&lt;xsl:template match=&quot;preferences/*&quot; mode=&quot;conv38to39&quot;&gt;
++    &lt;!-- Checks for first element and inserts a linebreak: --&gt;
++    &lt;xsl:if test=&quot;not(preceding-sibling::*)&quot;&gt;
++        &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++    &lt;/xsl:if&gt;
++    &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++    &lt;xsl:element name=&quot;{local-name()}&quot;&gt;
++        &lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++        &lt;xsl:apply-templates mode=&quot;conv38to39&quot;/&gt;
++    &lt;/xsl:element&gt;
++    &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++&lt;/xsl:template&gt;
++
++&lt;/xsl:stylesheet&gt;
+diff --git a/xsl/convert39to41.xsl b/xsl/convert39to41.xsl
+new file mode 100644
+index 0000000..3cef840
+--- /dev/null
++++ b/xsl/convert39to41.xsl
+@@ -0,0 +1,293 @@
++&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
++&lt;xsl:stylesheet version=&quot;1.0&quot; xmlns:xsl=&quot;<A HREF="http://www.w3.org/1999/XSL/Transform">http://www.w3.org/1999/XSL/Transform</A>&quot;&gt;
++&lt;xsl:output method=&quot;xml&quot;
++    indent=&quot;yes&quot; omit-xml-declaration=&quot;no&quot; encoding=&quot;utf-8&quot;/&gt;
++
++&lt;!-- default rule --&gt;
++&lt;xsl:template match=&quot;*|processing-instruction()|comment()&quot; mode=&quot;conv39to41&quot;&gt;
++   	&lt;xsl:copy&gt;
++  	    &lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++           &lt;xsl:apply-templates mode=&quot;conv39to41&quot;/&gt;
++    &lt;/xsl:copy&gt;  
++&lt;/xsl:template&gt;
++
++&lt;!-- variables for moved blocks and elements --&gt;
++&lt;xsl:variable name=&quot;oemconfig&quot; select=&quot;/image/oemconfig&quot;/&gt;
++&lt;xsl:variable name=&quot;vmconfig&quot; select=&quot;/image/vmwareconfig&quot;/&gt;
++&lt;xsl:variable name=&quot;xenconfig&quot; select=&quot;/image/xenconfig&quot;/&gt;
++&lt;xsl:variable name=&quot;split&quot; select=&quot;/image/split&quot;/&gt;
++&lt;xsl:variable name=&quot;lvm&quot; select=&quot;/image/lvmvolumes&quot;/&gt;
++&lt;xsl:variable name=&quot;size&quot; select=&quot;/image/preferences/size&quot;/&gt;
++&lt;xsl:variable name=&quot;pxe&quot; select=&quot;/image/pxedeploy&quot;/&gt;
++
++&lt;!-- update schema version and modify type element --&gt;
++&lt;para xmlns=&quot;<A HREF="http://docbook.org/ns/docbook">http://docbook.org/ns/docbook</A>&quot;&gt;
++    Changed attribute &lt;tag class=&quot;attribute&quot;&gt;schemaversion&lt;/tag&gt;
++    to &lt;tag class=&quot;attribute&quot;&gt;schemaversion&lt;/tag&gt; from
++    &lt;literal&gt;3.9&lt;/literal&gt; to &lt;literal&gt;4.1&lt;/literal&gt;. Adding
++    &lt;tag class=&quot;attribute&quot;&gt;image&lt;/tag&gt; attribute to
++    &lt;tag class=&quot;element&quot;&gt;type&lt;/tag&gt; element and collecting the
++    appropriate &lt;tag class=&quot;element&quot;&gt;*config&lt;/tag&gt; elements as
++    children of the &lt;tag class=&quot;element&quot;&gt;type&lt;/tag&gt; element.
++&lt;/para&gt;
++&lt;xsl:template match=&quot;image&quot; mode=&quot;conv39to41&quot;&gt;
++    &lt;image schemaversion=&quot;4.1&quot;&gt;
++    &lt;xsl:copy-of select=&quot;@*[local-name() != 'schemaversion']&quot;/&gt;
++    &lt;xsl:apply-templates  mode=&quot;conv39to41&quot;/&gt;  
++    &lt;/image&gt;
++&lt;/xsl:template&gt;
++
++&lt;xsl:template match=&quot;preferences&quot;&gt;
++	&lt;preferences&gt;
++	    &lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++	    &lt;xsl:apply-templates mode=&quot;conv39to41&quot;/&gt;
++	&lt;/preferences&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- modify the type element --&gt;
++&lt;xsl:template match=&quot;type&quot; mode=&quot;conv39to41&quot;&gt;
++    &lt;xsl:choose&gt;
++        &lt;xsl:when test=&quot;text()='ec2'&quot;&gt;
++            &lt;type&gt;
++                &lt;xsl:call-template name=&quot;insertcomprops&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertpostfxwhitespace&quot; mode=&quot;conv39to41&quot;/&gt;
++            &lt;/type&gt;
++        &lt;/xsl:when&gt;
++        &lt;xsl:when test=&quot;text()='iso'&quot;&gt;
++            &lt;type&gt;
++                &lt;xsl:call-template name=&quot;insertcomprops&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertpostfxwhitespace&quot; mode=&quot;conv39to41&quot;/&gt;
++            &lt;/type&gt;
++        &lt;/xsl:when&gt;
++        &lt;xsl:when test=&quot;text()='oem'&quot;&gt;
++            &lt;type&gt;
++                &lt;xsl:call-template name=&quot;insertcomprops&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertlvm&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertoemconfig&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertvmconfig&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertxenconfig&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertpostfxwhitespace&quot; mode=&quot;conv39to41&quot;/&gt;
++            &lt;/type&gt;
++        &lt;/xsl:when&gt;
++        &lt;xsl:when test=&quot;text()='split'&quot;&gt;
++            &lt;type&gt;
++                &lt;xsl:call-template name=&quot;insertcomprops&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertoemconfig&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertsplit&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertvmconfig&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertxenconfig&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertpostfxwhitespace&quot; mode=&quot;conv39to41&quot;/&gt;
++            &lt;/type&gt;
++        &lt;/xsl:when&gt;
++        &lt;xsl:when test=&quot;text()='usb'&quot;&gt;
++            &lt;type&gt;
++                &lt;xsl:call-template name=&quot;insertcomprops&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertlvm&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertpostfxwhitespace&quot; mode=&quot;conv39to41&quot;/&gt;
++            &lt;/type&gt;
++        &lt;/xsl:when&gt;
++        &lt;xsl:when test=&quot;text()='vmx'&quot;&gt;
++            &lt;type&gt;
++                &lt;xsl:call-template name=&quot;insertcomprops&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertlvm&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertvmconfig&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertxenconfig&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertpostfxwhitespace&quot; mode=&quot;conv39to41&quot;/&gt;
++            &lt;/type&gt;
++        &lt;/xsl:when&gt;
++        &lt;xsl:when test=&quot;text()='xen'&quot;&gt;
++            &lt;type&gt;
++                &lt;xsl:call-template name=&quot;insertcomprops&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertxenconfig&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertpostfxwhitespace&quot; mode=&quot;conv39to41&quot;/&gt;
++            &lt;/type&gt;
++        &lt;/xsl:when&gt;
++        &lt;xsl:when test=&quot;text()='pxe'&quot;&gt;
++            &lt;type&gt;
++                &lt;xsl:call-template name=&quot;insertcomprops&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertpxe&quot; mode=&quot;conv39to41&quot;/&gt;
++                &lt;xsl:call-template name=&quot;insertpostfxwhitespace&quot; mode=&quot;conv39to41&quot;/&gt;
++            &lt;/type&gt;
++        &lt;/xsl:when&gt;
++        &lt;xsl:otherwise&gt;
++            &lt;xsl:element name=&quot;type&quot;&gt;
++                &lt;xsl:attribute name=&quot;image&quot;&gt;
++                    &lt;xsl:value-of select=&quot;current()&quot;/&gt;
++                &lt;/xsl:attribute&gt;
++                &lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++            &lt;/xsl:element&gt;
++        &lt;/xsl:otherwise&gt;
++    &lt;/xsl:choose&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- generic insertion of block children --&gt;
++&lt;xsl:template name=&quot;insertblockchldnodes&quot; mode=&quot;conv39to41&quot;&gt;
++    &lt;xsl:param name=&quot;blockname&quot;/&gt;
++    &lt;xsl:for-each select=&quot;$blockname/*&quot;&gt;
++        &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++        &lt;xsl:copy-of select=&quot;current()&quot;/&gt;
++        &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++    &lt;/xsl:for-each&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- whitespace postfix for modified type elements --&gt;
++&lt;xsl:template name=&quot;insertpostfxwhitespace&quot; mode=&quot;conv39to41&quot;&gt;
++    &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++    &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- whitspace prefix for re-arranged blocks --&gt;
++&lt;xsl:template name=&quot;insertblocprfxwhitespace&quot; mode=&quot;conv39to41&quot;&gt;
++    &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++    &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- add properties common to all type elements --&gt;
++&lt;xsl:template name=&quot;insertcomprops&quot; mode=&quot;conv39to41&quot;&gt;
++    &lt;xsl:attribute name=&quot;image&quot;&gt;
++        &lt;xsl:value-of select=&quot;current()&quot;/&gt;
++    &lt;/xsl:attribute&gt;
++    &lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++    &lt;xsl:if test=&quot;$size&quot;&gt;
++        &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++        &lt;xsl:copy-of select=&quot;$size&quot;/&gt;
++        &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++    &lt;/xsl:if&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- insert the lvmvolumes block --&gt;
++&lt;xsl:template name=&quot;insertlvm&quot; mode=&quot;conv39to41&quot;&gt;
++    &lt;xsl:if test=&quot;$lvm&quot;&gt;
++        &lt;xsl:call-template name=&quot;insertblocprfxwhitespace&quot; mode=&quot;conv39to41&quot;/&gt;
++        &lt;lvmvolumes&gt;
++        &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++        &lt;xsl:call-template name=&quot;insertblockchldnodes&quot; mode=&quot;conv39to41&quot;&gt;
++            &lt;xsl:with-param name=&quot;blockname&quot; select=&quot;$lvm&quot;/&gt;
++        &lt;/xsl:call-template&gt;
++        &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++        &lt;/lvmvolumes&gt;
++    &lt;/xsl:if&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- insert the oemconfig block --&gt;
++&lt;xsl:template name=&quot;insertoemconfig&quot; mode=&quot;conv39to41&quot;&gt;
++    &lt;xsl:if test=&quot;$oemconfig&quot;&gt;
++        &lt;xsl:call-template name=&quot;insertblocprfxwhitespace&quot; mode=&quot;conv39to41&quot;/&gt;
++        &lt;oemconfig&gt;
++        &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++        &lt;xsl:call-template name=&quot;insertblockchldnodes&quot; mode=&quot;conv39to41&quot;&gt;
++            &lt;xsl:with-param name=&quot;blockname&quot; select=&quot;$oemconfig&quot;/&gt;
++        &lt;/xsl:call-template&gt;
++        &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++        &lt;/oemconfig&gt;
++    &lt;/xsl:if&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- insert the pxedeploy block --&gt;
++&lt;xsl:template name=&quot;insertpxe&quot; mode=&quot;conv39to41&quot;&gt;
++    &lt;xsl:if test=&quot;$pxe&quot;&gt;
++        &lt;xsl:call-template name=&quot;insertblocprfxwhitespace&quot; mode=&quot;conv39to41&quot;/&gt;
++        &lt;pxedeploy&gt;
++        &lt;xsl:copy-of select=&quot;$pxe/@*&quot;/&gt;
++        &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++        &lt;xsl:if test=&quot;$pxe/partitions&quot;&gt;
++            &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++            &lt;partitions&gt;
++            &lt;xsl:copy-of select=&quot;$pxe/partitions/@*&quot;/&gt;
++            &lt;xsl:for-each select=&quot;$pxe/partitions/*&quot;&gt;
++                &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++                &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++                &lt;xsl:copy-of select=&quot;current()&quot;/&gt;
++            &lt;/xsl:for-each&gt;
++            &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++            &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++            &lt;/partitions&gt;
++        &lt;/xsl:if&gt;
++        &lt;xsl:for-each select=&quot;$pxe/*[local-name() != 'partitions']&quot;&gt;
++            &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++            &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++            &lt;xsl:copy-of select=&quot;current()&quot;/&gt;
++        &lt;/xsl:for-each&gt;
++        &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++        &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++        &lt;/pxedeploy&gt;
++    &lt;/xsl:if&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- insert the split block --&gt;
++&lt;xsl:template name=&quot;insertsplit&quot; mode=&quot;conv39to41&quot;&gt;
++    &lt;xsl:if test=&quot;$split&quot;&gt;
++        &lt;xsl:call-template name=&quot;insertblocprfxwhitespace&quot; mode=&quot;conv39to41&quot;/&gt;
++        &lt;split&gt;
++        &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++        &lt;xsl:if test=&quot;$split/persistent&quot;&gt;
++            &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++            &lt;persistent&gt;
++            &lt;xsl:for-each select=&quot;$split/persistent/*&quot;&gt;
++                &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++                &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++                &lt;xsl:copy-of select=&quot;current()&quot;/&gt;
++            &lt;/xsl:for-each&gt;
++            &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++            &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++            &lt;/persistent&gt;
++        &lt;/xsl:if&gt;
++        &lt;xsl:if test=&quot;$split/temporary&quot;&gt;
++            &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++            &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++            &lt;temporary&gt;
++            &lt;xsl:for-each select=&quot;$split/temporary/*&quot;&gt;
++                &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++                &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++                &lt;xsl:copy-of select=&quot;current()&quot;/&gt;
++              &lt;/xsl:for-each&gt;
++            &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++            &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++            &lt;/temporary&gt;
++        &lt;/xsl:if&gt;
++        &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++        &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;  
++        &lt;/split&gt;
++    &lt;/xsl:if&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- Insert the vmwareconfig block --&gt;
++&lt;xsl:template name=&quot;insertvmconfig&quot; mode=&quot;conv39to41&quot;&gt;
++    &lt;xsl:if test=&quot;$vmconfig&quot;&gt;
++        &lt;xsl:call-template name=&quot;insertblocprfxwhitespace&quot; mode=&quot;conv39to41&quot;/&gt;
++        &lt;vmwareconfig&gt;
++        &lt;xsl:copy-of select=&quot;$vmconfig/@*&quot;/&gt;
++        &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++        &lt;xsl:call-template name=&quot;insertblockchldnodes&quot; mode=&quot;conv39to41&quot;&gt;
++            &lt;xsl:with-param name=&quot;blockname&quot; select=&quot;$vmconfig&quot;/&gt;
++        &lt;/xsl:call-template&gt;
++        &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++        &lt;/vmwareconfig&gt;
++    &lt;/xsl:if&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- Insert the xenconfig block --&gt;
++&lt;xsl:template name=&quot;insertxenconfig&quot; mode=&quot;conv39to41&quot;&gt;
++    &lt;xsl:if test=&quot;$xenconfig&quot;&gt;
++        &lt;xsl:call-template name=&quot;insertblocprfxwhitespace&quot; mode=&quot;conv39to41&quot;/&gt;
++        &lt;xenconfig&gt;
++        &lt;xsl:copy-of select=&quot;$xenconfig/@*&quot;/&gt;
++        &lt;xsl:text&gt;&amp;#xA;&lt;/xsl:text&gt;
++        &lt;xsl:call-template name=&quot;insertblockchldnodes&quot; mode=&quot;conv39to41&quot;&gt;
++            &lt;xsl:with-param name=&quot;blockname&quot; select=&quot;$xenconfig&quot;/&gt;
++        &lt;/xsl:call-template&gt;
++        &lt;xsl:text&gt;&amp;#x9;&amp;#x9;&amp;#x9;&lt;/xsl:text&gt;
++        &lt;/xenconfig&gt;
++    &lt;/xsl:if&gt;
++&lt;/xsl:template&gt;
++
++&lt;!-- Do not emmit blocks that have moved --&gt;
++&lt;xsl:template match=&quot;lvmvolumes&quot; mode=&quot;conv39to41&quot;/&gt;
++&lt;xsl:template match=&quot;oemconfig&quot; mode=&quot;conv39to41&quot;/&gt;
++&lt;xsl:template match=&quot;pxedeploy&quot; mode=&quot;conv39to41&quot;/&gt;
++&lt;xsl:template match=&quot;size&quot; mode=&quot;conv39to41&quot;/&gt;
++&lt;xsl:template match=&quot;split&quot; mode=&quot;conv39to41&quot;/&gt;
++&lt;xsl:template match=&quot;vmwareconfig&quot; mode=&quot;conv39to41&quot;/&gt;
++&lt;xsl:template match=&quot;xenconfig&quot; mode=&quot;conv39to41&quot;/&gt;
++
++&lt;/xsl:stylesheet&gt;
+diff --git a/xsl/convert41toXX.xsl b/xsl/convert41toXX.xsl
+deleted file mode 100644
+index 4565083..0000000
+--- a/xsl/convert41toXX.xsl
++++ /dev/null
+@@ -1,16 +0,0 @@
+-&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+-&lt;xsl:stylesheet version=&quot;1.0&quot;
+-	xmlns:xsl=&quot;<A HREF="http://www.w3.org/1999/XSL/Transform">http://www.w3.org/1999/XSL/Transform</A>&quot;&gt;
+-&lt;xsl:output method=&quot;xml&quot;
+-	indent=&quot;yes&quot; omit-xml-declaration=&quot;no&quot; encoding=&quot;utf-8&quot;/&gt;
+-&lt;xsl:strip-space elements=&quot;type&quot;/&gt;
+-
+-&lt;!-- default rule --&gt;
+-&lt;xsl:template match=&quot;*|processing-instruction()|comment()&quot; mode=&quot;conv41toXX&quot;&gt;
+-	&lt;xsl:copy&gt;
+-		&lt;xsl:copy-of select=&quot;@*&quot;/&gt;
+-		&lt;xsl:apply-templates mode=&quot;conv41toXX&quot;/&gt;
+-	&lt;/xsl:copy&gt;  
+-&lt;/xsl:template&gt;
+-
+-&lt;/xsl:stylesheet&gt;
+diff --git a/xsl/master.xsl b/xsl/master.xsl
+index 192c269..941ba24 100644
+--- a/xsl/master.xsl
++++ b/xsl/master.xsl
+@@ -5,19 +5,56 @@
+ 	exclude-result-prefixes=&quot;exslt&quot;
+ &gt;
+ 
+-&lt;xsl:import href=&quot;pretty.xsl&quot;/&gt;
+-&lt;xsl:import href=&quot;convert41toXX.xsl&quot;/&gt;
++&lt;xsl:import href=&quot;convert14to20.xsl&quot;/&gt;
++&lt;xsl:import href=&quot;convert20to24.xsl&quot;/&gt;
++&lt;xsl:import href=&quot;convert24to35.xsl&quot;/&gt;
++&lt;xsl:import href=&quot;convert35to37.xsl&quot;/&gt;
++&lt;xsl:import href=&quot;convert37to38.xsl&quot;/&gt;
++&lt;xsl:import href=&quot;convert38to39.xsl&quot;/&gt;
++&lt;xsl:import href=&quot;convert39to41.xsl&quot;/&gt;
++&lt;!--&lt;xsl:import href=&quot;pretty.xsl&quot;/&gt;--&gt;
++
+ 
+ &lt;xsl:output encoding=&quot;utf-8&quot;/&gt;
+ 
+ &lt;xsl:template match=&quot;/&quot;&gt;
+-	&lt;xsl:variable name=&quot;v41&quot;&gt;
+-		&lt;xsl:apply-templates select=&quot;/&quot; mode=&quot;conv41toXX&quot;/&gt;
+-	&lt;/xsl:variable&gt;
++    &lt;xsl:variable name=&quot;v14&quot;&gt;
++       &lt;xsl:apply-templates select=&quot;/&quot; mode=&quot;conv14to20&quot;/&gt;
++    &lt;/xsl:variable&gt;
++
++    &lt;xsl:variable name=&quot;v20&quot;&gt;
++       &lt;xsl:apply-templates select=&quot;exslt:node-set($v14)&quot; mode=&quot;conv20to24&quot;/&gt;
++    &lt;/xsl:variable&gt;
++
++    &lt;xsl:variable name=&quot;v35&quot;&gt;
++       &lt;xsl:apply-templates select=&quot;exslt:node-set($v20)&quot; mode=&quot;conv24to35&quot;/&gt;
++     &lt;/xsl:variable&gt;
++
++     &lt;xsl:variable name=&quot;v37&quot;&gt;
++        &lt;xsl:apply-templates select=&quot;exslt:node-set($v35)&quot; mode=&quot;conv35to37&quot;/&gt;
++     &lt;/xsl:variable&gt;
++
++     &lt;xsl:variable name=&quot;v38&quot;&gt;
++        &lt;xsl:apply-templates select=&quot;exslt:node-set($v37)&quot; mode=&quot;conv37to38&quot;/&gt;
++     &lt;/xsl:variable&gt;
++     
++     &lt;xsl:variable name=&quot;v39&quot;&gt;
++        &lt;xsl:apply-templates select=&quot;exslt:node-set($v38)&quot; mode=&quot;conv38to39&quot;/&gt;
++     &lt;/xsl:variable&gt;
++
++     &lt;xsl:apply-templates
++         select=&quot;exslt:node-set($v39)&quot; mode=&quot;conv39to41&quot;
++     /&gt;
++
++     &lt;!-- Do not use pretty printer for now, it swallows the comments
++     &lt;xsl:variable name=&quot;v41&quot;&gt;
++        &lt;xsl:apply-templates select=&quot;exslt:node-set($v39)&quot; mode=&quot;conv39to41&quot;/&gt;
++     &lt;/xsl:variable&gt;
+ 
+-	&lt;xsl:apply-templates
++     &lt;xsl:apply-templates
+ 		select=&quot;exslt:node-set($v41)&quot; mode=&quot;pretty&quot;
+-	/&gt;
++     /&gt;
++     --&gt;
+ &lt;/xsl:template&gt;
+ 
+ &lt;/xsl:stylesheet&gt;
+-- 
+1.6.0.2
+
+
+--------------080201000407020805000905--
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001841.html">[Kiwi-devel] XSL pretty printer swallows comments
+</A></li>
+	<LI>Next message: <A HREF="001836.html">[Kiwi-devel] XML auto upgrade
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1837">[ date ]</a>
+              <a href="thread.html#1837">[ thread ]</a>
+              <a href="subject.html#1837">[ subject ]</a>
+              <a href="author.html#1837">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,378 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4eb9aef3ba377fc75d6425f7d2f27906d1fec3ef
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204eb9aef3ba377fc75d6425f7d2f27906d1fec3ef&In-Reply-To=%3C20110908111502.AAD82481259%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003801.html">
+   <LINK REL="Next"  HREF="003788.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4eb9aef3ba377fc75d6425f7d2f27906d1fec3ef</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204eb9aef3ba377fc75d6425f7d2f27906d1fec3ef&In-Reply-To=%3C20110908111502.AAD82481259%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4eb9aef3ba377fc75d6425f7d2f27906d1fec3ef">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Sep  8 13:15:01 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003801.html">[Kiwi-devel] another problem with parted on RHEL/CentOS
+</A></li>
+        <LI>Next message: <A HREF="003788.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 55c74dabd2ba95de8a37371afab6914be17bed01
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3787">[ date ]</a>
+              <a href="thread.html#3787">[ thread ]</a>
+              <a href="subject.html#3787">[ subject ]</a>
+              <a href="author.html#3787">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  4eb9aef3ba377fc75d6425f7d2f27906d1fec3ef (commit)
+      from  23073488091a048c19ee8cfa6cfdbe73bd70486c (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 4eb9aef3ba377fc75d6425f7d2f27906d1fec3ef
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Sep 8 11:12:17 2011 +0200
+
+    - added new option '--edit-bootconfig &lt;file&gt;' and the XML
+      attribute &lt;type ... editbootconfig=&quot;file&quot;/&gt; which allows to
+      run a script before the bootloader is actually written.
+      This allows custom changes to the bootloader setup files
+      as requested in (bnc #667950)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/doc/docbook/kiwi-man.xml b/doc/docbook/kiwi-man.xml
+index 1ca22f0..4e75750 100644
+--- a/doc/docbook/kiwi-man.xml
++++ b/doc/docbook/kiwi-man.xml
+@@ -804,6 +804,22 @@
+ 		&lt;/para&gt;
+ 		&lt;/listitem&gt;
+ 	&lt;/varlistentry&gt;
++	&lt;varlistentry&gt;
++		&lt;term&gt;&lt;optional&gt;&lt;option&gt;--edit-bootconfig &lt;replaceable&gt;script&lt;/replaceable&gt;&lt;/option&gt;&lt;/optional&gt;&lt;/term&gt;
++		&lt;listitem&gt;
++		&lt;para&gt;
++			Specifies the location of a custom script which is called
++			right before the bootloader is installed. This allows to modify
++			the bootloader configuration file written by kiwi. The scripts
++			working directory is the one which represents the image
++			structure including the bootloader configuration files. Please
++			have in mind that according to the image type, architecture
++			and bootloader type the files/directory structure and also
++			the name of the bootloader configuration files might be
++			different.
++		&lt;/para&gt;
++		&lt;/listitem&gt;
++	&lt;/varlistentry&gt;
+ 	&lt;/variablelist&gt;
+   &lt;/refsect1&gt;
+ 
+diff --git a/kiwi.pl b/kiwi.pl
+index 5592b21..7633d69 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -659,6 +659,7 @@ sub init {
+ 	my $GrubChainload;         # install grub loader in first partition not MBR
+ 	my $FatStorage;            # size of fat partition if syslinux is used
+ 	my $DiskStartSector;       # location of start sector (default is 32)
++	my $EditBootConfig;        # allow to run script before bootloader install
+ 	my $PackageManager;        # package manager to use
+ 	my $Version;               # version information
+ 	#==========================================
+@@ -708,6 +709,7 @@ sub init {
+ 		&quot;fs-inodesize=i&quot;        =&gt; \$FSInodeSize,
+ 		&quot;fs-journalsize=i&quot;      =&gt; \$FSJournalSize,
+ 		&quot;fs-max-mount-count=i&quot;  =&gt; \$FSMaxMountCount,
++		&quot;edit-bootconfig=s&quot;     =&gt; \$EditBootConfig,
+ 		&quot;grub-chainload&quot;        =&gt; \$GrubChainload,
+ 		&quot;gzip-cmd=s&quot;            =&gt; \$GzipCmd,
+ 		&quot;help|h&quot;                =&gt; \$Help,
+@@ -779,6 +781,12 @@ sub init {
+ 		\@Exclude,\@Skip,$MigrateNoFiles,$MigrateNoTemplate
+ 	);
+ 	#========================================
++	# check if edit-bootconfig option is set
++	#----------------------------------------
++	if (defined $EditBootConfig) {
++		$cmdL -&gt; setEditBootConfig ($EditBootConfig);
++	}
++	#========================================
+ 	# check if fat-storage option is set
+ 	#----------------------------------------
+ 	if (defined $FatStorage) {
+@@ -1216,6 +1224,11 @@ sub init {
+ 		$cmdL -&gt; setLogFile (&quot;terminal&quot;);
+ 		$kiwi -&gt; done ();
+ 	}
++	if (($EditBootConfig) &amp;&amp; (! -e $EditBootConfig)) {
++		$kiwi -&gt; error (&quot;Boot config script $EditBootConfig doesn't exist&quot;);
++		$kiwi -&gt; failed ();
++		kiwiExit (1);
++	}
+ 	if (($targetDevice) &amp;&amp; (! -b $targetDevice)) {
+ 		$kiwi -&gt; error (&quot;Target device $targetDevice doesn't exist&quot;);
+ 		$kiwi -&gt; failed ();
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index c4128da..2bb0733 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -979,7 +979,7 @@ sub setupInstallCD {
+ 		$name = $wdir.&quot;/&quot;.$name;
+ 	}
+ 	my $iso = new KIWIIsoLinux (
+-		$kiwi,$tmpdir,$name,undef,&quot;checkmedia&quot;
++		$kiwi,$tmpdir,$name,undef,&quot;checkmedia&quot;,$this-&gt;{cmdL}
+ 	);
+ 	if (! defined $iso) {
+ 		return undef;
+@@ -3605,10 +3605,20 @@ sub installBootLoader {
+ 	my $bootpart = $this-&gt;{bootpart};
+ 	my $chainload= $this-&gt;{chainload};
+ 	my $lvm	     = $this-&gt;{lvm};
++	my $cmdL     = $this-&gt;{cmdL};
+ 	my $locator  = new KIWILocator($kiwi);
+ 	my $result;
+ 	my $status;
+ 	#==========================================
++	# Check for edit boot config
++	#------------------------------------------
++	if ($cmdL) {
++		my $editBoot = $cmdL -&gt; getEditBootConfig();
++		if (($editBoot) &amp;&amp; (-e $editBoot)) {
++			system (&quot;cd $tmpdir &amp;&amp; bash --norc -c $editBoot&quot;);
++		}
++	}
++	#==========================================
+ 	# Check boot partition number
+ 	#------------------------------------------
+ 	if (! defined $bootpart) {
+diff --git a/modules/KIWICommandLine.pm b/modules/KIWICommandLine.pm
+index 581eab4..5d91e3c 100644
+--- a/modules/KIWICommandLine.pm
++++ b/modules/KIWICommandLine.pm
+@@ -1310,4 +1310,22 @@ sub getDiskStartSector {
+ 	return $this-&gt;{startsector};
+ }
+ 
++#==========================================
++# setEditBootConfig
++#------------------------------------------
++sub setEditBootConfig {
++	my $this  = shift;
++	my $value = shift;
++	$this-&gt;{editbootconfig} = File::Spec-&gt;rel2abs($value);
++	return 1;
++}
++
++#==========================================
++# getEditBootConfig
++#------------------------------------------
++sub getEditBootConfig {
++	my $this = shift;
++	return $this-&gt;{editbootconfig};
++}
++
+ 1;
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index e5dac9a..2a57a39 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -1946,7 +1946,7 @@ sub createImageLiveCD {
+ 		$attr .= &quot; -V \&quot;$stype{volid}\&quot;&quot;;
+ 	}
+ 	my $isolinux = new KIWIIsoLinux (
+-		$kiwi,$CD,$name,$attr,&quot;checkmedia&quot;
++		$kiwi,$CD,$name,$attr,&quot;checkmedia&quot;,$this-&gt;{cmdL}
+ 	);
+ 	if (defined $isolinux) {
+ 		$isoerror = 0;
+diff --git a/modules/KIWIImageCreator.pm b/modules/KIWIImageCreator.pm
+index 3af12ee..019848e 100644
+--- a/modules/KIWIImageCreator.pm
++++ b/modules/KIWIImageCreator.pm
+@@ -446,6 +446,13 @@ sub createImage {
+ 		$kiwi,$cmdL,$xml
+ 	);
+ 	#==========================================
++	# Check for edit bootconfig in XML
++	#------------------------------------------
++	my $editBoot = $xml -&gt; getEditBootConfig();
++	if ($editBoot) {
++		$cmdL -&gt; setEditBootConfig ($editBoot);
++	}
++	#==========================================
+ 	# Check for default destination in XML
+ 	#------------------------------------------
+ 	if (! $target) {
+diff --git a/modules/KIWIIsoLinux.pm b/modules/KIWIIsoLinux.pm
+index 94ad593..082c8a0 100644
+--- a/modules/KIWIIsoLinux.pm
++++ b/modules/KIWIIsoLinux.pm
+@@ -57,6 +57,7 @@ sub new {
+ 	my $dest         = shift;  # destination for the iso file
+ 	my $params       = shift;  # global genisoimage/mkisofs parameters
+ 	my $mediacheck   = shift;  # run tagmedia with --check y/n
++	my $cmdL         = shift;  # commandline params
+ 	#==========================================
+ 	# Constructor setup
+ 	#------------------------------------------
+@@ -204,6 +205,7 @@ sub new {
+ 	$this -&gt; {tool}   = $tool;
+ 	$this -&gt; {check}  = $mediacheck;
+ 	$this -&gt; {gdata}  = $main::global -&gt; getGlobals();
++	$this -&gt; {cmdL}   = $cmdL;
+ 	return $this;
+ }
+ 
+@@ -688,7 +690,14 @@ sub createISO {
+ 	my $para = $this -&gt; {params};
+ 	my $ldir = $this -&gt; {tmpdir};
+ 	my $prog = $this -&gt; {tool};
++	my $cmdL = $this -&gt; {cmdL};
+ 	my $cmdln= &quot;$prog $para -o $dest $ldir $src 2&gt;&amp;1&quot;;
++	if ($cmdL) {
++		my $editBoot = $cmdL -&gt; getEditBootConfig();
++		if (($editBoot) &amp;&amp; (-e $editBoot)) {
++			system (&quot;cd $src &amp;&amp; bash --norc -c $editBoot&quot;);
++		}
++	}
+ 	$kiwi -&gt; loginfo ( &quot;Calling: $cmdln\n&quot; );
+ 	my $data = qxx ( $cmdln	);
+ 	my $code = $? &gt;&gt; 8;
+diff --git a/modules/KIWISchema.rnc b/modules/KIWISchema.rnc
+index b93546f..cde1c89 100644
+--- a/modules/KIWISchema.rnc
++++ b/modules/KIWISchema.rnc
+@@ -1416,6 +1416,12 @@ div {
+ 		## Specifies the path of the boot image (initrd), relative
+ 		## to /usr/share/kiwi/image
+ 		attribute boot { text }
++	k.type.editbootconfig.attribute =
++		## Specifies the path to a script which is called right
++		## before the bootloader is installed. The script runs
++		## relative to the directory which contains the image
++		## structure
++		attribute editbootconfig { text }
+ 	k.type.bootkernel.attribute =
+ 		## Specifies the kernel boot profile defined in the boot
+ 		## image description. When kiwi builds the boot image the
+@@ -1541,6 +1547,7 @@ div {
+ 		attribute volid { text }
+ 	k.type.attlist =
+ 		k.type.boot.attribute? &amp;
++		k.type.editbootconfig.attribute? &amp;
+ 		k.type.bootkernel.attribute? &amp;
+ 		k.type.bootloader.attribute? &amp;
+ 		k.type.bootprofile.attribute? &amp;
+diff --git a/modules/KIWISchema.rng b/modules/KIWISchema.rng
+index 2577462..f6c5a87 100644
+--- a/modules/KIWISchema.rng
++++ b/modules/KIWISchema.rng
+@@ -1898,6 +1898,14 @@ the correct timezone and copy it to /etc/localtime.&lt;/db:para&gt;
+ to /usr/share/kiwi/image&lt;/a:documentation&gt;
+       &lt;/attribute&gt;
+     &lt;/define&gt;
++    &lt;define name=&quot;k.type.editbootconfig.attribute&quot;&gt;
++      &lt;attribute name=&quot;editbootconfig&quot;&gt;
++        &lt;a:documentation&gt;Specifies the path to a script which is called right
++before the bootloader is installed. The script runs
++relative to the directory which contains the image
++structure&lt;/a:documentation&gt;
++      &lt;/attribute&gt;
++    &lt;/define&gt;
+     &lt;define name=&quot;k.type.bootkernel.attribute&quot;&gt;
+       &lt;attribute name=&quot;bootkernel&quot;&gt;
+         &lt;a:documentation&gt;Specifies the kernel boot profile defined in the boot
+@@ -2133,6 +2141,9 @@ into the master block. There is space for 32 characters.&lt;/a:documentation&gt;
+           &lt;ref name=&quot;k.type.boot.attribute&quot;/&gt;
+         &lt;/optional&gt;
+         &lt;optional&gt;
++          &lt;ref name=&quot;k.type.editbootconfig.attribute&quot;/&gt;
++        &lt;/optional&gt;
++        &lt;optional&gt;
+           &lt;ref name=&quot;k.type.bootkernel.attribute&quot;/&gt;
+         &lt;/optional&gt;
+         &lt;optional&gt;
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 1756b73..deaf283 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -514,6 +514,28 @@ sub getImageSizeBytes {
+ }
+ 
+ #==========================================
++# getEditBootConfig
++#------------------------------------------
++sub getEditBootConfig {
++	# ...
++	# Get the type specific editbootconfig value.
++	# ---
++	my $this = shift;
++	my $kiwi = $this-&gt;{kiwi};
++	my $tnode= $this-&gt;{typeNode};
++	my $editBoot = $tnode -&gt; getAttribute (&quot;editbootconfig&quot;);
++	if ((! defined $editBoot) || (&quot;$editBoot&quot; eq &quot;&quot;)) {
++		return undef;
++	}
++	if (! -e $editBoot) {
++		$kiwi -&gt; warning (&quot;Boot config script $editBoot doesn't exist&quot;);
++		$kiwi -&gt; skipped ();
++		return undef;
++	}
++	return File::Spec-&gt;rel2abs($editBoot);
++}
++
++#==========================================
+ # getImageDefaultDestination
+ #------------------------------------------
+ sub getImageDefaultDestination {
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003801.html">[Kiwi-devel] another problem with parted on RHEL/CentOS
+</A></li>
+	<LI>Next message: <A HREF="003788.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 55c74dabd2ba95de8a37371afab6914be17bed01
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3787">[ date ]</a>
+              <a href="thread.html#3787">[ thread ]</a>
+              <a href="subject.html#3787">[ subject ]</a>
+              <a href="author.html#3787">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

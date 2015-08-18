@@ -1,0 +1,302 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 51a9f0c72d70e959a039028008d33f7e897aed1e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2051a9f0c72d70e959a039028008d33f7e897aed1e&In-Reply-To=%3C20100906154757.4689E481051%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002633.html">
+   <LINK REL="Next"  HREF="002635.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 51a9f0c72d70e959a039028008d33f7e897aed1e</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2051a9f0c72d70e959a039028008d33f7e897aed1e&In-Reply-To=%3C20100906154757.4689E481051%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 51a9f0c72d70e959a039028008d33f7e897aed1e">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Sep  6 17:47:57 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002633.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 98f2b06176944a2ff4bfc2960d18727eef8abd73
+</A></li>
+        <LI>Next message: <A HREF="002635.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. cc7bdd634d4dd014dce037f9819b0afd18e85817
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2634">[ date ]</a>
+              <a href="thread.html#2634">[ thread ]</a>
+              <a href="subject.html#2634">[ subject ]</a>
+              <a href="author.html#2634">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  51a9f0c72d70e959a039028008d33f7e897aed1e (commit)
+      from  98f2b06176944a2ff4bfc2960d18727eef8abd73 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 51a9f0c72d70e959a039028008d33f7e897aed1e
+Author: root &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">root at s390vm05.suse.de</A>&gt;
+Date:   Mon Sep 6 17:47:34 2010 +0200
+
+    - added support for fdasd partitionier
+    - fixed installation of zipl.conf when writing into real device
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index dbade5b..68d4ffc 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -3774,35 +3774,46 @@ sub installBootLoader {
+ 	#------------------------------------------
+ 	if ($loader eq &quot;zipl&quot;) {
+ 		$kiwi -&gt; info (&quot;Installing zipl on device: $diskname&quot;);
+-		#==========================================
+-		# detect disk geometry of disk image file
+-		#------------------------------------------
+-		my @geometry = $this -&gt; diskGeometry ($diskname);
+-		if (! @geometry) {
+-			$kiwi -&gt; failed ();
+-			$kiwi -&gt; error  (&quot;Failed to detect disk geometry&quot;);
+-			$kiwi -&gt; failed ();
+-			return undef;
++		my $bootdev;
++		my @geometry;
++		my $haveRealDevice = 0;
++		if ($diskname !~ /\/dev\//) {
++			#==========================================
++			# detect disk geometry of disk image file
++			#------------------------------------------
++			@geometry = $this -&gt; diskGeometry ($diskname);
++			if (! @geometry) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;Failed to detect disk geometry&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			#==========================================
++			# loop mount disk image file
++			#------------------------------------------
++			if (! $this-&gt;bindDiskDevice ($diskname)) {
++				return undef;
++			}
++			if (! $this -&gt; bindDiskPartitions ($this-&gt;{loop})) {
++				$kiwi -&gt; failed ();
++				$this -&gt; cleanLoop ();
++				return undef;
++			}
++			$bootdev = $this-&gt;{bindloop}.$geometry[2];
++			if (! -e $bootdev) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;Can't find loop map: $bootdev&quot;);
++				$kiwi -&gt; failed ();
++				$this -&gt; cleanLoop ();
++				return undef;
++			}
++		} else {
++			$bootdev = $diskname.&quot;1&quot;;
++			$haveRealDevice = 1;
+ 		}
+ 		#==========================================
+-		# loop mount disk image file
++		# mount boot device...
+ 		#------------------------------------------
+-		if (! $this-&gt;bindDiskDevice ($diskname)) {
+-			return undef;
+-		}
+-		if (! $this -&gt; bindDiskPartitions ($this-&gt;{loop})) {
+-			$kiwi -&gt; failed ();
+-			$this -&gt; cleanLoop ();
+-			return undef;
+-		}
+-		my $bootdev = $this-&gt;{bindloop}.$geometry[2];
+-		if (! -e $bootdev) {
+-			$kiwi -&gt; failed ();
+-			$kiwi -&gt; error  (&quot;Can't find loop map: $bootdev&quot;);
+-			$kiwi -&gt; failed ();
+-			$this -&gt; cleanLoop ();
+-			return undef;
+-		}
+ 		$status = qxx (&quot;mount $bootdev /mnt 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+@@ -3813,37 +3824,39 @@ sub installBootLoader {
+ 			return undef;
+ 		}
+ 		my $mount = &quot;/mnt&quot;;
+-		#==========================================
+-		# rewrite zipl.conf with additional params
+-		#------------------------------------------
+ 		my $config = &quot;$mount/boot/zipl.conf&quot;;
+-		if (! open (FD,$config)) {
+-			$kiwi -&gt; failed ();
+-			$kiwi -&gt; error  (&quot;Can't open config file for reading: $!&quot;);
+-			$kiwi -&gt; failed ();
+-			qxx (&quot;umount $mount 2&gt;&amp;1&quot;);
+-			$this -&gt; cleanLoop ();
+-			return undef;
+-		}
+-		my @data = &lt;FD&gt;; close FD;
+-		if (! open (FD,&quot;&gt;$config&quot;)) {
+-			$kiwi -&gt; failed ();
+-			$kiwi -&gt; error  (&quot;Can't open config file for writing: $!&quot;);
+-			$kiwi -&gt; failed ();
+-			qxx (&quot;umount $mount 2&gt;&amp;1&quot;);
+-			$this -&gt; cleanLoop ();
+-			return undef;
+-		}
+-		foreach my $line (@data) {
+-			print FD $line;
+-			if ($line =~ /^:menu/) {
+-				print FD &quot;\t&quot;.&quot;targetbase = $this-&gt;{loop}&quot;.&quot;\n&quot;;
+-				print FD &quot;\t&quot;.&quot;targettype = SCSI&quot;.&quot;\n&quot;;
+-				print FD &quot;\t&quot;.&quot;targetblocksize = 512&quot;.&quot;\n&quot;;
+-				print FD &quot;\t&quot;.&quot;targetoffset = $geometry[1]&quot;.&quot;\n&quot;;
++		if (! $haveRealDevice) {
++			#==========================================
++			# rewrite zipl.conf with additional params
++			#------------------------------------------
++			if (! open (FD,$config)) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;Can't open config file for reading: $!&quot;);
++				$kiwi -&gt; failed ();
++				qxx (&quot;umount $mount 2&gt;&amp;1&quot;);
++				$this -&gt; cleanLoop ();
++				return undef;
++			}
++			my @data = &lt;FD&gt;; close FD;
++			if (! open (FD,&quot;&gt;$config&quot;)) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;Can't open config file for writing: $!&quot;);
++				$kiwi -&gt; failed ();
++				qxx (&quot;umount $mount 2&gt;&amp;1&quot;);
++				$this -&gt; cleanLoop ();
++				return undef;
++			}
++			foreach my $line (@data) {
++				print FD $line;
++				if ($line =~ /^:menu/) {
++					print FD &quot;\t&quot;.&quot;targetbase = $this-&gt;{loop}&quot;.&quot;\n&quot;;
++					print FD &quot;\t&quot;.&quot;targettype = SCSI&quot;.&quot;\n&quot;;
++					print FD &quot;\t&quot;.&quot;targetblocksize = 512&quot;.&quot;\n&quot;;
++					print FD &quot;\t&quot;.&quot;targetoffset = $geometry[1]&quot;.&quot;\n&quot;;
++				}
+ 			}
++			close FD;
+ 		}
+-		close FD;
+ 		#==========================================
+ 		# call zipl...
+ 		#------------------------------------------
+@@ -4120,11 +4133,67 @@ sub setStoragePartition {
+ 	my @commands = @{$cmdref};
+ 	my $result;
+ 	my $status;
++	my $ignore;
+ 	if (! defined $tool) {
+ 		$tool = &quot;fdisk&quot;;
+ 	}
+ 	SWITCH: for ($tool) {
+ 		#==========================================
++		# fdasd
++		#------------------------------------------
++		/^fdasd/  &amp;&amp; do {
++			$kiwi -&gt; loginfo (
++				&quot;FDASD input: $device [@commands]&quot;
++			);
++			$status = qxx (&quot;dd if=/dev/zero of=$device bs=4096 count=10 2&gt;&amp;1&quot;);
++			$result = $? &gt;&gt; 8;
++			if ($result != 0) {
++				$kiwi -&gt; loginfo ($status);
++				return undef;
++			}
++			if (! open (FD,&quot;|/sbin/fdasd $device &amp;&gt; $tmpdir/fdasd.log&quot;)) {
++				return undef;
++			}
++			print FD &quot;y\n&quot;;
++			foreach my $cmd (@commands) {
++				if (($ignore) &amp;&amp; ($cmd =~ /[ntwq]$/)) {
++					undef $ignore;
++				} elsif ($ignore) {
++					next;
++				}
++				if ($cmd eq &quot;a&quot;) {
++					$ignore=1;
++					next;
++				}
++				if ($cmd eq &quot;p&quot;) {
++					next;
++				}
++				if ($cmd =~ /^[0-9]$/) {
++					next;
++				}
++				if ($cmd eq &quot;83&quot;) {
++					$cmd = 1;
++				}
++				if ($cmd eq &quot;82&quot;) {
++					$cmd = 2;
++				}
++				if ($cmd eq &quot;.&quot;) {
++					print FD &quot;\n&quot;;
++				} else {
++					print FD &quot;$cmd\n&quot;;
++				}
++			}
++			close FD;
++			$result = $? &gt;&gt; 8;
++			my $flog;
++			if (open (FD,&quot;$tmpdir/fdasd.log&quot;)) {
++				my @flog = &lt;FD&gt;; close FD;
++				$flog = join (&quot;\n&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">, at flog</A>);
++				$kiwi -&gt; loginfo (&quot;FDASD: $flog&quot;);
++			}
++			last SWITCH;
++		};
++		#==========================================
+ 		# fdisk
+ 		#------------------------------------------
+ 		/^fdisk/  &amp;&amp; do {
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002633.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 98f2b06176944a2ff4bfc2960d18727eef8abd73
+</A></li>
+	<LI>Next message: <A HREF="002635.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. cc7bdd634d4dd014dce037f9819b0afd18e85817
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2634">[ date ]</a>
+              <a href="thread.html#2634">[ thread ]</a>
+              <a href="subject.html#2634">[ subject ]</a>
+              <a href="author.html#2634">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

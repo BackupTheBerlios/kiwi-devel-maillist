@@ -1,0 +1,365 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1962 - in kiwi-head: rpm tools/burner
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1962%20-%20in%20kiwi-head%3A%20rpm%20tools/burner&In-Reply-To=%3C200903061735.n26HZQTH026473%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001083.html">
+   <LINK REL="Next"  HREF="001085.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1962 - in kiwi-head: rpm tools/burner</H1>
+    <B>mbarringer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1962%20-%20in%20kiwi-head%3A%20rpm%20tools/burner&In-Reply-To=%3C200903061735.n26HZQTH026473%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1962 - in kiwi-head: rpm tools/burner">mbarringer at mail.berlios.de
+       </A><BR>
+    <I>Fri Mar  6 18:35:26 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001083.html">[Kiwi-devel] r1961 - in kiwi-head: rpm tools
+</A></li>
+        <LI>Next message: <A HREF="001085.html">[Kiwi-devel] r1963 - in kiwi-head: . modules rpm	system/boot/ix86/netboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1084">[ date ]</a>
+              <a href="thread.html#1084">[ thread ]</a>
+              <a href="subject.html#1084">[ subject ]</a>
+              <a href="author.html#1084">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: mbarringer
+Date: 2009-03-06 18:35:24 +0100 (Fri, 06 Mar 2009)
+New Revision: 1962
+
+Modified:
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/tools/burner/MainWindow.cpp
+   kiwi-head/tools/burner/MainWindow.h
+Log:
+Checking in UI change when building against Qt &lt; 4.4.0
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2009-03-06 16:17:00 UTC (rev 1961)
++++ kiwi-head/rpm/kiwi.changes	2009-03-06 17:35:24 UTC (rev 1962)
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Fri Mar  6 18:32:24 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarringer at suse.de</A>
++
++- Fixing a build problem with the imagewriter on 10.3, it will now
++  fall back to a simple UI if the Qt version is &lt; 4.4.0.
++
++-------------------------------------------------------------------
+ Fri Mar  6 12:38:16 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.26
+
+Modified: kiwi-head/tools/burner/MainWindow.cpp
+===================================================================
+--- kiwi-head/tools/burner/MainWindow.cpp	2009-03-06 16:17:00 UTC (rev 1961)
++++ kiwi-head/tools/burner/MainWindow.cpp	2009-03-06 17:35:24 UTC (rev 1962)
+@@ -31,7 +31,67 @@
+  : QWidget(parent)
+ {
+     int dev = -1;
++    file = QString();
+ 
++    fileSize = new QLabel(&quot;      &quot;);
++    fileLabel = new QLabel(&quot;     &quot;);
++
++// The &quot;new&quot; UI won't compile on 10.3 or SLE10, so fallback in that case to the older, uglier one
++#if (QT_VERSION &gt;= 0x040400)
++    useNewUI();
++#else
++    useOldUI();
++#endif
++
++    setWindowTitle(tr(VERSION));
++
++    // Setup the platform-specific bits
++#if defined (Q_OS_LINUX)
++    platform = new PlatformLinux;
++#elif defined (Q_OS_WIN)
++    platform = new PlatformWindows;
++#elif defined (Q_OS_MAC)
++    platform = new PlatformMacintosh;
++#else
++    QMessageBox msgBox;
++    msgBox.setText(tr(&quot;Your platform is not currently supported.&quot;));
++    msgBox.exec();
++    qFatal(&quot;Unsupported platform.&quot;);
++#endif
++
++    platform-&gt;findDevices(unsafe);
++
++    // Now that we've found the devices, add them to the combo box
++    QLinkedList&lt;DeviceItem *&gt; list = platform-&gt;getDeviceList();
++    QLinkedList&lt;DeviceItem *&gt;::iterator i;
++    for (i = list.begin(); i != list.end(); ++i)
++    {
++        if (!(*i)-&gt;getPath().isEmpty())
++            deviceComboBox-&gt;addItem((*i)-&gt;getDisplayString(), 0);
++        if (cmddevice != NULL)
++            if ((*i)-&gt;getPath().compare(cmddevice) == 0)
++                dev = deviceComboBox-&gt;findText((*i)-&gt;getDisplayString(), 0);
++    }
++
++    if (dev != -1)
++        deviceComboBox-&gt;setCurrentIndex(dev);
++
++    if (cmdfile != NULL)
++    {
++        if(QFile(cmdfile).exists())
++        {
++          setFile(cmdfile);
++          setSizeLabel(cmdfile);
++        }
++    }
++    centerWindow();
++
++}
++
++void
++MainWindow::useNewUI()
++{
++#if (QT_VERSION &gt;= 0x040400)
+     QVBoxLayout *mainLayout;
+     QStackedLayout *logoLayout;
+     QGridLayout *bottomLayout;
+@@ -39,9 +99,6 @@
+     QHBoxLayout *pathSizeLayout;
+     QPushButton *writeButton;
+     
+-
+-    file = QString();
+-
+     // Set the background colour
+     QPalette pal = palette();
+     pal.setColor(QPalette::Window, Qt::white);
+@@ -56,8 +113,6 @@
+     imageLabel-&gt;setPixmap(QPixmap::fromImage(image));
+     imageLabel-&gt;setAlignment(Qt::AlignCenter);
+ 
+-    fileSize = new QLabel(&quot;      &quot;);
+-    fileLabel = new QLabel(&quot;     &quot;);
+     directive = new CustomLabel(this);
+     directive-&gt;setText(tr(&quot;Drag appliance image here\n or click to select.&quot;));
+     directive-&gt;setAlignment(Qt::AlignCenter);
+@@ -89,52 +144,59 @@
+     mainLayout-&gt;addLayout(comboLayout);
+ 
+     setLayout(mainLayout);
+-    setWindowTitle(tr(VERSION));
+-
+-    // Setup the platform-specific bits
+-#if defined (Q_OS_LINUX)
+-    platform = new PlatformLinux;
+-#elif defined (Q_OS_WIN)
+-    platform = new PlatformWindows;
+-#elif defined (Q_OS_MAC)
+-    platform = new PlatformMacintosh;
+-#else
+-    QMessageBox msgBox;
+-    msgBox.setText(tr(&quot;Your platform is not currently supported.&quot;));
+-    msgBox.exec();
+-    qFatal(&quot;Unsupported platform.&quot;);
++    resize(600, 400);
++    setAcceptDrops(true);
+ #endif
+ 
+-    platform-&gt;findDevices(unsafe);
++    return;
++}
+ 
+-    // Now that we've found the devices, add them to the combo box
+-    QLinkedList&lt;DeviceItem *&gt; list = platform-&gt;getDeviceList();
+-    QLinkedList&lt;DeviceItem *&gt;::iterator i;
+-    for (i = list.begin(); i != list.end(); ++i)
+-    {
+-        if (!(*i)-&gt;getPath().isEmpty())
+-            deviceComboBox-&gt;addItem((*i)-&gt;getDisplayString(), 0);
+-        if (cmddevice != NULL)
+-            if ((*i)-&gt;getPath().compare(cmddevice) == 0)
+-                dev = deviceComboBox-&gt;findText((*i)-&gt;getDisplayString(), 0);
+-    }
++void
++MainWindow::useOldUI()
++{
++#if (QT_VERSION &lt; 0x040400)
++    QGridLayout *mainLayout;
++    QHBoxLayout *fileSelectLayout, *buttonLayout;
+ 
+-    if (dev != -1)
+-        deviceComboBox-&gt;setCurrentIndex(dev);
++    QLabel *file, *device, *version;
++    QPushButton *fileSelectButton, *exitButton, *writeButton;
+ 
+-    if (cmdfile != NULL)
+-    {
+-        if(QFile(cmdfile).exists())
+-        {
+-          setFile(cmdfile);
+-          setSizeLabel(cmdfile);
+-        }
+-    }
++    fileLine = new QLineEdit;
++    deviceComboBox = new QComboBox;
+ 
++    fileSelectButton = new QPushButton(tr(&quot;Select&quot;));
++    connect(fileSelectButton, SIGNAL(clicked()), this, SLOT(selectImage()));
+ 
+-    resize(600, 400);
+-    setAcceptDrops(true);
+-    centerWindow();
++    exitButton = new QPushButton(tr(&quot;Exit&quot;));
++    connect(exitButton, SIGNAL(clicked()), qApp, SLOT(quit()));
++
++    writeButton = new QPushButton(tr(&quot;Write&quot;));
++    connect(writeButton, SIGNAL(clicked()), this, SLOT(write()));
++
++    file = new QLabel(tr(&quot;File&quot;));
++    device = new QLabel(tr(&quot;Device&quot;));
++    version = new QLabel(VERSION);
++
++    buttonLayout = new QHBoxLayout;
++    buttonLayout-&gt;addWidget(exitButton);
++    buttonLayout-&gt;addWidget(writeButton);
++
++    fileSelectLayout = new QHBoxLayout;
++    fileSelectLayout-&gt;addWidget(fileLine);
++    fileSelectLayout-&gt;addWidget(fileSelectButton);
++
++    mainLayout = new QGridLayout;
++    mainLayout-&gt;addWidget(file, 0, 0);
++    mainLayout-&gt;addLayout(fileSelectLayout, 0, 1);
++    mainLayout-&gt;addWidget(device, 1, 0);
++    mainLayout-&gt;addWidget(deviceComboBox, 1, 1);
++
++    mainLayout-&gt;addLayout(buttonLayout, 2, 0, Qt::AlignRight);
++    setLayout(mainLayout);
++    resize(600,170);
++#endif
++
++    return;
+ }
+ 
+ void
+@@ -212,10 +274,15 @@
+ void MainWindow::setFile(QString newFile)
+ {
+     file = newFile;
++#if (QT_VERSION &gt;= 0x040400)
+     QImage image(&quot;:logo-mini.png&quot;);
+     imageLabel-&gt;setPixmap(QPixmap::fromImage(image));
++    directive-&gt;setText(&quot;&quot;);
++#else
++    fileLine-&gt;setText(file);
++#endif
++
+     fileLabel-&gt;setText(&quot;&lt;b&gt;Selected:&lt;/b&gt; &quot; + file);
+-    directive-&gt;setText(&quot;&quot;);
+ }
+ 
+ void
+@@ -246,8 +313,14 @@
+             // We won't let them nuke a mounted device
+             QMessageBox msgBox;
+             msgBox.setText(tr(&quot;This device is already mounted.  Would you like me to attempt to unmount it?&quot;));
++#if (QT_VERSION &gt;= 0x040400)
+             msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+             msgBox.setDefaultButton(QMessageBox::No);
++#else
++            msgBox.setButtonText(QMessageBox::Yes, tr(&quot;Yes&quot;));
++            msgBox.setButtonText(QMessageBox::No, tr(&quot;No&quot;));
++#endif
++
+             switch (msgBox.exec())
+             {
+                 case QMessageBox::Yes:
+@@ -275,8 +348,16 @@
+         else
+             messageString = item-&gt;getPath() + tr(&quot; is a non-removable hard drive, and this will overwrite the contents.  Are you &lt;b&gt;sure&lt;/b&gt; you want to continue?&quot;);
+         msgBox.setText(messageString);
++
++#if (QT_VERSION &gt;= 0x040400)
+         msgBox.setStandardButtons(QMessageBox::Cancel | QMessageBox::Ok);
+         msgBox.setDefaultButton(QMessageBox::Cancel);
++#else
++        msgBox.setButtonText(QMessageBox::Cancel, tr(&quot;Cancel&quot;));
++        msgBox.setButtonText(QMessageBox::Ok, tr(&quot;Ok&quot;));
++#endif
++
++
+         switch (msgBox.exec())
+         {
+             case QMessageBox::Ok:
+
+Modified: kiwi-head/tools/burner/MainWindow.h
+===================================================================
+--- kiwi-head/tools/burner/MainWindow.h	2009-03-06 16:17:00 UTC (rev 1961)
++++ kiwi-head/tools/burner/MainWindow.h	2009-03-06 17:35:24 UTC (rev 1962)
+@@ -42,7 +42,7 @@
+ #endif
+ 
+ #include &quot;DeviceItem.h&quot;
+-#define VERSION &quot;SUSE Studio Image Writer 1.0&quot;
++#define VERSION &quot;SUSE Studio Image Writer 1.1&quot;
+ 
+ class MainWindow : public QWidget
+ {
+@@ -50,6 +50,8 @@
+ 
+ public:
+     MainWindow(const char *cmddevice, const char *cmdfile, bool unsafe = false, QWidget *parent = 0);
++
++public slots:
+     void selectImage();
+ 
+ private slots:
+@@ -68,7 +70,13 @@
+     bool isMounted(QString path);
+     void writeData(QString path);
+     void centerWindow();
++    void useNewUI();
++    void useOldUI();
+ 
++#if (QT_VERSION &lt; 0x040400)
++    QLineEdit* fileLine;
++#endif
++
+     QLabel *imageLabel, *directive;
+     QString file;
+     QLabel *fileSize, *fileLabel;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001083.html">[Kiwi-devel] r1961 - in kiwi-head: rpm tools
+</A></li>
+	<LI>Next message: <A HREF="001085.html">[Kiwi-devel] r1963 - in kiwi-head: . modules rpm	system/boot/ix86/netboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1084">[ date ]</a>
+              <a href="thread.html#1084">[ thread ]</a>
+              <a href="subject.html#1084">[ subject ]</a>
+              <a href="author.html#1084">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

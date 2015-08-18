@@ -1,0 +1,247 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5f70c2c721d72c5e2ace5292be70ac879dd70213
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%205f70c2c721d72c5e2ace5292be70ac879dd70213&In-Reply-To=%3C200912081145.nB8BjFfq027705%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001661.html">
+   <LINK REL="Next"  HREF="001663.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5f70c2c721d72c5e2ace5292be70ac879dd70213</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%205f70c2c721d72c5e2ace5292be70ac879dd70213&In-Reply-To=%3C200912081145.nB8BjFfq027705%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5f70c2c721d72c5e2ace5292be70ac879dd70213">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Dec  8 12:45:15 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001661.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 492c8341fe5e8d54673908403fa06783c33c1caf
+</A></li>
+        <LI>Next message: <A HREF="001663.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 56511892ea8f8fdb87f125dfdc3713c502bc091e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1662">[ date ]</a>
+              <a href="thread.html#1662">[ thread ]</a>
+              <a href="subject.html#1662">[ subject ]</a>
+              <a href="author.html#1662">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  5f70c2c721d72c5e2ace5292be70ac879dd70213 (commit)
+      from  492c8341fe5e8d54673908403fa06783c33c1caf (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 5f70c2c721d72c5e2ace5292be70ac879dd70213
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Dec 8 12:44:28 2009 +0100
+
+    - fixed satsolver usage, pool_setarch is required for correct
+      solving results. Also prune_best_arch_name_version() is now
+      used instead of prune_to_best_arch
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/tools/satplugin/SaT.i b/tools/satplugin/SaT.i
+index 1c33b1f..11697ae 100644
+--- a/tools/satplugin/SaT.i
++++ b/tools/satplugin/SaT.i
+@@ -21,6 +21,7 @@ extern &quot;C&quot;
+ #include &quot;repo_solv.h&quot;
+ }
+ #include &lt;sstream&gt;
++#include &lt;sys/utsname.h&gt;
+ %}
+ 
+ //==================================
+@@ -53,17 +54,17 @@ extern &quot;C&quot;
+ //----------------------------------
+ %extend _Pool {
+     _Pool() {
+-        return pool_create();
++        struct utsname hw;
++        Pool *pool = pool_create();
++        uname (&amp;hw);
++        pool_setarch(pool,hw.machine);
++        return pool;
+     }
+ 
+     ~_Pool() {
+         pool_free (self);
+     }
+ 
+-    void set_arch(const char *arch) {
+-        pool_setarch(self, arch);
+-    }
+-
+     int installable (Solvable *s) {
+         return pool_installable(self,s);
+     }
+@@ -84,7 +85,7 @@ extern &quot;C&quot;
+         return pool_id2solvable(self, p);
+     }
+ 
+-    Id selectSolvable (Repo *repo, char *name) {
++    Id selectSolvable (Repo *repo, Solver *solver, char *name) {
+         Id id;
+         Queue plist;
+         int i, end;
+@@ -104,7 +105,7 @@ extern &quot;C&quot;
+                 queue_push(&amp;plist, i);
+             }
+         }
+-        prune_to_best_arch (pool, &amp;plist);
++        prune_best_arch_name_version (solver,pool,&amp;plist);
+         if (plist.count == 0) {
+             //printf(&quot;unknown package '%s'\n&quot;, name);
+             return 0;
+diff --git a/tools/satplugin/sat.c b/tools/satplugin/sat.c
+index 0e30e3e..284975f 100644
+--- a/tools/satplugin/sat.c
++++ b/tools/satplugin/sat.c
+@@ -3,24 +3,31 @@
+ #include &lt;fcntl.h&gt;
+ #include &lt;unistd.h&gt;
+ #include &lt;satsolver/solver.h&gt;
++#include &lt;satsolver/poolarch.h&gt;
+ #include &lt;satsolver/solverdebug.h&gt;
+ #include &lt;satsolver/repo_solv.h&gt;
+ #include &lt;satsolver/policy.h&gt;
++#include &lt;sys/utsname.h&gt;
+ 
+-Id select_solvable (Repo*, Pool*,char*);
++Id select_solvable (Repo*, Pool*,Solver*,char*);
+ 
+ int main (void) {
+ 	Pool   *pool   = 0;
+ 	Solver *solver = 0;
+ 	FILE   *fp     = 0;
++	struct utsname hw;
+ 	int b;
+ 	Queue  queue;
+-	int fd = open (&quot;/var/cache/kiwi/satsolver/0df87b1388d164da67caf952a9ea49fc&quot;, O_RDONLY);
++	int fd = open (&quot;/var/cache/kiwi/satsolver/5fa35fa3cc698ca565085dccef365384&quot;, O_RDONLY);
+ 	if (fd == -1) {
+ 		return 1;
+ 	}
+ 
+ 	pool = pool_create();
++	uname (&amp;hw);
++	
++	printf (&quot;Using Architecture: %s\n&quot;,hw.machine);	
++	pool_setarch (pool,hw.machine);
+ 
+ 	fp = fdopen(fd, &quot;r&quot;);
+ 	Repo *new_repo = repo_create (pool, &quot;empty&quot;);
+@@ -36,22 +43,37 @@ int main (void) {
+ 	#endif
+ 	pool_createwhatprovides(pool);
+ 
++	#ifdef SOLV_VERSION_8
++	solver = solver_create (pool);
++	#else
++	solver = solver_create (pool,empty_installed);
++	#endif
++
+ 	queue_init (&amp;queue);
+ 	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+-	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:apparmor&quot;));
++    queue_push (&amp;queue, select_solvable(new_repo,pool,solver,&quot;libcurl-devel&quot;));
++
++	#if 0
+ 	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+-	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:apparmor_opt&quot;));
++	queue_push (
++		&amp;queue, select_solvable(new_repo,pool,solver,&quot;pattern:apparmor&quot;)
++	);
+ 	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+-	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:base&quot;));
++	queue_push (
++		&amp;queue, select_solvable(new_repo,pool,solver,&quot;pattern:apparmor_opt&quot;)
++	);
+ 	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+-	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:devel_C_C++&quot;));
++	queue_push (
++		&amp;queue, select_solvable(new_repo,pool,solver,&quot;pattern:base&quot;)
++	);
+ 	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+-	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:devel_qt4&quot;));
+-
+-	#ifdef SOLV_VERSION_8
+-	solver = solver_create (pool);
+-	#else
+-	solver = solver_create (pool,empty_installed);
++	queue_push (
++		&amp;queue, select_solvable(new_repo,pool,solver,&quot;pattern:devel_C_C++&quot;)
++	);
++	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
++	queue_push (
++		&amp;queue, select_solvable(new_repo,pool,solver,&quot;pattern:devel_qt4&quot;)
++	);
+ 	#endif
+ 
+ 	solver_solve (solver, &amp;queue);
+@@ -89,7 +111,7 @@ int main (void) {
+ 
+ 
+ 
+-Id select_solvable (Repo *repo, Pool* pool,char *name) {
++Id select_solvable (Repo *repo, Pool* pool,Solver* solver,char *name) {
+ 	Id id;
+ 	Queue plist;
+ 	int i, end;
+@@ -109,7 +131,7 @@ Id select_solvable (Repo *repo, Pool* pool,char *name) {
+ 			queue_push(&amp;plist, i);
+ 		}
+ 	}
+-	prune_to_best_arch (pool, &amp;plist);
++	prune_best_arch_name_version (solver,pool,&amp;plist);
+ 	if (plist.count == 0) {
+ 		printf(&quot;unknown package '%s'\n&quot;, name);
+ 		exit(1);
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001661.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 492c8341fe5e8d54673908403fa06783c33c1caf
+</A></li>
+	<LI>Next message: <A HREF="001663.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 56511892ea8f8fdb87f125dfdc3713c502bc091e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1662">[ date ]</a>
+              <a href="thread.html#1662">[ thread ]</a>
+              <a href="subject.html#1662">[ subject ]</a>
+              <a href="author.html#1662">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

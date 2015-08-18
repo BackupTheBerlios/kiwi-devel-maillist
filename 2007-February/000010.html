@@ -1,0 +1,128 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] squashfs?
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2007-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20squashfs%3F&In-Reply-To=%3C20070219131537.GA30073%40D7.ddts.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000009.html">
+   <LINK REL="Next"  HREF="000011.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] squashfs?</H1>
+    <B>Marcus Sch&#228;fer</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20squashfs%3F&In-Reply-To=%3C20070219131537.GA30073%40D7.ddts.net%3E"
+       TITLE="[Kiwi-devel] squashfs?">ms at suse.de
+       </A><BR>
+    <I>Mon Feb 19 14:15:37 CET 2007</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000009.html">[Kiwi-devel] squashfs?
+</A></li>
+        <LI>Next message: <A HREF="000011.html">[Kiwi-devel] [PATCH] isoinstall initrd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10">[ date ]</a>
+              <a href="thread.html#10">[ thread ]</a>
+              <a href="subject.html#10">[ subject ]</a>
+              <a href="author.html#10">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi,
+
+&gt;<i> &gt; I saw that kiwi currently supports cramfs, but not squashfs.  Is cramfs
+</I>&gt;<i> &gt; preferred?  Everything I've read indicates that squashfs is superior,
+</I>&gt;<i> &gt; but I may not have the whole story.  If there are no objections, I'll
+</I>&gt;<i> &gt; take a stab at adding squashfs support.  Using it in our 128M (or larger
+</I>&gt;<i> &gt; ones too) should really help I think.
+</I>&gt;<i> 
+</I>&gt;<i> I got enough of this completed this weekend that I was able to create a
+</I>&gt;<i> squashfs image of wyseGhost-suse-10.2.  The original ext2 image is 461M
+</I>&gt;<i> and the squashfs one is 160M.  I'd say that's a pretty significant
+</I>&gt;<i> improvement.  Of course, in order for squashfs to be usable for this
+</I>&gt;<i> particular case, we'd have to use unionfs (or something) to give us some
+</I>&gt;<i> sort of write support.  I don't know how well that works, and it sounds
+</I>&gt;<i> like a lot of work.  Anyone have experience with that sort of thing?
+</I>
+The main problem in using a compressed filesystem is that they are
+only available as read-only storage. Because of this there are in
+principal two possible solutions concerning images:
+
+	1) make use of unionfs to combine read-only and read-write parts
+	2) support splited root filesystems
+
+kiwi supports the second variant because as far as I know unionfs
+is not part of the standard kernel and has several smaller problems
+you need to workaround first. Creating a split image means kiwi will
+automatically divide the root system into two parts in the same
+way as it does for live systems. The directories /bin /boot /lib /opt /sbin
+and /usr will build the read-only part and the rest builds the read-write part.
+The nice thing here is that you can specify the filesystem you want
+to use for each part. That's the way how I've started to support compressed
+filesystems. I have tested such a setup with a small image on a cramfs+ext2
+but any other combination is possible as soon as the standard kernel
+includes support for it.
+
+The corresponding code which has to combine both filesystems into one
+root tree and boot that tree is implemented in the suse-linuxrc of
+the netboot boot images. A special setup for the config.&lt;MAC&gt; is needed
+to setup the image as so called COMBINED_IMAGE:
+
+for example:
+	cat config.00:11:11:09:FB:0E  # my system
+
+	IMAGE=/dev/sda2;minimal-10.1.i686;1.1.2;192.168.100.2;4096,/dev/sda3;minimal-10.1-read-only.i686;1.1.2;192.168.100.2;4096
+	PART=200;S;x,500;L;/,x;L;   # swap + sda2(rw) + sda3(ro)
+	DISK=/dev/sda
+	COMBINED_IMAGE=yes
+
+The disadvantage is that in any case you need to provide a special
+linuxrc which is able to boot a splited root system. The current standard
+linuxrc doesn't support that which on the other means you need the kiwi
+boot mechanism to boot the system... don't know if that is a real problem
+
+Just my thoughts
+
+Regards,
+Marcus
+-- 
+ Public Key available
+ gpg --keyserver gpg-keyserver.de --recv-keys 0xCCE3C6A2
+ -------------------------------------------------------
+ Marcus Sch&#228;fer (Res. &amp; Dev.)   SUSE LINUX Products GmbH
+ Tel: 0911-740 53 0             Maxfeldstrasse 5
+ FAX: 0911-740 53 479           D-90409 N&#252;rnberg
+ GF: Markus Rex                 HRB: 16746 (AG N&#252;rnberg)
+ <A HREF="http://www.suse.de">http://www.suse.de</A>             Germany
+ -------------------------------------------------------
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000009.html">[Kiwi-devel] squashfs?
+</A></li>
+	<LI>Next message: <A HREF="000011.html">[Kiwi-devel] [PATCH] isoinstall initrd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10">[ date ]</a>
+              <a href="thread.html#10">[ thread ]</a>
+              <a href="subject.html#10">[ subject ]</a>
+              <a href="author.html#10">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

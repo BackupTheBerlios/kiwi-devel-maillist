@@ -1,0 +1,166 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1601 - in kiwi-head:	doc/examples/suse-11.1/suse-live-stick modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1601%20-%20in%20kiwi-head%3A%0A%09doc/examples/suse-11.1/suse-live-stick%20modules%20rpm&In-Reply-To=%3C200810021408.m92E8Mnn017904%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000698.html">
+   <LINK REL="Next"  HREF="000700.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1601 - in kiwi-head:	doc/examples/suse-11.1/suse-live-stick modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1601%20-%20in%20kiwi-head%3A%0A%09doc/examples/suse-11.1/suse-live-stick%20modules%20rpm&In-Reply-To=%3C200810021408.m92E8Mnn017904%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1601 - in kiwi-head:	doc/examples/suse-11.1/suse-live-stick modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Oct  2 16:08:22 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000698.html">[Kiwi-devel] r1600 - in kiwi-head:	doc/examples/suse-11.0/suse-ec2-guest doc/examples/suse-11.1	doc/examples/suse-11.1/suse-ec2-guest	doc/examples/suse-11.1/suse-live-iso	doc/examples/suse-11.1/suse-live-stick	doc/examples/suse-11.1/suse-oem-preload	doc/examples/suse-11.1/suse-pxe-client	doc/examples/suse-11.1/suse-vm-guest rpm
+</A></li>
+        <LI>Next message: <A HREF="000700.html">[Kiwi-devel] r1602 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#699">[ date ]</a>
+              <a href="thread.html#699">[ thread ]</a>
+              <a href="subject.html#699">[ subject ]</a>
+              <a href="author.html#699">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-02 16:08:16 +0200 (Thu, 02 Oct 2008)
+New Revision: 1601
+
+Modified:
+   kiwi-head/doc/examples/suse-11.1/suse-live-stick/config.xml
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/modules/KIWIManager.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- fixed patternType evaluation for zypper
+- fixed USB stick partitioning, clean table first
+
+
+
+Modified: kiwi-head/doc/examples/suse-11.1/suse-live-stick/config.xml
+===================================================================
+--- kiwi-head/doc/examples/suse-11.1/suse-live-stick/config.xml	2008-10-02 13:05:47 UTC (rev 1600)
++++ kiwi-head/doc/examples/suse-11.1/suse-live-stick/config.xml	2008-10-02 14:08:16 UTC (rev 1601)
+@@ -22,15 +22,16 @@
+ 		&lt;source path=&quot;/image/CDs/full-i386&quot;/&gt;
+ 		&lt;!--&lt;source path=&quot;<A HREF="opensuse://openSUSE:11.1/standard/">opensuse://openSUSE:11.1/standard/</A>&quot;/&gt;--&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot;&gt;
++	&lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;bootsplash&quot;/&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;opensusePattern name=&quot;default&quot;/&gt;
++		&lt;package name=&quot;MozillaFirefox&quot;/&gt;
++		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;kde4&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; patternType=&quot;plusRecommended&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt; 
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+ 	&lt;/packages&gt;
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2008-10-02 13:05:47 UTC (rev 1600)
++++ kiwi-head/modules/KIWIBoot.pm	2008-10-02 14:08:16 UTC (rev 1601)
+@@ -3151,6 +3151,12 @@
+ 			$kiwi -&gt; loginfo (
+ 				&quot;FDISK input: $device [@commands]&quot;
+ 			);
++			$status = qxx (&quot;dd if=/dev/zero of=$device bs=512 count=1 2&gt;&amp;1&quot;);
++			$result = $? &gt;&gt; 8;
++			if ($result != 0) {
++				$kiwi -&gt; loginfo ($status);
++				return undef;
++			}
+ 			if (! open (FD,&quot;|/sbin/fdisk $device &amp;&gt; $tmpdir/fdisk.log&quot;)) {
+ 				return undef;
+ 			}
+
+Modified: kiwi-head/modules/KIWIManager.pm
+===================================================================
+--- kiwi-head/modules/KIWIManager.pm	2008-10-02 13:05:47 UTC (rev 1600)
++++ kiwi-head/modules/KIWIManager.pm	2008-10-02 14:08:16 UTC (rev 1601)
+@@ -1155,7 +1155,7 @@
+ 		my @installOpts = (
+ 			&quot;--auto-agree-with-licenses&quot;
+ 		);
+-		my %pattr = $xml -&gt; getPackageAttributes();
++		my %pattr = $xml -&gt; getPackageAttributes(&quot;image&quot;);
+ 		if (($pattr{patternType} ne &quot;plusRecommended&quot;) &amp;&amp;
+ 			($pattr{patternPackageType} ne &quot;plusRecommended&quot;)
+ 		) {
+@@ -1387,7 +1387,7 @@
+ 			my @installOpts = (
+ 				&quot;--auto-agree-with-licenses&quot;
+ 			);
+-			my %pattr = $xml -&gt; getPackageAttributes();
++			my %pattr = $xml -&gt; getPackageAttributes(&quot;bootstrap&quot;);
+ 			if (($pattr{patternType} ne &quot;plusRecommended&quot;) &amp;&amp;
+ 				($pattr{patternPackageType} ne &quot;plusRecommended&quot;)
+ 			) {
+@@ -1475,7 +1475,7 @@
+ 			my @installOpts = (
+ 				&quot;--auto-agree-with-licenses&quot;
+ 			);
+-			my %pattr = $xml -&gt; getPackageAttributes();
++			my %pattr = $xml -&gt; getPackageAttributes(&quot;image&quot;);
+ 			if (($pattr{patternType} ne &quot;plusRecommended&quot;) &amp;&amp;
+ 				($pattr{patternPackageType} ne &quot;plusRecommended&quot;)
+ 			) {
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-02 13:05:47 UTC (rev 1600)
++++ kiwi-head/rpm/kiwi.changes	2008-10-02 14:08:16 UTC (rev 1601)
+@@ -3,6 +3,8 @@
+ 
+ - v2.83
+ - added suse 11.1 / SLES11 examples
++- fixed patternType evaluation for zypper
++- fixed USB stick partitioning, clean table first
+ - added architecture information for sat solv cache
+ - added xenbridge element to setup Xen bridge networking
+ - fixed <A HREF="file://">file://</A> usage in xenconfig, this setup requires
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000698.html">[Kiwi-devel] r1600 - in kiwi-head:	doc/examples/suse-11.0/suse-ec2-guest doc/examples/suse-11.1	doc/examples/suse-11.1/suse-ec2-guest	doc/examples/suse-11.1/suse-live-iso	doc/examples/suse-11.1/suse-live-stick	doc/examples/suse-11.1/suse-oem-preload	doc/examples/suse-11.1/suse-pxe-client	doc/examples/suse-11.1/suse-vm-guest rpm
+</A></li>
+	<LI>Next message: <A HREF="000700.html">[Kiwi-devel] r1602 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#699">[ date ]</a>
+              <a href="thread.html#699">[ thread ]</a>
+              <a href="subject.html#699">[ subject ]</a>
+              <a href="author.html#699">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

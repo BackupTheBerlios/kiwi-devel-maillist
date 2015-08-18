@@ -1,0 +1,131 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4db959d509fa1f5e08ed92b66e01a3e2efa34a9a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204db959d509fa1f5e08ed92b66e01a3e2efa34a9a&In-Reply-To=%3C20100707085411.E0B564809E9%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002381.html">
+   <LINK REL="Next"  HREF="002383.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4db959d509fa1f5e08ed92b66e01a3e2efa34a9a</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204db959d509fa1f5e08ed92b66e01a3e2efa34a9a&In-Reply-To=%3C20100707085411.E0B564809E9%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4db959d509fa1f5e08ed92b66e01a3e2efa34a9a">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jul  7 10:54:11 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002381.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 741eef78ed08cef1926f33badc641c564495741e
+</A></li>
+        <LI>Next message: <A HREF="002383.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2d1ef95656bb293e52ad8aaed96b91e708658b02
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2382">[ date ]</a>
+              <a href="thread.html#2382">[ thread ]</a>
+              <a href="subject.html#2382">[ subject ]</a>
+              <a href="author.html#2382">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  4db959d509fa1f5e08ed92b66e01a3e2efa34a9a (commit)
+      from  741eef78ed08cef1926f33badc641c564495741e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 4db959d509fa1f5e08ed92b66e01a3e2efa34a9a
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jul 7 10:53:54 2010 +0200
+
+    - zipl requires block device to operate
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index b8a1707..24af81d 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -4455,6 +4455,18 @@ sub installBootLoader {
+ 			return undef;
+ 		}
+ 		#==========================================
++		# loop mount disk image file
++		#------------------------------------------
++		$status = qxx (&quot;/sbin/losetup -s -f $diskname 2&gt;&amp;1&quot;); chomp $status;
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Can't loop mount image file: $status&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		my $loop = $status;
++		#==========================================
+ 		# rewrite zipl.conf with additional params
+ 		#------------------------------------------
+ 		my $config = &quot;$tmpdir/boot/zipl.conf&quot;;
+@@ -4474,7 +4486,7 @@ sub installBootLoader {
+ 		foreach my $line (@data) {
+ 			print FD $line;
+ 			if ($line =~ /^:menu/) {
+-				print FD &quot;\t&quot;.&quot;targetbase = $diskname&quot;.&quot;\n&quot;;
++				print FD &quot;\t&quot;.&quot;targetbase = $loop&quot;.&quot;\n&quot;;
+ 				print FD &quot;\t&quot;.&quot;targettype = SCSI&quot;.&quot;\n&quot;;
+ 				print FD &quot;\t&quot;.&quot;targetblocksize = 512&quot;.&quot;\n&quot;;
+ 				print FD &quot;\t&quot;.&quot;targetoffset = $geometry[1]&quot;.&quot;\n&quot;;
+@@ -4490,8 +4502,10 @@ sub installBootLoader {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error  (&quot;Couldn't install zipl on $diskname: $status&quot;);
+ 			$kiwi -&gt; failed ();
++			qxx (&quot;losetup -d $loop 2&gt;&amp;1&quot;);
+ 			return undef;
+ 		}
++		qxx (&quot;losetup -d $loop 2&gt;&amp;1&quot;);
+ 		$kiwi -&gt; done();
+ 	}
+ 	#==========================================
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002381.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 741eef78ed08cef1926f33badc641c564495741e
+</A></li>
+	<LI>Next message: <A HREF="002383.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2d1ef95656bb293e52ad8aaed96b91e708658b02
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2382">[ date ]</a>
+              <a href="thread.html#2382">[ thread ]</a>
+              <a href="subject.html#2382">[ subject ]</a>
+              <a href="author.html#2382">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,178 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1782 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1782%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200811201340.mAKDeIt0013789%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000874.html">
+   <LINK REL="Next"  HREF="000876.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1782 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1782%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200811201340.mAKDeIt0013789%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1782 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Nov 20 14:40:18 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000874.html">[Kiwi-devel] r1781 - kiwi-head/modules
+</A></li>
+        <LI>Next message: <A HREF="000876.html">[Kiwi-devel] r1783 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#875">[ date ]</a>
+              <a href="thread.html#875">[ thread ]</a>
+              <a href="subject.html#875">[ subject ]</a>
+              <a href="author.html#875">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-11-20 14:40:13 +0100 (Thu, 20 Nov 2008)
+New Revision: 1782
+
+Modified:
+   kiwi-head/modules/KIWIManager.pm
+   kiwi-head/modules/KIWIRoot.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- added setupPackageKeys function (bnc #447025)
+
+
+
+Modified: kiwi-head/modules/KIWIManager.pm
+===================================================================
+--- kiwi-head/modules/KIWIManager.pm	2008-11-20 12:44:44 UTC (rev 1781)
++++ kiwi-head/modules/KIWIManager.pm	2008-11-20 13:40:13 UTC (rev 1782)
+@@ -1701,6 +1701,67 @@
+ }
+ 
+ #==========================================
++# setupPackageKeys
++#------------------------------------------
++sub setupPackageKeys {
++	# ...
++	# import package keys to avoid warnings on installation
++	# of packages. This is an rpm only task and needs to be
++	# enhanced for non rpm based packages
++	# ---
++	my $this = shift;
++	my $root = $this-&gt;{root};
++	my $kiwi = $this-&gt;{kiwi};
++	my $data;
++	my $code;
++	#==========================================
++	# check for rpm binary
++	#------------------------------------------
++	if (! -x &quot;/bin/rpm&quot;) {
++		# operates on rpm only
++		return $this;
++	}
++	#==========================================
++	# check build key and gpg
++	#------------------------------------------	
++	$kiwi -&gt; info (&quot;Importing build keys...&quot;);
++	if (! -x &quot;/usr/lib/rpm/gnupg/dumpsigs&quot;) {
++		$kiwi -&gt; skipped ();
++		$kiwi -&gt; warning (&quot;Can't find dumpsigs on host system&quot;);
++		$kiwi -&gt; skipped ();
++		return $this;
++	}
++	if (! -f &quot;/usr/lib/rpm/gnupg/pubring.gpg&quot;) {
++		$kiwi -&gt; skipped ();
++		$kiwi -&gt; warning (&quot;Can't find build keys on host system&quot;);
++		$kiwi -&gt; skipped ();
++		return $this;
++	}
++	my $dump = &quot;/usr/lib/rpm/gnupg/dumpsigs /usr/lib/rpm/gnupg/pubring.gpg&quot;;
++	my $sigs = &quot;$root/rpm-sigs&quot;;
++	$data = qxx (&quot;mkdir -p $sigs &amp;&amp; cd $sigs &amp;&amp; $dump 2&gt;&amp;1&quot;);
++	$code = $? &gt;&gt; 8;
++	if ($code != 0) {
++		$kiwi -&gt; skipped ();
++		$kiwi -&gt; error  (&quot;Can't dump pubkeys: $data&quot;);
++		$kiwi -&gt; failed ();
++		qxx (&quot;rm -rf $sigs&quot;);
++		return $this;
++	}
++	$data.= qxx (&quot;rpm -r $root --import $sigs/gpg-pubke* 2&gt;&amp;1&quot;);
++	$code = $? &gt;&gt; 8;
++	if ($code != 0) {
++		$kiwi -&gt; skipped ();
++		$kiwi -&gt; error  (&quot;Can't import pubkeys: $data&quot;);
++		$kiwi -&gt; failed ();
++		qxx (&quot;rm -rf $sigs&quot;);
++	}
++	$kiwi -&gt; done();
++	qxx (&quot;rm -rf $sigs&quot;);
++	return $this;
++}
++
++#==========================================
+ # checkExclusiveLock
+ #------------------------------------------
+ sub checkExclusiveLock {
+
+Modified: kiwi-head/modules/KIWIRoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIRoot.pm	2008-11-20 12:44:44 UTC (rev 1781)
++++ kiwi-head/modules/KIWIRoot.pm	2008-11-20 13:40:13 UTC (rev 1782)
+@@ -402,6 +402,11 @@
+ 	}
+ 	print FD $imageName.&quot;-&quot;.$imageVersion; close FD;
+ 	#==================================
++	# Create package keys before chroot
++	#----------------------------------
++	$manager -&gt; setupPackageKeys();
++
++	#==================================
+ 	# Return object reference
+ 	#----------------------------------
+ 	return $this;
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-11-20 12:44:44 UTC (rev 1781)
++++ kiwi-head/rpm/kiwi.changes	2008-11-20 13:40:13 UTC (rev 1782)
+@@ -1,6 +1,7 @@
+ -------------------------------------------------------------------
+ Tue Nov 18 18:57:44 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- added setupPackageKeys function (bnc #447025)
+ - fixed getStorageSize() [fdisk] return value (bnc #446812)
+ - added kernel consistency check (bnc #445309)
+ - set framebuffer to verbose mode in sax init script
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000874.html">[Kiwi-devel] r1781 - kiwi-head/modules
+</A></li>
+	<LI>Next message: <A HREF="000876.html">[Kiwi-devel] r1783 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#875">[ date ]</a>
+              <a href="thread.html#875">[ thread ]</a>
+              <a href="subject.html#875">[ subject ]</a>
+              <a href="author.html#875">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

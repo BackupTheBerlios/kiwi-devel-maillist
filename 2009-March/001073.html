@@ -1,0 +1,193 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1951 - in kiwi-head/tools: . dcounter driveready
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1951%20-%20in%20kiwi-head/tools%3A%20.%20dcounter%20driveready&In-Reply-To=%3C200903051551.n25FpsLd003918%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001072.html">
+   <LINK REL="Next"  HREF="001074.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1951 - in kiwi-head/tools: . dcounter driveready</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1951%20-%20in%20kiwi-head/tools%3A%20.%20dcounter%20driveready&In-Reply-To=%3C200903051551.n25FpsLd003918%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1951 - in kiwi-head/tools: . dcounter driveready">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Mar  5 16:51:54 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001072.html">[Kiwi-devel] r1950 - kiwi-head/system/suse-repo
+</A></li>
+        <LI>Next message: <A HREF="001074.html">[Kiwi-devel] r1952 - in kiwi-head/template: . suse-SLE11-JeOS	suse-SLE11-JeOS/root/etc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1073">[ date ]</a>
+              <a href="thread.html#1073">[ thread ]</a>
+              <a href="subject.html#1073">[ subject ]</a>
+              <a href="author.html#1073">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-03-05 16:51:49 +0100 (Thu, 05 Mar 2009)
+New Revision: 1951
+
+Added:
+   kiwi-head/tools/dcounter/
+   kiwi-head/tools/dcounter/Makefile
+   kiwi-head/tools/dcounter/dcounter.c
+Modified:
+   kiwi-head/tools/Makefile
+   kiwi-head/tools/driveready/Makefile
+Log:
+
+- added dcounter tool which is able to count bytes
+  inside a pipe stream and print a progress information
+
+
+
+Modified: kiwi-head/tools/Makefile
+===================================================================
+--- kiwi-head/tools/Makefile	2009-03-05 15:36:40 UTC (rev 1950)
++++ kiwi-head/tools/Makefile	2009-03-05 15:51:49 UTC (rev 1951)
+@@ -1,5 +1,6 @@
+ all:
+ 	${MAKE} -C startshell all
++	${MAKE} -C dcounter all
+ 	${MAKE} -C pigz all
+ 	${MAKE} -C driveready all
+ 	${MAKE} -C dbuslock -f Makefile.swig all
+@@ -19,6 +20,7 @@
+ 	install -m 644 burner/README ${PACKDOCVZ}/README.imagewriter
+ 	#install -m 755 init/* ${INITVZ}
+ 	install -m 755 burner/imagewriter ${bin_prefix}
++	install -m 755 dcounter/dcounter ${TOOLSVZ}
+ 	install -m 755 startshell/startshell ${TOOLSVZ}
+ 	install -m 755 pigz/pigz ${TOOLSVZ}
+ 	install -m 755 driveready/driveready ${TOOLSVZ}
+@@ -33,6 +35,7 @@
+ 	)
+ 
+ clean:
++	${MAKE} -C dcounter clean
+ 	${MAKE} -C burner clean
+ 	${MAKE} -C startshell clean
+ 	${MAKE} -C pigz clean
+
+Added: kiwi-head/tools/dcounter/Makefile
+===================================================================
+--- kiwi-head/tools/dcounter/Makefile	2009-03-05 15:36:40 UTC (rev 1950)
++++ kiwi-head/tools/dcounter/Makefile	2009-03-05 15:51:49 UTC (rev 1951)
+@@ -0,0 +1,10 @@
++OBJ = dcounter
++CC  = gcc -Wall -fpic -O2
++
++all:${OBJ}
++
++dcounter: dcounter.c
++	${CC} ${CFLAGS} dcounter.c -o dcounter
++
++clean:
++	rm -f dcounter
+
+Added: kiwi-head/tools/dcounter/dcounter.c
+===================================================================
+--- kiwi-head/tools/dcounter/dcounter.c	2009-03-05 15:36:40 UTC (rev 1950)
++++ kiwi-head/tools/dcounter/dcounter.c	2009-03-05 15:51:49 UTC (rev 1951)
+@@ -0,0 +1,50 @@
++#include &lt;stdio.h&gt;
++#include &lt;string.h&gt;
++#include &lt;stdlib.h&gt;
++#include &lt;unistd.h&gt;
++
++int main(int argc, char **argv) {
++	int i, percent = -1;
++	unsigned cnt = 0, blk_size = 1024*1024, blk_cnt = 0, size = 0;
++	ssize_t r, w, p;
++	char buf[1024*1024];
++	argv++; argc--;
++	if (argc &gt; 1 &amp;&amp; !strcmp(*argv, &quot;-s&quot;)) {
++		i = atoi(argv[1]);
++		if (i) {
++			size = i;
++		}
++		argv += 2;
++		argc -= 2;
++	}
++	if (!size) {
++		fprintf(stderr, &quot;no size in MB set\n&quot;);
++		return 1;
++	}
++	fprintf(stderr, &quot;      &quot;);
++	while((r = read(0, buf, sizeof buf)) &gt; 0) {
++		p = 0;
++		while((w = write(1, buf + p, r - p)) &gt;= 0) {
++			p += w;
++			if(p &gt;= r) {
++				break;
++			}
++		}
++		if(p &lt; r) {
++			fprintf(stderr, &quot;write error\n&quot;);
++			return 1;
++		}
++		cnt += r;
++		if(cnt &gt;= blk_size) {
++			blk_cnt += cnt / blk_size;
++			cnt %= blk_size;
++			i = percent;
++			percent = (blk_cnt * 100) / size;
++			if(percent != i) {
++				fprintf(stderr, &quot;\x08\x08\x08\x08\x08\x08(%3d%%)&quot;, percent);
++			}
++		}
++	}
++	fflush(stdout);
++	return 0;
++}
+
+Modified: kiwi-head/tools/driveready/Makefile
+===================================================================
+--- kiwi-head/tools/driveready/Makefile	2009-03-05 15:36:40 UTC (rev 1950)
++++ kiwi-head/tools/driveready/Makefile	2009-03-05 15:51:49 UTC (rev 1951)
+@@ -3,7 +3,7 @@
+ 
+ all:${OBJ}
+ 
+-pigz: driveready.c
++driveready: driveready.c
+ 	${CC} ${CFLAGS} driveready.c -o driveready
+ 
+ clean:
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001072.html">[Kiwi-devel] r1950 - kiwi-head/system/suse-repo
+</A></li>
+	<LI>Next message: <A HREF="001074.html">[Kiwi-devel] r1952 - in kiwi-head/template: . suse-SLE11-JeOS	suse-SLE11-JeOS/root/etc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1073">[ date ]</a>
+              <a href="thread.html#1073">[ thread ]</a>
+              <a href="subject.html#1073">[ subject ]</a>
+              <a href="author.html#1073">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,309 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1650 - in kiwi-head: modules rpm tools/dbuslock	tools/satplugin
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1650%20-%20in%20kiwi-head%3A%20modules%20rpm%20tools/dbuslock%0A%09tools/satplugin&In-Reply-To=%3C200810171312.m9HDCSVJ021386%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000741.html">
+   <LINK REL="Next"  HREF="000743.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1650 - in kiwi-head: modules rpm tools/dbuslock	tools/satplugin</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1650%20-%20in%20kiwi-head%3A%20modules%20rpm%20tools/dbuslock%0A%09tools/satplugin&In-Reply-To=%3C200810171312.m9HDCSVJ021386%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1650 - in kiwi-head: modules rpm tools/dbuslock	tools/satplugin">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Oct 17 15:12:28 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000741.html">[Kiwi-devel] r1649 - in kiwi-head: . modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000743.html">[Kiwi-devel] r1651 - in kiwi-branches/KIWI-265-Studio-Alpha1-Devel:	. modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#742">[ date ]</a>
+              <a href="thread.html#742">[ thread ]</a>
+              <a href="subject.html#742">[ subject ]</a>
+              <a href="author.html#742">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-17 15:12:21 +0200 (Fri, 17 Oct 2008)
+New Revision: 1650
+
+Modified:
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/modules/KIWISatSolver.pm
+   kiwi-head/rpm/kiwi-rpmlintrc
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+   kiwi-head/tools/dbuslock/Makefile.PL
+   kiwi-head/tools/dbuslock/dbusdevice.i
+   kiwi-head/tools/dbuslock/example.pl
+   kiwi-head/tools/satplugin/Makefile.PL
+   kiwi-head/tools/satplugin/SaT.i
+   kiwi-head/tools/satplugin/example.pl
+Log:
+
+- put the perl bindings into a common KIWI namespace
+
+
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2008-10-17 11:32:00 UTC (rev 1649)
++++ kiwi-head/modules/KIWIBoot.pm	2008-10-17 13:12:21 UTC (rev 1650)
+@@ -26,7 +26,7 @@
+ #------------------------------------------
+ use strict;
+ use Carp qw (cluck);
+-use dbusdevice;
++use KIWI::dbusdevice;
+ use KIWILog;
+ use FileHandle;
+ use File::Basename;
+@@ -660,7 +660,7 @@
+ 	# Establish HAL lock for $stick
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Establish HAL lock for: $stick&quot;);
+-	$hald = new dbusdevice::HalConnection;
++	$hald = new KIWI::dbusdevice::HalConnection;
+ 	if (! $hald -&gt; open()) {
+ 		$kiwi -&gt; failed  ();
+ 		$kiwi -&gt; warning ($hald-&gt;state());
+
+Modified: kiwi-head/modules/KIWISatSolver.pm
+===================================================================
+--- kiwi-head/modules/KIWISatSolver.pm	2008-10-17 11:32:00 UTC (rev 1649)
++++ kiwi-head/modules/KIWISatSolver.pm	2008-10-17 13:12:21 UTC (rev 1650)
+@@ -34,14 +34,14 @@
+ BEGIN {
+ 	$KIWISatSolver::haveSaT = 1;
+ 	eval {
+-		require SaT;
+-		SaT -&gt; import;
++		require KIWI::SaT;
++		KIWI::SaT -&gt; import;
+ 	};
+ 	if ($@) {
+ 		$KIWISatSolver::haveSaT = 0;
+ 	}
+ 	if (! $KIWISatSolver::haveSaT) {
+-		package SaT;
++		package KIWI::SaT;
+ 	}
+ }
+ 
+@@ -115,13 +115,13 @@
+ 			$kiwi -&gt; failed ();
+ 			return undef;
+ 		}
+-		$pool = new SaT::_Pool;
++		$pool = new KIWI::SaT::_Pool;
+ 		$repo = $pool -&gt; createRepo('repo');
+ 		$repo -&gt; addSolvable (*FD); close FD;
+ 	}
+-	$solver = new SaT::Solver ($pool);
++	$solver = new KIWI::SaT::Solver ($pool);
+ 	$pool -&gt; createWhatProvides();
+-	$queue = new SaT::Queue;
++	$queue = new KIWI::SaT::Queue;
+ 	foreach my $p (@{$pref}) {
+ 		my $name = $p;
+ 		if (! defined $solvep) {
+@@ -133,7 +133,7 @@
+ 			$kiwi -&gt; skipped ();
+ 			next;
+ 		}
+-		$queue -&gt; queuePush ( $SaT::SOLVER_INSTALL_SOLVABLE );
++		$queue -&gt; queuePush ( $KIWI::SaT::SOLVER_INSTALL_SOLVABLE );
+ 		$queue -&gt; queuePush ( $id );
+ 	}
+ 	#==========================================
+
+Modified: kiwi-head/rpm/kiwi-rpmlintrc
+===================================================================
+--- kiwi-head/rpm/kiwi-rpmlintrc	2008-10-17 11:32:00 UTC (rev 1649)
++++ kiwi-head/rpm/kiwi-rpmlintrc	2008-10-17 13:12:21 UTC (rev 1650)
+@@ -9,3 +9,6 @@
+ 
+ # don't apply perl naming policy on kiwi
+ addFilter(&quot;kiwi.* perl5-naming-policy-not-applied&quot;)
++
++# don't care for zero length .bs files
++addFilter(&quot;.*zero-length.*.bs&quot;)
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-17 11:32:00 UTC (rev 1649)
++++ kiwi-head/rpm/kiwi.changes	2008-10-17 13:12:21 UTC (rev 1650)
+@@ -5,6 +5,7 @@
+ - added backtrace in case of error (bnc #435991)
+ - make the suse-11.1/suse-live-stick example more robust
+ - added check for possibly existing oem partition file
++- put the perl bindings into a common KIWI namespace
+ 
+ -------------------------------------------------------------------
+ Thu Oct 16 12:02:43 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-10-17 11:32:00 UTC (rev 1649)
++++ kiwi-head/rpm/kiwi.spec	2008-10-17 13:12:21 UTC (rev 1650)
+@@ -361,6 +361,7 @@
+ 	rm -rf $RPM_BUILD_ROOT/srv/tftpboot
+ 	rm -rf $RPM_BUILD_ROOT/etc/permissions.d/kiwi
+ %endif
++
+ test -f $RPM_BUILD_ROOT/srv/tftpboot/pxelinux.0 &amp;&amp; \
+ 	echo /srv/tftpboot/pxelinux.0 &gt; kiwi.loader
+ test -f $RPM_BUILD_ROOT/srv/tftpboot/mboot.c32 &amp;&amp; \
+@@ -369,15 +370,13 @@
+ 	$RPM_BUILD_ROOT/usr/share/doc/packages/kiwi/README.tools
+ rm -rf $RPM_BUILD_ROOT/usr/share/doc/packages/kiwi/kiwi-man
+ %perl_process_packlist
+-rm -f $RPM_BUILD_ROOT/%{perl_vendorarch}/example.pl
+-rm -f $RPM_BUILD_ROOT/%{perl_vendorarch}/auto/SaT/SaT.bs
+-rm -f $RPM_BUILD_ROOT/%{perl_vendorarch}/auto/dbusdevice/dbusdevice.bs
+-rm -f $RPM_BUILD_ROOT/var/adm/perl-modules/%{name}
++rm -f $RPM_BUILD_ROOT/%{perl_vendorarch}/KIWI/example.pl
+ ./.links
+ %if %{suse_version} &gt; 1020
+ %fdupes $RPM_BUILD_ROOT/srv/tftpboot
+ %fdupes $RPM_BUILD_ROOT/usr/share/kiwi/image
+ %fdupes $RPM_BUILD_ROOT/usr/share/doc/packages/kiwi/examples
++%fdupes $RPM_BUILD_ROOT/usr/share/doc/packages/kiwi/schema
+ %endif
+ cat kiwi.loader
+ 
+@@ -400,12 +399,9 @@
+ %{_datadir}/kiwi/tests
+ %{_datadir}/kiwi/xsl
+ %{_sbindir}/kiwi
+-%{perl_vendorarch}/dbusdevice.pm
+-%{perl_vendorarch}/auto/dbusdevice
+-%if %{suse_version} &gt; 1030
+-%{perl_vendorarch}/SaT.pm
+-%{perl_vendorarch}/auto/SaT
+-%endif
++%{perl_vendorarch}/KIWI
++%{perl_vendorarch}/auto/KIWI
++/var/adm/perl-modules/kiwi
+ #=================================================
+ # KIWI doc...      
+ #-------------------------------------------------
+
+Modified: kiwi-head/tools/dbuslock/Makefile.PL
+===================================================================
+--- kiwi-head/tools/dbuslock/Makefile.PL	2008-10-17 11:32:00 UTC (rev 1649)
++++ kiwi-head/tools/dbuslock/Makefile.PL	2008-10-17 13:12:21 UTC (rev 1650)
+@@ -9,7 +9,7 @@
+ $CFLAGS =~ s/-Wall//;
+ 
+ WriteMakefile(
+-  'NAME'     =&gt; 'dbusdevice',
++  'NAME'     =&gt; 'KIWI::dbusdevice',
+   'LIBS'     =&gt; [&quot;$QTLIBS -lhal -ldbus-1&quot;],
+   'OBJECT'   =&gt; 'dbusdevice_wrap.o dbusdevice.o',
+   'INC'      =&gt; &quot;-I/usr/include/dbus-1.0 -I/usr/lib/dbus-1.0/include -I/usr/lib64/dbus-1.0/include -I/usr/include/g++ $QTINC&quot;,
+
+Modified: kiwi-head/tools/dbuslock/dbusdevice.i
+===================================================================
+--- kiwi-head/tools/dbuslock/dbusdevice.i	2008-10-17 11:32:00 UTC (rev 1649)
++++ kiwi-head/tools/dbuslock/dbusdevice.i	2008-10-17 13:12:21 UTC (rev 1650)
+@@ -1,7 +1,7 @@
+ //====================================
+ // Interface definition for dbusdevice
+ //------------------------------------
+-%module dbusdevice
++%module &quot;KIWI::dbusdevice&quot;
+ %{
+ #include &quot;dbusdevice.h&quot;
+ %}
+
+Modified: kiwi-head/tools/dbuslock/example.pl
+===================================================================
+--- kiwi-head/tools/dbuslock/example.pl	2008-10-17 11:32:00 UTC (rev 1649)
++++ kiwi-head/tools/dbuslock/example.pl	2008-10-17 13:12:21 UTC (rev 1650)
+@@ -1,6 +1,6 @@
+ #!/usr/bin/perl
+ 
+-use lib './blib/arch/auto/dbusdevice';
++use lib './blib/arch/auto/KIWI/dbusdevice';
+ 
+ use strict;
+ use dbusdevice;
+
+Modified: kiwi-head/tools/satplugin/Makefile.PL
+===================================================================
+--- kiwi-head/tools/satplugin/Makefile.PL	2008-10-17 11:32:00 UTC (rev 1649)
++++ kiwi-head/tools/satplugin/Makefile.PL	2008-10-17 13:12:21 UTC (rev 1650)
+@@ -5,7 +5,7 @@
+ $CFLAGS =~ s/-Wall//;
+ 
+ WriteMakefile(
+-  'NAME'     =&gt; 'SaT',
++  'NAME'     =&gt; 'KIWI::SaT',
+   'LIBS'     =&gt; [&quot;-lrpmdb -lexpat -lsatsolver -lstdc++&quot;],
+   'OBJECT'   =&gt; 'SaT_wrap.o',
+   'OPTIMIZE' =&gt; &quot;-O2 $CFLAGS&quot;,
+
+Modified: kiwi-head/tools/satplugin/SaT.i
+===================================================================
+--- kiwi-head/tools/satplugin/SaT.i	2008-10-17 11:32:00 UTC (rev 1649)
++++ kiwi-head/tools/satplugin/SaT.i	2008-10-17 13:12:21 UTC (rev 1650)
+@@ -1,7 +1,7 @@
+ //=======================================
+ // Interface definition for libsatsolver
+ //---------------------------------------
+-%module SaT
++%module &quot;KIWI::SaT&quot;
+ %{
+ extern &quot;C&quot;
+ {
+
+Modified: kiwi-head/tools/satplugin/example.pl
+===================================================================
+--- kiwi-head/tools/satplugin/example.pl	2008-10-17 11:32:00 UTC (rev 1649)
++++ kiwi-head/tools/satplugin/example.pl	2008-10-17 13:12:21 UTC (rev 1650)
+@@ -1,6 +1,6 @@
+ #!/usr/bin/perl
+ 
+-use lib './blib/arch/auto/SaT';
++use lib './blib/arch/auto/KIWI/SaT';
+ 
+ use strict;
+ use SaT;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000741.html">[Kiwi-devel] r1649 - in kiwi-head: . modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000743.html">[Kiwi-devel] r1651 - in kiwi-branches/KIWI-265-Studio-Alpha1-Devel:	. modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#742">[ date ]</a>
+              <a href="thread.html#742">[ thread ]</a>
+              <a href="subject.html#742">[ subject ]</a>
+              <a href="author.html#742">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

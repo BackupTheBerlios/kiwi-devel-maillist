@@ -1,0 +1,164 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1331 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1331%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200806131430.m5DEUmno001415%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000420.html">
+   <LINK REL="Next"  HREF="000422.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1331 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1331%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200806131430.m5DEUmno001415%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1331 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Jun 13 16:30:48 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000420.html">[Kiwi-devel] [SVN:KIWI-Team] r1330 - in kiwi-head/modules: plugins
+</A></li>
+        <LI>Next message: <A HREF="000422.html">[Kiwi-devel] [SVN:KIWI-Team] r1332 - kiwi-head
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#421">[ date ]</a>
+              <a href="thread.html#421">[ thread ]</a>
+              <a href="subject.html#421">[ subject ]</a>
+              <a href="author.html#421">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: Fri Jun 13 16:30:42 2008
+New Revision: 1331
+
+Modified:
+   kiwi-head/modules/KIWIConfig.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/system/boot/oemboot/suse-linuxrc
+
+Log:
+
+- added bzip2 application as part of the boot images
+- added experimental system recovery implementation
+
+
+
+Modified: kiwi-head/modules/KIWIConfig.sh
+==============================================================================
+--- kiwi-head/modules/KIWIConfig.sh	(original)
++++ kiwi-head/modules/KIWIConfig.sh	Fri Jun 13 16:30:42 2008
+@@ -645,7 +645,7 @@
+ 	#==========================================
+ 	# remove unneeded files
+ 	#------------------------------------------
+-	rpm -e popt bzip2 --nodeps --noscripts &amp;&gt;/dev/null
++	rpm -e popt --nodeps --noscripts &amp;&gt;/dev/null
+ 	rm -rf `find -type d | grep .svn`
+ 	local files=&quot;
+ 		/usr/share/info /usr/share/man /usr/share/cracklib /usr/lib*/python*
+@@ -726,7 +726,7 @@
+ 		udevsettle udevtrigger mknod stat path_id hwup scsi_id scsi_tur
+ 		usb_id ata_id vol_id edd_id setctsid dumpe2fs debugreiserfs
+ 		fuser udevadm blogd showconsole killproc curl tar cromfs-driver
+-		cvcromfs ldd driveready checkmedia splashy
++		cvcromfs ldd driveready checkmedia splashy bzip2
+ 	&quot;
+ 	tools=&quot;$tools $@&quot;
+ 	for path in /sbin /usr/sbin /usr/bin /bin;do
+
+Modified: kiwi-head/rpm/kiwi.changes
+==============================================================================
+--- kiwi-head/rpm/kiwi.changes	(original)
++++ kiwi-head/rpm/kiwi.changes	Fri Jun 13 16:30:42 2008
+@@ -3,6 +3,8 @@
+ 
+ - v2.40
+ - allow xen bootprofile for isoboot images (bnc #399600)
++- added bzip2 application as part of the boot images
++- added experimental system recovery implementation
+ - expect ensconce package manager to be part of the image
+   description. This change is only important for studio
+ 
+
+Modified: kiwi-head/system/boot/oemboot/suse-linuxrc
+==============================================================================
+--- kiwi-head/system/boot/oemboot/suse-linuxrc	(original)
++++ kiwi-head/system/boot/oemboot/suse-linuxrc	Fri Jun 13 16:30:42 2008
+@@ -941,28 +941,33 @@
+ 	if ! mount $deviceRecovery /reco-save &gt;/dev/null;then
+ 		systemException &quot;Failed to mount recovery device&quot; &quot;reboot&quot;
+ 	fi
+-	#TODO
+ 	#======================================
+ 	# 13.2) restore root archive
+ 	#--------------------------------------
+-	#recovery.tar.bz2
+-	echo &quot;BREAK&quot;
+-	/bin/sh
+-
++	Echo &quot;Restoring base operating system...&quot;
++	cd /mnt
++	if ! tar -xvf /reco-save/recovery.tar.bz2 2&gt;&amp;1;then
++		systemException &quot;Failed to restore recovery archive&quot; &quot;reboot&quot;
++	fi
+ 	#======================================
+ 	# 13.3) restore boot files
+ 	#--------------------------------------
+-	#/reco-save/etc/fstab
+-	#/reco-save/etc/sysconfig/kernel
+-	#/reco-save/etc/sysconfig/bootloader
+-	#for i in `setupBootLoaderFiles`;do
+-	#	/reco-save/$i
+-	#done
+-
++	Echo &quot;Restoring boot files...&quot;
++	for i in etc/fstab etc/sysconfig/kernel etc/sysconfig/bootloader;do
++		if ! cp /reco-save/$i /mnt/$i;then
++			systemException &quot;Failed to restore $i&quot; &quot;reboot&quot;
++		fi
++	done
++	for i in `setupBootLoaderFiles`;do
++		if ! cp /reco-save/$i /mnt/$i;then
++			systemException &quot;Failed to restore $i&quot; &quot;reboot&quot;
++		fi
++	done
+ 	#======================================
+ 	# 13.4) umount recovery and boot
+ 	#--------------------------------------
+ 	umount $deviceRecovery
++	deviceDisk=`echo $deviceRoot | tr -d &quot;[:digit:]&quot;`
+ fi
+ 
+ #======================================
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000420.html">[Kiwi-devel] [SVN:KIWI-Team] r1330 - in kiwi-head/modules: plugins
+</A></li>
+	<LI>Next message: <A HREF="000422.html">[Kiwi-devel] [SVN:KIWI-Team] r1332 - kiwi-head
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#421">[ date ]</a>
+              <a href="thread.html#421">[ thread ]</a>
+              <a href="subject.html#421">[ subject ]</a>
+              <a href="author.html#421">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

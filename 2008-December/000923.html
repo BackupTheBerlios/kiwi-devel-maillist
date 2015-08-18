@@ -1,0 +1,354 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1810 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1810%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200812031158.mB3Bwtrd006234%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000922.html">
+   <LINK REL="Next"  HREF="000924.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1810 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1810%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200812031158.mB3Bwtrd006234%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1810 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Dec  3 12:58:55 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000922.html">[Kiwi-devel] r1809 - in kiwi-head: modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000924.html">[Kiwi-devel] USB Bug in 3.01
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#923">[ date ]</a>
+              <a href="thread.html#923">[ thread ]</a>
+              <a href="subject.html#923">[ subject ]</a>
+              <a href="author.html#923">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-12-03 12:58:44 +0100 (Wed, 03 Dec 2008)
+New Revision: 1810
+
+Modified:
+   kiwi-head/modules/KIWIConfig.sh
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- added slepos functions (bnc #349181)
+- changed sfdiskGetPartitionSize to calculate the entire
+  disk size based on max cylinders -1
+
+
+
+Modified: kiwi-head/modules/KIWIConfig.sh
+===================================================================
+--- kiwi-head/modules/KIWIConfig.sh	2008-12-02 18:39:28 UTC (rev 1809)
++++ kiwi-head/modules/KIWIConfig.sh	2008-12-03 11:58:44 UTC (rev 1810)
+@@ -344,8 +344,52 @@
+ }
+ 
+ #======================================
+-# stripLocales
++# baseStripMans 
+ #--------------------------------------
++function baseStripMans {
++	# /..,/
++	# remove all manual pages, except 
++	# one given as parametr
++	#
++	# params - name of keep man pages
++	# example baseStripMans less
++	# ----
++	local keepMans=&quot;$@&quot;
++	local directories=&quot;
++		/opt/gnome/share/man
++		/usr/local/man
++		/usr/share/man
++		/opt/kde3/share/man/packages
++	&quot;
++	find $directories -mindepth 1 -maxdepth 2 -type f 2&gt;/dev/null |\
++		baseStripAndKeep ${keepMans}
++}
++
++#======================================
++# baseStripDocs 
++#--------------------------------------
++function baseStripDocs {
++	# /.../
++	# remove all documentation, except 
++	# one given as parametr
++	#
++	# params - name of package of which 
++	# doc to keep
++	# ----
++	local keepDocs=&quot;$@&quot;
++	local directories=&quot;
++		/opt/gnome/share/doc/packages
++		/usr/share/doc/packages
++		/opt/kde3/share/doc/packages
++	&quot;
++	for dir in $directories; do
++		find $dir -mindepth 1 -maxdepth 1 -type d 2&gt;/dev/null |\
++			baseStripAndKeep &quot;${keepDocs}&quot;
++	done
++}
++#======================================
++# baseStripLocales
++#--------------------------------------
+ function baseStripLocales {
+ 	local imageLocales=&quot;$@&quot;
+ 	local directories=&quot;
+@@ -354,27 +398,52 @@
+ 		/opt/kde3/share/locale
+ 		/usr/lib/locale
+ 	&quot;
+-	for dir in $directories; do
+-		locales=`find $dir -type d -maxdepth 1 2&gt;/dev/null`
+-		for locale in $locales;do
+-			if test $locale = $dir;then
+-				continue
+-			fi
+-			local baseLocale=`/usr/bin/basename $locale`
++	find $directories -mindepth 1 -maxdepth 1 -type d 2&gt;/dev/null |\
++		baseStripAndKeep ${keepLocale}
++}
++
++#======================================
++# baseStripInfos 
++#--------------------------------------
++function baseStripInfos {
++	# /.../
++	# remove all info files, 
++	# except one given as parametr
++	#
++	# params - name of keep info files
++	# ----
++	local keepInfos=&quot;$@&quot;
++	local directories=&quot;
++		/usr/share/info
++	&quot;
++	find $directories -mindepth 1 -maxdepth 1 -type f 2&gt;/dev/null |\
++		baseStripAndKeep &quot;${keepInfos}&quot;
++}
++#======================================
++# baseStripAndKeep
++#--------------------------------------
++function baseStripAndKeep {
++	# /.../
++	# helper function for strip* functions
++	# read stdin lines of files to check 
++	# for removing
++	# - params - files which should be keep
++	# ----
++	local keepFiles=&quot;$@&quot;
++	while read file; do
++			local baseFile=`/usr/bin/basename $file`
+ 			local found=&quot;no&quot;
+-			for keep in $imageLocales;do
+-				if echo $baseLocale | grep $keep;then
+-					found=&quot;yes&quot;
+-					break
+-				fi
++			for keep in $keepFiles;do
++					if echo $baseFile | grep -q $keep; then
++							found=&quot;yes&quot;
++							break
++					fi
+ 			done
+ 			if test $found = &quot;no&quot;;then
+-				rm -rf $locale
++				   Rm -rf $file
+ 			fi
+-		done
+ 	done
+ }
+-
+ #======================================
+ # baseStripTools
+ #--------------------------------------
+@@ -391,12 +460,53 @@
+ 			fi
+ 		done
+ 		if [ $found = 0 ] &amp;&amp; [ ! -d $file ];then
+-			rm -f $file
++			Rm -f $file
+ 		fi
+ 	done
+ }
+-
+ #======================================
++# suseStripPackager 
++#--------------------------------------
++function suseStripPackager {
++	# /.../ 
++	# remove smart o zypper packages and db 
++	# files. Also remove rpm package and db 
++	# if &quot;-a&quot; given
++	#
++	# params [-a]
++	# ----
++	local removerpm=falseq
++	if [ ! -z ${1} ] &amp;&amp; [ $1 = &quot;-a&quot; ]; then
++		removerpm=true
++	fi
++	
++	#zypper#
++	Rpm -e --nodeps zypper libzypp satsolver-tools
++	Rm -rf /var/lib/zypp
++	
++	#smart
++	Rpm -e --nodeps smart smart-gui
++	Rm -rf /var/lib/smart
++	
++	if [ $removerpm = true ]; then
++		Rpm -e --nodeps rpm 
++		Rm -rf /var/lib/rpm
++	fi
++}
++#======================================
++# suseStripRPM
++#--------------------------------------
++function baseStripRPM {
++	# /.../
++	# remove rpms defined in config.xml 
++	# under image=delete section
++	# ----
++	for i in `baseGetPackagesForDeletion`
++	do
++		Rpm -e --nodeps $i
++	done
++}
++#======================================
+ # baseSetupInPlaceSVNRepository
+ #--------------------------------------
+ function baseSetupInPlaceSVNRepository {
+@@ -553,8 +663,62 @@
+ 	git commit -m &quot;deployed&quot;
+ 	popd
+ }
++#======================================
++# Rm  
++#--------------------------------------
++function Rm {
++	# /.../
++	# delete files &amp; anounce it to log
++	# ----
++	Debug &quot;rm $@&quot;
++	rm $@
++}
+ 
+ #======================================
++# Rpm  
++#--------------------------------------
++function Rpm {
++	# /.../
++	# all rpm function &amp; anounce it to log
++	# ----
++	Debug &quot;rpm $@&quot;
++	rpm $@
++}
++#======================================
++# Echo
++#--------------------------------------
++function Echo {
++	# /.../
++	# print a message to the controling terminal
++	# ----
++	local option=&quot;&quot;
++	local prefix=&quot;-----&gt;&quot;
++	local optn=&quot;&quot;
++	local opte=&quot;&quot;
++	while getopts &quot;bne&quot; option;do
++		case $option in
++			b) prefix=&quot;      &quot; ;;
++			n) optn=&quot;-n&quot; ;;
++			e) opte=&quot;-e&quot; ;;
++			*) echo &quot;Invalid argument: $option&quot; ;;
++		esac
++	done
++	shift $(($OPTIND - 1))
++	echo $optn $opte &quot;$prefix $1&quot;
++	OPTIND=1
++}
++#======================================
++# Debug
++#--------------------------------------
++function Debug {
++	# /.../
++	# print message if variable DEBUG is set to 1
++	# -----
++	if test &quot;$DEBUG&quot; = 1;then
++		echo &quot;+++++&gt; (caller:${FUNCNAME[1]}:${FUNCNAME[2]} )  $@&quot;
++	fi
++}
++#======================================
+ # baseSetupBusyBox
+ #--------------------------------------
+ function baseSetupBusyBox {
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-12-02 18:39:28 UTC (rev 1809)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-12-03 11:58:44 UTC (rev 1810)
+@@ -1862,7 +1862,7 @@
+ 	local cyl_count=`sfdisk -g $1 2&gt;&amp;1 | cut -f2 -d: | cut -f2 -d&quot; &quot;`
+ 	local cyl_bsize=`sfdisk -l $1 2&gt;&amp;1 | grep Units | cut -f5 -d&quot; &quot;`
+ 	if [ ! -z &quot;$cyl_bsize&quot; ];then
+-		expr $cyl_count \* $cyl_bsize / 1024
++		expr \( $cyl_count - 1 \) \* $cyl_bsize / 1024
+ 	else
+ 		sfdisk -s $1
+ 	fi
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-12-02 18:39:28 UTC (rev 1809)
++++ kiwi-head/rpm/kiwi.changes	2008-12-03 11:58:44 UTC (rev 1810)
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Wed Dec  3 11:50:17 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- added slepos functions (bnc #349181)
++- changed sfdiskGetPartitionSize to calculate the entire
++  disk size based on max cylinders -1 
++
++-------------------------------------------------------------------
+ Tue Dec  2 19:38:33 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed split based boot configuration (bnc #450780)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000922.html">[Kiwi-devel] r1809 - in kiwi-head: modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000924.html">[Kiwi-devel] USB Bug in 3.01
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#923">[ date ]</a>
+              <a href="thread.html#923">[ thread ]</a>
+              <a href="subject.html#923">[ subject ]</a>
+              <a href="author.html#923">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,277 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1900 - in kiwi-head: . modules rpm	system/boot/ix86/netboot system/boot/ppc/netboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1900%20-%20in%20kiwi-head%3A%20.%20modules%20rpm%0A%09system/boot/ix86/netboot%20system/boot/ppc/netboot&In-Reply-To=%3C200902121011.n1CABoTV011190%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001020.html">
+   <LINK REL="Next"  HREF="001022.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1900 - in kiwi-head: . modules rpm	system/boot/ix86/netboot system/boot/ppc/netboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1900%20-%20in%20kiwi-head%3A%20.%20modules%20rpm%0A%09system/boot/ix86/netboot%20system/boot/ppc/netboot&In-Reply-To=%3C200902121011.n1CABoTV011190%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1900 - in kiwi-head: . modules rpm	system/boot/ix86/netboot system/boot/ppc/netboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Feb 12 11:11:50 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001020.html">[Kiwi-devel] r1899 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel:	modules rpm system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ppc/netboot
+</A></li>
+        <LI>Next message: <A HREF="001022.html">[Kiwi-devel] r1901 - kiwi-branches
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1021">[ date ]</a>
+              <a href="thread.html#1021">[ thread ]</a>
+              <a href="subject.html#1021">[ subject ]</a>
+              <a href="author.html#1021">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-02-12 11:11:36 +0100 (Thu, 12 Feb 2009)
+New Revision: 1900
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/modules/KIWIImage.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+   kiwi-head/system/boot/ix86/netboot/suse-linuxrc
+   kiwi-head/system/boot/ppc/netboot/suse-linuxrc
+Log:
+
+- v3.15
+- create the kiwicdinst temporary directory below the
+  image destination directory as we can't assume that there is
+  enough space available below /tmp for a complete OS image
+- use iso-level 4 live CDs if files are stored as
+  uncompressed data on the ISO filesystem
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2009-02-10 14:05:51 UTC (rev 1899)
++++ kiwi-head/kiwi.pl	2009-02-12 10:11:36 UTC (rev 1900)
+@@ -44,7 +44,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.14&quot;;
++our $Version       = &quot;3.15&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2009-02-10 14:05:51 UTC (rev 1899)
++++ kiwi-head/modules/KIWIBoot.pm	2009-02-12 10:11:36 UTC (rev 1900)
+@@ -1147,7 +1147,8 @@
+ 	#==========================================
+ 	# create tmp directory
+ 	#------------------------------------------
+-	$tmpdir = qxx ( &quot;mktemp -q -d /tmp/kiwicdinst.XXXXXX&quot; ); chomp $tmpdir;
++	my $basedir = dirname ($system);
++	$tmpdir = qxx ( &quot;mktemp -q -d $basedir/kiwicdinst.XXXXXX&quot; ); chomp $tmpdir;
+ 	$result = $? &gt;&gt; 8;
+ 	if ($result != 0) {
+ 		$kiwi -&gt; error  (&quot;Couldn't create tmp dir: $tmpdir: $!&quot;);
+
+Modified: kiwi-head/modules/KIWIImage.pm
+===================================================================
+--- kiwi-head/modules/KIWIImage.pm	2009-02-10 14:05:51 UTC (rev 1899)
++++ kiwi-head/modules/KIWIImage.pm	2009-02-12 10:11:36 UTC (rev 1900)
+@@ -1834,8 +1834,12 @@
+ 	$kiwi -&gt; info (&quot;Calling mkisofs...\n&quot;);
+ 	my $isoerror = 1;
+ 	my $name = $imageDest.&quot;/&quot;.$namerw.&quot;.iso&quot;;
++	my $attr = &quot;-R -J -pad -joliet-long&quot;;
++	if (! defined $gzip) {
++		$attr .= &quot; -iso-level 4&quot;; 
++	}
+ 	my $isolinux = new KIWIIsoLinux (
+-		$kiwi,$main::RootTree.&quot;/CD&quot;,$name
++		$kiwi,$main::RootTree.&quot;/CD&quot;,$name,undef,undef,$attr
+ 	);
+ 	if (defined $isolinux) {
+ 		$isoerror = 0;
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2009-02-10 14:05:51 UTC (rev 1899)
++++ kiwi-head/rpm/kiwi.changes	2009-02-12 10:11:36 UTC (rev 1900)
+@@ -1,4 +1,14 @@
+ -------------------------------------------------------------------
++Wed Feb 11 12:20:42 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.15
++- create the kiwicdinst temporary directory below the
++  image destination directory as we can't assume that there is
++  enough space available below /tmp for a complete OS image
++- use iso-level 4 live CDs if files are stored as
++  uncompressed data on the ISO filesystem
++  
++-------------------------------------------------------------------
+ Fri Feb  6 14:13:55 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.14
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2009-02-10 14:05:51 UTC (rev 1899)
++++ kiwi-head/rpm/kiwi.spec	2009-02-12 10:11:36 UTC (rev 1900)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.14
++# spec file for package kiwi (Version 3.15
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.14
++Version:        3.15
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+Modified: kiwi-head/system/boot/ix86/netboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/netboot/suse-linuxrc	2009-02-10 14:05:51 UTC (rev 1899)
++++ kiwi-head/system/boot/ix86/netboot/suse-linuxrc	2009-02-12 10:11:36 UTC (rev 1900)
+@@ -237,15 +237,22 @@
+ 	#======================================
+ 	# Check alternative config names
+ 	#--------------------------------------
+-	if test ! -s $CONFIG;then
++	if [ ! -s $CONFIG ];then
+ 		searchAlternativeConfig
+ 	fi
++	#======================================
++	# try to import configuration
++	#--------------------------------------
++	IMPORTED=0
++	if [ -s $CONFIG ] ;then
++		importFile &lt; $CONFIG
++		IMPORTED=1
++	fi
+ 	#========================================
+ 	# Compare current IP and IP from config 
+ 	#----------------------------------------
+ 	NEWIP=0
+-	if [ -s $CONFIG ] &amp;&amp; [ ! -z &quot;$WORKSTATION_LDAP_IP&quot; ]; then
+-		importFile &lt; $CONFIG
++	if [ ! -z &quot;$WORKSTATION_LDAP_IP&quot; ]; then
+ 		WSNR=`echo $WORKSTATION_LDAP_IP | sed -r -e 's/(^|\.)0*/\1/g'`
+ 		IPNR=`echo $IPADDR | sed -r -e 's/(^|\.)0*/\1/g'`
+ 		if [ &quot;$WSNR&quot; != &quot;$IPNR&quot; ];then 
+@@ -293,7 +300,7 @@
+ 	#======================================
+ 	# Config found but DHCP IP setup change
+ 	#--------------------------------------
+-	if [ $NEWIP -eq '1' ];then
++	if [ $NEWIP -eq 1 ];then
+ 		Echo &quot;Outdated IP address, notify new client setup...&quot;
+ 		setupSystemAliasName
+ 		setupSystemHWTypeFile
+@@ -304,7 +311,10 @@
+ 	#======================================
+ 	# import latest configuration
+ 	#--------------------------------------
+-	importFile &lt; $CONFIG
++	if [ $IMPORTED -eq 0 ];then
++		importFile &lt; $CONFIG
++		IMPORTED=1
++	fi
+ fi
+ 
+ #======================================
+
+Modified: kiwi-head/system/boot/ppc/netboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ppc/netboot/suse-linuxrc	2009-02-10 14:05:51 UTC (rev 1899)
++++ kiwi-head/system/boot/ppc/netboot/suse-linuxrc	2009-02-12 10:11:36 UTC (rev 1900)
+@@ -237,15 +237,22 @@
+ 	#======================================
+ 	# Check alternative config names
+ 	#--------------------------------------
+-	if test ! -s $CONFIG;then
++	if [ ! -s $CONFIG ];then
+ 		searchAlternativeConfig
+ 	fi
++	#======================================
++	# try to import configuration
++	#--------------------------------------
++	IMPORTED=0
++	if [ -s $CONFIG ] ;then
++		importFile &lt; $CONFIG
++		IMPORTED=1
++	fi
+ 	#========================================
+ 	# Compare current IP and IP from config 
+ 	#----------------------------------------
+ 	NEWIP=0
+-	if [ -s $CONFIG ] &amp;&amp; [ ! -z &quot;$WORKSTATION_LDAP_IP&quot; ]; then
+-		importFile &lt; $CONFIG
++	if [ ! -z &quot;$WORKSTATION_LDAP_IP&quot; ]; then
+ 		WSNR=`echo $WORKSTATION_LDAP_IP | sed -r -e 's/(^|\.)0*/\1/g'`
+ 		IPNR=`echo $IPADDR | sed -r -e 's/(^|\.)0*/\1/g'`
+ 		if [ &quot;$WSNR&quot; != &quot;$IPNR&quot; ];then 
+@@ -293,7 +300,7 @@
+ 	#======================================
+ 	# Config found but DHCP IP setup change
+ 	#--------------------------------------
+-	if [ $NEWIP -eq '1' ];then
++	if [ $NEWIP -eq 1 ];then
+ 		Echo &quot;Outdated IP address, notify new client setup...&quot;
+ 		setupSystemAliasName
+ 		setupSystemHWTypeFile
+@@ -304,7 +311,10 @@
+ 	#======================================
+ 	# import latest configuration
+ 	#--------------------------------------
+-	importFile &lt; $CONFIG
++	if [ $IMPORTED -eq 0 ];then
++		importFile &lt; $CONFIG
++		IMPORTED=1
++	fi
+ fi
+ 
+ #======================================
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001020.html">[Kiwi-devel] r1899 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel:	modules rpm system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ppc/netboot
+</A></li>
+	<LI>Next message: <A HREF="001022.html">[Kiwi-devel] r1901 - kiwi-branches
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1021">[ date ]</a>
+              <a href="thread.html#1021">[ thread ]</a>
+              <a href="subject.html#1021">[ subject ]</a>
+              <a href="author.html#1021">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

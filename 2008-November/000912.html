@@ -1,0 +1,148 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1805 - in kiwi-head: modules rpm	system/boot/ix86/oemboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1805%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ix86/oemboot&In-Reply-To=%3C200811281135.mASBZHtV011052%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000911.html">
+   <LINK REL="Next"  HREF="000913.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1805 - in kiwi-head: modules rpm	system/boot/ix86/oemboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1805%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ix86/oemboot&In-Reply-To=%3C200811281135.mASBZHtV011052%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1805 - in kiwi-head: modules rpm	system/boot/ix86/oemboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Nov 28 12:35:17 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000911.html">[Kiwi-devel] r1804 - in kiwi-head: rpm tools/pigz
+</A></li>
+        <LI>Next message: <A HREF="000913.html">[Kiwi-devel] Disabling gfxboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#912">[ date ]</a>
+              <a href="thread.html#912">[ thread ]</a>
+              <a href="subject.html#912">[ subject ]</a>
+              <a href="author.html#912">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-11-28 12:35:08 +0100 (Fri, 28 Nov 2008)
+New Revision: 1805
+
+Modified:
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/system/boot/ix86/oemboot/suse-linuxrc
+Log:
+
+- don't evaluate bios edd disk-by-id links (bnc #449757)
+- fixed disk partition size calculation in oemboot (bnc #449757)
+
+
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-11-28 10:54:48 UTC (rev 1804)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-11-28 11:35:08 UTC (rev 1805)
+@@ -3085,6 +3085,9 @@
+ 		return
+ 	fi
+ 	for i in /dev/disk/by-id/*;do
++		if echo $i | grep -q edd-;then
++			continue
++		fi
+ 		local dev=`readlink $i`
+ 		dev=/dev/`basename $dev`
+ 		if [ $dev = $device ];then
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-11-28 10:54:48 UTC (rev 1804)
++++ kiwi-head/rpm/kiwi.changes	2008-11-28 11:35:08 UTC (rev 1805)
+@@ -1,6 +1,8 @@
+ -------------------------------------------------------------------
+ Fri Nov 28 11:54:03 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- don't evaluate bios edd disk-by-id links (bnc #449757)
++- fixed disk partition size calculation in oemboot (bnc #449757)
+ - update pigz tool, used in suse studio only
+ 
+ -------------------------------------------------------------------
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-linuxrc	2008-11-28 10:54:48 UTC (rev 1804)
++++ kiwi-head/system/boot/ix86/oemboot/suse-linuxrc	2008-11-28 11:35:08 UTC (rev 1805)
+@@ -408,11 +408,11 @@
+ 		if [ -z &quot;$DONT_PARTITION&quot; ];then
+ 			swapXMBytes=$swapsize
+ 			diskXMBytes=`partitionSize $deviceDisk`
+-			diskXMBytes=`expr $diskXMBytes / 1000`
++			diskXMBytes=`expr $diskXMBytes / 1024`
+ 			disk1MBytes=`partitionSize &quot;$deviceDisk&quot;1`
+-			disk1MBytes=`expr $disk1MBytes / 1000`
++			disk1MBytes=`expr $disk1MBytes / 1024`
+ 			disk2MBytes=`partitionSize &quot;$deviceDisk&quot;2`
+-			disk2MBytes=`expr $disk2MBytes / 1000`
++			disk2MBytes=`expr $disk2MBytes / 1024`
+ 			diskXLBytes=`expr $diskXMBytes - $disk1MBytes - $disk2MBytes`
+ 			diskXABytes=`expr $diskXLBytes - $swapXMBytes`
+ 			if [ $diskXABytes -lt 50 ];then
+@@ -525,8 +525,8 @@
+ 			rm -f $input
+ 			diskXMBytes=`partitionSize $deviceDisk`
+ 			diskPMBytes=`partitionSize $deviceDisk&quot;1&quot;`
+-			diskPMBytes=`expr $diskPMBytes / 1000`
+-			diskXMBytes=`expr $diskXMBytes / 1000`
++			diskPMBytes=`expr $diskPMBytes / 1024`
++			diskXMBytes=`expr $diskXMBytes / 1024`
+ 			disk1MBytes=10240
+ 			# /.../
+ 			# set OEM_SYSTEMSIZE if available, else try to
+@@ -803,9 +803,9 @@
+ 			#--------------------------------------
+ 			swapXMBytes=$swapsize
+ 			diskXMBytes=`partitionSize $deviceDisk`
+-			diskXMBytes=`expr $diskXMBytes / 1000`
++			diskXMBytes=`expr $diskXMBytes / 1024`
+ 			disk1MBytes=`partitionSize &quot;$deviceDisk&quot;1`
+-			disk1MBytes=`expr $disk1MBytes / 1000`
++			disk1MBytes=`expr $disk1MBytes / 1024`
+ 			disk2MBytes=`expr $diskXMBytes - $disk1MBytes - $swapsize`
+ 			if [ $disk2MBytes -lt 100 ];then
+ 				# /.../
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000911.html">[Kiwi-devel] r1804 - in kiwi-head: rpm tools/pigz
+</A></li>
+	<LI>Next message: <A HREF="000913.html">[Kiwi-devel] Disabling gfxboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#912">[ date ]</a>
+              <a href="thread.html#912">[ thread ]</a>
+              <a href="subject.html#912">[ subject ]</a>
+              <a href="author.html#912">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

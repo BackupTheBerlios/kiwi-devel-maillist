@@ -1,0 +1,221 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] XML processing - patch two
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20XML%20processing%20-%20patch%20two&In-Reply-To=%3C4CFD3007.4020105%40novell.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002888.html">
+   <LINK REL="Next"  HREF="002893.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] XML processing - patch two</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20XML%20processing%20-%20patch%20two&In-Reply-To=%3C4CFD3007.4020105%40novell.com%3E"
+       TITLE="[Kiwi-devel] XML processing - patch two">rschweikert at novell.com
+       </A><BR>
+    <I>Mon Dec  6 19:48:39 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002888.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+        <LI>Next message: <A HREF="002893.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2890">[ date ]</a>
+              <a href="thread.html#2890">[ thread ]</a>
+              <a href="subject.html#2890">[ subject ]</a>
+              <a href="author.html#2890">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>
+
+On 12/06/2010 10:36 AM, Marcus Sch&#228;fer wrote:
+&gt;<i> Hi,
+</I>&gt;<i> 
+</I>&gt;&gt;&gt;<i> I understand your goal thanks for explaining it more detailed. I read
+</I>&gt;&gt;&gt;<i> through the code with what you've said in mind and found that there are
+</I>&gt;&gt;&gt;<i> several places in kiwi which needs a real cleanup first before we can
+</I>&gt;&gt;&gt;<i> proceed to turn the XML object into a simple data container. 
+</I>&gt;&gt;<i>
+</I>&gt;&gt;<i> OK, how can I help with that?
+</I>&gt;<i> 
+</I>&gt;<i> I will do that per todays git push. You will find the following
+</I>&gt;<i> XML instances in the code after it:
+</I>&gt;<i> 
+</I>&gt;<i> * kiwi.pl
+</I>&gt;<i> 
+</I>&gt;<i>   - for cache mode, requires state
+</I>&gt;<i>   - for prepare mode, requires state
+</I>&gt;<i>   - for create mode, requires state
+</I>&gt;<i>   - for testsuite mode, required state
+</I>&gt;<i>   - for upgrade mode, requires state
+</I>&gt;<i>   - for list-xml info, requires state
+</I>&gt;<i>   - for list-images, stateless
+</I>&gt;<i> 
+</I>&gt;<i> * KIWIImage.pm::checkAndSetupPrebuiltBootImage()
+</I>&gt;<i> 
+</I>&gt;<i>   - for setting up the boot image, requires state
+</I>&gt;<i> 
+</I>&gt;<i> * KIWIBoot.pm::KIWIBoot
+</I>&gt;<i> 
+</I>&gt;<i>   - reading the image description from root tree,
+</I>&gt;<i>     image file or disk file. requires state
+</I>&gt;<i> 
+</I>&gt;<i> So if we change the XML all of these places has to be adapted.
+</I>&gt;<i> I suggest the following way:
+</I>&gt;<i> 
+</I>&gt;<i>    my $xml = new KIWIXML ( ... );
+</I>&gt;<i>    $xml -&gt; ...
+</I>&gt;<i> 
+</I>&gt;<i>    change to:
+</I>&gt;<i> 
+</I>&gt;<i>    my $xmldata = new KIWIXML ( ... );
+</I>&gt;<i>    my $xml = new KIWIXMLManager ( ..., $xmldata );
+</I>&gt;<i> 
+</I>&gt;<i>    $xml -&gt; ...
+</I>&gt;<i> 
+</I>&gt;<i> The KIWIXMLManager instance should provide all functions formerly
+</I>&gt;<i> accessed by the KIWIXML object in order to keep the patch small and
+</I>&gt;<i> the system still running. There are plenty of $xml -&gt; function()
+</I>&gt;<i> calls which all have to be handled by the stateful object
+</I>
+Now I am seriously confused. I am not following how an extra indirection
+through the XMLManager is helpful. The state of the project execution
+has nothing to do with the XML. I agree that we need an object that
+knows about state, but XMLManager would imply that XML files are being
+managed.
+
+&gt;<i> 
+</I>&gt;&gt;<i> Yes, I absolutely agree. In the end there should probably be only two
+</I>&gt;&gt;<i> instantiations of the XML object. One for the system, i.e. the user
+</I>&gt;&gt;<i> config.xml and one for the boot image. Both of these instantiations
+</I>&gt;&gt;<i> should be in the build manager I have been advocating.
+</I>&gt;<i> 
+</I>&gt;<i> Well there are a few more because kiwi has several more modes
+</I>&gt;<i> than just prepare and create. I want these modes to stay independent
+</I>&gt;<i> which means it must be possible to call them without a previosly
+</I>&gt;<i> created XML instance. So they need to be able to create their own
+</I>&gt;<i> XML object. If the change we discuss here is done we might come
+</I>&gt;<i> back to this one 
+</I>
+I agree that each state/mode needs to be independent of other modes
+states. From an XML point of view there are still only 2 descriptions,
+the user defined config.xml and the Kiwi supplied boot image
+description. The object that knows the state and controls the process
+execution knows how to instantiate the XML object for each file and then
+passes the appropriate XML object instance into the &quot;worker&quot;. For
+example when it is time to create the boot image the controller passes
+the XML object instantiated with the config.xml from the appropriate
+boot description.
+
+&gt;<i> 
+</I>&gt;&gt;<i> Sounds like we are on the same page now. I like BuildMgr better as this
+</I>&gt;&gt;<i> indicates it manages a process rather than a single task, but I am OK
+</I>&gt;&gt;<i> with Build.
+</I>&gt;<i> 
+</I>&gt;<i> Well I don't like the abbreviation &quot;mgr&quot; for manager and we also have
+</I>&gt;<i> KIWIManager in place. So if ok with you use &quot;KIWIXMLManager.pm&quot;
+</I>
+I think the current KIWIManager should be a KIWIPackageManager (yes I am
+being nit picky, sorry) and as mentioned above I do not think that
+KIWIXMLManager is the best choice for our stateful object.
+
+A build manager/build controller/execution manager/some_other_name
+should IMHO hold the state. In main this would look like this:
+
+if (defined $Prepare) {
+    my $mgr = new KIWIBuildController(....);
+    $mgr-&gt;prepare();
+}
+
+This controller would also have methods for create and cache setup.
+Somewhere along the line we'll need an ExtractKernel method on some
+object to avoid playing the nasty XML modification trick being played in
+main today that changes the selected file system to avoid the kernel
+extraction. The listing my be another object, not sure about that. For
+testing purposes I am not sure we really want this in the main kiwi driver.
+
+&gt;<i> 
+</I>&gt;&gt;<i> My previous patches were basically an attempt to get us to this type of
+</I>&gt;&gt;<i> implementation. As we have to get there gradually. A rip and replace
+</I>&gt;&gt;<i> approach will IMHO not work as we'd have to do a deep dive for a month
+</I>&gt;&gt;<i> or so where we'd get nothing out the door. I don't think that would be a
+</I>&gt;&gt;<i> good approach.
+</I>&gt;<i> 
+</I>&gt;<i> I agree and that's also my biggest concern here. I can't afford an
+</I>&gt;<i> entire rewrite which it is if we follow all suggestions :-) 
+</I>
+Well, yes I know ultimately I am pushing for major upheaval in the code
+with many, maybe most parts re-written or re-arranged. Well, you know
+what they say, throw the first design and implementation away ;)
+(Sometimes one even has to throw two away).
+
+&gt;<i> I will
+</I>&gt;<i> prepare the KIWIXML code in a way that it contains all XML data which
+</I>&gt;<i> it currently doesn't due to the possible pre-selection done by profile(s).
+</I>&gt;<i> If I finsihed that work you can start to write the new KIWIXMLManager
+</I>&gt;<i> (or whatever name we agree on) code. I will drop you a note when I'm
+</I>&gt;<i> done
+</I>
+OK, hope you can use some of the stuff I proposed.
+
+&gt;<i> 
+</I>&gt;<i> Testing can be done in one mode for example the prepare mode.
+</I>&gt;<i> That should just be a replacement of a few lines and if we are there
+</I>&gt;<i> we switch in one step.
+</I>
+Sounds good.
+&gt;<i> 
+</I>&gt;<i> I need to review the validator patch and I'm on business travel
+</I>&gt;<i> next week. So I'm rather busy but I want to be finished with all
+</I>&gt;<i> the preparations in order to give you a good start for the
+</I>&gt;<i> KIWIXML / KIWIXMLManager change
+</I>&gt;<i> 
+</I>&gt;<i> Would that be ok for you ?
+</I>
+Sure.
+
+Thanks,
+Robert
+
+
+-- 
+Robert Schweikert                           MAY THE SOURCE BE WITH YOU
+Software Engineer Consultant                          LINUX
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>
+781-464-8147
+
+Novell
+Making IT Work As One
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002888.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+	<LI>Next message: <A HREF="002893.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2890">[ date ]</a>
+              <a href="thread.html#2890">[ thread ]</a>
+              <a href="subject.html#2890">[ subject ]</a>
+              <a href="author.html#2890">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

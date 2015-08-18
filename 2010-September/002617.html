@@ -1,0 +1,610 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ccdeb75db6e0763be64631c1a5f2cc15991a2bf9
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ccdeb75db6e0763be64631c1a5f2cc15991a2bf9&In-Reply-To=%3C20100901163207.9D2EE480FC6%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002616.html">
+   <LINK REL="Next"  HREF="002618.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ccdeb75db6e0763be64631c1a5f2cc15991a2bf9</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ccdeb75db6e0763be64631c1a5f2cc15991a2bf9&In-Reply-To=%3C20100901163207.9D2EE480FC6%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ccdeb75db6e0763be64631c1a5f2cc15991a2bf9">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Sep  1 18:32:05 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002616.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ce1a6cc8d2b099481c3d69f89402367219d8c057
+</A></li>
+        <LI>Next message: <A HREF="002618.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7829001a930c097cdbe93bdc42d4f1fa22fad076
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2617">[ date ]</a>
+              <a href="thread.html#2617">[ thread ]</a>
+              <a href="subject.html#2617">[ subject ]</a>
+              <a href="author.html#2617">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  ccdeb75db6e0763be64631c1a5f2cc15991a2bf9 (commit)
+      from  ce1a6cc8d2b099481c3d69f89402367219d8c057 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ccdeb75db6e0763be64631c1a5f2cc15991a2bf9
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Sep 1 18:31:10 2010 +0200
+
+    - better Makefile for docbook book creation. Added pictures
+      which are currently embedded as PNG's. This needs to be
+      improved though
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/doc/docbook/Makefile b/doc/docbook/Makefile
+index be3feea..1d7e33e 100644
+--- a/doc/docbook/Makefile
++++ b/doc/docbook/Makefile
+@@ -1,20 +1,30 @@
+ DB=/usr/share/xml/docbook/stylesheet/nwalsh/current/
+ MAIN=kiwi-doc.xml
++SOURCE=kiwi-doc-*.xml kiwi-man-*.xml
+ 
+-all:kiwi.html
++all:kiwi.html kiwi.pdf
+ 
+ .tmp.xml:
+ 	@echo &quot;Validating ...&quot;
+ 	xmllint --xinclude --postvalid --output .tmp.xml ${MAIN}
+ 
+-kiwi.html:.tmp.xml
++images/*.png:images/*.fig
++	make -C images all
++
++kiwi.html:.tmp.xml images/*.png ${SOURCE}
+ 	@echo &quot;Transforming HTML...&quot;
+ 	xsltproc --xinclude \
+ 		--stringparam html.stylesheet susebooks.css \
+ 		--output ./kiwi.html \
+ 		${DB}/html/docbook.xsl ${MAIN}
+ 
++kiwi.pdf:.tmp.xml images/*.png ${SOURCE}
++	java -jar /usr/share/java/saxon.jar -o kiwi.fo .tmp.xml ${DB}/fo/docbook.xsl
++	fop -fo kiwi.fo -pdf kiwi.pdf
++
+ clean:
+ 	rm -f .tmp.xml
+ 	rm -f kiwi.html
+ 	rm -f kiwi.pdf
++	rm -f kiwi.fo
++	make -C images clean
+diff --git a/doc/docbook/images/Makefile b/doc/docbook/images/Makefile
+new file mode 100644
+index 0000000..d30ea0f
+--- /dev/null
++++ b/doc/docbook/images/Makefile
+@@ -0,0 +1,27 @@
++DEST=activation.png description.png intro.png maintain.png nbboot.png source.png types.png
++
++all:${DEST}
++
++activation.png:activation.fig
++	fig2dev -L png activation.fig activation.png
++
++description.png:description.fig
++	fig2dev -L png description.fig description.png
++
++intro.png:intro.fig
++	fig2dev -L png intro.fig intro.png
++
++maintain.png:maintain.fig
++	fig2dev -L png maintain.fig maintain.png
++
++nbboot.png:nbboot.fig
++	fig2dev -L png nbboot.fig nbboot.png
++
++source.png:source.fig
++	fig2dev -L png source.fig source.png
++
++types.png:types.fig
++	fig2dev -L png types.fig types.png
++
++clean:
++	rm -f *.png
+diff --git a/doc/LaTex/pictures/fig/activation.fig b/doc/docbook/images/activation.fig
+similarity index 100%
+copy from doc/LaTex/pictures/fig/activation.fig
+copy to doc/docbook/images/activation.fig
+diff --git a/doc/LaTex/pictures/fig/description.fig b/doc/docbook/images/description.fig
+similarity index 100%
+copy from doc/LaTex/pictures/fig/description.fig
+copy to doc/docbook/images/description.fig
+diff --git a/doc/LaTex/pictures/fig/intro.fig b/doc/docbook/images/intro.fig
+similarity index 100%
+copy from doc/LaTex/pictures/fig/intro.fig
+copy to doc/docbook/images/intro.fig
+diff --git a/doc/LaTex/pictures/fig/maintain.fig b/doc/docbook/images/maintain.fig
+similarity index 100%
+copy from doc/LaTex/pictures/fig/maintain.fig
+copy to doc/docbook/images/maintain.fig
+diff --git a/doc/LaTex/pictures/fig/nbboot.fig b/doc/docbook/images/nbboot.fig
+similarity index 100%
+copy from doc/LaTex/pictures/fig/nbboot.fig
+copy to doc/docbook/images/nbboot.fig
+diff --git a/doc/LaTex/pictures/fig/source.fig b/doc/docbook/images/source.fig
+similarity index 100%
+copy from doc/LaTex/pictures/fig/source.fig
+copy to doc/docbook/images/source.fig
+diff --git a/doc/LaTex/pictures/fig/types.fig b/doc/docbook/images/types.fig
+similarity index 100%
+copy from doc/LaTex/pictures/fig/types.fig
+copy to doc/docbook/images/types.fig
+diff --git a/doc/docbook/kiwi-doc-description.xml b/doc/docbook/kiwi-doc-description.xml
+index 11afd8d..21c7dbf 100644
+--- a/doc/docbook/kiwi-doc-description.xml
++++ b/doc/docbook/kiwi-doc-description.xml
+@@ -596,9 +596,11 @@
+           class=&quot;attvalue&quot;&gt;true|false&lt;/sgmltag&gt;&quot;. If specified KIWI will
+         search for a prebuilt boot image in a directory named
+           &lt;filename&gt;/usr/share/kiwi/image/*boot/*-prebuilt&lt;/filename&gt;.
+-        Example: If the boot attribute was set to isoboot/suse-10.3 and
+-        checkprebuilt is set to true KIWI will search the prebuilt boot
+-        image in
++        Example: If the &lt;sgmltag class=&quot;attribute&quot;&gt;boot&lt;/sgmltag&gt;
++        attribute was set to &lt;sgmltag class=&quot;attvalue&quot;
++          &gt;isoboot/suse-10.3&lt;/sgmltag&gt; and &lt;sgmltag class=&quot;attribute&quot;
++          &gt;checkprebuilt&lt;/sgmltag&gt; is set to &lt;sgmltag class=&quot;attvalue&quot;
++          &gt;true&lt;/sgmltag&gt; KIWI will search the prebuilt boot image in
+           &lt;filename&gt;/usr/share/kiwi/image/isoboot/suse-10.3-prebuilt&lt;/filename&gt;.
+         The directory KIWI searches for the prebuilt boot images can
+         also be specified at the commandline with the
+@@ -648,24 +650,27 @@
+           &lt;term&gt;&lt;sgmltag class=&quot;attribute&quot;&gt;timezone&lt;/sgmltag&gt;&lt;/term&gt;
+           &lt;listitem&gt;
+             &lt;para&gt;Specifies the time zone. Available time zones are
+-              located in the /usr/share/zoneinfo directory. Specify the
+-              attribute value relative to /usr/share/zoneinfo. For
+-              example, specify Europe/Berlin for
+-              /usr/share/zoneinfo/Europe/Berlin. KIWI uses this value to
+-              configure the timezone in /etc/localtime for the image.
+-            &lt;/para&gt;
++              located in the &lt;filename class=&quot;directory&quot;
++                &gt;/usr/share/zoneinfo&lt;/filename&gt; directory. Specify the
++              attribute value relative to &lt;filename class=&quot;directory&quot;
++                &gt;/usr/share/zoneinfo&lt;/filename&gt;. For example, specify
++              Europe/Berlin for
++                &lt;filename&gt;/usr/share/zoneinfo/Europe/Berlin&lt;/filename&gt;.
++              KIWI uses this value to configure the timezone in
++                &lt;filename&gt;/etc/localtime&lt;/filename&gt; for the image. &lt;/para&gt;
+           &lt;/listitem&gt;
+         &lt;/varlistentry&gt;
+         &lt;varlistentry&gt;
+           &lt;term&gt;&lt;sgmltag class=&quot;attribute&quot;&gt;locale&lt;/sgmltag&gt;&lt;/term&gt;
+           &lt;listitem&gt;
+             &lt;para&gt; Specifies the name of the UTF-8 locale to use, which
+-              defines the contents of the RC_LANG system environment
+-              variable in &lt;filename&gt;/etc/sysconfig/language&lt;/filename&gt;.
+-              Please note only UTF-8 locales are supported here which
+-              also means that the encoding must &lt;emphasis&gt;not&lt;/emphasis&gt;
+-              be part of the locale information. The KIWI schema
+-              validates the locale string according to the following
++              defines the contents of the &lt;envar&gt;RC_LANG&lt;/envar&gt; system
++              environment variable in
++                &lt;filename&gt;/etc/sysconfig/language&lt;/filename&gt;. Please
++              note only UTF-8 locales are supported here which also
++              means that the encoding must &lt;emphasis&gt;not&lt;/emphasis&gt; be
++              part of the locale information. The KIWI schema validates
++              the locale string according to the following
+                 pattern:&lt;literal&gt;[a-z]{2}_[A-Z]{2}(,[a-z]{2}_[A-Z]{2})*&lt;/literal&gt;.
+               This means you have to specifiy the locale like the
+               following example: en_US or en_US,de_DE &lt;/para&gt;
+@@ -778,7 +783,7 @@
+               The format of the file is a simple
+                 &lt;literal&gt;key=value&lt;/literal&gt; format and created by the
+                 &lt;command&gt;KIWIConfig.sh&lt;/command&gt; function named
+-              baseSetupOEMPartition(). &lt;/para&gt;
++                &lt;function&gt;baseSetupOEMPartition&lt;/function&gt;. &lt;/para&gt;
+ 
+             &lt;screen&gt;&lt;oemconfig&gt;
+    &lt;oem-systemsize&gt;2000&lt;/oem-systemsize&gt;
+diff --git a/doc/docbook/kiwi-doc-ec2.xml b/doc/docbook/kiwi-doc-ec2.xml
+index c8072c4..73b93a9 100644
+--- a/doc/docbook/kiwi-doc-ec2.xml
++++ b/doc/docbook/kiwi-doc-ec2.xml
+@@ -43,8 +43,8 @@
+ 
+   &lt;para&gt;Please note while instances are running, you are billed for the
+     computing and network resources that they consume. You should start
+-    creating an ec2 with KIWI after you can make sure your system is
+-    prepared for ec2 which means if you call the command
++    creating an EC2 with KIWI after you can make sure your system is
++    prepared for EC2 which means if you call the command
+       &lt;command&gt;ec2-describe-images&lt;/command&gt;
+     &lt;option&gt;&#226;&#128;&#147;a&lt;/option&gt; you will get a valid output. &lt;/para&gt;
+   &lt;sect1&gt;
+@@ -52,7 +52,7 @@
+     &lt;para&gt;One example provided with KIWI is based on openSUSE 11.3 and
+       includes the base pattern plus the vim editor. &lt;/para&gt;
+ 
+-    &lt;para&gt;Before you run KIWI you need to include some of your ec2
++    &lt;para&gt;Before you run KIWI you need to include some of your EC2
+       account information into the image description
+         &lt;filename&gt;config.xml&lt;/filename&gt; file. The box below shows the
+       values you need to adapt: &lt;/para&gt;
+@@ -84,8 +84,9 @@
+       suse-11.1-xen-guest.i686-1.1.2.ami.manifest.xml &lt;/screen&gt;
+ 
+     &lt;para&gt;After this is done the image needs to be registered in order
+-      to receive a so called AMI id which starts with ami- followed by a
+-      random key sequence. To register call: &lt;/para&gt;
++      to receive a so called AMI id which starts with
++        &lt;quote&gt;ami-&lt;/quote&gt; followed by a random key sequence. To
++      register call: &lt;/para&gt;
+ 
+     &lt;screen&gt;&lt;command&gt;ec2-register&lt;/command&gt; myImages/&lt;!--
+      --&gt; suse-11.1-xen-guest.i686-1.1.2.ami.manifest.xml &lt;/screen&gt;
+@@ -106,11 +107,11 @@
+ 
+     &lt;para&gt;The private key returned needs to be saved in a local file so
+       that you can use it later. Using your favorite text editor, create
+-      a file named id_rsa-gsg-keypair and paste everything between (and
+-      including) the &lt;literal&gt;-----BEGIN RSA PRIVATE KEY-----&lt;/literal&gt;
+-      and &lt;literal&gt;-----END RSA PRIVATE KEY-----&lt;/literal&gt; lines into
+-      it. To review your keypairs call
+-      &lt;command&gt;ec2-describe-keypairs&lt;/command&gt;. &lt;/para&gt;
++      a file named &lt;filename&gt;id_rsa-gsg-keypair&lt;/filename&gt; and paste
++      everything between (and including) the &lt;literal&gt;-----BEGIN RSA
++        PRIVATE KEY-----&lt;/literal&gt; and &lt;literal&gt;-----END RSA PRIVATE
++        KEY-----&lt;/literal&gt; lines into it. To review your keypairs call
++        &lt;command&gt;ec2-describe-keypairs&lt;/command&gt;. &lt;/para&gt;
+ 
+     &lt;para&gt;We are almost done now but to be able to run an instance it&#226;&#128;&#153;s
+       required to select an appropriate AKI ID from the &lt;emphasis&gt;Amazon
+@@ -140,7 +141,7 @@
+         &lt;/td&gt;
+         &lt;td&gt;
+           &lt;para&gt;
+-            ec2-public-images/pv-grub-hd0-V1.01-i386.gz.manifest.xml
++            &lt;filename&gt;ec2-public-images/pv-grub-hd0-V1.01-i386.gz.manifest.xml&lt;/filename&gt;
+           &lt;/para&gt;
+         &lt;/td&gt;
+       &lt;/tr&gt;
+@@ -150,7 +151,7 @@
+         &lt;/td&gt;
+         &lt;td&gt;
+           &lt;para&gt;
+-            ec2-public-images/pv-grub-hd0-V1.01-x86_64.gz.manifest.xml
++            &lt;filename&gt;ec2-public-images/pv-grub-hd0-V1.01-x86_64.gz.manifest.xml&lt;/filename&gt;
+           &lt;/para&gt;
+         &lt;/td&gt;
+       &lt;/tr&gt;
+diff --git a/doc/docbook/kiwi-doc-oem.xml b/doc/docbook/kiwi-doc-oem.xml
+index af47634..d1bdfaa 100644
+--- a/doc/docbook/kiwi-doc-oem.xml
++++ b/doc/docbook/kiwi-doc-oem.xml
+@@ -25,7 +25,8 @@
+       releases, one example configuration per release, and includes the
+       default and x11 patterns. The image type is a split type utilizing
+       the distributions default filesystem format for the read-write
+-      partition and the squashfs filesystem for the read-only partition.
++      partition and the &lt;systemitem class=&quot;filesystem&quot;
++        &gt;squashfs&lt;/systemitem&gt; filesystem for the read-only partition.
+       Using the additional &lt;sgmltag class=&quot;attribute&quot;
+         &gt;installiso&lt;/sgmltag&gt; attribute creates an installable ISO
+       image. When booting from the ISO image the OEM disk image will be
+@@ -145,17 +146,17 @@
+         has been set, and adds logical volumes to the group based on the
+         configuration given by the &lt;sgmltag&gt;lvmvolumes&lt;/sgmltag&gt; block
+         for this type. The filesystem for the volume group is determined
+-        by the filesystem attribute of the type element. After booting
+-        the system the user has full control over the volume group and
+-        is free to change (resize/increase) the group and the volumes
+-        inside. Support for LVM has been added for all disk based image
+-        types. This includes the vmx, oem and usb image types. In order
+-        to use LVM for the oem type just add the &lt;option&gt;--lvm&lt;/option&gt;
+-        command line option when executing the create step or add the
+-        attribute &lt;sgmltag class=&quot;attribute&quot;&gt;lvm&lt;/sgmltag&gt;=&quot;&lt;sgmltag
+-          class=&quot;attvalue&quot;&gt;true&lt;/sgmltag&gt;&quot; to of the
+-          &lt;sgmltag&gt;type&lt;/sgmltag&gt; element in your
+-          &lt;filename&gt;config.xml&lt;/filename&gt; file. &lt;/para&gt;
++        by the &lt;sgmltag class=&quot;attribute&quot;&gt;filesystem&lt;/sgmltag&gt; attribute
++        of the type element. After booting the system the user has full
++        control over the volume group and is free to change
++        (resize/increase) the group and the volumes inside. Support for
++        LVM has been added for all disk based image types. This includes
++        the vmx, oem and usb image types. In order to use LVM for the
++        oem type just add the &lt;option&gt;--lvm&lt;/option&gt; command line option
++        when executing the create step or add the attribute &lt;sgmltag
++          class=&quot;attribute&quot;&gt;lvm&lt;/sgmltag&gt;=&quot;&lt;sgmltag class=&quot;attvalue&quot;
++          &gt;true&lt;/sgmltag&gt;&quot; to of the &lt;sgmltag&gt;type&lt;/sgmltag&gt; element in
++        your &lt;filename&gt;config.xml&lt;/filename&gt; file. &lt;/para&gt;
+ 
+ 
+       &lt;screen&gt;&lt;command&gt;kiwi&lt;/command&gt; &#226;&#128;&#147;create /tmp/myoem &#226;&#128;&#147;type oem -d /tmp/myoem-result
+@@ -195,12 +196,12 @@
+         &lt;listitem&gt;
+           &lt;para&gt;The oem options for system, swap and home doesn&#226;&#128;&#153;t have
+             any effect if the installation happens in predefined
+-            partitions &lt;/para&gt;
++            partitions. &lt;/para&gt;
+         &lt;/listitem&gt;
+         &lt;listitem&gt;
+           &lt;para&gt;There is no support for remote (PXE) OEM installation
+             because kiwi has to loop mount the disk image in order to
+-            access the partitions which can&#226;&#128;&#153;t be done remotely &lt;/para&gt;
++            access the partitions which can&#226;&#128;&#153;t be done remotely. &lt;/para&gt;
+         &lt;/listitem&gt;
+         &lt;listitem&gt;
+           &lt;para&gt;The raw disk image is stored uncompressed on the install
+@@ -208,7 +209,7 @@
+             image which it can&#226;&#128;&#153;t do if the file is only available as
+             compressed version. This means the install media in this
+             mode will be approximately double the size of a standard
+-            install media &lt;/para&gt;
++            install media. &lt;/para&gt;
+         &lt;/listitem&gt;
+       &lt;/itemizedlist&gt;
+ 
+diff --git a/doc/docbook/kiwi-doc-pxe.xml b/doc/docbook/kiwi-doc-pxe.xml
+index 78e4eb5..20c4a63 100644
+--- a/doc/docbook/kiwi-doc-pxe.xml
++++ b/doc/docbook/kiwi-doc-pxe.xml
+@@ -99,7 +99,8 @@ subnet 192.168.100.0 netmask 255.255.255.0 {
+     &lt;title&gt;Building the suse-pxe-client Example&lt;/title&gt;
+     &lt;para&gt;The example provided with KIWI is based on open&#194;&#173;SUSE&#194;&#160;11.2 and
+       creates an image for a Wyse VX0 terminal with a 128MB flash card
+-      and 512MB of RAM. The image makes use of the squashfs compressed
++      and 512MB of RAM. The image makes use of the &lt;systemitem
++        class=&quot;filesystem&quot;&gt;squashfs&lt;/systemitem&gt; compressed
+       filesystem and its root tree is deployed as unified (aufs) based
+       system. &lt;/para&gt;
+ 
+@@ -133,7 +134,7 @@ subnet 192.168.100.0 netmask 255.255.255.0 {
+ &lt;command&gt;cp&lt;/command&gt; suse-11.2-pxe-client.i686-1.2.8.md5 /srv/tftpboot/image&lt;/screen&gt;
+       &lt;/step&gt;
+       &lt;step&gt;
+-        &lt;para&gt;Copy of the image boot configurationNormally the boot
++        &lt;para&gt;Copy of the image boot configuration. Normally the boot
+           configuration applies to one client which means it is required
+           to obtain the MAC address of this client. If the boot
+           configuration should be used globaly, copy the KIWI generated
+@@ -142,9 +143,9 @@ subnet 192.168.100.0 netmask 255.255.255.0 {
+   /srv/tftpboot/KIWI/config.&lt;replaceable&gt;MAC&lt;/replaceable&gt; &lt;/screen&gt;
+       &lt;/step&gt;
+       &lt;step&gt;
+-        &lt;para&gt;Check the PXE configuration fileThe PXE configuration
++        &lt;para&gt;Check the PXE configuration file. The PXE configuration
+           controls which kernel and initrd are loaded and which kernel
+-          parameters are set. When installing the kiwi-pxeboot package,
++          parameters are set. When installing the &lt;package&gt;kiwi-pxeboot&lt;/package&gt; package,
+           a default configuration is added. To make sure the
+           configuration is valid according to this example, insert the
+           following information into the file
+@@ -185,7 +186,7 @@ LABEL Local-Boot
+         clients. In this case, there is no configuration file
+         corresponding to the client MAC address available. Using the MAC
+         address information, the control file is created, which is
+-        uploaded to the TFTP servers upload directory
++        uploaded to the &lt;systemitem class=&quot;server&quot;&gt;TFTP&lt;/systemitem&gt; servers upload directory
+           &lt;filename&gt;/var/lib/tftpboot/upload&lt;/filename&gt;. &lt;/para&gt;
+     &lt;/sect2&gt;
+ 
+@@ -302,7 +303,7 @@ DISK=device&lt;/screen&gt;
+               the sfdisk program are allowed as well. The type number
+               specifies the ID of the partition. Valid ID&#226;&#128;&#153;s are listed
+               via the &lt;command&gt;sfdisk&lt;/command&gt;
+-              &lt;option&gt;&#226;&#128;&#147;&#226;&#128;&#147;list-types&lt;/option&gt; command. The mount specifies
++              &lt;option&gt;--list-types&lt;/option&gt; command. The mount specifies
+               the directory the partition is mounted to. &lt;/para&gt;
+ 
+             &lt;itemizedlist&gt;
+@@ -373,8 +374,8 @@ DISK=device&lt;/screen&gt;
+               standard tftp setup suggested with the kiwi-pxeboot
+               package is used all initrd files resides in the &lt;filename
+                 class=&quot;directory&quot;&gt;boot/&lt;/filename&gt; directory below the
+-              tftp server path &lt;filename&gt;/var/lib/tftpboot&lt;/filename&gt;.
+-              Because the tftpserver do a chroot into the tftp server
++              tftp server path &lt;filename class=&quot;directory&quot;&gt;/var/lib/tftpboot&lt;/filename&gt;.
++              Because the tftp server do a chroot into the tftp server
+               path you need to specify the initrd file as the following
+               example shows: &lt;/para&gt;
+             &lt;screen&gt;KIWI_INITRD=/boot/&lt;replaceable&gt;name-of-initrd-file&lt;/replaceable&gt;&lt;/screen&gt;
+@@ -512,7 +513,8 @@ DISK=/dev/sda&lt;/screen&gt;
+ 
+             &lt;para&gt; KIWI is now able to mount and use the specified AoE
+               device as the remote root filesystem. In case of a
+-              compressed read-only image with aufs or clicfs, the
++              compressed read-only image with &lt;systemitem class=&quot;filesystem&quot;&gt;aufs&lt;/systemitem&gt; 
++              or &lt;systemitem class=&quot;filesystem&quot;&gt;clicfs&lt;/systemitem&gt;, the
+               AOEROOT variable can also contain a device for the write
+               actions: &lt;/para&gt;
+ 
+@@ -538,7 +540,7 @@ DISK=/dev/sda&lt;/screen&gt;
+ 
+             &lt;screen&gt;NFSROOT=NFS.Server.IP.address;/path/to/root/tree&lt;/screen&gt;
+ 
+-            &lt;para&gt; Optionally you can set a UNIONFS_CONFIG variable
++            &lt;para&gt; Optionally you can set a &lt;varname&gt;UNIONFS_CONFIG&lt;/varname&gt; variable
+               which defines an aufs based overlay NFS directory or
+               device like: &lt;/para&gt;
+ 
+@@ -627,7 +629,7 @@ UNIONFS_CONFIG=/dev/ram1,nfs,aufs # write to RAM&lt;/screen&gt;
+         Please note all downloads except for kernel and initrd are now
+         controlled by the given server and protocol. You need to make
+         sure that this server provides the same directory and file
+-        structure as initially provided by the kiwi-pxeboot package.
++        structure as initially provided by the &lt;package&gt;kiwi-pxeboot&lt;/package&gt; package.
+       &lt;/para&gt;
+     &lt;/sect2&gt;
+ 
+@@ -651,7 +653,6 @@ UNIONFS_CONFIG=/dev/ram1,nfs,aufs # write to RAM&lt;/screen&gt;
+           &lt;para&gt;Create
+               &lt;filename&gt;config.&lt;replaceable&gt;MAC&lt;/replaceable&gt;&lt;/filename&gt;
+           &lt;/para&gt;
+-
+           &lt;screen&gt;IMAGE=/dev/ram1;suse-11.2-pxe-client.i686;\
+       1.2.8;192.168.100.2;4096&lt;/screen&gt;
+         &lt;/listitem&gt;
+@@ -669,7 +670,8 @@ UNIONFS_CONFIG=/dev/ram1,nfs,aufs # write to RAM&lt;/screen&gt;
+         read-write filesystem is a solution for this problem. In order
+         to use a compressed root filesystem make sure your
+           &lt;filename&gt;config.xml&lt;/filename&gt;&#226;&#128;&#153;s filesystem attribute
+-        contains either squashfs or clicfs. Below, find an example: &lt;/para&gt;
++        contains either &lt;systemitem class=&quot;filesystem&quot;&gt;squashfs&lt;/systemitem&gt; 
++        or &lt;systemitem class=&quot;filesystem&quot;&gt;clicfs&lt;/systemitem&gt;. Below, find an example: &lt;/para&gt;
+ 
+       &lt;screen&gt;DISK=/dev/sda
+ PART=5;S;x,62;L;/,x;L;x,
+@@ -739,11 +741,12 @@ KIWI_INITRD=/boot/initrd&lt;/screen&gt;
+       &lt;title&gt;Root Tree Over NFS&lt;/title&gt;
+       &lt;para&gt; Instead of installing the image onto a local storage device
+         of the client it is also possible to let the client mount the
+-        root tree via an NFS remote mount. Below find an example: &lt;/para&gt;
++        root tree via an &lt;systemitem class=&quot;service&quot;&gt;NFS&lt;/systemitem&gt;
++        remote mount. Below find an example: &lt;/para&gt;
+ 
+       &lt;itemizedlist&gt;
+         &lt;listitem&gt;
+-          &lt;para&gt;Export the KIWI prepared tree via NFS &lt;/para&gt;
++          &lt;para&gt;Export the KIWI prepared tree via NFS.&lt;/para&gt;
+         &lt;/listitem&gt;
+         &lt;listitem&gt;
+           &lt;para&gt;Sample
+@@ -762,7 +765,7 @@ KIWI_INITRD=/boot/initrd&lt;/screen&gt;
+ 
+       &lt;itemizedlist&gt;
+         &lt;listitem&gt;
+-          &lt;para&gt;Use nbd-server to export the KIWI prepared tree &lt;/para&gt;
++          &lt;para&gt;Use nbd-server to export the KIWI prepared tree.&lt;/para&gt;
+         &lt;/listitem&gt;
+         &lt;listitem&gt;
+           &lt;para&gt;Sample
+@@ -785,10 +788,10 @@ KIWI_INITRD=/boot/initrd&lt;/screen&gt;
+           &lt;para&gt;Use the &lt;command&gt;vbladed&lt;/command&gt; command to bind a
+             block device to an ethernet interface. The block device can
+             be a disk partition or a loop device (losetup) but not a
+-            directory like with NBD &lt;/para&gt;
++            directory like with NBD. &lt;/para&gt;
+         &lt;/listitem&gt;
+         &lt;listitem&gt;
+-          &lt;para&gt;sample
++          &lt;para&gt;Sample
+               &lt;filename&gt;config.&lt;replaceable&gt;MAC&lt;/replaceable&gt;&lt;/filename&gt;: &lt;/para&gt;
+           &lt;screen&gt;AOEROOT=/dev/etherd/e0.1&lt;/screen&gt;
+           &lt;para&gt;This would require the following command to be called
+diff --git a/doc/docbook/kiwi-doc-testing.xml b/doc/docbook/kiwi-doc-testing.xml
+index 4d65386..bd319de 100644
+--- a/doc/docbook/kiwi-doc-testing.xml
++++ b/doc/docbook/kiwi-doc-testing.xml
+@@ -95,13 +95,13 @@
+ 
+     &lt;itemizedlist&gt;
+       &lt;listitem&gt;
+-        &lt;para&gt;external scripts are executed outside of the image and are
++        &lt;para&gt;External scripts are executed outside of the image and are
+           preferred. Their first parameter should be CHROOT. This
+           parameter is changed to the real path of the image chroot
+           directory. &lt;/para&gt;
+       &lt;/listitem&gt;
+       &lt;listitem&gt;
+-        &lt;para&gt;internal scripts are executed inside image using the
++        &lt;para&gt;Internal scripts are executed inside image using the
+             &lt;command&gt;chroot&lt;/command&gt; command. Files are copied into the
+           image and deleted after execution. &lt;/para&gt;
+       &lt;/listitem&gt;
+diff --git a/doc/docbook/kiwi-doc-xen.xml b/doc/docbook/kiwi-doc-xen.xml
+index 59304a1..6a4e0b3 100644
+--- a/doc/docbook/kiwi-doc-xen.xml
++++ b/doc/docbook/kiwi-doc-xen.xml
+@@ -9,7 +9,7 @@
+     hardware at the same time. &lt;/para&gt;
+ 
+   &lt;para&gt;A Xen system is structured with the Xen hypervisor as the lowest
+-    and most privileged layer.Above this layer are one or more guest
++    and most privileged layer. Above this layer are one or more guest
+     operating systems, which the hypervisor schedules across the
+     physical CPUs. The first guest operating system, called in Xen
+     terminology &lt;quote&gt;domain 0&lt;/quote&gt; (dom0), is booted automatically
+diff --git a/doc/docbook/kiwi-doc.xml b/doc/docbook/kiwi-doc.xml
+index ca69083..e48f825 100644
+--- a/doc/docbook/kiwi-doc.xml
++++ b/doc/docbook/kiwi-doc.xml
+@@ -5,9 +5,13 @@
+   &lt;title&gt;openSUSE-KIWI Image System&lt;/title&gt;
+   &lt;subtitle&gt;Cookbook&lt;/subtitle&gt;
+   &lt;bookinfo&gt;
+-    &lt;releaseinfo&gt;Version &lt;xi:include href=&quot;Revision.txt&quot; parse=&quot;text&quot; xmlns:xi=&quot;<A HREF="http://www.w3.org/2001/XInclude">http://www.w3.org/2001/XInclude</A>&quot;/&gt;&lt;/releaseinfo&gt;
++    &lt;releaseinfo&gt;KIWI Version &lt;xi:include href=&quot;Revision.txt&quot; parse=&quot;text&quot; xmlns:xi=&quot;<A HREF="http://www.w3.org/2001/XInclude">http://www.w3.org/2001/XInclude</A>&quot;/&gt;&lt;/releaseinfo&gt;
+     &lt;authorgroup&gt;
+       &lt;author&gt;
++        &lt;affiliation&gt;
++          &lt;jobtitle&gt;Software Engineer&lt;/jobtitle&gt;
++          &lt;orgname&gt;SUSE LINUX Products GmbH&lt;/orgname&gt;
++        &lt;/affiliation&gt;
+         &lt;firstname&gt;Marcus&lt;/firstname&gt;
+         &lt;surname&gt;Sch&#195;&#164;fer&lt;/surname&gt;
+         &lt;contrib&gt;Project, Design and Implementation&lt;/contrib&gt;
+@@ -19,12 +23,15 @@
+         &lt;/address&gt;
+       &lt;/author&gt;
+       &lt;othercredit&gt;
++        &lt;affiliation&gt;
++          &lt;jobtitle&gt;Documentation Specialist&lt;/jobtitle&gt;
++          &lt;orgname&gt;SUSE LINUX Products GmbH&lt;/orgname&gt;
++        &lt;/affiliation&gt;
+         &lt;firstname&gt;Thomas&lt;/firstname&gt;
+         &lt;surname&gt;Schraitle&lt;/surname&gt;
+         &lt;contrib&gt;Various text improvements, migration to DocBook&lt;/contrib&gt;
+         &lt;email&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">toms at suse.de</A>&lt;/email&gt;
+       &lt;/othercredit&gt;
+-      &lt;corpcredit&gt;SUSE LINUX Products GmbH&lt;/corpcredit&gt;
+     &lt;/authorgroup&gt;
+     &lt;revhistory&gt;
+       &lt;revision&gt;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002616.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ce1a6cc8d2b099481c3d69f89402367219d8c057
+</A></li>
+	<LI>Next message: <A HREF="002618.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7829001a930c097cdbe93bdc42d4f1fa22fad076
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2617">[ date ]</a>
+              <a href="thread.html#2617">[ thread ]</a>
+              <a href="subject.html#2617">[ subject ]</a>
+              <a href="author.html#2617">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

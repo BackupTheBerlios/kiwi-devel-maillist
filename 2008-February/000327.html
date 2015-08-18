@@ -1,0 +1,140 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [PATCH] enhanced split image support in Live CD
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BPATCH%5D%20enhanced%20split%20image%20support%20in%20Live%20CD&In-Reply-To=%3C20080214125045.GA23800%40D7.ddts.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000326.html">
+   <LINK REL="Next"  HREF="000329.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [PATCH] enhanced split image support in Live CD</H1>
+    <B>Marcus Sch&#228;fer</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BPATCH%5D%20enhanced%20split%20image%20support%20in%20Live%20CD&In-Reply-To=%3C20080214125045.GA23800%40D7.ddts.net%3E"
+       TITLE="[Kiwi-devel] [PATCH] enhanced split image support in Live CD">ms at suse.de
+       </A><BR>
+    <I>Thu Feb 14 13:50:46 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000326.html">[Kiwi-devel] [PATCH] enhanced split image support in Live CD
+</A></li>
+        <LI>Next message: <A HREF="000329.html">[Kiwi-devel] [PATCH] enhanced split image support in Live CD
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#327">[ date ]</a>
+              <a href="thread.html#327">[ thread ]</a>
+              <a href="subject.html#327">[ subject ]</a>
+              <a href="author.html#327">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi,
+
+&gt;<i> &gt; I've attached a patch which changes the 'compressed' Live CD image to use
+</I>&gt;<i> &gt; the new-and-improved split image type.  The main benefit of this is that it
+</I>&gt;<i> &gt; allows greater flexibility at runtime.  Instead of just a few toplevel trees
+</I>&gt;<i> &gt; being writable, every directory is.  The 'split' node in config.xml can be
+</I>&gt;<i> &gt; used to specify which files should be read/write (i.e., on tmpfs instead of
+</I>&gt;<i> &gt; squashfs).  You can do this by simply referencing the paths within the
+</I>&gt;<i> &gt; 'temporary' section as follows:
+</I>&gt;<i> &gt; 
+</I>&gt;<i> &gt; &lt;split&gt;
+</I>&gt;<i> &gt;     &lt;temporary&gt;
+</I>&gt;<i> &gt;         &lt;file name=&quot;/etc/sysconfig/*&quot;/&gt;
+</I>&gt;<i> &gt;     &lt;/temporary&gt;
+</I>&gt;<i> &gt; &lt;/split&gt;
+</I>&gt;<i> &gt; 
+</I>&gt;<i> &gt; This would make all of the files in /etc/sysconfig writable by placing them
+</I>&gt;<i> &gt; in tmpfs instead of the compressed read-only squashfs area.  Anything listed
+</I>&gt;<i> &gt; in the 'persistent' section of the 'split' node is automatically merged into
+</I>&gt;<i> &gt; the 'temporary' list, since there is no persistent storage in a Live CD.
+</I>&gt;<i> &gt; BTW, this patch also includes my previous patch, since it is dependent on
+</I>&gt;<i> &gt; that.
+</I>&gt;<i> 
+</I>&gt;<i> This is a big change. I will test it today with the current liveCD
+</I>&gt;<i> to make sure there is no breakage. With the old &quot;compressed&quot; style  
+</I>&gt;<i> we had /bin /boot /lib /opt /sbin /usr as read-only information
+</I>&gt;<i> and the rest was writable. With the new system we define in a split
+</I>&gt;<i> section what is writable That's exactly the other way round. Could
+</I>&gt;<i> you provide me with a split section you use which has all the
+</I>&gt;<i> important writable information in it ? It's because I had to adapt
+</I>&gt;<i> the current liveCD description according to the new system and
+</I>&gt;<i> I would like to prevent to find out by try and error what would be
+</I>&gt;<i> good to become writable
+</I>
+found a few small problems and fixed them. All iso types works now.
+I have committed the patch and submitted new packages to the build
+service.
+
+Important information:
+======================
+Due to this change the kiwi iso type if used in combination with
+	
+	flags=&quot;compressed&quot;
+
+has changed. The old system uses a fixed set of read-only paths whereas
+the rest of the filesystem was used as read-write data. This is rather
+inflexible and doesn't allow to specify read-write data on a per file
+basis. With the new system the creator of the image description needs
+to describe what should be read-write in the ISO. Therefore the 
+&lt;split&gt; section must be used. In order to be able to login to a system
+at least the /var filesystem must be writable. I found it was a good
+thing to have at least the following split section:
+
+  &lt;split&gt;
+    &lt;temporary&gt;
+      &lt;!-- allow read/write access to: --&gt;
+      &lt;file name=&quot;/var&quot;/&gt;
+      &lt;file name=&quot;/var/*&quot;/&gt;
+      &lt;file name=&quot;/etc&quot;/&gt;
+      &lt;file name=&quot;/etc/*&quot;/&gt;
+    &lt;/temporary&gt;
+  &lt;/split&gt;
+
+This change applies to kiwi version 2.25
+
+Thanks James for your patch
+
+Regards,
+Marcus
+-- 
+ Public Key available
+ gpg --keyserver gpg-keyserver.de --recv-keys 0xCCE3C6A2
+ -------------------------------------------------------
+ Marcus Sch&#228;fer (Res. &amp; Dev.)   SUSE LINUX Products GmbH
+ Tel: 0911-740 53 0             Maxfeldstrasse 5
+ FAX: 0911-740 53 479           D-90409 N&#252;rnberg
+ GF: Markus Rex                 HRB: 16746 (AG N&#252;rnberg)
+ <A HREF="http://www.suse.de">http://www.suse.de</A>             Germany
+ -------------------------------------------------------
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000326.html">[Kiwi-devel] [PATCH] enhanced split image support in Live CD
+</A></li>
+	<LI>Next message: <A HREF="000329.html">[Kiwi-devel] [PATCH] enhanced split image support in Live CD
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#327">[ date ]</a>
+              <a href="thread.html#327">[ thread ]</a>
+              <a href="subject.html#327">[ subject ]</a>
+              <a href="author.html#327">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

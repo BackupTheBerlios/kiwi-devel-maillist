@@ -1,0 +1,148 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Some restructuring
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Some%20restructuring&In-Reply-To=%3C20110111163536.GA6080%40D7.ddts.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002945.html">
+   <LINK REL="Next"  HREF="002948.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Some restructuring</H1>
+    <B>Marcus Sch&#228;fer</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Some%20restructuring&In-Reply-To=%3C20110111163536.GA6080%40D7.ddts.net%3E"
+       TITLE="[Kiwi-devel] Some restructuring">ms at suse.de
+       </A><BR>
+    <I>Tue Jan 11 17:35:36 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002945.html">[Kiwi-devel] Some restructuring
+</A></li>
+        <LI>Next message: <A HREF="002948.html">[Kiwi-devel] Some restructuring
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2946">[ date ]</a>
+              <a href="thread.html#2946">[ thread ]</a>
+              <a href="subject.html#2946">[ subject ]</a>
+              <a href="author.html#2946">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi,
+
+&gt;<i> Well, changing the KIWIXML ctor arguments is inevitable. Once we remove
+</I>&gt;<i> the state from the XML object the imageType and reqProfiles arguments
+</I>&gt;<i> will no longer be necessary to construct an XML object.
+</I>
+yes but removing ctor arguments directly leads to errors if one
+is using the object in the wrong way but changing the meaning of
+an argument could cause regressions and weird behaviour which is
+hard to find and hard to debug. removing stuff is not a problem
+
+&gt;<i> If we think about this from a bottom line/minimalist perspective, all
+</I>&gt;<i> that should be needed to construct the XML object is the path to the
+</I>&gt;<i> control file (and the message logging object). Everything else is fluff.
+</I>&gt;<i> I think it would be great to get to the point of a 2 argument XML object
+</I>&gt;<i> &quot;new KIWIXML(KIWI_LOG, CONTROL_FILE)&quot;, it doesn't get much cleaner and
+</I>&gt;<i> nicer than that. Even the validation of the XML can and probably should
+</I>&gt;<i> be offloaded from the XML object. The object can certainly reasonably
+</I>&gt;<i> expect that the file given to it is valid and consistent.
+</I>
+if we reach that point when KIWIXML is so simple that you also
+can move out the validation from the constructor we can move
+out the config file locator call too. I think at that point we also
+can evaluate the impact of changing the meaning of the ctor
+arguments. At the moment I'm convinced it's not a good idea to
+change the meaning of the KIWIXML argument list
+
+&gt;<i> I realize this looks horrible now with calls to getControlFile()
+</I>&gt;<i> littered all over the code. However, don't forget that in the end there
+</I>&gt;<i> should be a lot fewer instantiations of the XML object (I'm still
+</I>&gt;<i> thinking 3 or 4, and all of those in one central place) and thus this
+</I>&gt;<i> will clean itself up automatically.
+</I>
+I'm sorry but I disagree. Over years of working in development projects
+things never cleaned up themselves automatically :) It was
+unfortunately most often the other way round
+
+&gt;<i> With that said, if you want a call to getControlFile() in the XML ctor,
+</I>&gt;<i> rather than changing the argument at this point I can certainly rework
+</I>&gt;<i> the patch. However, it is inevitable that at some point we will reach
+</I>&gt;<i> this pint again, and thus have to revisit this discussion. As mentioned
+</I>&gt;<i> above the arguments of the XML ctor will need to change if we want to
+</I>&gt;<i> remove the state from the XML object.
+</I>
+I agree and I'm sure if we re-enter this discussion the code will have
+been improved and cleaned up which will make it easier to make the
+decision at that time. 
+
+ - You are introducing a new KIWIXMLLocator module which is great.
+
+ - We will move out some code parts and duplications when calling
+   getControlFile() which is also a step into the right direction
+
+ - We will find a solution for the md5 check ;)
+   see my next comment
+
+and that's a good patch for this restructuring round to become
+checked in. What do you think ?
+
+&gt;<i> &gt; You are right that includes other than XML files but it also
+</I>&gt;<i> &gt; includes the XML file itself. I'm not sure if we have to
+</I>&gt;<i> &gt; be that strict here ?
+</I>&gt;<i> 
+</I>&gt;<i> I think we should be. I am convinced that a better place than kiwi.pl
+</I>&gt;<i> will emerge for this function. I consider putting this function into
+</I>&gt;<i> kiwi.pl an eyesore and I agree with you that it should not live there.
+</I>&gt;<i> However, I also feel quite strongly that it should not be mingled in
+</I>&gt;<i> with the XML validation as it really has nothing to do with the
+</I>&gt;<i> validation step of the control file.
+</I>
+Ok, I agree here. So let us create a function for the md5 check
+and put it into kiwi.pl. The md5 check makes only sense in kiwi's
+prepare mode anyway so it is called too often at the moment. Would
+be good if we just place one call inside the $Prepare block
+
+Regards,
+Marcus
+-- 
+ Public Key available
+ gpg --keyserver gpg-keyserver.de --recv-keys 0xCCE3C6A2
+ -------------------------------------------------------
+ Marcus Sch&#228;fer (Res. &amp; Dev.)   SUSE LINUX Products GmbH
+ Tel: 0911-740 53 0             Maxfeldstrasse 5
+ FAX: 0911-740 53 479           D-90409 N&#252;rnberg
+ GF: Markus Rex                 HRB: 16746 (AG N&#252;rnberg)
+ <A HREF="http://www.suse.de">http://www.suse.de</A>             Germany
+ -------------------------------------------------------
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002945.html">[Kiwi-devel] Some restructuring
+</A></li>
+	<LI>Next message: <A HREF="002948.html">[Kiwi-devel] Some restructuring
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2946">[ date ]</a>
+              <a href="thread.html#2946">[ thread ]</a>
+              <a href="subject.html#2946">[ subject ]</a>
+              <a href="author.html#2946">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

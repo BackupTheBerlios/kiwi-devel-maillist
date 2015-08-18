@@ -1,0 +1,167 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. cfab5ad6479ebe0cca09481b9b02dbb33e529934
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20cfab5ad6479ebe0cca09481b9b02dbb33e529934&In-Reply-To=%3C20101116104657.BB129480280%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002811.html">
+   <LINK REL="Next"  HREF="002813.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. cfab5ad6479ebe0cca09481b9b02dbb33e529934</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20cfab5ad6479ebe0cca09481b9b02dbb33e529934&In-Reply-To=%3C20101116104657.BB129480280%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. cfab5ad6479ebe0cca09481b9b02dbb33e529934">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Nov 16 11:46:57 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002811.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b1c4470b2c2c02edcf5461cb08ba0c06946c58b6
+</A></li>
+        <LI>Next message: <A HREF="002813.html">[Kiwi-devel] Additional consistency check
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2812">[ date ]</a>
+              <a href="thread.html#2812">[ thread ]</a>
+              <a href="subject.html#2812">[ subject ]</a>
+              <a href="author.html#2812">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  cfab5ad6479ebe0cca09481b9b02dbb33e529934 (commit)
+      from  b1c4470b2c2c02edcf5461cb08ba0c06946c58b6 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit cfab5ad6479ebe0cca09481b9b02dbb33e529934
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Nov 16 11:45:18 2010 +0100
+
+    - netboot: fixed incorporation of hardware maps
+    - netboot: evaluate additional VENDOR_CONF value
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 7114fa9..af6c49f 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -4428,8 +4428,13 @@ function searchAlternativeConfig {
+ function searchHardwareMapConfig {
+ 	local list_var
+ 	local mac_list
++	#======================================
++	# return if no map was specified
++	#--------------------------------------
++	if [ -z &quot;$HARDWARE_MAP&quot; ];then
++		return
++	fi
+ 	Echo &quot;Found hardware/vendor map configuration variable&quot;
+-	Debug &quot;HARDWARE_MAP = '$HARDWARE_MAP'&quot;
+ 	#===========================================
+ 	# Evaluate the MAP list, and test for hwaddr
+ 	#-------------------------------------------
+diff --git a/system/boot/ix86/netboot/suse-linuxrc b/system/boot/ix86/netboot/suse-linuxrc
+index 5f55b8f..92f8cea 100755
+--- a/system/boot/ix86/netboot/suse-linuxrc
++++ b/system/boot/ix86/netboot/suse-linuxrc
+@@ -254,17 +254,15 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 		searchAlternativeConfig
+ 	fi
+ 	#======================================
+-	# Check for Hardware Map Config
+-	#--------------------------------------
+-	if [ -n &quot;$HARDWARE_MAP&quot; ];then
+-		searchHardwareMapConfig
+-	fi
+-	#======================================
+ 	# try to import configuration
+ 	#--------------------------------------
+ 	IMPORTED=0
+ 	if [ -s $CONFIG ] ;then
+ 		importFile &lt; $CONFIG
++		#======================================
++		# Check and import Hardware Maps if set
++		#--------------------------------------
++		searchHardwareMapConfig
+ 		IMPORTED=1
+ 	fi
+ 	#========================================
+@@ -312,9 +310,6 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 			if test ! -s $CONFIG;then
+ 				searchAlternativeConfig
+ 			fi
+-			if [ -n &quot;$HARDWARE_MAP&quot; ];then
+-				searchHardwareMapConfig
+-			fi
+ 			test -s $CONFIG || {
+ 				Echo &quot;Couldn't get image configuration&quot;
+ 				Echo &quot;sleeping [60 sec]...&quot;
+@@ -338,6 +333,10 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	#--------------------------------------
+ 	if [ $IMPORTED -eq 0 ];then
+ 		importFile &lt; $CONFIG
++		#======================================
++		# Check and import Hardware Maps if set
++		#--------------------------------------
++		searchHardwareMapConfig
+ 		IMPORTED=1
+ 	fi
+ 	#======================================
+@@ -786,9 +785,9 @@ runHook preconfig
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	mkdir -p /config
+ 	#======================================
+-	# Get files from CONF value
++	# Get files from CONF, VENDOR_CONF
+ 	#--------------------------------------
+-	IFS=&quot;,&quot; ; for i in $CONF;do
++	IFS=&quot;,&quot; ; for i in $CONF $VENDOR_CONF;do
+ 		field=0
+ 		IFS=&quot;;&quot; ; for n in $i;do
+ 		case $field in
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002811.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b1c4470b2c2c02edcf5461cb08ba0c06946c58b6
+</A></li>
+	<LI>Next message: <A HREF="002813.html">[Kiwi-devel] Additional consistency check
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2812">[ date ]</a>
+              <a href="thread.html#2812">[ thread ]</a>
+              <a href="subject.html#2812">[ subject ]</a>
+              <a href="author.html#2812">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

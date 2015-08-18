@@ -1,0 +1,514 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1938 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1938%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200903021607.n22G7kxr011762%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001059.html">
+   <LINK REL="Next"  HREF="001061.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1938 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1938%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200903021607.n22G7kxr011762%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1938 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Mar  2 17:07:46 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001059.html">[Kiwi-devel] r1937 - in kiwi-head: . doc doc/LaTex modules rpm
+</A></li>
+        <LI>Next message: <A HREF="001061.html">[Kiwi-devel] r1939 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1060">[ date ]</a>
+              <a href="thread.html#1060">[ thread ]</a>
+              <a href="subject.html#1060">[ subject ]</a>
+              <a href="author.html#1060">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-03-02 17:07:37 +0100 (Mon, 02 Mar 2009)
+New Revision: 1938
+
+Modified:
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/modules/KIWIScheme.rnc
+   kiwi-head/modules/KIWIScheme.rng
+   kiwi-head/modules/KIWIXML.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- allow setting up the kernel vga value (bnc #480336)
+
+
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2009-03-02 14:44:46 UTC (rev 1937)
++++ kiwi-head/modules/KIWIBoot.pm	2009-03-02 16:07:37 UTC (rev 1938)
+@@ -70,6 +70,7 @@
+ 	my $syszip    = 0;
+ 	my $sysird    = 0;
+ 	my $zipped    = 0;
++	my $vga       = &quot;0x314&quot;;
+ 	my $vmmbyte;
+ 	my $kernel;
+ 	my $knlink;
+@@ -354,6 +355,15 @@
+ 	#------------------------------------------
+ 	my $arch = qxx (&quot;uname -m&quot;); chomp $arch;
+ 	#==========================================
++	# check framebuffer vga value
++	#------------------------------------------
++	if (defined $xml) {
++		my %type = %{$xml-&gt;getImageTypeAndAttributes()};
++		if ($type{vga}) {
++			$vga = $type{vga};
++		}
++	}
++	#==========================================
+ 	# Store object data (2)
+ 	#------------------------------------------
+ 	$this-&gt;{kiwi}   = $kiwi;
+@@ -371,6 +381,7 @@
+ 	$this-&gt;{arch}   = $arch;
+ 	$this-&gt;{ptool}  = $main::Partitioner;
+ 	$this-&gt;{lvm}    = $lvm;
++	$this-&gt;{vga}    = $vga;
+ 	return $this;
+ }
+ 
+@@ -3263,6 +3274,7 @@
+ 	my $imgtype  = $this-&gt;{imgtype};
+ 	my $bootpart = $this-&gt;{bootpart};
+ 	my $label    = $this-&gt;{bootlabel};
++	my $vga      = $this-&gt;{vga};
+ 	#==========================================
+ 	# Check boot partition number
+ 	#------------------------------------------
+@@ -3317,15 +3329,15 @@
+ 		#------------------------------------------
+ 		if (! $isxen) {
+ 			if ($type =~ /^KIWI CD/) {
+-				print FD &quot; kernel (cd)/boot/linux vga=0x314 splash=silent&quot;;
++				print FD &quot; kernel (cd)/boot/linux vga=$vga splash=silent&quot;;
+ 				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+-				print FD &quot; kernel /boot/linux.vmx vga=0x314&quot;;
++				print FD &quot; kernel /boot/linux.vmx vga=$vga&quot;;
+ 				print FD &quot; loader=$loader splash=silent&quot;;
+ 			} else {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+-				print FD &quot; kernel /boot/linux vga=0x314&quot;;
++				print FD &quot; kernel /boot/linux vga=$vga&quot;;
+ 				print FD &quot; loader=$loader splash=silent&quot;;
+ 			}
+ 			if ($imgtype eq &quot;split&quot;) {
+@@ -3344,17 +3356,17 @@
+ 		} else {
+ 			if ($type =~ /^KIWI CD/) {
+ 				print FD &quot; kernel (cd)/boot/xen.gz\n&quot;;
+-				print FD &quot; module /boot/linux vga=0x314 splash=silent&quot;;
++				print FD &quot; module /boot/linux vga=$vga splash=silent&quot;;
+ 				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+ 				print FD &quot; kernel /boot/xen.gz.vmx\n&quot;;
+-				print FD &quot; module /boot/linux.vmx vga=0x314&quot;;
++				print FD &quot; module /boot/linux.vmx vga=$vga&quot;;
+ 				print FD &quot; loader=$loader splash=silent&quot;;
+ 			} else {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+ 				print FD &quot; kernel /boot/xen.gz\n&quot;;
+-				print FD &quot; module /boot/linux vga=0x314&quot;;
++				print FD &quot; module /boot/linux vga=$vga&quot;;
+ 				print FD &quot; loader=$loader splash=silent&quot;;
+ 			}
+ 			if ($imgtype eq &quot;split&quot;) {
+@@ -3383,15 +3395,15 @@
+ 		}
+ 		if (! $isxen) {
+ 			if ($type =~ /^KIWI CD/) {
+-				print FD &quot; kernel (cd)/boot/linux vga=0x314 splash=silent&quot;;
++				print FD &quot; kernel (cd)/boot/linux vga=$vga splash=silent&quot;;
+ 				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+-				print FD &quot; kernel /boot/linux.vmx vga=0x314&quot;;
++				print FD &quot; kernel /boot/linux.vmx vga=$vga&quot;;
+ 				print FD &quot; loader=$loader splash=silent&quot;;
+ 			} else {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+-				print FD &quot; kernel /boot/linux vga=0x314&quot;;
++				print FD &quot; kernel /boot/linux vga=$vga&quot;;
+ 				print FD &quot; loader=$loader splash=silent&quot;;
+ 			}
+ 			print FD &quot; ide=nodma apm=off acpi=off noresume selinux=0 nosmp&quot;;
+@@ -3412,17 +3424,17 @@
+ 		} else {
+ 			if ($type =~ /^KIWI CD/) {
+ 				print FD &quot; kernel (cd)/boot/xen.gz\n&quot;;
+-				print FD &quot; module (cd)/boot/linux vga=0x314 splash=silent&quot;;
++				print FD &quot; module (cd)/boot/linux vga=$vga splash=silent&quot;;
+ 				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+ 				print FD &quot; kernel /boot/xen.gz.vmx\n&quot;;
+-				print FD &quot; module /boot/linux.vmx vga=0x314&quot;;
++				print FD &quot; module /boot/linux.vmx vga=$vga&quot;;
+ 				print FD &quot; loader=$loader splash=silent&quot;;
+ 			} else {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+ 				print FD &quot; kernel /boot/xen.gz\n&quot;;
+-				print FD &quot; module /boot/linux vga=0x314&quot;;
++				print FD &quot; module /boot/linux vga=$vga&quot;;
+ 				print FD &quot; loader=$loader splash=silent&quot;;
+ 			}
+ 			print FD &quot; ide=nodma apm=off acpi=off noresume selinux=0 nosmp&quot;;
+@@ -3495,11 +3507,11 @@
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+ 				print FD &quot;KERNEL /boot/linux.vmx\n&quot;;
+ 				print FD &quot;APPEND initrd=/boot/initrd.vmx &quot;;
+-				print FD &quot;vga=0x314 loader=$loader splash=silent&quot;;
++				print FD &quot;vga=$vga loader=$loader splash=silent&quot;;
+ 			} else {
+ 				print FD &quot;KERNEL /boot/linux\n&quot;;
+ 				print FD &quot;APPEND initrd=/boot/initrd &quot;;
+-				print FD &quot;vga=0x314 loader=$loader splash=silent&quot;;
++				print FD &quot;vga=$vga loader=$loader splash=silent&quot;;
+ 			}
+ 			if ($imgtype eq &quot;split&quot;) {
+ 				print FD &quot; COMBINED_IMAGE=yes showopts\n&quot;;
+@@ -3538,11 +3550,11 @@
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+ 				print FD &quot;KERNEL /boot/linux.vmx\n&quot;;
+ 				print FD &quot;APPEND initrd=/boot/initrd.vmx &quot;;
+-				print FD &quot;vga=0x314 loader=$loader splash=silent&quot;;
++				print FD &quot;vga=$vga loader=$loader splash=silent&quot;;
+ 			} else {
+ 				print FD &quot;KERNEL /boot/linux\n&quot;;
+ 				print FD &quot;APPEND initrd=/boot/initrd &quot;;
+-				print FD &quot;vga=0x314 loader=$loader splash=silent&quot;;
++				print FD &quot;vga=$vga loader=$loader splash=silent&quot;;
+ 			}
+ 			print FD &quot; ide=nodma apm=off acpi=off noresume selinux=0 nosmp&quot;;
+ 			print FD &quot; noapic maxcpus=0 edd=off&quot;;
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2009-03-02 14:44:46 UTC (rev 1937)
++++ kiwi-head/modules/KIWILinuxRC.sh	2009-03-02 16:07:37 UTC (rev 1938)
+@@ -26,6 +26,7 @@
+ export KLOG_DEFAULT=1
+ export PARTITIONER=sfdisk
+ export TRANSFER_ERRORS_FILE=/tmp/transfer.errors
++export DEFAULT_VGA=0x314
+ 
+ #======================================
+ # Debug
+@@ -692,6 +693,10 @@
+ 	local menu=$destsPrefix/boot/grub/menu.lst
+ 	local kernel=&quot;&quot;
+ 	local initrd=&quot;&quot;
++	local fbmode=$vga
++	if [ -z &quot;$fbmode&quot; ];then
++		fbmode=$DEFAULT_VGA
++	fi
+ 	#======================================
+ 	# import grub stages into recovery
+ 	#--------------------------------------
+@@ -720,7 +725,7 @@
+ 			echo &quot; kernel /boot/xen.gz&quot;                   &gt;&gt; $menu
+ 			echo -n &quot; module /boot/$kernel&quot;               &gt;&gt; $menu
+ 			echo -n &quot; root=$diskByID $console&quot;            &gt;&gt; $menu
+-			echo -n &quot; vga=0x314 splash=silent&quot;            &gt;&gt; $menu
++			echo -n &quot; vga=$fbmode splash=silent&quot;          &gt;&gt; $menu
+ 			echo -n &quot; $KIWI_INITRD_PARAMS&quot;                &gt;&gt; $menu
+ 			echo -n &quot; $KIWI_KERNEL_OPTIONS&quot;               &gt;&gt; $menu
+ 			echo &quot; KIWI_RECOVERY=1 showopts&quot;              &gt;&gt; $menu
+@@ -728,7 +733,7 @@
+ 		else
+ 			echo -n &quot; kernel $gdev_recovery/boot/$kernel&quot; &gt;&gt; $menu
+ 			echo -n &quot; root=$diskByID $console&quot;            &gt;&gt; $menu
+-			echo -n &quot; vga=0x314 splash=silent&quot;            &gt;&gt; $menu
++			echo -n &quot; vga=$fbmode splash=silent&quot;          &gt;&gt; $menu
+ 			echo -n &quot; $KIWI_INITRD_PARAMS&quot;                &gt;&gt; $menu
+ 			echo -n &quot; $KIWI_KERNEL_OPTIONS&quot;               &gt;&gt; $menu
+ 			echo &quot; KIWI_RECOVERY=1 showopts&quot;              &gt;&gt; $menu
+@@ -756,6 +761,10 @@
+ 	local kname=&quot;&quot;
+ 	local kernel=&quot;&quot;
+ 	local initrd=&quot;&quot;
++	local fbmode=$vga
++	if [ -z &quot;$fbmode&quot; ];then
++		fbmode=$DEFAULT_VGA
++	fi
+ 	#======================================
+ 	# check for device by ID
+ 	#--------------------------------------
+@@ -812,16 +821,16 @@
+ 			initrd=&quot;initrd.$count&quot;
+ 			echo &quot;LABEL Linux&quot; &gt;&gt; $conf
+ 			if ! echo $gfix | grep -E -q &quot;OEM|USB|VMX|unknown&quot;;then
+-				echo &quot;MENU LABEL &quot;&quot;$gfix&quot;                    &gt;&gt; $conf
++				echo &quot;MENU LABEL &quot;&quot;$gfix&quot;                      &gt;&gt; $conf
+ 			elif [ -z &quot;$kiwi_oemtitle&quot; ];then
+-				echo &quot;MENU LABEL &quot;&quot;$kname&quot;&quot; [ &quot;$gfix&quot; ]&quot;     &gt;&gt; $conf
++				echo &quot;MENU LABEL &quot;&quot;$kname&quot;&quot; [ &quot;$gfix&quot; ]&quot;       &gt;&gt; $conf
+ 			else
+ 				if [ &quot;$count&quot; = &quot;1&quot; ];then
+-					echo -n &quot;MENU LABEL &quot;&quot;$kiwi_oemtitle&quot;    &gt;&gt; $conf
+-					echo &quot; [ &quot;&quot;$gfix&quot;&quot; ]&quot;                    &gt;&gt; $conf
++					echo -n &quot;MENU LABEL &quot;&quot;$kiwi_oemtitle&quot;      &gt;&gt; $conf
++					echo &quot; [ &quot;&quot;$gfix&quot;&quot; ]&quot;                      &gt;&gt; $conf
+ 				else
+-					echo -n &quot;MENU LABEL &quot;&quot;$kiwi_oemtitle&quot;    &gt;&gt; $conf
+-					echo &quot;-&quot;&quot;$kname&quot;&quot; [ &quot;&quot;$gfix&quot;&quot; ]&quot;         &gt;&gt; $conf
++					echo -n &quot;MENU LABEL &quot;&quot;$kiwi_oemtitle&quot;      &gt;&gt; $conf
++					echo &quot;-&quot;&quot;$kname&quot;&quot; [ &quot;&quot;$gfix&quot;&quot; ]&quot;           &gt;&gt; $conf
+ 				fi
+ 			fi
+ 			if [ $kernel = &quot;vmlinuz-xen&quot; ];then
+@@ -829,34 +838,34 @@
+ 					&quot;*** syslinux xen boot not implemented ***&quot; \
+ 				&quot;reboot&quot;
+ 			else
+-				echo &quot;KERNEL /boot/$kernel&quot;                  &gt;&gt; $conf
+-				echo -n &quot;APPEND initrd=/boot/$initrd&quot;        &gt;&gt; $conf
+-				echo -n &quot; root=$diskByID $console vga=0x314&quot; &gt;&gt; $conf
+-				echo -n &quot; loader=$loader splash=silent&quot;      &gt;&gt; $conf
++				echo &quot;KERNEL /boot/$kernel&quot;                    &gt;&gt; $conf
++				echo -n &quot;APPEND initrd=/boot/$initrd&quot;          &gt;&gt; $conf
++				echo -n &quot; root=$diskByID $console vga=$fbmode&quot; &gt;&gt; $conf
++				echo -n &quot; loader=$loader splash=silent&quot;        &gt;&gt; $conf
+ 				if [ ! -z &quot;$swap&quot; ];then
+-					echo -n &quot; resume=$swapByID&quot;              &gt;&gt; $conf
++					echo -n &quot; resume=$swapByID&quot;                &gt;&gt; $conf
+ 				fi
+-				echo -n &quot; $KIWI_INITRD_PARAMS&quot;               &gt;&gt; $conf
+-				echo &quot; $KIWI_KERNEL_OPTIONS showopts&quot;        &gt;&gt; $conf
++				echo -n &quot; $KIWI_INITRD_PARAMS&quot;                 &gt;&gt; $conf
++				echo &quot; $KIWI_KERNEL_OPTIONS showopts&quot;          &gt;&gt; $conf
+ 			fi
+ 			#======================================
+ 			# create Failsafe entry
+ 			#--------------------------------------
+ 			echo &quot;LABEL Failsafe&quot; &gt;&gt; $conf
+ 			if ! echo $gfix | grep -E -q &quot;OEM|USB|VMX|unknown&quot;;then
+-				echo &quot;MENU LABEL Failsafe -- &quot;&quot;$gfix&quot;        &gt;&gt; $conf
++				echo &quot;MENU LABEL Failsafe -- &quot;&quot;$gfix&quot;          &gt;&gt; $conf
+ 			elif [ -z &quot;$kiwi_oemtitle&quot; ];then
+-				echo -n &quot;MENU LABEL Failsafe -- &quot;&quot;$kname&quot;    &gt;&gt; $conf
+-				echo &quot; [ &quot;$gfix&quot; ]&quot;                          &gt;&gt; $conf
++				echo -n &quot;MENU LABEL Failsafe -- &quot;&quot;$kname&quot;      &gt;&gt; $conf
++				echo &quot; [ &quot;$gfix&quot; ]&quot;                            &gt;&gt; $conf
+ 			else
+ 				if [ &quot;$count&quot; = &quot;1&quot; ];then
+-					echo -n &quot;MENU LABEL Failsafe -- &quot;        &gt;&gt; $conf
+-					echo -n &quot;$kiwi_oemtitle&quot;&quot; [ &quot;            &gt;&gt; $conf
+-					echo &quot;$gfix&quot;&quot; ]&quot;                         &gt;&gt; $conf
++					echo -n &quot;MENU LABEL Failsafe -- &quot;          &gt;&gt; $conf
++					echo -n &quot;$kiwi_oemtitle&quot;&quot; [ &quot;              &gt;&gt; $conf
++					echo &quot;$gfix&quot;&quot; ]&quot;                           &gt;&gt; $conf
+ 				else
+-					echo -n &quot;MENU LABEL Failsafe -- &quot;        &gt;&gt; $conf
+-					echo -n &quot;$kiwi_oemtitle&quot;&quot;-&quot;&quot;$kname&quot;&quot; [ &quot; &gt;&gt; $conf
+-					echo &quot;$gfix&quot;&quot; ]&quot;                         &gt;&gt; $conf
++					echo -n &quot;MENU LABEL Failsafe -- &quot;          &gt;&gt; $conf
++					echo -n &quot;$kiwi_oemtitle&quot;&quot;-&quot;&quot;$kname&quot;&quot; [ &quot;   &gt;&gt; $conf
++					echo &quot;$gfix&quot;&quot; ]&quot;                           &gt;&gt; $conf
+ 				fi
+ 			fi
+ 			if [ $kernel = &quot;vmlinuz-xen&quot; ];then
+@@ -864,18 +873,18 @@
+ 					&quot;*** syslinux xen boot not implemented ***&quot; \
+ 				&quot;reboot&quot;
+ 			else
+-				echo &quot;KERNEL /boot/$kernel&quot;                  &gt;&gt; $conf
+-				echo -n &quot;APPEND initrd=/boot/$initrd&quot;        &gt;&gt; $conf
+-				echo -n &quot; root=$diskByID $console vga=0x314&quot; &gt;&gt; $conf
+-				echo -n &quot; loader=$loader splash=silent&quot;      &gt;&gt; $conf
++				echo &quot;KERNEL /boot/$kernel&quot;                    &gt;&gt; $conf
++				echo -n &quot;APPEND initrd=/boot/$initrd&quot;          &gt;&gt; $conf
++				echo -n &quot; root=$diskByID $console vga=$fbmode&quot; &gt;&gt; $conf
++				echo -n &quot; loader=$loader splash=silent&quot;        &gt;&gt; $conf
+ 				if [ ! -z &quot;$swap&quot; ];then
+-					echo -n &quot; resume=$swapByID&quot;              &gt;&gt; $conf
++					echo -n &quot; resume=$swapByID&quot;                &gt;&gt; $conf
+ 				fi
+-				echo -n &quot; $KIWI_INITRD_PARAMS&quot;               &gt;&gt; $conf
+-				echo &quot; $KIWI_KERNEL_OPTIONS showopts&quot;        &gt;&gt; $conf
+-				echo -n &quot; ide=nodma apm=off acpi=off&quot;        &gt;&gt; $conf
+-				echo -n &quot; noresume selinux=0 nosmp&quot;          &gt;&gt; $conf
+-				echo &quot; noapic maxcpus=0 edd=off&quot;             &gt;&gt; $conf
++				echo -n &quot; $KIWI_INITRD_PARAMS&quot;                 &gt;&gt; $conf
++				echo &quot; $KIWI_KERNEL_OPTIONS showopts&quot;          &gt;&gt; $conf
++				echo -n &quot; ide=nodma apm=off acpi=off&quot;          &gt;&gt; $conf
++				echo -n &quot; noresume selinux=0 nosmp&quot;            &gt;&gt; $conf
++				echo &quot; noapic maxcpus=0 edd=off&quot;               &gt;&gt; $conf
+ 			fi
+ 			#======================================
+ 			# create recovery entry
+@@ -916,6 +925,10 @@
+ 	local kname=&quot;&quot;
+ 	local kernel=&quot;&quot;
+ 	local initrd=&quot;&quot;
++	local fbmode=$vga
++	if [ -z &quot;$fbmode&quot; ];then
++		fbmode=$DEFAULT_VGA
++	fi
+ 	#======================================
+ 	# check for device by ID
+ 	#--------------------------------------
+@@ -1005,7 +1018,7 @@
+ 				echo &quot; kernel /boot/xen.gz&quot;                       &gt;&gt; $menu
+ 				echo -n &quot; module /boot/$kernel&quot;                   &gt;&gt; $menu
+ 				echo -n &quot; root=$diskByID $console&quot;                &gt;&gt; $menu
+-				echo -n &quot; vga=0x314 splash=silent&quot;                &gt;&gt; $menu
++				echo -n &quot; vga=$fbmode splash=silent&quot;              &gt;&gt; $menu
+ 				if [ ! -z &quot;$swap&quot; ];then
+ 					echo -n &quot; resume=$swapByID&quot;                   &gt;&gt; $menu
+ 				fi
+@@ -1015,7 +1028,7 @@
+ 			else
+ 				echo -n &quot; kernel $gdev/boot/$kernel&quot;              &gt;&gt; $menu
+ 				echo -n &quot; root=$diskByID $console&quot;                &gt;&gt; $menu
+-				echo -n &quot; vga=0x314 splash=silent&quot;                &gt;&gt; $menu
++				echo -n &quot; vga=$fbmode splash=silent&quot;              &gt;&gt; $menu
+ 				if [ ! -z &quot;$swap&quot; ];then
+ 					echo -n &quot; resume=$swapByID&quot;                   &gt;&gt; $menu
+ 				fi
+@@ -1045,7 +1058,7 @@
+ 				echo &quot; kernel /boot/xen.gz&quot;                       &gt;&gt; $menu
+ 				echo -n &quot; module /boot/$kernel&quot;                   &gt;&gt; $menu
+ 				echo -n &quot; root=$diskByID $console&quot;                &gt;&gt; $menu
+-				echo -n &quot; vga=0x314 splash=silent&quot;                &gt;&gt; $menu
++				echo -n &quot; vga=$fbmode splash=silent&quot;              &gt;&gt; $menu
+ 				echo -n &quot; $KIWI_INITRD_PARAMS&quot;                    &gt;&gt; $menu
+ 				echo -n &quot; $KIWI_KERNEL_OPTIONS showopts&quot;          &gt;&gt; $menu
+ 				echo -n &quot; ide=nodma apm=off acpi=off&quot;             &gt;&gt; $menu
+@@ -1055,7 +1068,7 @@
+ 			else
+ 				echo -n &quot; kernel $gdev/boot/$kernel&quot;              &gt;&gt; $menu
+ 				echo -n &quot; root=$diskByID $console&quot;                &gt;&gt; $menu
+-				echo -n &quot; vga=0x314 splash=silent&quot;                &gt;&gt; $menu
++				echo -n &quot; vga=$fbmode splash=silent&quot;              &gt;&gt; $menu
+ 				echo -n &quot; $KIWI_INITRD_PARAMS&quot;                    &gt;&gt; $menu
+ 				echo -n &quot; $KIWI_KERNEL_OPTIONS showopts&quot;          &gt;&gt; $menu
+ 				echo -n &quot; ide=nodma apm=off acpi=off&quot;             &gt;&gt; $menu
+
+Modified: kiwi-head/modules/KIWIScheme.rnc
+===================================================================
+--- kiwi-head/modules/KIWIScheme.rnc	2009-03-02 14:44:46 UTC (rev 1937)
++++ kiwi-head/modules/KIWIScheme.rnc	2009-03-02 16:07:37 UTC (rev 1938)
+@@ -1094,6 +1094,11 @@
+ 		attribute bootloader {
+ 			&quot;grub&quot; | &quot;syslinux&quot;
+ 		}
++	k.type.vga.attribute =
++		## Specifies the kernel framebuffer mode. More information
++		## about the possible values can be found by calling
++		## hwinfo --framebuffer or in /usr/src/linux/Documentation/fb/vesafb.txt
++		attribute vga { text }
+ 	k.type.filesystem.attribute = 
+ 		## Specifies the filesystem which can be one of:
+ 		## ext2 , ext3 , reiserfs ,squashfs or cromfs
+@@ -1134,6 +1139,7 @@
+ 		k.type.boot.attribute? &amp;
+ 		k.type.flags.attribute? &amp;
+ 		k.type.bootloader.attribute? &amp;
++		k.type.vga.attribute? &amp;
+ 		k.type.filesystem.attribute? &amp;
+ 		k.type.fsreadonly.attribute? &amp;
+ 		k.type.fsreadwrite.attribute? &amp;
+
+Modified: kiwi-head/modules/KIWIScheme.rng
+===================================================================
+--- kiwi-head/modules/KIWIScheme.rng	2009-03-02 14:44:46 UTC (rev 1937)
++++ kiwi-head/modules/KIWIScheme.rng	2009-03-02 16:07:37 UTC (rev 1938)
+@@ -1483,6 +1483,13 @@
+         &lt;/choice&gt;
+       &lt;/attribute&gt;
+     &lt;/define&gt;
++    &lt;define name=&quot;k.type.vga.attribute&quot;&gt;
++      &lt;attribute name=&quot;vga&quot;&gt;
++        &lt;a:documentation&gt;Specifies the kernel framebuffer mode. More information
++about the possible values can be found by calling
++hwinfo --framebuffer or in /usr/src/linux/Documentation/fb/vesafb.txt&lt;/a:documentation&gt;
++      &lt;/attribute&gt;
++    &lt;/define&gt;
+     &lt;define name=&quot;k.type.filesystem.attribute&quot;&gt;
+       &lt;attribute name=&quot;filesystem&quot;&gt;
+         &lt;a:documentation&gt;Specifies the filesystem which can be one of:
+@@ -1577,6 +1584,9 @@
+           &lt;ref name=&quot;k.type.bootloader.attribute&quot;/&gt;
+         &lt;/optional&gt;
+         &lt;optional&gt;
++          &lt;ref name=&quot;k.type.vga.attribute&quot;/&gt;
++        &lt;/optional&gt;
++        &lt;optional&gt;
+           &lt;ref name=&quot;k.type.filesystem.attribute&quot;/&gt;
+         &lt;/optional&gt;
+         &lt;optional&gt;
+
+Modified: kiwi-head/modules/KIWIXML.pm
+===================================================================
+--- kiwi-head/modules/KIWIXML.pm	2009-03-02 14:44:46 UTC (rev 1937)
++++ kiwi-head/modules/KIWIXML.pm	2009-03-02 16:07:37 UTC (rev 1938)
+@@ -656,6 +656,7 @@
+ 		$record{boot}   = $node -&gt; getAttribute(&quot;boot&quot;);
+ 		$record{flags}  = $node -&gt; getAttribute(&quot;flags&quot;);
+ 		$record{format} = $node -&gt; getAttribute(&quot;format&quot;);
++		$record{vga}    = $node -&gt; getAttribute(&quot;vga&quot;);
+ 		$record{bootloader}    = $node -&gt; getAttribute(&quot;bootloader&quot;);
+ 		$record{checkprebuilt} = $node -&gt; getAttribute(&quot;checkprebuilt&quot;);
+ 		$record{baseroot}      = $node -&gt; getAttribute(&quot;baseroot&quot;);
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2009-03-02 14:44:46 UTC (rev 1937)
++++ kiwi-head/rpm/kiwi.changes	2009-03-02 16:07:37 UTC (rev 1938)
+@@ -2,6 +2,7 @@
+ Mon Mar  2 10:19:09 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.24
++- allow setting up the kernel vga value (bnc #480336)
+ - added replaces=&quot;name&quot; attribute to the package element.
+   This allows you to install/upgrade a package by replacing
+   it with another one. Along with this change it's now also
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001059.html">[Kiwi-devel] r1937 - in kiwi-head: . doc doc/LaTex modules rpm
+</A></li>
+	<LI>Next message: <A HREF="001061.html">[Kiwi-devel] r1939 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1060">[ date ]</a>
+              <a href="thread.html#1060">[ thread ]</a>
+              <a href="subject.html#1060">[ subject ]</a>
+              <a href="author.html#1060">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

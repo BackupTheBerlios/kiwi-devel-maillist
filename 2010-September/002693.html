@@ -1,0 +1,404 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 03c933b6cba0ee9161ee8ec324f74fe158f11147
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2003c933b6cba0ee9161ee8ec324f74fe158f11147&In-Reply-To=%3C20100927100023.CD67C48103A%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002694.html">
+   <LINK REL="Next"  HREF="002695.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 03c933b6cba0ee9161ee8ec324f74fe158f11147</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2003c933b6cba0ee9161ee8ec324f74fe158f11147&In-Reply-To=%3C20100927100023.CD67C48103A%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 03c933b6cba0ee9161ee8ec324f74fe158f11147">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Sep 27 12:00:23 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002694.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. b1a5b41aa0a2d85320a1d2160884ff3d62b18a86
+</A></li>
+        <LI>Next message: <A HREF="002695.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 5b4c65df13193b8316c7252dc193073d882161be
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2693">[ date ]</a>
+              <a href="thread.html#2693">[ thread ]</a>
+              <a href="subject.html#2693">[ subject ]</a>
+              <a href="author.html#2693">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  03c933b6cba0ee9161ee8ec324f74fe158f11147 (commit)
+      from  b0c6f445643ebb72a524e1a679a2386d9b793956 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 03c933b6cba0ee9161ee8ec324f74fe158f11147
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Sep 27 11:27:49 2010 +0200
+
+    - added support for partition alignment with fdisk. Thus support
+      for 4k-sector size disks (logical 512 byte) with fdisk was added
+      when using parted the -align option is used in any case though.
+      In order to use the alignment when fdisk is used the oemconfig
+      element oem-align-partition must be set to 'true' (bnc #637333)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 153a397..14c2ba3 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -4183,6 +4183,7 @@ sub setStoragePartition {
+ 	my $cmdref   = shift;
+ 	my $tool     = $this-&gt;{ptool};
+ 	my $kiwi     = $this-&gt;{kiwi};
++	my $xml      = $this-&gt;{xml};
+ 	my $tmpdir   = $this-&gt;{tmpdir};
+ 	my @commands = @{$cmdref};
+ 	my $result;
+@@ -4260,9 +4261,23 @@ sub setStoragePartition {
+ 				$kiwi -&gt; loginfo ($status);
+ 				return undef;
+ 			}
+-			if (! open (FD,&quot;|/sbin/fdisk $device &amp;&gt; $tmpdir/fdisk.log&quot;)) {
++			if (! open (FD,&quot;|/sbin/fdisk -u $device &amp;&gt; $tmpdir/fdisk.log&quot;)) {
+ 				return undef;
+ 			}
++			my $palign = $xml -&gt; getOEMAlignPartition();
++			if (($palign) &amp;&amp; (&quot;$palign&quot; eq &quot;true&quot;)) {
++				# fix up the first sector
++				for (my $count=0;$count&lt;@commands;$count++) {
++					if ($commands[$count] eq &quot;n&quot;) {
++						if (($commands[$count+2] eq &quot;1&quot;) &amp;&amp;
++							($commands[$count+3] eq &quot;.&quot;)
++						) {
++							$commands[$count+3] = &quot;64&quot;;
++							last;
++						}
++					}
++				}
++			}
+ 			foreach my $cmd (@commands) {
+ 				if ($cmd eq &quot;.&quot;) {
+ 					print FD &quot;\n&quot;;
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 3b5e332..890452b 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -201,6 +201,10 @@ function baseSetupOEMPartition {
+ 		echo &quot;Setting up OEM_REBOOT=1&quot;
+ 		echo &quot;OEM_REBOOT=1&quot; &gt;&gt; $oemfile
+ 	fi
++	if [ ! -z &quot;$kiwi_oemalign&quot; ];then
++		echo &quot;Setting up OEM_ALIGN=1&quot;
++		echo &quot;OEM_ALIGN=1&quot; &gt;&gt; $oemfile
++	fi
+ 	if [ ! -z &quot;$kiwi_oemdumphalt&quot; ];then
+ 		echo &quot;Setting up OEM_DUMPHALT=1&quot;
+ 		echo &quot;OEM_DUMPHALT=1&quot; &gt;&gt; $oemfile
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 565b73b..5223715 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -711,6 +711,7 @@ sub createImageUSB {
+ 	$main::ForeignRepo{&quot;domain&quot;} = $xml -&gt; getXenDomain();
+ 	$main::ForeignRepo{&quot;oem-partition-install&quot;} =$xml-&gt;getOEMPartitionInstall();
+ 	$main::ForeignRepo{&quot;oem-swap&quot;}       = $xml -&gt; getOEMSwap();
++	$main::ForeignRepo{&quot;oem-align-partition&quot;} = $xml -&gt; getOEMAlignPartition();
+ 	$main::ForeignRepo{&quot;oem-swapsize&quot;}   = $xml -&gt; getOEMSwapSize();
+ 	$main::ForeignRepo{&quot;oem-systemsize&quot;} = $xml -&gt; getOEMSystemSize();
+ 	$main::ForeignRepo{&quot;oem-home&quot;}       = $xml -&gt; getOEMHome();
+@@ -2511,6 +2512,7 @@ sub createImageSplit {
+ 	$main::ForeignRepo{&quot;domain&quot;} = $xml -&gt; getXenDomain();
+ 	$main::ForeignRepo{&quot;oem-partition-install&quot;} =$xml-&gt;getOEMPartitionInstall();
+ 	$main::ForeignRepo{&quot;oem-swap&quot;}       = $xml -&gt; getOEMSwap();
++	$main::ForeignRepo{&quot;oem-align-partition&quot;} = $xml -&gt; getOEMAlignPartition();
+ 	$main::ForeignRepo{&quot;oem-swapsize&quot;}   = $xml -&gt; getOEMSwapSize();
+ 	$main::ForeignRepo{&quot;oem-systemsize&quot;} = $xml -&gt; getOEMSystemSize();
+ 	$main::ForeignRepo{&quot;oem-home&quot;}       = $xml -&gt; getOEMHome();
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 885df56..fbc1427 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -5508,12 +5508,18 @@ function callPartitioner {
+ 	local input=$1
+ 	if [ $PARTITIONER = &quot;sfdisk&quot; ];then
+ 		Echo &quot;Repartition the disk according to real geometry [ fdisk ]&quot;
++		if [ ! -z &quot;$OEM_ALIGN&quot; ];then
++			local pstart=$(checkFDiskFirstSector $imageDiskDevice)
++		fi
+ 		echo &quot;w&quot; &gt;&gt; $input
+ 		echo &quot;q&quot; &gt;&gt; $input
+ 		fdisk $imageDiskDevice &lt; $input 1&gt;&amp;2
+ 		if test $? != 0; then
+ 			systemException &quot;Failed to create partition table&quot; &quot;reboot&quot;
+ 		fi
++		if [ ! -z &quot;$OEM_ALIGN&quot; ];then
++			fixupFDiskSectors $input $pstart
++		fi
+ 	elif [ $PARTITIONER = &quot;fdasd&quot; ];then
+ 		Echo &quot;Repartition the disk according to real geometry [ fdasd ]&quot;
+ 		echo &quot;w&quot; &gt;&gt; $input
+@@ -5591,6 +5597,69 @@ function createFDasdInput {
+ 	done
+ }
+ #======================================
++# checkFDiskFirstSector
++#--------------------------------------
++function checkFDiskFirstSector {
++	# /.../
++	# check original alignment using fdisk
++	# ----
++	local dev=$1
++	fdisk -ul ${dev} | grep '^'${dev}1 | \
++		sed -e's@'${dev}1'[ \*]*\([0-9]\+\) .*$@\1@'
++}
++#======================================
++# fixupFDiskSectors
++#--------------------------------------
++function fixupFDiskSectors {
++	# /.../
++	# align the partition start sectors using fdisk
++	# ----
++	local input=$1
++	local palign=$2
++	local pstart pend act psize ptype rest
++	case &quot;$palign&quot; in
++		64) palign=8;;
++		2048) palign=2048;;
++		*) return;;
++	esac
++	local numpdevs=$(fdisk -ul $imageDiskDevice | grep '^/dev/' | wc -l)
++	rm -f $input
++	fdisk -ul $imageDiskDevice | grep '^/dev/' | \
++	while read pdev act pstart pend psize ptype rest; do
++		pdev=${pdev#$imageDiskDevice}
++		if [ &quot;$act&quot; != '*' ]; then
++			ptype=&quot;$psize&quot;
++			pend=&quot;$pstart&quot;
++			pstart=&quot;$act&quot;
++		fi
++		local aligned=$(( ( $pstart + $palign - 1 ) / $palign * $palign ))
++		if [ &quot;$aligned&quot; -ne &quot;$pstart&quot; ]; then
++			echo &quot;d&quot; &gt;&gt; $input
++			test $numpdevs -gt 1 &amp;&amp; echo &quot;$pdev&quot; &gt;&gt; $input
++			echo &quot;n&quot; &gt;&gt; $input
++			echo &quot;p&quot; &gt;&gt; $input
++			test $numpdevs -lt 4 &amp;&amp; echo &quot;$pdev&quot; &gt;&gt; $input
++			echo &quot;$aligned&quot; &gt;&gt; $input
++			echo &quot;$pend&quot; &gt;&gt; $input
++			echo &quot;t&quot; &gt;&gt; $input
++			test $numpdevs -gt 1 &amp;&amp; echo &quot;$pdev&quot; &gt;&gt; $input
++			echo &quot;$ptype&quot; &gt;&gt; $input
++			if [ &quot;$act&quot; = '*' ]; then
++				echo &quot;a&quot; &gt;&gt; $input
++				echo &quot;$pdev&quot; &gt;&gt; $input
++			fi
++		fi
++	done
++	if [ -s $input ]; then
++		echo &quot;w&quot; &gt;&gt; $input
++		echo &quot;q&quot; &gt;&gt; $input
++		fdisk -u $imageDiskDevice &lt; $input 1&gt;&amp;2
++		if test $? != 0; then
++			systemException &quot;Failed to fix up partition table&quot; &quot;reboot&quot;
++		fi
++	fi
++}
++#======================================
+ # createFDiskInput
+ #--------------------------------------
+ function createFDiskInput {
+diff --git a/modules/KIWISchema.rnc b/modules/KIWISchema.rnc
+index 0ebad6d..7813a9b 100644
+--- a/modules/KIWISchema.rnc
++++ b/modules/KIWISchema.rnc
+@@ -992,6 +992,29 @@ div {
+ }
+ 
+ #==========================================
++# common element &lt;oem-align-partition&gt;
++#
++div {
++	k.oem-align-partition.content = xsd:boolean
++	k.oem-align-partition.attlist = empty
++	k.oem-align-partition =
++		## For oemboot driven images: align start sectors. This is only
++		## done when fdisk is used. For parted the option -a is passed in
++		## in any case
++		[
++		db:para [
++			&quot;For oemboot driven images: align start sectors. This is only\x{a}&quot;~
++			&quot;done when fdisk is used. For parted the option -a is passed\x{a}&quot;~
++			&quot;in any case&quot;
++		]
++		]
++		element oem-align-partition {
++			k.oem-align-partition.attlist,
++			k.oem-align-partition.content
++		}
++}
++
++#==========================================
+ # common element &lt;oem-partition-install&gt;
+ #
+ div {
+@@ -2126,6 +2149,7 @@ div {
+ 			k.oemconfig.attlist &amp;
+ 			k.oem-systemsize? &amp;
+ 			k.oem-swap? &amp;
++			k.oem-align-partition? &amp;
+ 			k.oem-partition-install? &amp;
+ 			k.oem-home? &amp;
+ 			k.oem-boot-title? &amp;
+diff --git a/modules/KIWISchema.rng b/modules/KIWISchema.rng
+index ba00144..34f94b0 100644
+--- a/modules/KIWISchema.rng
++++ b/modules/KIWISchema.rng
+@@ -1418,6 +1418,31 @@ of the oem image&lt;/db:para&gt;
+   &lt;/div&gt;
+   &lt;!--
+     ==========================================
++    common element &lt;oem-align-partition&gt;
++    
++  --&gt;
++  &lt;div&gt;
++    &lt;define name=&quot;k.oem-align-partition.content&quot;&gt;
++      &lt;data type=&quot;boolean&quot;/&gt;
++    &lt;/define&gt;
++    &lt;define name=&quot;k.oem-align-partition.attlist&quot;&gt;
++      &lt;empty/&gt;
++    &lt;/define&gt;
++    &lt;define name=&quot;k.oem-align-partition&quot;&gt;
++      &lt;element name=&quot;oem-align-partition&quot;&gt;
++        &lt;a:documentation&gt;For oemboot driven images: align start sectors. This is only
++done when fdisk is used. For parted the option -a is passed in
++in any case&lt;/a:documentation&gt;
++        &lt;db:para&gt;For oemboot driven images: align start sectors. This is only
++done when fdisk is used. For parted the option -a is passed
++in any case&lt;/db:para&gt;
++        &lt;ref name=&quot;k.oem-align-partition.attlist&quot;/&gt;
++        &lt;ref name=&quot;k.oem-align-partition.content&quot;/&gt;
++      &lt;/element&gt;
++    &lt;/define&gt;
++  &lt;/div&gt;
++  &lt;!--
++    ==========================================
+     common element &lt;oem-partition-install&gt;
+     
+   --&gt;
+@@ -3050,6 +3075,9 @@ and setup the system disk&lt;/db:para&gt;
+             &lt;ref name=&quot;k.oem-swap&quot;/&gt;
+           &lt;/optional&gt;
+           &lt;optional&gt;
++            &lt;ref name=&quot;k.oem-align-partition&quot;/&gt;
++          &lt;/optional&gt;
++          &lt;optional&gt;
+             &lt;ref name=&quot;k.oem-partition-install&quot;/&gt;
+           &lt;/optional&gt;
+           &lt;optional&gt;
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 19c0ca9..daaf07d 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -378,6 +378,9 @@ sub new {
+ 		if (defined $foreignRepo-&gt;{&quot;oem-swap&quot;}) {
+ 			$this -&gt; setForeignOEMOptionsElement (&quot;oem-swap&quot;);
+ 		}
++		if (defined $foreignRepo-&gt;{&quot;oem-align-partition&quot;}) {
++			$this -&gt; setForeignOEMOptionsElement (&quot;oem-align-partition&quot;);
++		}
+ 		if (defined $foreignRepo-&gt;{&quot;oem-partition-install&quot;}) {
+ 			$this -&gt; setForeignOEMOptionsElement (&quot;oem-partition-install&quot;);
+ 		}
+@@ -1597,6 +1600,26 @@ sub getOEMSwap {
+ }
+ 
+ #==========================================
++# getOEMAlignPartition
++#------------------------------------------
++sub getOEMAlignPartition {
++	# ...
++	# Obtain the oem-align-partition value or return undef
++	# ---
++	my $this = shift;
++	my $tnode= $this-&gt;{typeNode};
++	my $node = $tnode -&gt; getElementsByTagName (&quot;oemconfig&quot;) -&gt; get_node(1);
++	if (! defined $node) {
++		return undef;
++	}
++	my $align = $node -&gt; getElementsByTagName (&quot;oem-align-partition&quot;);
++	if ((! defined $align) || (&quot;$align&quot; eq &quot;&quot;)) {
++		return undef;
++	}
++	return $align;
++}
++
++#==========================================
+ # getOEMPartitionInstall
+ #------------------------------------------
+ sub getOEMPartitionInstall {
+@@ -2656,6 +2679,7 @@ sub getImageConfig {
+ 		my $oemswapMB= $node -&gt; getElementsByTagName (&quot;oem-swapsize&quot;);
+ 		my $oemrootMB= $node -&gt; getElementsByTagName (&quot;oem-systemsize&quot;);
+ 		my $oemswap  = $node -&gt; getElementsByTagName (&quot;oem-swap&quot;);
++		my $oemalign = $node -&gt; getElementsByTagName (&quot;oem-align-partition&quot;);
+ 		my $oempinst = $node -&gt; getElementsByTagName (&quot;oem-partition-install&quot;);
+ 		my $oemhome  = $node -&gt; getElementsByTagName (&quot;oem-home&quot;);
+ 		my $oemtitle = $node -&gt; getElementsByTagName (&quot;oem-boot-title&quot;);
+@@ -2674,6 +2698,9 @@ sub getImageConfig {
+ 		} elsif ((defined $oemswapMB) &amp;&amp; (&quot;$oemswapMB&quot; &gt; 0)) {
+ 			$result{kiwi_oemswapMB} = $oemswapMB;
+ 		}
++		if ((defined $oemalign) &amp;&amp; (&quot;$oemalign&quot; eq &quot;true&quot;)) {
++			$result{kiwi_oemalign} = $oemalign;
++		}
+ 		if ((defined $oemhome) &amp;&amp; (&quot;$oemhome&quot; eq &quot;false&quot;)) {
+ 			$result{kiwi_oemhome} = &quot;no&quot;;
+ 		}
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002694.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. b1a5b41aa0a2d85320a1d2160884ff3d62b18a86
+</A></li>
+	<LI>Next message: <A HREF="002695.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 5b4c65df13193b8316c7252dc193073d882161be
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2693">[ date ]</a>
+              <a href="thread.html#2693">[ thread ]</a>
+              <a href="subject.html#2693">[ subject ]</a>
+              <a href="author.html#2693">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,178 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1316 - in kiwi-head: rpm	system/boot/netboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1316%20-%20in%20kiwi-head%3A%20rpm%0A%09system/boot/netboot&In-Reply-To=%3C200806091501.m59F1TNt001532%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000405.html">
+   <LINK REL="Next"  HREF="000407.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1316 - in kiwi-head: rpm	system/boot/netboot</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1316%20-%20in%20kiwi-head%3A%20rpm%0A%09system/boot/netboot&In-Reply-To=%3C200806091501.m59F1TNt001532%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1316 - in kiwi-head: rpm	system/boot/netboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Jun  9 17:01:29 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000405.html">[Kiwi-devel] [SVN:KIWI-Team] r1315 - kiwi-head/rpm
+</A></li>
+        <LI>Next message: <A HREF="000407.html">[Kiwi-devel] [SVN:KIWI-Team] r1317 -	kiwi-branches/KIWI-238-SuSE-11-0-Devel
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#406">[ date ]</a>
+              <a href="thread.html#406">[ thread ]</a>
+              <a href="subject.html#406">[ subject ]</a>
+              <a href="author.html#406">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: Mon Jun  9 17:01:22 2008
+New Revision: 1316
+
+Modified:
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/system/boot/netboot/suse-linuxrc
+   kiwi-head/system/boot/netboot/suse-preinit
+
+Log:
+
+- fixed update check for split images (bnc #398515)
+- fixed initrd setup for netboot split images (bnc #398515)
+
+
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+==============================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	(original)
++++ kiwi-head/modules/KIWILinuxRC.sh	Mon Jun  9 17:01:22 2008
+@@ -1333,7 +1333,7 @@
+ 	# ----
+ 	SYSTEM_INTEGRITY=&quot;&quot;
+ 	SYSTEM_MD5STATUS=&quot;&quot;
+-	count=0
++	local count=0
+ 	IFS=&quot;,&quot; ; for i in $IMAGE;do
+ 		field=0
+ 		IFS=&quot;;&quot; ; for n in $i;do
+@@ -2194,9 +2194,9 @@
+ 	# ----
+ 	local rootfs=/read-only/rootfs.tar
+ 	if [ ! -f $rootfs ];then
+-		systemException \
+-			&quot;Can't find rootfs tarball&quot; \
+-		&quot;reboot&quot;
++		Echo &quot;Can't find rootfs tarball&quot;
++		umount &quot;$roDevice&quot; &amp;&gt;/dev/null
++		return 1
+ 	fi
+ 	# /.../
+ 	# count inode numbers for files in rootfs tarball
+
+Modified: kiwi-head/rpm/kiwi.changes
+==============================================================================
+--- kiwi-head/rpm/kiwi.changes	(original)
++++ kiwi-head/rpm/kiwi.changes	Mon Jun  9 17:01:22 2008
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Mon Jun  9 16:56:28 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed update check for split images (bnc #398515)
++- fixed initrd setup for netboot split images (bnc #398515)
++
++-------------------------------------------------------------------
+ Mon Jun  9 11:11:53 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed getRemovableUSBStorageDevices function to work on
+
+Modified: kiwi-head/system/boot/netboot/suse-linuxrc
+==============================================================================
+--- kiwi-head/system/boot/netboot/suse-linuxrc	(original)
++++ kiwi-head/system/boot/netboot/suse-linuxrc	Mon Jun  9 17:01:22 2008
+@@ -272,12 +272,18 @@
+ 		fi
+ 		updateNeeded initialize
+ 		if linuxPartition $DISK;then
+-			mountSystem $imageDevice
+-			updateNeeded
+-			umountSystem
+-			systemIntegrity=`getSystemIntegrity 1`
+-			if [ $systemIntegrity = &quot;fine&quot; ];then
+-				Echo &quot;Base system is up to date, activating disk system...&quot;
++			if mountSystem $imageDevice;then
++				updateNeeded
++				umountSystem
++				systemIntegrity=`getSystemIntegrity 1`
++				if [ $systemIntegrity = &quot;fine&quot; ];then
++					Echo &quot;Base system is up to date, activating disk system...&quot;
++				fi
++			else
++				Echo -b &quot;Image Update for image [ $imageName ] needed&quot;
++				Echo -b &quot;Image mount failed&quot;
++				RELOAD_IMAGE=&quot;yes&quot;
++				systemIntegrity=&quot;clean&quot;
+ 			fi
+ 		else
+ 			systemIntegrity=&quot;clean&quot;
+
+Modified: kiwi-head/system/boot/netboot/suse-preinit
+==============================================================================
+--- kiwi-head/system/boot/netboot/suse-preinit	(original)
++++ kiwi-head/system/boot/netboot/suse-preinit	Mon Jun  9 17:01:22 2008
+@@ -45,11 +45,17 @@
+ #======================================
+ # 5) create initrd on diskful
+ #--------------------------------------
+-if test -z $KIWI_INITRD;then
+-	if test ! -z $DISK;then
+-		if test $systemIntegrity = &quot;clean&quot;;then
+-			setupSUSEInitrd
+-		fi
++if [ ! -z $DISK ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ]; then
++	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
++		#======================================
++		# use distro initrd via mkinitrd
++		#--------------------------------------
++		setupSUSEInitrd
++	else
++		#======================================
++		# use kiwi initrd downloaded before
++		#--------------------------------------
++		bootLoaderOK=1
+ 	fi
+ fi
+ 
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000405.html">[Kiwi-devel] [SVN:KIWI-Team] r1315 - kiwi-head/rpm
+</A></li>
+	<LI>Next message: <A HREF="000407.html">[Kiwi-devel] [SVN:KIWI-Team] r1317 -	kiwi-branches/KIWI-238-SuSE-11-0-Devel
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#406">[ date ]</a>
+              <a href="thread.html#406">[ thread ]</a>
+              <a href="subject.html#406">[ subject ]</a>
+              <a href="author.html#406">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

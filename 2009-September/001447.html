@@ -1,0 +1,133 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c63fd6f415a2115dceb49f2d98c29f6460bfb48e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20c63fd6f415a2115dceb49f2d98c29f6460bfb48e&In-Reply-To=%3C200909161407.n8GE7Ffw027028%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001446.html">
+   <LINK REL="Next"  HREF="001448.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c63fd6f415a2115dceb49f2d98c29f6460bfb48e</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20c63fd6f415a2115dceb49f2d98c29f6460bfb48e&In-Reply-To=%3C200909161407.n8GE7Ffw027028%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c63fd6f415a2115dceb49f2d98c29f6460bfb48e">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Sep 16 16:07:15 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001446.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8e302d88134abf49ba7c205ea0afcc173332650e
+</A></li>
+        <LI>Next message: <A HREF="001448.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8933f9c3549c5a9825f4d8cc080efeb30fdfaec7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1447">[ date ]</a>
+              <a href="thread.html#1447">[ thread ]</a>
+              <a href="subject.html#1447">[ subject ]</a>
+              <a href="author.html#1447">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  c63fd6f415a2115dceb49f2d98c29f6460bfb48e (commit)
+      from  8e302d88134abf49ba7c205ea0afcc173332650e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit c63fd6f415a2115dceb49f2d98c29f6460bfb48e
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Sep 16 16:06:46 2009 +0200
+
+    - fixed MBR flag setup (bnc #539505)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index b3c599e..3a4a290 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -3960,34 +3960,21 @@ sub installBootLoader {
+ 			$result= $? &gt;&gt; 8;
+ 			if ($result != 0) {
+ 				$kiwi -&gt; failed ();
+-				$kiwi -&gt; error  (&quot;Couldn't store master boot code backup: $status&quot;);
++				$kiwi -&gt; error  (&quot;Couldn't store backup MBR: $status&quot;);
+ 				$kiwi -&gt; failed ();
+ 				return undef;
+ 			}
+ 			$status = qxx (
+ 				&quot;dd if=$bmbr of=$diskname bs=1 count=512 seek=0x800 $opt 2&gt;&amp;1&quot;
+ 			);
++			unlink $bmbr;
+ 			#==========================================
+ 			# write FDST flag
+ 			#------------------------------------------
+-			my $flag= &quot;FDST&quot;;
+-			my $fdst = pack &quot;A4&quot;, eval $flag;
+-			if (! open (FD,&quot;+&lt;$diskname&quot;)) {
+-				$kiwi -&gt; failed ();
+-				$kiwi -&gt; error  (&quot;MBR: failed to open file: $diskname: $!&quot;);
+-				$kiwi -&gt; failed ();
+-				return undef;
+-			}
+-			seek FD,400,0;
+-			my $done = syswrite (FD,$fdst,4);
+-			if ($done != 4) {
+-				$kiwi -&gt; failed ();
+-				$kiwi -&gt; error  (&quot;MBR: only $done bytes written&quot;);
+-				$kiwi -&gt; failed ();
+-				seek FD,0,2; close FD;
+-				return undef;
+-			}
+-			seek FD,0,2; close FD;
++			my $fdst = &quot;perl -e \&quot;printf '%s', pack 'A4', eval 'FDST';\&quot;&quot;;
++			qxx (
++				&quot;$fdst|dd of=$diskname bs=1 count=4 seek=\$((0x190)) $opt 2&gt;&amp;1&quot;
++			);
+ 			#==========================================
+ 			# zero out preload range
+ 			#------------------------------------------
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001446.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8e302d88134abf49ba7c205ea0afcc173332650e
+</A></li>
+	<LI>Next message: <A HREF="001448.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8933f9c3549c5a9825f4d8cc080efeb30fdfaec7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1447">[ date ]</a>
+              <a href="thread.html#1447">[ thread ]</a>
+              <a href="subject.html#1447">[ subject ]</a>
+              <a href="author.html#1447">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

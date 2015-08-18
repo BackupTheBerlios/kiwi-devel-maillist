@@ -1,0 +1,341 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1602 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1602%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200810060809.m9689CkS011271%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000699.html">
+   <LINK REL="Next"  HREF="000701.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1602 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1602%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200810060809.m9689CkS011271%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1602 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Oct  6 10:09:12 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000699.html">[Kiwi-devel] r1601 - in kiwi-head:	doc/examples/suse-11.1/suse-live-stick modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000701.html">[Kiwi-devel] r1603 - in kiwi-head: . rpm	system/boot/ix86/isoboot/suse-11.1	system/boot/ix86/netboot/suse-11.1	system/boot/ix86/oemboot/suse-11.1	system/boot/ix86/usbboot/suse-11.1	system/boot/ix86/vmxboot/suse-11.1	system/boot/ix86/xenboot/suse-11.1 system/boot/ppc/netboot	system/boot/ppc/netboot/suse-11.1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#700">[ date ]</a>
+              <a href="thread.html#700">[ thread ]</a>
+              <a href="subject.html#700">[ subject ]</a>
+              <a href="author.html#700">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-06 10:08:57 +0200 (Mon, 06 Oct 2008)
+New Revision: 1602
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWICollect.pm
+   kiwi-head/modules/KIWIRepoMetaHandler.pm
+   kiwi-head/modules/KIWIXML.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+Log:
+
+- v2.84
+- fixed instsource support for SLES10 (gzip problems)
+- fixed instsource rpm handling for i686 arch
+- added i586 &lt;&gt; i386 loader directory hack
+- fixed creation of content file
+- added support for Beta version handling
+- added debug output for module loader
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-10-02 14:08:16 UTC (rev 1601)
++++ kiwi-head/kiwi.pl	2008-10-06 08:08:57 UTC (rev 1602)
+@@ -43,7 +43,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;2.83&quot;;
++our $Version       = &quot;2.84&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+
+Modified: kiwi-head/modules/KIWICollect.pm
+===================================================================
+--- kiwi-head/modules/KIWICollect.pm	2008-10-02 14:08:16 UTC (rev 1601)
++++ kiwi-head/modules/KIWICollect.pm	2008-10-06 08:08:57 UTC (rev 1602)
+@@ -38,7 +38,8 @@
+ use File::Find;
+ use File::Path;
+ use Cwd 'abs_path';
+-use IO::Compress::Gzip qw(gzip $GzipError); # temporarily: as soon as plugins extracted, scratch here
++#use IO::Compress::Gzip qw(gzip $GzipError); # temporarily: as soon as plugins extracted, scratch here
++use PerlIO::gzip qw(gzip $GzipError); # temporarily: as soon as plugins extracted, scratch here
+ 
+ # remove if not longer necessary:
+ use Data::Dumper;
+@@ -614,6 +615,7 @@
+       push @archs, $this-&gt;{m_archlist}-&gt;headList();
+     }
+ 
++    push @archs, 'src', 'nosrc';
+     ARCH:foreach my $a(@archs) {
+       my @fallbacklist;
+       if($nofallback==0) {
+@@ -622,6 +624,7 @@
+       else {
+ 	@fallbacklist = ($a);
+       }
++      push @fallbacklist, $a if $a eq 'src' || $a eq 'nosrc';
+       my $fb_available = 0;
+       FA:foreach my $fa(@fallbacklist) {
+ 	if(not defined($tmp-&gt;{$fa})) {
+@@ -652,8 +655,7 @@
+ 	}
+ 
+ 	my $uri = &quot;$tmp-&gt;{$fa}-&gt;{'targetpath'}/$tmp-&gt;{$fa}-&gt;{'targetfile'}&quot;;
+-	my $dst = &quot;$this-&gt;{'m_basesubdir'}-&gt;{$medium}/$tmp-&gt;{$fa}-&gt;{'targetfile'}&quot;;
+-	if(defined($uri) and defined($dst)) {
++	if(defined($uri)) {
+ 	  # RPMQ query for arch/version/release
+ 	  my %flags = RPMQ::rpmq_many($uri, 'NAME', 'VERSION', 'RELEASE', 'ARCH', 'SOURCE', 'SOURCERPM');
+ 	  if(not(%flags
+@@ -666,15 +668,16 @@
+ 	  }
+ 
+ 	  my $ad;
+-	  if( !$flags{'SOURCERPM'} or $flags{'SOURCERPM'}-&gt;[0] eq 'none') {
++	  if( !$flags{'SOURCERPM'} ) {
+ 	    # we deal with a source rpm...
+ 	    $ad = &quot;src&quot;;
+ 	    ## if the user wants all sources onto a certain medium: specify &quot;SOURCEMEDIUM&quot; in config
+-	    if($this-&gt;{m_prodopts} and $this-&gt;{m_prodopts}-&gt;{'SOURCEMEDIUM'}) {
+-	      $medium = $this-&gt;{m_prodopts}-&gt;{'SOURCEMEDIUM'};
++	    my $srcmedium = $this-&gt;{m_proddata}-&gt;getOpt(&quot;SOURCEMEDIUM&quot;);
++	    if($srcmedium) {
++	      $medium = $srcmedium;
+ 	    }
+-	  }
+-	  else {
++	  }else
++	   {
+ 	    # we deal with regular rpm file...
+ 	    $ad = $flags{'ARCH'}-&gt;[0];
+ 	  }
+@@ -1204,13 +1207,13 @@
+ 	  $result{$r} = $tmp;
+ 	}
+ 
+-	$tmp-&gt;{$d} = {};
+-	$tmp-&gt;{$d}-&gt;{'arch'} = $archinfo;
+-	$tmp-&gt;{$d}-&gt;{'subdir'} = $subdirname;
+-	$tmp-&gt;{$d}-&gt;{'uri'} = $uri;
++	$tmp-&gt;{&quot;$d.$archinfo&quot;} = {};
++	$tmp-&gt;{&quot;$d.$archinfo&quot;}-&gt;{'arch'} = $archinfo;
++	$tmp-&gt;{&quot;$d.$archinfo&quot;}-&gt;{'subdir'} = $subdirname;
++	$tmp-&gt;{&quot;$d.$archinfo&quot;}-&gt;{'uri'} = $uri;
+ 
+ 	# pull the BIG next lever:
+-	next DIR; # look in other dirs in same repo please (a repo might contain the same package for multiple architectures
++	#next DIR; # look in other dirs in same repo please (a repo might contain the same package for multiple architectures
+       }
+     }
+   }	# $r (repository, sorted by priority)
+@@ -1252,6 +1255,8 @@
+   my %list = $this-&gt;bestBet($pack);
+   return $retval if(! %list);
+ 
++#print Dumper(\%list);
++
+   # step1: download all and query headers!
+   # sort by prio??
+   REPO:foreach my $repo(sort {$this-&gt;{m_repos}-&gt;{$a}-&gt;{priority} &lt; $this-&gt;{m_repos}-&gt;{$b}-&gt;{priority}} keys(%list)) {
+@@ -1274,7 +1279,7 @@
+       else{
+ 	$this-&gt;{m_xml}-&gt;getInstSourceFile($r_tmp2-&gt;{'uri'}, $fullpath);
+       }
+-      my %flags = RPMQ::rpmq_many(&quot;$fullpath/$file&quot;, 'NAME', 'VERSION', 'RELEASE', 'ARCH', 'SOURCE', 'SOURCERPM');
++      my %flags = RPMQ::rpmq_many(&quot;$fullpath/$file&quot;, 'NAME', 'VERSION', 'RELEASE', 'ARCH', 'SOURCE', 'SOURCERPM', 'NOSOURCE', 'NOPATCH');
+ 
+       if(! %flags) {
+ 	$this-&gt;{m_logger}-&gt;warning(&quot;[W] [fetchFileFrom] Package $pack seems to have an invalid header!&quot;);
+@@ -1288,10 +1293,13 @@
+ 	#   SOURCERPM contains the name of the resp. source rpm or (none) for source rpms themselves.
+ 	#---------------------------------
+ 	my $ext;
+-	if( !$flags{'SOURCERPM'} or $flags{'SOURCERPM'}-&gt;[0] eq 'none') {
++	if( !$flags{'SOURCERPM'} ) {
+ 	  # we deal with a source rpm...
+-	  $ext .= &quot;$arch.src.rpm&quot;;
+-	  $r_tmp2-&gt;{'subdir'} = &quot;src&quot;;
++	  my $srcarch = 'src';
++	  $srcarch = 'nosrc' if $flags{'NOSOURCE'} || $flags{'NOPATCH'};
++	  $ext .= &quot;$srcarch.rpm&quot;;
++	  $r_tmp2-&gt;{'subdir'} = $srcarch;
++	  $arch = $srcarch;
+ 	}
+ 	else {
+ 	  # we deal with regular rpm file...
+@@ -1662,19 +1670,38 @@
+     $this-&gt;{m_logger}-&gt;info(&quot;[I] [createMetadata] skipping media file due to error!&quot;);
+   }
+ 
++  ## step 5b: create info.txt for Beta releases.
++  $this-&gt;{m_logger}-&gt;info(&quot;[I] Handling Beta information on media:&quot;);
++  my $beta_version = $this-&gt;{m_proddata}-&gt;getOpt(&quot;BETA_VERSION&quot;);
++  if (defined($beta_version)) {
++    my $dist_string = $this-&gt;{m_proddata}-&gt;getVar(&quot;DISTNAME&quot;).&quot; &quot;.$this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_VERSION&quot;).&quot; &quot;.${beta_version};
++    if (system(&quot;sed&quot;,&quot;-i&quot;,&quot;s/BETA_DIST_VERSION/$dist_string/&quot;,&quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/README.BETA&quot;) == 0 ) {
++      if (system(&quot;ln&quot;, &quot;-sf&quot;, &quot;../README.BETA&quot;, &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/media.1/info.txt&quot;) != 0 ) {
++        $this-&gt;{m_logger}-&gt;info(&quot;[E] Failed to symlink README.BETA file!&quot;);
++      };
++    }else{
++      $this-&gt;{m_logger}-&gt;info(&quot;[E] Failed to replace beta version in README.BETA file!&quot;);
++    };
++  }else{
++    if (system(&quot;rm&quot;, &quot;-f&quot;, &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/README.BETA&quot;) != 0 ) {
++      $this-&gt;{m_logger}-&gt;info(&quot;[E] Failed to remove README.BETA file!&quot;);
++    };
++  };
+ 
+   ## step 6: products file
+   $this-&gt;{m_logger}-&gt;info(&quot;[I] Creating products file in all media:&quot;);
+-  my $proddir = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_DIR&quot;);
++  my $proddir  = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_DIR&quot;);
+   my $prodname = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_NAME&quot;);
+-  my $prodver = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_VERSION&quot;);
++  my $prodver  = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_VERSION&quot;);
++  my $prodrel  = $this-&gt;{m_proddata}-&gt;getVar(&quot;RELEASE&quot;);
++  $prodname =~ s/\ /-/g;
+   if(defined($proddir) and defined($prodname) and defined($prodver)) {
+     for my $n($this-&gt;getMediaNumbers()) {
+       my $productsfile = &quot;$this-&gt;{m_basesubdir}-&gt;{$n}/media.$n/products&quot;;
+       if(not open(PRODUCT, &quot;&gt;&quot;, $productsfile)) {
+ 	die &quot;Cannot create $productsfile&quot;;
+       }
+-      print PRODUCT &quot;$proddir $prodname $prodver\n&quot;;
++      print PRODUCT &quot;$proddir $prodname $prodver-$prodrel\n&quot;;
+       close(PRODUCT);
+     }
+   }
+@@ -1850,7 +1877,13 @@
+ 	  $this-&gt;{m_logger}-&gt;warning(&quot;[W] No package hash entry for package $rpmname in packages hash! Package missing?&quot;);
+ 	}
+ 	else {
+-	  my @fallb = $this-&gt;{m_archlist}-&gt;fallbacks($arch);
++          # FIXME: This is just a hack, where do we get the upper architecture from ?
++          my $targetarch = $arch;
++          if ( $arch eq 'i386' ) {
++             $targetarch = &quot;i586&quot;;
++          }
++          # End of hack
++	  my @fallb = $this-&gt;{m_archlist}-&gt;fallbacks($targetarch);
+ 	  FARCH:foreach my $fa(@fallb) {
+ 	    if(not defined($tmp{$fa})) {
+ 	      next FARCH;
+
+Modified: kiwi-head/modules/KIWIRepoMetaHandler.pm
+===================================================================
+--- kiwi-head/modules/KIWIRepoMetaHandler.pm	2008-10-02 14:08:16 UTC (rev 1601)
++++ kiwi-head/modules/KIWIRepoMetaHandler.pm	2008-10-06 08:08:57 UTC (rev 1602)
+@@ -191,7 +191,7 @@
+       $retval++;
+     }
+     else {
+-      $this-&gt;collect()-&gt;logger()-&gt;error(&quot;[E] loadPlugins: failed to load plugin &lt;$p&gt; from url &lt;$dir&gt;!&quot;);
++      $this-&gt;collect()-&gt;logger()-&gt;error(&quot;[E] loadPlugins: failed to load plugin &lt;$p&gt; from url &lt;$dir&gt;: $@&quot;);
+     }
+   }
+ 
+
+Modified: kiwi-head/modules/KIWIXML.pm
+===================================================================
+--- kiwi-head/modules/KIWIXML.pm	2008-10-02 14:08:16 UTC (rev 1601)
++++ kiwi-head/modules/KIWIXML.pm	2008-10-06 08:08:57 UTC (rev 1602)
+@@ -2876,7 +2876,6 @@
+ 	#==========================================
+ 	# find system architecture
+ 	#------------------------------------------
+-	my $arch = qxx (&quot;uname -m&quot;); chomp $arch;
+ 	if ($arch =~ /^i.86/) {
+ 		$arch = 'i.86';
+ 	}
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-02 14:08:16 UTC (rev 1601)
++++ kiwi-head/rpm/kiwi.changes	2008-10-06 08:08:57 UTC (rev 1602)
+@@ -1,4 +1,15 @@
+ -------------------------------------------------------------------
++Mon Oct  6 10:05:18 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v2.84
++- fixed instsource support for SLES10 (gzip problems)
++- fixed instsource rpm handling for i686 arch
++- added i586 &lt;&gt; i386 loader directory hack
++- fixed creation of content file
++- added support for Beta version handling
++- added debug output for module loader
++
++-------------------------------------------------------------------
+ Fri Sep 26 17:43:48 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.83
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-10-02 14:08:16 UTC (rev 1601)
++++ kiwi-head/rpm/kiwi.spec	2008-10-06 08:08:57 UTC (rev 1602)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 2.83
++# spec file for package kiwi (Version 2.84
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        2.83
++Version:        2.84
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000699.html">[Kiwi-devel] r1601 - in kiwi-head:	doc/examples/suse-11.1/suse-live-stick modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000701.html">[Kiwi-devel] r1603 - in kiwi-head: . rpm	system/boot/ix86/isoboot/suse-11.1	system/boot/ix86/netboot/suse-11.1	system/boot/ix86/oemboot/suse-11.1	system/boot/ix86/usbboot/suse-11.1	system/boot/ix86/vmxboot/suse-11.1	system/boot/ix86/xenboot/suse-11.1 system/boot/ppc/netboot	system/boot/ppc/netboot/suse-11.1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#700">[ date ]</a>
+              <a href="thread.html#700">[ thread ]</a>
+              <a href="subject.html#700">[ subject ]</a>
+              <a href="author.html#700">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

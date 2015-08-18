@@ -1,0 +1,762 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8f19d40d3a6230b510897ff963e13e80b121597d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%208f19d40d3a6230b510897ff963e13e80b121597d&In-Reply-To=%3C201005031543.o43FhoPJ032513%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002143.html">
+   <LINK REL="Next"  HREF="002145.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8f19d40d3a6230b510897ff963e13e80b121597d</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%208f19d40d3a6230b510897ff963e13e80b121597d&In-Reply-To=%3C201005031543.o43FhoPJ032513%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8f19d40d3a6230b510897ff963e13e80b121597d">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon May  3 17:43:50 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002143.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3701b3d09effa10def6a8cdfd585721edaf3dd29
+</A></li>
+        <LI>Next message: <A HREF="002145.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 157d4bbfcdb7ee040a2ea2f2531725c480d3a2de
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2144">[ date ]</a>
+              <a href="thread.html#2144">[ thread ]</a>
+              <a href="subject.html#2144">[ subject ]</a>
+              <a href="author.html#2144">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  8f19d40d3a6230b510897ff963e13e80b121597d (commit)
+      from  3701b3d09effa10def6a8cdfd585721edaf3dd29 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 8f19d40d3a6230b510897ff963e13e80b121597d
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon May 3 17:43:37 2010 +0200
+
+    - removed netboot specific partition code and replace
+      it by the common partition functions used for oem
+      and other tasks, related to (bnc #601890)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index adb42b6..699b5cd 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -1795,28 +1795,34 @@ function updateSyslinuxBootDeviceFstab {
+ #--------------------------------------
+ function updateOtherDeviceFstab {
+ 	# /.../
+-	# check the contents of the $PART_MOUNT variable and
++	# check the contents of the $PART variable and
+ 	# add one line to the fstab file for each partition
+-	# to mount.
++	# which has a mount point defined.
+ 	# ----
+ 	local prefix=$1
+ 	local nfstab=$prefix/etc/fstab
+ 	local index=0
+-	IFS=&quot;:&quot; ; for i in $PART_MOUNT;do
+-		if test ! -z &quot;$i&quot;;then
+-			count=0
+-			IFS=&quot;:&quot; ; for n in $PART_DEV;do
+-				device=$n
+-				if test $count -eq $index;then
+-					break
+-				fi
+-				count=`expr $count + 1`
+-			done
+-			index=`expr $index + 1`
+-			if test ! $i = &quot;/&quot; &amp;&amp; test ! $i = &quot;x&quot;;then
+-				probeFileSystem $device
+-				echo &quot;$device $i $FSTYPE defaults 1 1&quot; &gt;&gt; $nfstab
+-			fi
++	local field=0
++	local count=0
++	local device
++	local IFS=&quot;,&quot;
++	for i in $PART;do
++		field=0
++		count=$((count + 1))
++		IFS=&quot;;&quot; ; for n in $i;do
++		case $field in
++			0) partSize=$n   ; field=1 ;;
++			1) partID=$n     ; field=2 ;;
++			2) partMount=$n;
++		esac
++		done
++		if  [ ! -z &quot;$partMount&quot; ]    &amp;&amp; \
++			[ ! &quot;$partMount&quot; = &quot;x&quot; ] &amp;&amp; \
++			[ ! &quot;$partMount&quot; = &quot;/&quot; ]
++		then
++			device=$(ddn $DISK $count)
++			probeFileSystem $device
++			echo &quot;$device $partMount $FSTYPE defaults 1 1&quot; &gt;&gt; $nfstab
+ 		fi
+ 	done
+ }
+@@ -2823,69 +2829,6 @@ function cleanSweep {
+ 	dd if=/dev/zero of=$diskDevice bs=32M &gt;/dev/null
+ }
+ #======================================
+-# createFileSystem
+-#--------------------------------------
+-function createFileSystem {
+-	# /.../
+-	# create a filesystem on the specified partition
+-	# if the partition is of type LVM a volume group
+-	# is created
+-	# ----
+-	diskPartition=$1
+-	diskID=`echo $diskPartition | sed -e s@[^0-9]@@g`
+-	diskPD=`echo $diskPartition | sed -e s@[0-9]@@g`
+-	diskPartitionType=`partitionID $diskPD $diskID`
+-	if test &quot;$diskPartitionType&quot; = &quot;8e&quot;;then
+-		Echo &quot;Creating Volume group [systemvg]&quot;
+-		pvcreate $diskPartition &gt;/dev/null
+-		vgcreate systemvg $diskPartition &gt;/dev/null
+-	else
+-		# .../
+-		# Create partition in case it is not root system and
+-		# there is no system  already created There is no need to
+-		# create a filesystem on the root partition
+-		# ----
+-		if test $diskID -gt 2; then
+-			if ! e2fsck -p $diskPartition 1&gt;&amp;2; then
+-				Echo &quot;Partition $diskPartition is not valid, formating...&quot;
+-				mke2fs -F -T ext3 -j $diskPartition 1&gt;&amp;2
+-				if test $? != 0; then
+-					systemException \
+-						&quot;Failed to create filesystem on: $diskPartition !&quot; \
+-					&quot;reboot&quot;
+-				fi
+-			else
+-				Echo &quot;Partition $diskPartition is valid, leave it untouched&quot;
+-			fi
+-		fi
+-	fi
+-}
+-#======================================
+-# checkExtended
+-#--------------------------------------
+-function checkExtended {
+-	# /.../
+-	# check the IMAGE system partition and adapt if the index
+-	# was increased due to an extended partition
+-	# ----
+-	local iDevice=&quot;&quot;
+-	local iNumber=&quot;&quot;
+-	local iNewDev=&quot;&quot;
+-	local iPartNr=&quot;&quot;
+-	IFS=&quot;,&quot; ; for i in $PART;do
+-		iPartNr=`expr $iPartNr + 1`
+-	done
+-	if [ $iPartNr -gt 4 ];then
+-		iDevice=`echo $IMAGE | cut -f1 -d&quot;;&quot; | cut -f2 -d=`
+-		iNumber=`echo $iDevice | tr -d &quot;a-zA-Z\/&quot;`
+-		if [ $iNumber -ge 4 ];then
+-			iNumber=`expr $iNumber + 1`
+-			iNewDev=$DISK$iNumber
+-			IMAGE=`echo $IMAGE | sed -e s@$iDevice@$iNewDev@`
+-		fi
+-	fi
+-}
+-#======================================
+ # sfdiskGetPartitionID
+ #--------------------------------------
+ function sfdiskGetPartitionID {
+@@ -2895,145 +2838,6 @@ function sfdiskGetPartitionID {
+ 	sfdisk -c $1 $2
+ }
+ #======================================
+-# sfdiskPartitionCount
+-#--------------------------------------
+-function sfdiskPartitionCount {
+-	# /.../
+-	# calculate the number of partitions to create. If the
+-	# number is more than 4 an extended partition needs to be
+-	# created.
+-	# ----
+-	IFS=&quot;,&quot; ; for i in $PART;do
+-		PART_NUMBER=`expr $PART_NUMBER + 1`
+-	done
+-	if [ $PART_NUMBER -gt 4 ];then
+-		PART_NEED_EXTENDED=1
+-	fi
+-	PART_NUMBER=`expr $PART_NUMBER + 1`
+-	PART_NEED_FILL=`expr $PART_NUMBER / 8`
+-	PART_NEED_FILL=`expr 8 - \( $PART_NUMBER - $PART_NEED_FILL \* 8 \)`
+-}
+-#======================================
+-# sfdiskFillPartition
+-#--------------------------------------
+-function sfdiskFillPartition {
+-	# /.../
+-	# in case of an extended partition the number of input lines
+-	# must be a multiple of 4, so this function will fill the input
+-	# with empty lines to make sfdisk happy
+-	# ----
+-	while test $PART_NEED_FILL -gt 0;do
+-		echo &gt;&gt; $PART_FILE
+-		PART_NEED_FILL=`expr $PART_NEED_FILL - 1`
+-	done
+-}
+-#======================================
+-# sfdiskCreateSwap
+-#--------------------------------------
+-function sfdiskCreateSwap {
+-	# /.../
+-	# create the sfdisk input line for setting up the
+-	# swap space
+-	# ----
+-	IFS=&quot;,&quot; ; for i in $PART;do
+-		field=0
+-		IFS=&quot;;&quot; ; for n in $i;do
+-		case $field in
+-			0) partSize=$n   ; field=1 ;;
+-			1) partID=$n     ; field=2 ;;
+-			2) partMount=$n;
+-		esac
+-		done
+-		if test $partID = &quot;82&quot; -o $partID = &quot;S&quot;;then
+-			echo &quot;0,$partSize,$partID,-&quot; &gt; $PART_FILE
+-			PART_COUNT=`expr $PART_COUNT + 1`
+-			return
+-		fi
+-	done
+-}
+-#======================================
+-# sfdiskCreatePartition
+-#--------------------------------------
+-function sfdiskCreatePartition {
+-	# /.../
+-	# create the sfdisk input lines for setting up the
+-	# partition table except the swap space
+-	# ----
+-	devices=1
+-	IFS=&quot;,&quot; ; for i in $PART;do
+-		field=0
+-		IFS=&quot;;&quot; ; for n in $i;do
+-		case $field in
+-			0) partSize=$n   ; field=1 ;;
+-			1) partID=$n     ; field=2 ;;
+-			2) partMount=$n;
+-		esac
+-		done
+-		if test $partID = &quot;82&quot; -o $partID = &quot;S&quot;;then
+-			continue
+-		fi
+-		if test $partSize = &quot;x&quot;;then
+-			partSize=&quot;&quot;
+-		fi
+-		if [ $PART_COUNT -eq 1 ];then
+-			echo &quot;,$partSize,$partID,*&quot; &gt;&gt; $PART_FILE
+-		else
+-			echo &quot;,$partSize,$partID,-&quot; &gt;&gt; $PART_FILE
+-		fi
+-		PART_COUNT=`expr $PART_COUNT + 1`
+-		if [ $PART_NEED_EXTENDED -eq 1 ];then
+-		if [ $PART_COUNT -eq 3 ];then
+-			echo &quot;,,E&quot; &gt;&gt; $PART_FILE
+-			NO_FILE_SYSTEM=1
+-		fi
+-		fi
+-		devices=`expr $devices + 1`
+-		if test -z &quot;$PART_MOUNT&quot;;then
+-			PART_MOUNT=&quot;$partMount&quot;
+-			PART_DEV=&quot;$DISK$devices&quot;
+-		else
+-			PART_MOUNT=&quot;$PART_MOUNT:$partMount&quot;
+-			if [ $NO_FILE_SYSTEM -eq 2 ];then
+-				devices=`expr $devices + 1`
+-				NO_FILE_SYSTEM=0
+-			fi
+-			PART_DEV=&quot;$PART_DEV:$DISK$devices&quot;
+-		fi
+-		if [ $NO_FILE_SYSTEM -eq 1 ];then
+-			NO_FILE_SYSTEM=2
+-		fi
+-	done
+-	if [ $PART_NEED_EXTENDED -eq 1 ];then
+-		sfdiskFillPartition
+-	fi
+-	export PART_MOUNT
+-	export PART_DEV
+-}
+-#======================================
+-# sfdiskWritePartitionTable
+-#--------------------------------------
+-function sfdiskWritePartitionTable {
+-	# /.../
+-	# write the partition table using PART_FILE as
+-	# input for sfdisk
+-	# ----
+-	local diskDevice=$1
+-	dd if=/dev/zero of=$diskDevice bs=512 count=1 &gt;/dev/null
+-	sfdisk -uM --force $diskDevice &lt; $PART_FILE &gt;/dev/null
+-	if test $? != 0;then
+-		systemException \
+-			&quot;Failed to create partition table on: $diskDevice !&quot; \
+-		&quot;reboot&quot;
+-	fi
+-	verifyOutput=`sfdisk -V $diskDevice`
+-	if test $? != 0;then
+-		systemException \
+-			&quot;Failed to verify partition table on $diskDevice: $verifyOutput&quot; \
+-		&quot;reboot&quot;
+-	fi
+-	rm -f $PART_FILE
+-}
+-#======================================
+ # partedGetPartitionID
+ #--------------------------------------
+ function partedGetPartitionID {
+@@ -3044,85 +2848,6 @@ function partedGetPartitionID {
+ 		cut -f2 -d= | tr -d &quot;;&quot; | tr -d 0
+ }
+ #======================================
+-# partedCreatePartition
+-#--------------------------------------
+-function partedCreatePartition {
+-	# /.../
+-	# create the parted input data for setting up the
+-	# partition table
+-	# ----
+-	p_stopp=0
+-	dd if=/dev/zero of=$DISK bs=512 count=1 &gt;/dev/null &amp;&amp; \
+-		/usr/sbin/parted -s $DISK mklabel msdos
+-	if [ $? -ne 0 ];then
+-		systemException \
+-			&quot;Failed to clean partition table on: $DISK !&quot; \
+-			&quot;reboot&quot;
+-	fi
+-	p_opts=&quot;-s $DISK unit s print&quot;
+-	p_size=`/usr/sbin/parted $p_opts | grep &quot;^Disk&quot; | cut -f2 -d: | cut -f1 -ds`
+-	p_size=`echo $p_size`
+-	p_size=`expr $p_size - 1`
+-	p_cmd=&quot;/usr/sbin/parted -s $DISK unit s&quot;
+-	IFS=&quot;,&quot; ; for i in $PART;do
+-		field=0
+-		IFS=&quot;;&quot; ; for n in $i;do
+-		case $field in
+-			0) partSize=$n ; field=1 ;;
+-			1) partID=$n   ; field=2 ;;
+-			2) partMount=$n;
+-		esac
+-		done
+-		PART_COUNT=`expr $PART_COUNT + 1`
+-		if test $partSize = &quot;x&quot;;then
+-			partSize=$p_size
+-		else
+-			partSize=`expr $partSize \* 2048`
+-		fi
+-		if test $partID = &quot;82&quot; -o $partID = &quot;S&quot;;then
+-			partedGetSectors 63 $partSize
+-			p_cmd=&quot;$p_cmd mkpartfs primary linux-swap $p_start $p_stopp&quot;
+-			continue
+-		fi
+-		if [ $p_stopp = 0 ];then
+-			systemException \
+-				&quot;Invalid partition setup: $PART !&quot; \
+-				&quot;reboot&quot;
+-		fi
+-		partedGetSectors $p_stopp $partSize
+-		if [ $PART_COUNT -le 3 ];then
+-			p_cmd=&quot;$p_cmd mkpart primary $p_start $p_stopp&quot;
+-			p_cmd=&quot;$p_cmd set $PART_COUNT type 0x$partID&quot;
+-		else
+-			if [ $PART_COUNT -eq 4 ];then
+-				p_cmd=&quot;$p_cmd mkpart extended $p_start $p_size&quot;
+-				p_cmd=&quot;$p_cmd set $PART_COUNT type 0x85&quot;
+-				PART_COUNT=`expr $PART_COUNT + 1`
+-				NO_FILE_SYSTEM=1
+-			fi
+-			p_start=`expr $p_start + 1`
+-			p_cmd=&quot;$p_cmd mkpart logical $p_start $p_stopp&quot;
+-			p_cmd=&quot;$p_cmd set $PART_COUNT type 0x$partID&quot;
+-		fi
+-		if test -z &quot;$PART_MOUNT&quot;;then
+-			PART_MOUNT=&quot;$partMount&quot;
+-			PART_DEV=&quot;$DISK$devices&quot;
+-		else
+-			PART_MOUNT=&quot;$PART_MOUNT:$partMount&quot;
+-			if [ $NO_FILE_SYSTEM -eq 2 ];then
+-				NO_FILE_SYSTEM=0
+-			fi
+-			PART_DEV=&quot;$PART_DEV:$DISK$devices&quot;
+-		fi
+-		if [ $NO_FILE_SYSTEM -eq 1 ];then
+-			NO_FILE_SYSTEM=2
+-		fi
+-	done
+-	export PART_MOUNT
+-	export PART_DEV
+-	p_cmd=&quot;$p_cmd set 2 boot on&quot;
+-}
+-#======================================
+ # partedGetSectors
+ #--------------------------------------
+ function partedGetSectors {
+@@ -3140,21 +2865,6 @@ function partedGetSectors {
+ 	fi
+ }
+ #======================================
+-# partedWritePartitionTable
+-#--------------------------------------
+-function partedWritePartitionTable {
+-	# /.../
+-	# write the partition table using parted
+-	# ----
+-	local diskDevice=$1
+-	eval $p_cmd
+-	if test $? != 0;then
+-		systemException \
+-			&quot;Failed to create partition table on: $diskDevice !&quot; \
+-		&quot;reboot&quot;
+-	fi
+-}
+-#======================================
+ # partitionID
+ #--------------------------------------
+ function partitionID {
+@@ -3177,42 +2887,6 @@ function partitionSize {
+ 	expr $(blockdev --getsize64 $diskDevice) / 1024
+ }
+ #======================================
+-# partitionCount
+-#--------------------------------------
+-function partitionCount {
+-	if [ $PARTITIONER = &quot;sfdisk&quot; ];then
+-		sfdiskPartitionCount
+-	fi
+-}
+-#======================================
+-# createSwap
+-#--------------------------------------
+-function createSwap {
+-	if [ $PARTITIONER = &quot;sfdisk&quot; ];then
+-		sfdiskCreateSwap
+-	fi
+-}
+-#======================================
+-# createPartition
+-#--------------------------------------
+-function createPartition {
+-	if [ $PARTITIONER = &quot;sfdisk&quot; ];then
+-		sfdiskCreatePartition
+-	else
+-		partedCreatePartition
+-	fi
+-}
+-#======================================
+-# writePartitionTable
+-#--------------------------------------
+-function writePartitionTable {
+-	if [ $PARTITIONER = &quot;sfdisk&quot; ];then
+-		sfdiskWritePartitionTable $1
+-	else
+-		partedWritePartitionTable $1
+-	fi
+-}
+-#======================================
+ # linuxPartition
+ #--------------------------------------
+ function linuxPartition {
+@@ -5191,6 +4865,7 @@ function callPartitioner {
+ 		# command input file as for fdisk but we re-read
+ 		# the disk so that the new table will be used
+ 		# ----
++		udevPending
+ 		blockdev --rereadpt $imageDiskDevice
+ 	fi
+ }
+@@ -5554,6 +5229,78 @@ function createFilesystem {
+ 	fi
+ }
+ #======================================
++# pxeSizeToMB
++#--------------------------------------
++function pxeSizeToMB {
++	local size=$1
++	if [ &quot;$size&quot; = &quot;x&quot; ];then
++		echo . ; return
++	fi
++	local lastc=$(echo $size | sed -e 's@\(^.*\)\(.$\)@\2@')
++	local value=$(echo $size | sed -e 's@\(^.*\)\(.$\)@\1@')
++	if [ &quot;$lastc&quot; = &quot;m&quot; ] || [ &quot;$lastc&quot; = &quot;M&quot; ];then
++		size=$value
++	elif [ &quot;$lastc&quot; = &quot;g&quot; ] || [ &quot;$lastc&quot; = &quot;G&quot; ];then
++		size=$(($value * 1024))
++	fi
++	echo +&quot;$size&quot;M
++}
++#======================================
++# pxePartitionInput
++#--------------------------------------
++function pxePartitionInput {
++	local field=0
++	local count=0
++	local IFS=&quot;,&quot;
++	for i in $PART;do
++		field=0
++		count=$((count + 1))
++		IFS=&quot;;&quot; ; for n in $i;do
++		case $field in
++			0) partSize=$n   ; field=1 ;;
++			1) partID=$n     ; field=2 ;;
++			2) partMount=$n;
++		esac
++		done
++		partSize=$(pxeSizeToMB $partSize)
++		if [ $count -eq 1 ];then
++			echo -n &quot;n p $count 1 $partSize &quot;
++		else
++			echo -n &quot;n p $count . $partSize &quot;
++		fi
++		if test $partID = &quot;82&quot; -o $partID = &quot;S&quot;;then
++			echo -n &quot;t $count 82 &quot;
++		fi
++	done
++	echo &quot;w q&quot;
++}
++#======================================
++# pxeSwapDevice
++#--------------------------------------
++function pxeSwapDevice {
++	local field=0
++	local count=0
++	local device
++	local IFS=&quot;,&quot;
++	for i in $PART;do
++		field=0
++		count=$((count + 1))
++		IFS=&quot;;&quot; ; for n in $i;do
++		case $field in
++			0) partSize=$n   ; field=1 ;;
++			1) partID=$n     ; field=2 ;;
++			2) partMount=$n;
++		esac
++		done
++		if test $partID = &quot;82&quot; -o $partID = &quot;S&quot;;then
++			device=${DISK}$count
++			waitForStorageDevice $device
++			echo $device
++			return
++		fi
++	done
++}
++#======================================
+ # startUtimer
+ #--------------------------------------
+ function startUtimer {
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 2c568bf..a881f2f 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -3,6 +3,9 @@ Fri Apr 30 10:21:56 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - added cyrus-sasl to netboot images (bnc #600951)
+ - added support for Xen dom0 over netboot (bnc #601890)
++- removed netboot specific partition code and replace
++  it by the common partition functions used for oem
++  and other tasks, related to (bnc #601890)
+ 
+ -------------------------------------------------------------------
+ Fri Apr 23 10:53:37 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+diff --git a/system/boot/ix86/netboot/suse-linuxrc b/system/boot/ix86/netboot/suse-linuxrc
+index 538503c..ff75cbf 100755
+--- a/system/boot/ix86/netboot/suse-linuxrc
++++ b/system/boot/ix86/netboot/suse-linuxrc
+@@ -39,18 +39,6 @@ export SYSALIAS=&quot;undefined&quot;
+ export NAME=0
+ 
+ #======================================
+-# Exports (Partitioning)
+-#--------------------------------------
+-export PART_FILE=&quot;/etc/partition.table&quot;
+-export PART_MOUNT
+-export PART_DEV
+-export PART_COUNT=0
+-export PART_NUMBER=0
+-export PART_NEED_EXTENDED=0
+-export PART_NEED_FILL=0
+-export NO_FILE_SYSTEM=0
+-
+-#======================================
+ # Exports (Status)
+ #--------------------------------------
+ export SYSTEM_INTEGRITY
+@@ -363,10 +351,6 @@ if \
+ 	[ -z &quot;$AOEROOT&quot; ]
+ then
+ 	#======================================
+-	# Check for possible extended partition
+-	#--------------------------------------
+-	checkExtended
+-	#======================================
+ 	# Check for installed system
+ 	#--------------------------------------
+ 	count=0
+@@ -414,21 +398,29 @@ then
+ 	esac
+ 	done
+ 	#======================================
+-	# Create partition table if needed
++	# Evaluate PART partition information
+ 	#--------------------------------------
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+ 		runHook prepartition
+ 		Echo &quot;Creating partition table...&quot;
+-		partitionCount
+-		createSwap
+-		createPartition
+-		writePartitionTable $DISK
+-		IFS=&quot;:&quot; ; for i in $PART_DEV;do
+-		if test ! -z &quot;$i&quot;;then
+-			createFileSystem $i
++		#======================================
++		# Create partition table if needed
++		#--------------------------------------
++		input=/part.input
++		imageDiskDevice=$DISK
++		dd if=/dev/zero of=$DISK bs=512 count=1 &gt;/dev/null &amp;&amp; \
++			parted -s $DISK mklabel msdos
++		createPartitionerInput $(pxePartitionInput)
++		callPartitioner $input
++		#======================================
++		# Setup swap space if required
++		#--------------------------------------
++		export imageSwapDevice=$(pxeSwapDevice)
++		if [ ! -z &quot;$imageSwapDevice&quot; ];then
++			if ! mkswap $imageSwapDevice 1&gt;&amp;2;then
++				systemException &quot;Failed to create swap signature&quot; &quot;reboot&quot;
++			fi
+ 		fi
+-		done
+-		mkswap ${DISK}1 &gt;/dev/null 2&gt;&amp;1
+ 		runHook postpartition
+ 	fi
+ fi
+diff --git a/system/boot/ppc/netboot/suse-linuxrc b/system/boot/ppc/netboot/suse-linuxrc
+index 538503c..ff75cbf 100755
+--- a/system/boot/ppc/netboot/suse-linuxrc
++++ b/system/boot/ppc/netboot/suse-linuxrc
+@@ -39,18 +39,6 @@ export SYSALIAS=&quot;undefined&quot;
+ export NAME=0
+ 
+ #======================================
+-# Exports (Partitioning)
+-#--------------------------------------
+-export PART_FILE=&quot;/etc/partition.table&quot;
+-export PART_MOUNT
+-export PART_DEV
+-export PART_COUNT=0
+-export PART_NUMBER=0
+-export PART_NEED_EXTENDED=0
+-export PART_NEED_FILL=0
+-export NO_FILE_SYSTEM=0
+-
+-#======================================
+ # Exports (Status)
+ #--------------------------------------
+ export SYSTEM_INTEGRITY
+@@ -363,10 +351,6 @@ if \
+ 	[ -z &quot;$AOEROOT&quot; ]
+ then
+ 	#======================================
+-	# Check for possible extended partition
+-	#--------------------------------------
+-	checkExtended
+-	#======================================
+ 	# Check for installed system
+ 	#--------------------------------------
+ 	count=0
+@@ -414,21 +398,29 @@ then
+ 	esac
+ 	done
+ 	#======================================
+-	# Create partition table if needed
++	# Evaluate PART partition information
+ 	#--------------------------------------
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+ 		runHook prepartition
+ 		Echo &quot;Creating partition table...&quot;
+-		partitionCount
+-		createSwap
+-		createPartition
+-		writePartitionTable $DISK
+-		IFS=&quot;:&quot; ; for i in $PART_DEV;do
+-		if test ! -z &quot;$i&quot;;then
+-			createFileSystem $i
++		#======================================
++		# Create partition table if needed
++		#--------------------------------------
++		input=/part.input
++		imageDiskDevice=$DISK
++		dd if=/dev/zero of=$DISK bs=512 count=1 &gt;/dev/null &amp;&amp; \
++			parted -s $DISK mklabel msdos
++		createPartitionerInput $(pxePartitionInput)
++		callPartitioner $input
++		#======================================
++		# Setup swap space if required
++		#--------------------------------------
++		export imageSwapDevice=$(pxeSwapDevice)
++		if [ ! -z &quot;$imageSwapDevice&quot; ];then
++			if ! mkswap $imageSwapDevice 1&gt;&amp;2;then
++				systemException &quot;Failed to create swap signature&quot; &quot;reboot&quot;
++			fi
+ 		fi
+-		done
+-		mkswap ${DISK}1 &gt;/dev/null 2&gt;&amp;1
+ 		runHook postpartition
+ 	fi
+ fi
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002143.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3701b3d09effa10def6a8cdfd585721edaf3dd29
+</A></li>
+	<LI>Next message: <A HREF="002145.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 157d4bbfcdb7ee040a2ea2f2531725c480d3a2de
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2144">[ date ]</a>
+              <a href="thread.html#2144">[ thread ]</a>
+              <a href="subject.html#2144">[ subject ]</a>
+              <a href="author.html#2144">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

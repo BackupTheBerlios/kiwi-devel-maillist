@@ -1,0 +1,158 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1801 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1801%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200811271126.mARBQ20u008403%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000907.html">
+   <LINK REL="Next"  HREF="000909.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1801 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1801%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200811271126.mARBQ20u008403%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1801 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Nov 27 12:26:02 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000907.html">[Kiwi-devel] r1800 - in kiwi-head: .	doc/examples/suse-11.1/suse-live-iso	doc/examples/suse-11.1/suse-live-stick	doc/examples/suse-11.1/suse-oem-preload	doc/examples/suse-11.1/suse-pxe-client	doc/examples/suse-11.1/suse-vm-guest	doc/examples/suse-11.1/suse-xen-guest modules rpm	system/boot/ix86/oemboot
+</A></li>
+        <LI>Next message: <A HREF="000909.html">[Kiwi-devel] r1802 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#908">[ date ]</a>
+              <a href="thread.html#908">[ thread ]</a>
+              <a href="subject.html#908">[ subject ]</a>
+              <a href="author.html#908">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-11-27 12:25:45 +0100 (Thu, 27 Nov 2008)
+New Revision: 1801
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIImage.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- fixed setup of kiwi_type when in creation mode
+- allow prebuilt boot image path to be the same as the
+  destination directory for the final image
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-11-27 10:29:49 UTC (rev 1800)
++++ kiwi-head/kiwi.pl	2008-11-27 11:25:45 UTC (rev 1801)
+@@ -484,7 +484,7 @@
+ 		$kiwi -&gt; info (&quot;Updating type in .profile environment&quot;);
+ 		my $type = $xml -&gt; getImageTypeAndAttributes() -&gt; {type};
+ 		qxx (
+-			&quot;sed -i -e s#kiwi_type=$type=.*#kiwi_type=$type# $Create/.profile&quot;
++			&quot;sed -i -e 's#kiwi_type=.*#kiwi_type=\&quot;$type\&quot;#' $Create/.profile&quot;
+ 		);
+ 		$kiwi -&gt; done();
+ 		#==========================================
+
+Modified: kiwi-head/modules/KIWIImage.pm
+===================================================================
+--- kiwi-head/modules/KIWIImage.pm	2008-11-27 10:29:49 UTC (rev 1800)
++++ kiwi-head/modules/KIWIImage.pm	2008-11-27 11:25:45 UTC (rev 1801)
+@@ -827,24 +827,31 @@
+ 		} else {
+ 			$kiwi -&gt; done();
+ 			$kiwi -&gt; info (&quot;Copying pre-built boot image to destination&quot;);
+-			my $data = qxx (&quot;cp -a $pinitrd $main::Destination 2&gt;&amp;1&quot;);
+-			my $code = $? &gt;&gt; 8;
+-			if ($code != 0) {
+-				$kiwi -&gt; failed();
+-				$kiwi -&gt; error (&quot;Can't copy pre-built initrd: $data&quot;);
+-				$kiwi -&gt; failed();
+-				$pblt = 0;
++			my $lookup = basename $pinitrd;
++			if (-f &quot;$main::Destination/$lookup&quot;) {
++				# prebuilt boot image already exists in destination dir...
++				$kiwi -&gt; done();
++				$pblt = 1;
+ 			} else {
+-				$data = qxx (&quot;cp -a $plinux* $main::Destination 2&gt;&amp;1&quot;);
+-				$code = $? &gt;&gt; 8;
++				my $data = qxx (&quot;cp -a $pinitrd $main::Destination 2&gt;&amp;1&quot;);
++				my $code = $? &gt;&gt; 8;
+ 				if ($code != 0) {
+ 					$kiwi -&gt; failed();
+-					$kiwi -&gt; error (&quot;Can't copy pre-built kernel: $data&quot;);
++					$kiwi -&gt; error (&quot;Can't copy pre-built initrd: $data&quot;);
+ 					$kiwi -&gt; failed();
+ 					$pblt = 0;
+ 				} else {
+-					$kiwi -&gt; done();
+-					$pblt = 1;
++					$data = qxx (&quot;cp -a $plinux* $main::Destination 2&gt;&amp;1&quot;);
++					$code = $? &gt;&gt; 8;
++					if ($code != 0) {
++						$kiwi -&gt; failed();
++						$kiwi -&gt; error (&quot;Can't copy pre-built kernel: $data&quot;);
++						$kiwi -&gt; failed();
++						$pblt = 0;
++					} else {
++						$kiwi -&gt; done();
++						$pblt = 1;
++					}
+ 				}
+ 			}
+ 		}
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-11-27 10:29:49 UTC (rev 1800)
++++ kiwi-head/rpm/kiwi.changes	2008-11-27 11:25:45 UTC (rev 1801)
+@@ -2,9 +2,12 @@
+ Thu Nov 27 10:31:27 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - added ifplugd to suse-11.1 examples
++- fixed setup of kiwi_type when in creation mode
+ - added versioned requires for kiwi-instsource
+ - updated dotty dependency graph
+ - make sure MBR disk labels starts with first byte &gt; 0xf
++- allow prebuilt boot image path to be the same as the
++  destination directory for the final image
+ - make fdisk output part of the log file when oemboot
+   repartitions the disk
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000907.html">[Kiwi-devel] r1800 - in kiwi-head: .	doc/examples/suse-11.1/suse-live-iso	doc/examples/suse-11.1/suse-live-stick	doc/examples/suse-11.1/suse-oem-preload	doc/examples/suse-11.1/suse-pxe-client	doc/examples/suse-11.1/suse-vm-guest	doc/examples/suse-11.1/suse-xen-guest modules rpm	system/boot/ix86/oemboot
+</A></li>
+	<LI>Next message: <A HREF="000909.html">[Kiwi-devel] r1802 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#908">[ date ]</a>
+              <a href="thread.html#908">[ thread ]</a>
+              <a href="subject.html#908">[ subject ]</a>
+              <a href="author.html#908">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

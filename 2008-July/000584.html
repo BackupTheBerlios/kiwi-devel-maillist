@@ -1,0 +1,333 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1498 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1498%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200807301124.m6UBOePa014156%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000583.html">
+   <LINK REL="Next"  HREF="000585.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1498 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1498%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200807301124.m6UBOePa014156%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1498 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jul 30 13:24:40 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000583.html">[Kiwi-devel] r1497 - in kiwi-head: . modules rpm tools/satplugin
+</A></li>
+        <LI>Next message: <A HREF="000585.html">[Kiwi-devel] r1499 - in kiwi-head: doc doc/LaTex modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#584">[ date ]</a>
+              <a href="thread.html#584">[ thread ]</a>
+              <a href="subject.html#584">[ subject ]</a>
+              <a href="author.html#584">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-07-30 13:24:36 +0200 (Wed, 30 Jul 2008)
+New Revision: 1498
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIImage.pm
+   kiwi-head/modules/KIWIRoot.pm
+   kiwi-head/modules/KIWITest.pm
+   kiwi-head/modules/KIWITestResult.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- don't use umount -l (bnc #413122)
+- fixed automatic boot image building if the type setup
+  is part of a profiled preferences section
+- fixed KIWITest and KIWITestResult modules which uses
+  ublessed object references when calling module methods
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-07-29 16:07:22 UTC (rev 1497)
++++ kiwi-head/kiwi.pl	2008-07-30 11:24:36 UTC (rev 1498)
+@@ -748,7 +748,9 @@
+ 		# install testing packages if any
+ 		#------------------------------------------
+ 		$kiwi -&gt; info (&quot;Reading image description...&quot;);
+-		my $xml = new KIWIXML ( $kiwi,&quot;$RunTestSuite/image&quot; );
++		my $xml = new KIWIXML (
++			$kiwi,&quot;$RunTestSuite/image&quot;,undef,undef,\@Profiles
++		);
+ 		if (! defined $xml) {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
+
+Modified: kiwi-head/modules/KIWIImage.pm
+===================================================================
+--- kiwi-head/modules/KIWIImage.pm	2008-07-29 16:07:22 UTC (rev 1497)
++++ kiwi-head/modules/KIWIImage.pm	2008-07-30 11:24:36 UTC (rev 1498)
+@@ -737,7 +737,9 @@
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Creating $text boot image: $boot...\n&quot;);
+ 	my $Prepare = $imageTree.&quot;/image&quot;;
+-	my $xml = new KIWIXML ( $kiwi,$Prepare,undef,$main::SetImageType );
++	my $xml = new KIWIXML (
++		$kiwi,$Prepare,undef,$main::SetImageType,\@main::Profiles
++	);
+ 	if (! defined $xml) {
+ 		return undef;
+ 	}
+@@ -3508,7 +3510,7 @@
+ sub cleanMount {
+ 	my $this = shift;
+ 	my $imageDest = $this-&gt;{imageDest};
+-	qxx (&quot;umount -l $imageDest/mnt-$$ 2&gt;&amp;1&quot;);
++	qxx (&quot;umount $imageDest/mnt-$$ 2&gt;&amp;1&quot;);
+ 	rmdir &quot;$imageDest/mnt-$$&quot;;
+ }
+ 
+
+Modified: kiwi-head/modules/KIWIRoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIRoot.pm	2008-07-29 16:07:22 UTC (rev 1497)
++++ kiwi-head/modules/KIWIRoot.pm	2008-07-30 11:24:36 UTC (rev 1498)
+@@ -920,11 +920,7 @@
+ 	my $prefix = $root.&quot;/&quot;.$baseSystem;
+ 	foreach my $item (reverse @mountList) {
+ 		$kiwi -&gt; info (&quot;Umounting path: $item\n&quot;);
+-		if ($item =~ /^\/tmp\/kiwimount/) {
+-			qxx (&quot;umount \&quot;$item\&quot; 2&gt;/dev/null&quot;);
+-		} else {
+-			qxx (&quot;umount -l \&quot;$item\&quot; 2&gt;/dev/null&quot;);
+-		}
++		qxx (&quot;umount \&quot;$item\&quot; 2&gt;/dev/null&quot;);
+ 		if ($item =~ /^$prefix/) {
+ 			qxx (&quot; rmdir -p \&quot;$item\&quot; 2&gt;&amp;1 &quot;);
+ 		}
+
+Modified: kiwi-head/modules/KIWITest.pm
+===================================================================
+--- kiwi-head/modules/KIWITest.pm	2008-07-29 16:07:22 UTC (rev 1497)
++++ kiwi-head/modules/KIWITest.pm	2008-07-30 11:24:36 UTC (rev 1498)
+@@ -19,25 +19,11 @@
+ #==========================================
+ # Modules
+ #------------------------------------------
+-require Exporter;
+ use strict;
+ use XML::LibXML;
+ use KIWITestResult;
+ 
+ #==========================================
+-# Exports
+-#------------------------------------------
+-our @ISA    = qw (Exporter);
+-our @EXPORT	= (
+-	'run',
+-	'getOverallMessage',
+-	'getName','getDescription','getSummary',
+-	'getAllResults','getResultStatus','getResultState',
+-	'getResultCommand','getResultMessage',
+-	'getResultErrorState','getResultCount'
+-);
+-
+-#==========================================
+ # constructor
+ #------------------------------------------
+ sub new {
+@@ -48,8 +34,13 @@
+ 	#==========================================
+ 	# Object setup
+ 	#------------------------------------------
+-	my ($class,$testpathname,$chroot,$schema,$manager,$tmpdir)  = @_;
++	my $class = shift;
++	my ($testpathname,$chroot,$schema,$manager,$tmpdir)  = @_;
+ 	my $self = {};
++	bless $self,$class;
++	#==========================================
++	# Constructor setup
++	#------------------------------------------
+ 	if (!defined $tmpdir) {
+ 		$tmpdir = &quot;/tmp&quot;;
+ 	}
+@@ -89,7 +80,6 @@
+ 	#1 failed xml, 2 - failed reqs, 3 - failed tests 
+ 	$self-&gt;{TEST_RESULT_STATE} = 0;
+ 	undef $self-&gt;{TEST_OVERALL_MESSAGE};
+-	bless $self;
+ 	return $self;
+ }
+ 
+@@ -98,9 +88,9 @@
+ #------------------------------------------
+ sub trimpath {
+ 	my ($path)=@_;
+-	$path=~s@&quot;@@g;
+-	$path=~s@/+@/@g;
+-	$path=~s@/$@@g;
++	$path =~ s/\&quot;//g;
++	$path =~ s/\/+/\//g;
++	$path =~ s/\/$//g;
+ 	return $path;
+ }
+ 
+@@ -115,11 +105,11 @@
+ 	my ($self) = @_;
+ 	my $tr=KIWITestResult-&gt;new();
+ 	$self-&gt;{TEST_RESULT_STATUS}=0;  # assume all ok
+-	$self-&gt;KIWITest::loadXML();
++	$self-&gt;loadXML();
+ 	unless ($self-&gt;{TEST_RESULT_STATUS}) {
+-		$self-&gt;KIWITest::checkRequirements();
++		$self-&gt;checkRequirements();
+ 		unless ($self-&gt;{TEST_RESULT_STATUS}) {
+-			$self-&gt;KIWITest::runTests();	
++			$self-&gt;runTests();	
+ 		}	
+ 	}
+ 	return $self-&gt;{TEST_RESULT_STATUS};
+@@ -227,7 +217,8 @@
+ 			$errvalue=2;
+ 		} 
+ 		else{
+-			$errorMessage=&quot;unknown place: &quot;.$place.&quot;, check test description: &quot;.$self-&gt;{XML_FILE};
++			$errorMessage = &quot;unknown place: &quot;.$place;
++			$errorMessage.= &quot;, check test description: &quot;.$self-&gt;{XML_FILE};
+ 			$isOK=&quot;false&quot;;
+ 		}
+ 		if($isOK eq &quot;true&quot;){
+@@ -252,11 +243,12 @@
+ 				}
+ 			}
+ 			else{
+-				$errorMessage=&quot;wrong type of requirements: &quot;.$type.&quot;, check test description: &quot;.$self-&gt;{XML_FILE};
++				$errorMessage = &quot;wrong type of requirements: &quot;;
++				$errorMessage.= $type.&quot;, check test description: &quot;;
++				$errorMessage.= $self-&gt;{XML_FILE};
+ 				$isOK=&quot;false&quot;;
+ 			}
+ 		}
+-				
+ 		if ($isOK eq &quot;false&quot;) {
+ 			my $result=KIWITestResult-&gt;new();
+ 			$result-&gt;setCommand(&quot;requirements test of &quot;.$reqRelPathName);
+@@ -335,12 +327,14 @@
+ 				$r=$?;
+ 				if ( $r ){ #couldn't copy 
+ 					$output=sprintf(
+-						&quot;error, copying of $scrpathname to $chrootpath failed:\n&quot;
++						&quot;error,copying of $scrpathname to $chrootpath failed:\n&quot;
+ 					);
+ 					$output=$output.sprintf(&quot;$o\n&quot;);
+ 					$returnvalue=$r;
+ 				} else {
+-					$cmd = qq(chroot &quot;$self-&gt;{CHROOT}&quot; &quot;$self-&gt;{CHROOT_TMP}/$file&quot; $params 2&gt;&amp;1);
++					my $root = $self-&gt;{CHROOT};
++					my $root_tmp = $self-&gt;{CHROOT_TMP}.&quot;/&quot;.$file;
++					$cmd = qq(chroot &quot;$root&quot; &quot;$root_tmp&quot; $params 2&gt;&amp;1);
+ 					$output=`$cmd`;
+ 					$returnvalue=$?;
+ 				}
+@@ -349,7 +343,7 @@
+ 				$r=$?;
+ 				if ( $r ) { 
+ 					$output=$output.sprintf (
+-						&quot;\n%s can't delete file '$chrootpathname' afterwards: \n&quot;,
++						&quot;\n%s can't delete file '$chrootpathname'\n&quot;,
+ 						$returnvalue ? 'Also' : 'But'
+ 					);
+ 					$output=$output.sprintf(&quot;$o\n&quot;);
+
+Modified: kiwi-head/modules/KIWITestResult.pm
+===================================================================
+--- kiwi-head/modules/KIWITestResult.pm	2008-07-29 16:07:22 UTC (rev 1497)
++++ kiwi-head/modules/KIWITestResult.pm	2008-07-30 11:24:36 UTC (rev 1498)
+@@ -19,20 +19,10 @@
+ #==========================================
+ # Modules
+ #------------------------------------------
+-require Exporter;
+ use strict;
+ use XML::LibXML;
+ 
+ #==========================================
+-# Exports
+-#------------------------------------------
+-our @EXPORT  = (
+-	'setMessage','setErrorState',
+-	'setCommand','getMessage',
+-	'getErrorState','getCommand'
+-);
+-
+-#==========================================
+ # Constructor
+ #------------------------------------------
+ sub new {
+@@ -44,12 +34,12 @@
+ 	#==========================================
+ 	# Object setup
+ 	#------------------------------------------
+-	my ($class)   = @_;
+-	my $self      = {};
++	my $class = shift;
++	my $self  = {};
++	bless $self,$class;
+ 	undef $self-&gt;{CMD};
+ 	undef $self-&gt;{MSG};
+ 	undef $self-&gt;{ERR};
+-	bless $self; 
+ 	return $self;
+ }
+ 
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-07-29 16:07:22 UTC (rev 1497)
++++ kiwi-head/rpm/kiwi.changes	2008-07-30 11:24:36 UTC (rev 1498)
+@@ -2,6 +2,11 @@
+ Tue Jul 29 18:03:24 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.63
++- don't use umount -l (bnc #413122)
++- fixed automatic boot image building if the type setup
++  is part of a profiled preferences section
++- fixed KIWITest and KIWITestResult modules which uses
++  ublessed object references when calling module methods
+ - fixed use of satsolver. It's required to queue jobs as
+   how, what pairs otherwise the result is not solved
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000583.html">[Kiwi-devel] r1497 - in kiwi-head: . modules rpm tools/satplugin
+</A></li>
+	<LI>Next message: <A HREF="000585.html">[Kiwi-devel] r1499 - in kiwi-head: doc doc/LaTex modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#584">[ date ]</a>
+              <a href="thread.html#584">[ thread ]</a>
+              <a href="subject.html#584">[ subject ]</a>
+              <a href="author.html#584">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

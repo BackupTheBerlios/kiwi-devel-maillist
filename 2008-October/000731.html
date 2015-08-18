@@ -1,0 +1,805 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1639 - in kiwi-head: modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ix86/usbboot system/boot/ix86/vmxboot	system/boot/ppc/netboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1639%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ix86/netboot%20system/boot/ix86/oemboot%0A%09system/boot/ix86/usbboot%20system/boot/ix86/vmxboot%0A%09system/boot/ppc/netboot&In-Reply-To=%3C200810151044.m9FAimij004946%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000730.html">
+   <LINK REL="Next"  HREF="000732.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1639 - in kiwi-head: modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ix86/usbboot system/boot/ix86/vmxboot	system/boot/ppc/netboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1639%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ix86/netboot%20system/boot/ix86/oemboot%0A%09system/boot/ix86/usbboot%20system/boot/ix86/vmxboot%0A%09system/boot/ppc/netboot&In-Reply-To=%3C200810151044.m9FAimij004946%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1639 - in kiwi-head: modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ix86/usbboot system/boot/ix86/vmxboot	system/boot/ppc/netboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Oct 15 12:44:48 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000730.html">[Kiwi-devel] r1638 - in kiwi-head: modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000732.html">[Kiwi-devel] r1640 - in kiwi-head: modules rpm	system/boot/ix86/netboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#731">[ date ]</a>
+              <a href="thread.html#731">[ thread ]</a>
+              <a href="subject.html#731">[ subject ]</a>
+              <a href="author.html#731">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-15 12:44:34 +0200 (Wed, 15 Oct 2008)
+New Revision: 1639
+
+Modified:
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/system/boot/ix86/netboot/suse-linuxrc
+   kiwi-head/system/boot/ix86/oemboot/suse-linuxrc
+   kiwi-head/system/boot/ix86/oemboot/suse-preinit
+   kiwi-head/system/boot/ix86/usbboot/suse-linuxrc
+   kiwi-head/system/boot/ix86/vmxboot/suse-linuxrc
+   kiwi-head/system/boot/ix86/vmxboot/suse-preinit
+   kiwi-head/system/boot/ppc/netboot/suse-linuxrc
+Log:
+
+- v2.90
+- use diskID labels for UNION mounts and INITRD params (bnc #434806)
+- fixed setupKernel to change the sysconfig.kernel template file
+  instead of creating a new one (bnc #435060)
+- fixed kernel/initrd links for unified oem|vmx boot
+- fixed mbrid detection for unified systems
+
+
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2008-10-13 16:10:58 UTC (rev 1638)
++++ kiwi-head/modules/KIWIBoot.pm	2008-10-15 10:44:34 UTC (rev 1639)
+@@ -2475,11 +2475,11 @@
+ 	# create a random 4byte MBR disk label ID
+ 	# ---
+ 	my $this  = shift;
+-	my $range = 0xff;
++	my $range = 0xfe;
+ 	my @bytes;
+ 	undef $this-&gt;{mbrid};
+ 	for (my $i=0;$i&lt;4;$i++) {
+-		$bytes[$i] = int(rand($range));
++		$bytes[$i] = 1 + int(rand($range));
+ 	}
+ 	my $nid = sprintf (&quot;0x%02x%02x%02x%02x&quot;,
+ 		$bytes[0],$bytes[1],$bytes[2],$bytes[3]
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-10-13 16:10:58 UTC (rev 1638)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-10-15 10:44:34 UTC (rev 1639)
+@@ -739,6 +739,7 @@
+ 	# check for device by ID
+ 	#--------------------------------------
+ 	local diskByID=`getDiskID $rdev`
++	local swapByID=`getDiskID $swap`
+ 	#======================================
+ 	# check for system image .profile
+ 	#--------------------------------------
+@@ -809,7 +810,7 @@
+ 				echo -n &quot; root=$diskByID $console&quot;                &gt;&gt; $menu
+ 				echo -n &quot; vga=0x314 splash=silent&quot;                &gt;&gt; $menu
+ 				if [ ! -z &quot;$swap&quot; ];then
+-					echo -n &quot; resume=$swap&quot;                       &gt;&gt; $menu
++					echo -n &quot; resume=$swapByID&quot;                   &gt;&gt; $menu
+ 				fi
+ 				echo -n &quot; $KIWI_INITRD_PARAMS&quot;                    &gt;&gt; $menu
+ 				echo &quot; $KIWI_KERNEL_OPTIONS showopts&quot;             &gt;&gt; $menu
+@@ -819,7 +820,7 @@
+ 				echo -n &quot; root=$diskByID $console&quot;                &gt;&gt; $menu
+ 				echo -n &quot; vga=0x314 splash=silent&quot;                &gt;&gt; $menu
+ 				if [ ! -z &quot;$swap&quot; ];then
+-					echo -n &quot; resume=$swap&quot;                       &gt;&gt; $menu
++					echo -n &quot; resume=$swapByID&quot;                   &gt;&gt; $menu
+ 				fi
+ 				echo -n &quot; $KIWI_INITRD_PARAMS&quot;                    &gt;&gt; $menu
+ 				echo &quot; $KIWI_KERNEL_OPTIONS showopts&quot;             &gt;&gt; $menu
+@@ -1033,8 +1034,9 @@
+ 	# ----
+ 	local prefix=$1
+ 	local sdev=$2
++	local diskByID=`getDiskID $sdev`
+ 	local nfstab=$prefix/etc/fstab
+-	echo &quot;$sdev swap swap pri=42 0 0&quot; &gt;&gt; $nfstab
++	echo &quot;$diskByID swap swap pri=42 0 0&quot; &gt;&gt; $nfstab
+ }
+ #======================================
+ # updateOtherDeviceFstab
+@@ -1076,10 +1078,21 @@
+ 	# if created by the distro mkinitrd tool
+ 	# ----
+ 	local prefix=$1
++	local ktempl=/mnt/var/adm/fillup-templates/sysconfig.kernel
++	local syskernel=$prefix/etc/sysconfig/kernel
+ 	mkdir -p $prefix/etc/sysconfig
+-	syskernel=$prefix/etc/sysconfig/kernel
+-	echo &quot;INITRD_MODULES=\&quot;$INITRD_MODULES\&quot;&quot;       &gt; $syskernel
+-	echo &quot;DOMU_INITRD_MODULES=\&quot;$DOMURD_MODULES\&quot;&quot; &gt;&gt; $syskernel
++	if [ ! -f $ktempl ];then
++		systemException \
++			&quot;Can't find kernel sysconfig template in system image !&quot; \
++		&quot;reboot&quot;
++	fi
++	cp $ktempl $syskernel
++	sed -i -e \
++		s&quot;@^INITRD_MODULES=.*@INITRD_MODULES=\&quot;$INITRD_MODULES\&quot;@&quot; \
++	$syskernel
++	sed -i -e \
++		s&quot;@^DOMU_INITRD_MODULES=.*@DOMU_INITRD_MODULES=\&quot;$DOMURD_MODULES\&quot;@&quot; \
++	$syskernel
+ }
+ #======================================
+ # kernelCheck
+@@ -1456,12 +1469,16 @@
+ 	for curd in $ddevs;do
+ 		mbrM=`dd if=$curd bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
+ 		mbrI=0
+-		if mount $curd&quot;1&quot; /mnt;then
+-			if [ -f /mnt/boot/grub/mbrid ];then
+-				read mbrI &lt; /mnt/boot/grub/mbrid
++		for id in 1 2;do
++			if mount $curd$id /mnt;then
++				if [ -f /mnt/boot/grub/mbrid ];then
++					read mbrI &lt; /mnt/boot/grub/mbrid
++					umount /mnt
++					break
++				fi
++				umount /mnt
+ 			fi
+-			umount /mnt
+-		fi
++		done
+ 		if [ &quot;$mbrM&quot; = &quot;$mbrI&quot; ];then
+ 			echo $curd; return
+ 		fi
+@@ -3047,6 +3064,23 @@
+ 	echo $device
+ }
+ #======================================
++# getDiskDevice
++#--------------------------------------
++function getDiskDevice {
++	# /.../
++	# this function is able to turn the given udev disk
++	# ID label into the /dev/ device name
++	# ----
++	local device=`readlink $1`
++	if [ -z $device ];then
++		echo $1
++		return
++	fi
++	device=`basename $device`
++	device=/dev/$device
++	echo $device
++}
++#======================================
+ # getDiskModel
+ #--------------------------------------
+ function getDiskModels {
+@@ -3183,3 +3217,18 @@
+ 		exec chroot . /sbin/init $@
+ 	fi
+ }
++#======================================
++# setupUnionFS
++#--------------------------------------
++function setupUnionFS {
++	# /.../
++	# export the UNIONFS_CONFIG environment variable
++	# which contains a three part coma separated list of the
++	# following style: rwDevice,roDevice,unionType. The
++	# devices are stores by disk ID if possible
++	# ----
++	local rwDevice=`getDiskID $1`
++	local roDevice=`getDiskID $2`
++	local unionFST=$3
++	export UNIONFS_CONFIG=&quot;$rwDevice,$roDevice,$unionFST&quot;
++}
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-13 16:10:58 UTC (rev 1638)
++++ kiwi-head/rpm/kiwi.changes	2008-10-15 10:44:34 UTC (rev 1639)
+@@ -3,7 +3,12 @@
+ 
+ - v2.90
+ - changed grub and fstab setup to use disk ID labels (bnc #434806)
++- use diskID labels for UNION mounts and INITRD params (bnc #434806)
+ - added check media label via genisoimage -A (bnc #434104)
++- fixed setupKernel to change the sysconfig.kernel template file
++  instead of creating a new one (bnc #435060)
++- fixed kernel/initrd links for unified oem|vmx boot
++- fixed mbrid detection for unified systems
+ 
+ -------------------------------------------------------------------
+ Thu Oct  9 10:05:47 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+Modified: kiwi-head/system/boot/ix86/netboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/netboot/suse-linuxrc	2008-10-13 16:10:58 UTC (rev 1638)
++++ kiwi-head/system/boot/ix86/netboot/suse-linuxrc	2008-10-15 10:44:34 UTC (rev 1639)
+@@ -556,7 +556,7 @@
+ 		Echo &quot;Filesystem of remote root system is: $FSTYPE&quot;
+ 		if [ -z &quot;$COMBINED_IMAGE&quot; ];then
+ 			if isFSTypeReadOnly;then
+-				export UNIONFS_CONFIG=&quot;/dev/ram1,&quot;$imageRootDevice&quot;,aufs&quot;
++				setupUnionFS /dev/ram1 &quot;$imageRootDevice&quot; aufs
+ 			fi
+ 		fi
+ 		imageRootName=&quot;NBDRoot-System&quot;
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-linuxrc	2008-10-13 16:10:58 UTC (rev 1638)
++++ kiwi-head/system/boot/ix86/oemboot/suse-linuxrc	2008-10-15 10:44:34 UTC (rev 1639)
+@@ -67,8 +67,31 @@
+ udevStart
+ 
+ #======================================
+-# 4) Include proc/cmdline information
++# 4) start boot shell
+ #--------------------------------------
++startBlogD
++startShell
++errorLogStart
++openKernelConsole
++
++#======================================
++# 5) Including required kernel modules
++#--------------------------------------
++# sleep for a while as I don't know a device to listen on
++# I should be sure all possible devices exist. If there is
++# a better way to make sure _now_ is the best time to search
++# a disk please fixme
++# ---
++probeDevices
++for module in ehci-hcd uhci-hcd usb_storage sg sd_mod BusLogic;do
++	modprobe $module &gt;/dev/null 2&gt;&amp;1
++done
++Echo &quot;Waiting for devices to settle...&quot;
++sleep 5
++
++#======================================
++# 6) Include proc/cmdline information
++#--------------------------------------
+ includeKernelParameters
+ if \
+ 	[ ! -z $UNIONFS_CONFIG ] || [ &quot;$COMBINED_IMAGE&quot; = &quot;local&quot; ] ||\
+@@ -81,26 +104,20 @@
+ 	# This also applies if we use an oem system with the recovery
+ 	# feature enabled
+ 	# ----
+-	export LOCAL_BOOT=&quot;yes&quot;   
++	export LOCAL_BOOT=&quot;yes&quot;
+ fi
++if [ $LOCAL_BOOT = &quot;yes&quot; ];then
++	export deviceRoot=$root
++	export deviceDisk=`getDiskDevice $deviceRoot | sed -e s&quot;@[0-9]@@g&quot;`
++	if [ ! -z &quot;$UNIONFS_CONFIG&quot; ];then
++		setupUnionFS &quot;$deviceDisk&quot;2 &quot;$deviceDisk&quot;1 aufs
++	fi
++	if [ ! -z &quot;$deviceRecovery&quot; ];then
++		export deviceRecovery=$deviceDisk&quot;4&quot;
++	fi
++fi
+ 
+ #======================================
+-# 5) start boot shell
+-#--------------------------------------
+-startBlogD
+-startShell
+-errorLogStart
+-openKernelConsole
+-
+-#======================================
+-# 6) Including required kernel modules
+-#--------------------------------------
+-probeDevices
+-for module in ehci-hcd uhci-hcd usb_storage sg sd_mod BusLogic;do
+-	modprobe $module &gt;/dev/null 2&gt;&amp;1
+-done
+-
+-#======================================
+ # 7) Search disks, prefer removable one
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+@@ -125,8 +142,7 @@
+ 			importFile &lt; $OEM_PARTITION_CONFIG
+ 		fi
+ 		Echo &quot;Searching for boot device...&quot;
+-		sleep 5
+-		deviceDisk=`searchBIOSBootDevice`
++		export deviceDisk=`searchBIOSBootDevice`
+ 		if [ -z &quot;$deviceDisk&quot; ];then
+ 			systemException \
+ 				&quot;Couldn't find any boot device... abort&quot; \
+@@ -140,7 +156,7 @@
+ 		if isFSTypeReadOnly;then
+ 			if [ -z &quot;$COMBINED_IMAGE&quot; ];then
+ 				Echo &quot;Unified system detected, adapting root partition&quot;
+-				export UNIONFS_CONFIG=$deviceDisk&quot;2,&quot;$deviceDisk&quot;1,aufs&quot;
++				setupUnionFS &quot;$deviceDisk&quot;2 &quot;$deviceDisk&quot;1 aufs
+ 			fi
+ 			export deviceRoot=$deviceDisk&quot;1&quot;
+ 			export deviceSwap=$deviceDisk&quot;3&quot;
+@@ -154,14 +170,6 @@
+ 		# on. The image is a virtual disk with one partition
+ 		# ----
+ 		Echo &quot;Searching harddrive for installation&quot;
+-		Echo &quot;Waiting for devices to settle...&quot;
+-		# ...
+-		# sleep for a while as I don't know a device to listen on
+-		# I should be sure all possible devices exist. If there is
+-		# a better way to make sure _now_ is the best time to search
+-		# a disk please fixme
+-		# ---
+-		sleep 5
+ 		hwinfo=/usr/sbin/hwinfo
+ 		export deviceDisks=`$hwinfo --disk |\
+ 			grep &quot;Device File:&quot; | cut -f2 -d: | cut -f1 -d&quot;(&quot;`
+@@ -213,7 +221,7 @@
+ 	fi
+ 	if [ -z &quot;$COMBINED_IMAGE&quot; ];then
+ 		if isFSTypeReadOnly;then
+-			export UNIONFS_CONFIG=$deviceDisk&quot;2,&quot;$deviceDisk&quot;1,aufs&quot;
++			setupUnionFS &quot;$deviceDisk&quot;2 &quot;$deviceDisk&quot;1 aufs
+ 		fi
+ 	fi
+ 	Echo &quot;Try mounting installed system to check version&quot;
+@@ -300,7 +308,7 @@
+ 	Echo &quot;Filesystem of root system is: $FSTYPE -&gt; $deviceRoot&quot;
+ 	if [ -z &quot;$COMBINED_IMAGE&quot; ];then
+ 		if isFSTypeReadOnly;then
+-			export UNIONFS_CONFIG=$deviceDisk&quot;2,&quot;$deviceDisk&quot;1,aufs&quot;
++			setupUnionFS &quot;$deviceDisk&quot;2 &quot;$deviceDisk&quot;1 aufs
+ 		fi
+ 	fi
+ 	#======================================
+@@ -868,16 +876,14 @@
+ 	fi
+ 	if isFSTypeReadOnly &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ];then
+ 		deviceResize=$deviceIOWR
+-		export UNIONFS_CONFIG=$deviceDisk&quot;2,&quot;$deviceDisk&quot;1,aufs&quot;
+-		KIWI_INITRD_PARAMS=&quot;UNIONFS_CONFIG=\&quot;$UNIONFS_CONFIG\&quot;&quot;
+-		KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS deviceRoot=\&quot;$deviceRoot\&quot;&quot;
++		setupUnionFS &quot;$deviceDisk&quot;2 &quot;$deviceDisk&quot;1 aufs
++		KIWI_INITRD_PARAMS=&quot;UNIONFS_CONFIG=yes&quot;
+ 		export KIWI_INITRD_PARAMS
+ 	fi
+ 	if [ ! -z &quot;$deviceResize&quot; ] &amp;&amp; partitionSize $deviceResize &amp;&gt;/dev/null;then
+ 		if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ 			KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS LOCAL_BOOT=yes&quot;
+-			KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS deviceRoot=$deviceRoot&quot;
+-			KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS deviceRecovery=$deviceRecovery&quot;
++			KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS deviceRecovery=yes&quot;
+ 			export KIWI_INITRD_PARAMS
+ 		fi
+ 		if [ &quot;$FSTYPE&quot; = &quot;reiserfs&quot; ];then
+@@ -959,7 +965,7 @@
+ 	# 13.4) umount recovery and boot
+ 	#--------------------------------------
+ 	umount $deviceRecovery
+-	deviceDisk=`echo $deviceRoot | tr -d &quot;[:digit:]&quot;`
++	export deviceDisk=`echo $deviceRoot | tr -d &quot;[:digit:]&quot;`
+ fi
+ 
+ #======================================
+@@ -970,8 +976,34 @@
+ fi
+ 
+ #======================================
+-# 15) Create system dependant files
++# 15) setup ird/kernel links for union
+ #--------------------------------------
++if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; isFSTypeReadOnly;then
++	# /.../
++	# we are using a special root setup with aufs. In this case
++	# we can't use the SuSE Linux initrd but must stick to the
++	# kiwi boot system.
++	# ----
++	kiwiMount &quot;$deviceDisk&quot;2 &quot;/mnt&quot;
++	pushd /mnt/boot &gt;/dev/null
++	IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
++		if test -z &quot;$i&quot;;then
++			continue
++		fi
++		kernel=`echo $i | cut -f1 -d:`
++		initrd=`echo $i | cut -f2 -d:`
++		rm -f $initrd &amp;&amp; ln -s initrd.vmx $initrd
++		rm -f $kernel &amp;&amp; ln -s linux.vmx  $kernel
++		break
++	done
++	IFS=$IFS_ORIG
++	popd &gt;/dev/null
++	umount /mnt
++fi
++
++#======================================
++# 16) Create system dependant files
++#--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	export HAVE_SWAP=0
+ 	setupDefaultFstab /config
+@@ -1009,14 +1041,14 @@
+ fi
+ 
+ #======================================
+-# 16) copy system dependant files
++# 17) copy system dependant files
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	setupConfigFiles
+ fi
+ 
+ #======================================
+-# 17) copy recovery related files
++# 18) copy recovery related files
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ 	IFS=$IFS_ORIG
+@@ -1048,22 +1080,22 @@
+ fi
+ 
+ #======================================
+-# 18) update system dependant files
++# 19) update system dependant files
+ #--------------------------------------
+ setupInittab /mnt
+ 
+ #======================================
+-# 19) setup real root device
++# 20) setup real root device
+ #--------------------------------------
+ echo 256 &gt; /proc/sys/kernel/real-root-dev
+ 
+ #======================================
+-# 20) umount system filesystems
++# 21) umount system filesystems
+ #--------------------------------------
+ umountSystemFilesystems
+ 
+ #======================================
+-# 21) copy initrd files to image
++# 22) copy initrd files to image
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	importBranding
+@@ -1072,17 +1104,17 @@
+ cp /include /mnt
+ 
+ #======================================
+-# 22) kill boot shell
++# 23) kill boot shell
+ #--------------------------------------
+ killShell
+ killBlogD
+ 
+ #======================================
+-# 23) Activate new root
++# 24) Activate new root
+ #--------------------------------------
+ activateImage
+ 
+ #======================================
+-# 24 Unmount initrd / system init
++# 25 Unmount initrd / system init
+ #--------------------------------------
+ bootImage $@
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-preinit
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-preinit	2008-10-13 16:10:58 UTC (rev 1638)
++++ kiwi-head/system/boot/ix86/oemboot/suse-preinit	2008-10-15 10:44:34 UTC (rev 1639)
+@@ -57,10 +57,6 @@
+ 	if [ -d /read-write/boot ];then
+ 		rm -rf /boot &amp;&amp; ln -s /read-write/boot /boot
+ 	fi
+-	pushd /boot &amp;&gt;/dev/null
+-	rm -f vmlinuz &amp;&amp; ln -s linux.vmx  vmlinuz
+-	rm -f initrd  &amp;&amp; ln -s initrd.vmx initrd
+-	popd &amp;&gt;/dev/null
+ 	kernelList /
+ 	if [ ! -z &quot;$COMBINED_IMAGE&quot; ];then
+ 		Echo &quot;Creating bootloader configuration: [ split system ]&quot;
+@@ -68,9 +64,9 @@
+ 		Echo &quot;Creating bootloader configuration: [ unified system ]&quot;
+ 	fi
+ 	if [ $HAVE_SWAP -eq 1 ];then
+-		setupBootLoader / / 1 ${deviceDisk}2 $OEM_BOOT_TITLE $deviceSwap
++		setupBootLoader / / 1 &quot;$deviceDisk&quot;2 $OEM_BOOT_TITLE $deviceSwap
+ 	else
+-		setupBootLoader / / 1 ${deviceDisk}2 $OEM_BOOT_TITLE
++		setupBootLoader / / 1 &quot;$deviceDisk&quot;2 $OEM_BOOT_TITLE
+ 	fi
+ 	bootLoaderOK=1
+ fi
+
+Modified: kiwi-head/system/boot/ix86/usbboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/usbboot/suse-linuxrc	2008-10-13 16:10:58 UTC (rev 1638)
++++ kiwi-head/system/boot/ix86/usbboot/suse-linuxrc	2008-10-15 10:44:34 UTC (rev 1639)
+@@ -104,7 +104,7 @@
+ #--------------------------------------
+ Echo &quot;Filesystem of stick system is: $FSTYPE -&gt; $stickDevice&quot;
+ if isFSTypeReadOnly;then
+-	export UNIONFS_CONFIG=&quot;$stickRoot&quot;2,&quot;$stickRoot&quot;1,aufs
++	setupUnionFS &quot;$stickRoot&quot;2 &quot;$stickRoot&quot;1 aufs
+ fi
+ 
+ #======================================
+
+Modified: kiwi-head/system/boot/ix86/vmxboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/vmxboot/suse-linuxrc	2008-10-13 16:10:58 UTC (rev 1638)
++++ kiwi-head/system/boot/ix86/vmxboot/suse-linuxrc	2008-10-15 10:44:34 UTC (rev 1639)
+@@ -63,38 +63,6 @@
+ . /include
+ 
+ #======================================
+-# Functions
+-#--------------------------------------
+-function VMFindSystem {
+-	local haveSDA=0
+-	local haveHDA=0
+-	local devices=&quot;&quot;
+-	waitForStorageDevice /dev/sda
+-	if [ ! -e /dev/sda ];then
+-		waitForStorageDevice /dev/hda
+-		if [ -e /dev/hda ];then
+-			haveHDA=1
+-			devices=&quot;/dev/hda1 /dev/hda2&quot;
+-		fi
+-	else
+-		haveSDA=1
+-		devices=&quot;/dev/sda1 /dev/sda2&quot;
+-	fi
+-	if [ $haveSDA = 0 ] &amp;&amp; [ $haveHDA = 0 ];then
+-		systemException \
+-			&quot;Couldn't find any storage device... abort&quot; \
+-		&quot;reboot&quot;
+-	fi
+-	for rdevice in $devices;do
+-		imageRootDevice=$rdevice
+-		imageDiskDevice=`echo $imageRootDevice | tr -d [0-9]`
+-		if kiwiMount $imageRootDevice &quot;/mnt&quot; &amp;&gt;/dev/null;then
+-			umount /mnt
+-			break
+-		fi
+-	done
+-}
+-#======================================
+ # Beautify Startup
+ #--------------------------------------
+ echo &quot;Loading KIWI VMX Boot-System...&quot;
+@@ -146,7 +114,14 @@
+ #======================================
+ # 7) Mount VM (boot)
+ #--------------------------------------
+-VMFindSystem
++Echo &quot;Searching for boot device...&quot;
++export imageDiskDevice=`searchBIOSBootDevice`
++export imageRootDevice=$imageDiskDevice&quot;1&quot;
++if [ -z &quot;$imageDiskDevice&quot; ];then
++	systemException \
++		&quot;Couldn't find any boot device... abort&quot; \
++	&quot;reboot&quot;
++fi
+ 
+ #======================================
+ # 8) Get filesystem type
+@@ -163,7 +138,7 @@
+ #--------------------------------------
+ Echo &quot;Filesystem of VMX system is: $FSTYPE -&gt; $imageRootDevice&quot;
+ if isFSTypeReadOnly;then
+-	export UNIONFS_CONFIG=&quot;$imageDiskDevice&quot;2,&quot;$imageDiskDevice&quot;1,aufs
++	setupUnionFS &quot;$imageDiskDevice&quot;2 &quot;$imageDiskDevice&quot;1 aufs
+ fi
+ 
+ #======================================
+@@ -182,44 +157,70 @@
+ fi
+ 
+ #======================================
+-# 11) Create system dependant files
++# 12) setup ird/kernel links for union
+ #--------------------------------------
++if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; isFSTypeReadOnly;then
++	# /.../
++	# we are using a special root setup with aufs. In this case
++	# we can't use the SuSE Linux initrd but must stick to the
++	# kiwi boot system.
++	# ----
++	kiwiMount &quot;$imageDiskDevice&quot;2 &quot;/mnt&quot;
++	pushd /mnt/boot &gt;/dev/null
++	IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
++		if test -z &quot;$i&quot;;then
++			continue
++		fi
++		kernel=`echo $i | cut -f1 -d:`
++		initrd=`echo $i | cut -f2 -d:`
++		rm -f $initrd &amp;&amp; ln -s initrd.vmx $initrd
++		rm -f $kernel &amp;&amp; ln -s linux.vmx  $kernel
++		break
++	done
++	IFS=$IFS_ORIG
++	popd &gt;/dev/null
++	umount /mnt
++fi
++
++#======================================
++# 13) Create system dependant files
++#--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	setupDefaultFstab /config
+ 	updateRootDeviceFstab /config $imageRootDevice
+ 	if [ -z &quot;$UNIONFS_CONFIG&quot; ]; then
+ 		setupBootLoader /mnt /config 0 $imageRootDevice VMX
+ 	else
+-		export KIWI_INITRD_PARAMS=&quot;UNIONFS_CONFIG=\&quot;$UNIONFS_CONFIG\&quot;&quot;
++		export KIWI_INITRD_PARAMS=&quot;UNIONFS_CONFIG=yes&quot;
+ 		setupBootLoader /mnt /config 1 $imageRootDevice VMX
+ 	fi
+ 	setupKernelModules /config
+ fi
+ 
+ #======================================
+-# 12) copy system dependant files
++# 14) copy system dependant files
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	setupConfigFiles
+ fi
+ 
+ #======================================
+-# 13) update system dependant files
++# 15) update system dependant files
+ #--------------------------------------
+ setupInittab /mnt
+ 
+ #======================================
+-# 14) setup real root device
++# 16) setup real root device
+ #--------------------------------------
+ echo 256 &gt; /proc/sys/kernel/real-root-dev
+ 
+ #======================================
+-# 15) umount system filesystems
++# 17) umount system filesystems
+ #--------------------------------------
+ umountSystemFilesystems
+ 
+ #======================================
+-# 16) copy initrd files to image
++# 18) copy initrd files to image
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	importBranding
+@@ -228,17 +229,17 @@
+ cp /include /mnt
+ 
+ #======================================
+-# 17) kill boot shell
++# 19) kill boot shell
+ #--------------------------------------
+ killShell
+ killBlogD
+ 
+ #======================================
+-# 18) Activate new root
++# 20) Activate new root
+ #--------------------------------------
+ activateImage
+ 
+ #======================================
+-# 19) Unmount initrd / system init
++# 21) Unmount initrd / system init
+ #--------------------------------------
+ bootImage $@
+
+Modified: kiwi-head/system/boot/ix86/vmxboot/suse-preinit
+===================================================================
+--- kiwi-head/system/boot/ix86/vmxboot/suse-preinit	2008-10-13 16:10:58 UTC (rev 1638)
++++ kiwi-head/system/boot/ix86/vmxboot/suse-preinit	2008-10-15 10:44:34 UTC (rev 1639)
+@@ -43,36 +43,28 @@
+ createFramebufferDevices
+ 
+ #======================================
+-# 5) check for union filesystem
++# 5) create /etc/ImagePackages
+ #--------------------------------------
++if [ -x /bin/rpm ];then
++	Echo &quot;Creating initial image package info file&quot;
++	rpm -qa --last &gt; /etc/ImagePackages
++fi
++
++#======================================
++# 6) check for union filesystem
++#--------------------------------------
+ if [ ! -z &quot;$UNIONFS_CONFIG&quot; ]; then
+-	# /.../
+-	# we are using a special root setup with aufs. In this case
+-	# we can't use the SuSE Linux initrd but must stick to the
+-	# kiwi boot system.
+-	# ----
+-	updateMTAB
+-	rm -f /boot/initrd  &amp;&amp; ln -s /boot/initrd.vmx /boot/initrd
+-	rm -f /boot/vmlinuz &amp;&amp; ln -s /boot/linux.vmx  /boot/vmlinuz
+ 	exit 0
+ fi
+ 
+ #======================================
+-# 6) create initrd on diskful
++# 7) create initrd on diskful
+ #--------------------------------------
+ setupSUSEInitrd
+ 
+ #======================================
+-# 7) Install boot loader on diskful
++# 8) Install boot loader on diskful
+ #--------------------------------------
+ if [ $bootLoaderOK = 1 ];then
+ 	installBootLoader
+ fi
+-
+-#======================================
+-# 8) create /etc/ImagePackages
+-#--------------------------------------
+-if [ -x /bin/rpm ];then
+-	Echo &quot;Creating initial image package info file&quot;
+-	rpm -qa --last &gt; /etc/ImagePackages
+-fi
+
+Modified: kiwi-head/system/boot/ppc/netboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ppc/netboot/suse-linuxrc	2008-10-13 16:10:58 UTC (rev 1638)
++++ kiwi-head/system/boot/ppc/netboot/suse-linuxrc	2008-10-15 10:44:34 UTC (rev 1639)
+@@ -557,7 +557,7 @@
+ 		Echo &quot;Filesystem of remote root system is: $FSTYPE&quot;
+ 		if [ -z &quot;$COMBINED_IMAGE&quot; ];then
+ 			if isFSTypeReadOnly;then
+-				export UNIONFS_CONFIG=&quot;/dev/ram1,&quot;$imageRootDevice&quot;,aufs&quot;
++				setupUnionFS /dev/ram1 &quot;$imageRootDevice&quot; aufs
+ 			fi
+ 		fi
+ 		imageRootName=&quot;NBDRoot-System&quot;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000730.html">[Kiwi-devel] r1638 - in kiwi-head: modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000732.html">[Kiwi-devel] r1640 - in kiwi-head: modules rpm	system/boot/ix86/netboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#731">[ date ]</a>
+              <a href="thread.html#731">[ thread ]</a>
+              <a href="subject.html#731">[ subject ]</a>
+              <a href="author.html#731">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

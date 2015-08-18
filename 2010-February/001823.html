@@ -1,0 +1,205 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] New schema
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20New%20schema&In-Reply-To=%3C4B66DB4E.9010408%40novell.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001819.html">
+   <LINK REL="Next"  HREF="001824.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] New schema</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20New%20schema&In-Reply-To=%3C4B66DB4E.9010408%40novell.com%3E"
+       TITLE="[Kiwi-devel] New schema">rschweikert at novell.com
+       </A><BR>
+    <I>Mon Feb  1 14:46:54 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001819.html">[Kiwi-devel] New schema
+</A></li>
+        <LI>Next message: <A HREF="001824.html">[Kiwi-devel] New schema
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1823">[ date ]</a>
+              <a href="thread.html#1823">[ thread ]</a>
+              <a href="subject.html#1823">[ subject ]</a>
+              <a href="author.html#1823">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>
+
+Marcus Sch&#228;fer wrote:
+&gt;<i> Hi,
+</I>&gt;<i> 
+</I>&gt;&gt;<i> I have been looking at the new schema for a while and think it should be 
+</I>&gt;&gt;<i> possible to support automatic upgrade as in previous schema changes. 
+</I>&gt;&gt;<i> This will probably be a rather ugly and complicated stylesheet but never 
+</I>&gt;&gt;<i> the less possible. Maybe even in steps of &quot;unpublished/unreleased&quot; 
+</I>&gt;&gt;<i> schema versions, for example 3.8-&gt;3.81-&gt;3.82.... to allow a number of 
+</I>&gt;&gt;<i> smaller conversions in between 3.8 and 4.1
+</I>&gt;<i> 
+</I>&gt;<i> Hmm, I doubt that this is possible without guessing too much.
+</I>&gt;<i> As you know some attributes are now type specific and that means
+</I>&gt;<i> an XSL template has to put them into a type when performing the conversion
+</I>&gt;<i> from 3.8 to 4.1. The question is which type do you use ? you don't
+</I>&gt;<i> know that so you only can guess and put them into all types except
+</I>&gt;<i> for the ones you know exactly like split for example that can only
+</I>&gt;<i> exist in the split type, ok but what about the others ?
+</I>
+I am a bit confused. Why would we have to guess? We know the behavior of 
+the previous version of kiwi and in the end things just moved around.
+
+The previous value of the &lt;type&gt; element becomes the value of the image 
+attribute and with the decision tree below we insert the appropriate 
+children.
+
+Taking vmwareconfig as an example. In a config.xml file with type vmx 
+and oem and a vmwareconfig section the vmwareconfig section would now 
+become a child of both, i.e.
+
+&lt;type image=&quot;vmx&quot; ....&gt;
+    &lt;vmwareconfig&gt;....&lt;/vmwareconfig&gt;
+&lt;/type&gt;
+
+&lt;type image=&quot;oem&quot; ...&gt;
+    &lt;vmwareconfig&gt;...&lt;/vmwareconfig&gt;
+&lt;/type&gt;
+
+Of course having vmwareconfig repeated is less than ideal and having 
+vmwareconfig as child of type oem is not intuitive based on the name. 
+However, this follows the decision tree outlined below.
+
+As long as kiwi applied vmwareconfig settings to oem images previously 
+this would show consistent behavior across versions.
+&gt;<i> 
+</I>&gt;&gt;<i> What does it mean if I set the new image attribute of the type element 
+</I>&gt;&gt;<i> to a value of a file system?
+</I>&gt;&gt;<i>
+</I>&gt;&gt;<i> &lt;type image=&quot;ext2&quot; .../&gt;
+</I>&gt;<i> 
+</I>&gt;<i> That means kiwi creates a filesystem image only of the type ext2
+</I>&gt;<i> you will be able to loop mount that thing. It's not often used by
+</I>&gt;<i> people because it's only a data blob.
+</I>&gt;<i> 
+</I>&gt;&gt;<i> My initial impression is that for the new image attribute we would only 
+</I>&gt;&gt;<i> expect
+</I>&gt;&gt;<i>
+</I>&gt;&gt;<i> iso, split, usb, vmx, oem, xen, pxe, ec2
+</I>&gt;<i> 
+</I>&gt;<i> That's not complete. I already added the allowed values in the schema
+</I>&gt;<i> 
+</I>&gt;<i> k.type.image.attribute =
+</I>&gt;<i>         ## Specifies the image type
+</I>&gt;<i>         attribute image {
+</I>&gt;<i>             &quot;ext2&quot; |  &quot;ext3&quot; | &quot;ext4&quot; | &quot;reiserfs&quot; | &quot;squashfs&quot; |
+</I>&gt;<i>             &quot;dmsquash&quot; | &quot;clicfs&quot; | &quot;cpio&quot; | &quot;iso&quot; | &quot;split&quot; | &quot;usb&quot; |
+</I>&gt;<i>             &quot;vmx&quot; | &quot;oem&quot; | &quot;xen&quot; | &quot;pxe&quot; | &quot;ec2&quot;
+</I>&gt;<i>         }
+</I>&gt;<i> 
+</I>
+OK, I don't quite see the usefulness of this but I guess the edge cases 
+need to be covered. Am I correct that all the file system type elements 
+should not have any children?
+
+&gt;&gt;<i> With this I think the following is true:
+</I>&gt;&gt;<i>
+</I>&gt;&gt;<i> image attribute value   |   children of &lt;type&gt; element
+</I>&gt;&gt;<i> iso                     |   ??? maybe size
+</I>&gt;<i> 
+</I>&gt;<i> &lt;size&gt;
+</I>&gt;<i> 
+</I>&gt;&gt;<i> split                   |   split, size
+</I>&gt;<i> 
+</I>&gt;<i> &lt;size&gt;
+</I>&gt;<i> &lt;split&gt;
+</I>&gt;<i> &lt;vmwareconfig&gt;
+</I>&gt;<i> &lt;xenconfig&gt;
+</I>&gt;<i> &lt;oemconfig&gt;
+</I>&gt;<i> 
+</I>&gt;&gt;<i> usb                     |   ??? maybe size
+</I>&gt;<i> 
+</I>&gt;<i> &lt;size&gt;
+</I>&gt;<i> &lt;lvmvolumes&gt;
+</I>&gt;<i> 
+</I>&gt;&gt;<i> vmx                     |   vmwareconfig, size
+</I>&gt;<i> 
+</I>&gt;<i> &lt;size&gt;
+</I>&gt;<i> &lt;vmwareconfig&gt;
+</I>&gt;<i> &lt;xenconfig&gt;
+</I>&gt;<i> &lt;lvmvolumes&gt;
+</I>&gt;<i> 
+</I>&gt;&gt;<i> oem                     |   oemconfig, size
+</I>&gt;<i> 
+</I>&gt;<i> &lt;size&gt;
+</I>&gt;<i> &lt;vmwareconfig&gt;
+</I>&gt;<i> &lt;xenconfig&gt;
+</I>&gt;<i> &lt;lvmvolumes&gt;
+</I>&gt;<i> &lt;oemconfig&gt;
+</I>&gt;<i> 
+</I>&gt;&gt;<i> xen                     |   xenconfig, size
+</I>&gt;<i> 
+</I>&gt;<i> &lt;size&gt;
+</I>&gt;<i> &lt;xenconfig&gt;
+</I>&gt;<i> 
+</I>&gt;&gt;<i> pxe                     |   pxedeploy
+</I>&gt;<i> 
+</I>&gt;<i> &lt;size&gt;
+</I>&gt;<i> &lt;pxedeploy&gt;
+</I>&gt;<i> 
+</I>&gt;&gt;<i> ec2                     |   ec2config
+</I>&gt;<i> 
+</I>&gt;<i> &lt;size&gt;
+</I>&gt;<i> &lt;ec2config&gt;
+</I>&gt;<i>  
+</I>&gt;&gt;<i> ec2config is a new element with children of
+</I>&gt;&gt;<i> ec2privatekeyfile
+</I>&gt;&gt;<i> ec2certfile
+</I>&gt;&gt;<i> ec2accountnr
+</I>&gt;<i> 
+</I>&gt;<i> oh right I forgot to change them
+</I>&gt;<i> 
+</I>&gt;<i> Regards,
+</I>&gt;<i> Marcus
+</I>
+-- 
+Robert Schweikert                           MAY THE SOURCE BE WITH YOU
+Software Engineer Consultant                          LINUX
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>
+781-464-8147
+
+Novell
+Making IT Work As One
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001819.html">[Kiwi-devel] New schema
+</A></li>
+	<LI>Next message: <A HREF="001824.html">[Kiwi-devel] New schema
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1823">[ date ]</a>
+              <a href="thread.html#1823">[ thread ]</a>
+              <a href="subject.html#1823">[ subject ]</a>
+              <a href="author.html#1823">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

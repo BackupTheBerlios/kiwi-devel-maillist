@@ -1,0 +1,280 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5eb855e670a723f9784594766f3939c465aa5968
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%205eb855e670a723f9784594766f3939c465aa5968&In-Reply-To=%3C20110525111233.D275B481222%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003462.html">
+   <LINK REL="Next"  HREF="003464.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5eb855e670a723f9784594766f3939c465aa5968</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%205eb855e670a723f9784594766f3939c465aa5968&In-Reply-To=%3C20110525111233.D275B481222%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5eb855e670a723f9784594766f3939c465aa5968">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed May 25 13:12:33 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003462.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 36340d7d29985dc961e1d930dc75d59fb3594f08
+</A></li>
+        <LI>Next message: <A HREF="003464.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7d80be143062da1769aa0b48ea9e255c486380e5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3463">[ date ]</a>
+              <a href="thread.html#3463">[ thread ]</a>
+              <a href="subject.html#3463">[ subject ]</a>
+              <a href="author.html#3463">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  5eb855e670a723f9784594766f3939c465aa5968 (commit)
+      from  36340d7d29985dc961e1d930dc75d59fb3594f08 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 5eb855e670a723f9784594766f3939c465aa5968
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed May 25 13:09:03 2011 +0200
+
+    - eliminate use of global variables: ListXMLInfoSelection and RootTree
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index e537168..ec78d0d 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -74,8 +74,6 @@ my $cmdL;       # Command line data container
+ #============================================
+ # Globals
+ #--------------------------------------------
+-our @ListXMLInfoSelection;  # info selection for listXMLInfo
+-our $RootTree;              # optional root tree destination
+ our $BootVMSystem;          # system image to be copied on a VM disk
+ our $BootVMSize;            # size of virtual disk
+ our $StripImage;            # strip shared objects and binaries
+@@ -427,7 +425,7 @@ sub main {
+ 			kiwiExit (1);
+ 		}
+ 		my $res = $info -&gt; printXMLInfo (
+-			\@ListXMLInfoSelection
++			$cmdL -&gt; getXMLInfoSelection()
+ 		);
+ 		if (! $res) {
+ 			kiwiExit (1);
+@@ -661,6 +659,8 @@ sub init {
+ 	my $RecycleRoot;           # use existing root directory incl. contents
+ 	my $Destination;           # destination directory for logical extends
+ 	my $LogFile;               # optional file name for logging
++	my @ListXMLInfoSelection;  # info selection for listXMLInfo
++	my $RootTree;              # optional root tree destination
+ 	my $PackageManager;        # package manager to use
+ 	my $Version;               # version information
+ 	#==========================================
+@@ -774,6 +774,12 @@ sub init {
+ 		\@Exclude,\@Skip,$MigrateNoFiles,$MigrateNoTemplate
+ 	);
+ 	#========================================
++	# check if XML Info Selection is set
++	#----------------------------------------
++	if (@ListXMLInfoSelection) {
++		$cmdL -&gt; setXMLInfoSelection (\@ListXMLInfoSelection);
++	}
++	#========================================
+ 	# check if TestCase is specified
+ 	#----------------------------------------
+ 	if (defined $TestCase) {
+@@ -1808,7 +1814,9 @@ sub createInstSource {
+ 	#==========================================
+ 	# Initialize installation source tree
+ 	#------------------------------------------
+-	my $root = $locator -&gt; createTmpDirectory ( undef, $RootTree, $cmdL );
++	my $root = $locator -&gt; createTmpDirectory (
++		undef, $cmdL-&gt;getRootTargetDir(), $cmdL
++	);
+ 	if (! defined $root) {
+ 		$kiwi -&gt; error (&quot;Couldn't create instsource root&quot;);
+ 		$kiwi -&gt; failed ();
+diff --git a/modules/KIWICommandLine.pm b/modules/KIWICommandLine.pm
+index 9e259bc..2c8fceb 100644
+--- a/modules/KIWICommandLine.pm
++++ b/modules/KIWICommandLine.pm
+@@ -1134,4 +1134,22 @@ sub getTestCase {
+ 	return $this-&gt;{testcase};
+ }
+ 
++#==========================================
++# setXMLInfoSelection
++#------------------------------------------
++sub setXMLInfoSelection {
++	my $this = shift;
++	my $list = shift;
++	$this-&gt;{XMLInfoSelection} = $list;
++	return 1;
++}
++
++#==========================================
++# getXMLInfoSelection
++#------------------------------------------
++sub getXMLInfoSelection {
++	my $this = shift;
++	return $this-&gt;{XMLInfoSelection};
++}
++
+ 1;
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 05b96e3..699bb73 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -901,6 +901,7 @@ sub createImageRootAndBoot {
+ 	my %stype      = %{$sxml-&gt;getImageTypeAndAttributes()};
+ 	my $imageTree  = $this-&gt;{imageTree};
+ 	my $baseSystem = $this-&gt;{baseSystem};
++	my $checkBase  = $cmdL-&gt;getRootTargetDir().&quot;/&quot;.$baseSystem;
+ 	my $treeAccess = 1;
+ 	my @bootdata;
+ 	my $type;
+@@ -1028,7 +1029,7 @@ sub createImageRootAndBoot {
+ 			$configDir,$rootTarget,$this-&gt;{imageTree}))
+ 		) {
+ 			undef $kic;
+-			if (! -d $main::RootTree.$baseSystem) {
++			if (! -d $checkBase) {
+ 				qxx (&quot;rm -rf $tmpdir&quot;);
+ 			}
+ 			return undef;
+@@ -1041,7 +1042,7 @@ sub createImageRootAndBoot {
+ 			$rootTarget,$this-&gt;{imageDest}))
+ 		) {
+ 			undef $kic;
+-			if (! -d $main::RootTree.$baseSystem) {
++			if (! -d $checkBase) {
+ 				qxx (&quot;rm -rf $tmpdir&quot;);
+ 			}
+ 			return undef;
+@@ -1204,6 +1205,7 @@ sub createImageLiveCD {
+ 	my $idest= $cmdL-&gt;getImageTargetDir();
+ 	my $imageTree = $this-&gt;{imageTree};
+ 	my $baseSystem= $this-&gt;{baseSystem};
++	my $checkBase = $cmdL-&gt;getRootTargetDir().&quot;/&quot;.$baseSystem;
+ 	my @bootdata;
+ 	my $error;
+ 	my $data;
+@@ -1515,7 +1517,7 @@ sub createImageLiveCD {
+ 			$configDir,$rootTarget,$this-&gt;{imageTree}))
+ 		) {
+ 			undef $kic;
+-			if (! -d $main::RootTree.$baseSystem) {
++			if (! -d $checkBase) {
+ 				qxx (&quot;rm -rf $tmpdir&quot;);
+ 			}
+ 			return undef;
+@@ -1528,7 +1530,7 @@ sub createImageLiveCD {
+ 			$rootTarget,$this-&gt;{imageDest}))
+ 		) {
+ 			undef $kic;
+-			if (! -d $main::RootTree.$baseSystem) {
++			if (! -d $checkBase) {
+ 				qxx (&quot;rm -rf $tmpdir&quot;);
+ 			}
+ 			return undef;
+@@ -1734,8 +1736,8 @@ sub createImageLiveCD {
+ 		$kiwi -&gt; failed();
+ 		$kiwi -&gt; error  (&quot;Failed to create $destination/isolinux.cfg: $!&quot;);
+ 		$kiwi -&gt; failed ();
+-		if (! -d $main::RootTree.$baseSystem) {
+-			qxx (&quot;rm -rf $main::RootTree&quot;);
++		if (! -d $checkBase) {
++			qxx (&quot;rm -rf $cmdL-&gt;getRootTargetDir()&quot;);
+ 			qxx (&quot;rm -rf $tmpdir&quot;);
+ 		}
+ 		return undef;
+@@ -1825,8 +1827,8 @@ sub createImageLiveCD {
+ 		$kiwi -&gt; failed();
+ 		$kiwi -&gt; error  (&quot;Failed to create isolinux.msg: $!&quot;);
+ 		$kiwi -&gt; failed ();
+-		if (! -d $main::RootTree.$baseSystem) {
+-			qxx (&quot;rm -rf $main::RootTree&quot;);
++		if (! -d $checkBase) {
++			qxx (&quot;rm -rf $cmdL-&gt;getRootTargetDir()&quot;);
+ 			qxx (&quot;rm -rf $tmpdir&quot;);
+ 		}
+ 		return undef;
+@@ -1955,11 +1957,12 @@ sub createImageSplit {
+ 	my $type = shift;
+ 	my $nopersistent = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
++	my $cmdL = $this-&gt;{cmdL};
+ 	my $arch = $this-&gt;{arch};
+ 	my $imageTree = $this-&gt;{imageTree};
+ 	my $baseSystem= $this-&gt;{baseSystem};
++	my $checkBase = $cmdL-&gt;getRootTargetDir().&quot;/&quot;.$baseSystem;
+ 	my $sxml = $this-&gt;{xml};
+-	my $cmdL = $this-&gt;{cmdL};
+ 	my $idest= $cmdL-&gt;getImageTargetDir();
+ 	my %xenc = $sxml-&gt;getXenConfig();
+ 	my $FSTypeRW;
+@@ -2557,7 +2560,7 @@ sub createImageSplit {
+ 			$configDir,$rootTarget,$this-&gt;{imageTree}))
+ 		) {
+ 			undef $kic;
+-			if (! -d $main::RootTree.$baseSystem) {
++			if (! -d $checkBase) {
+ 				qxx (&quot;rm -rf $tmpdir&quot;);
+ 			}
+ 			return undef;
+@@ -2570,7 +2573,7 @@ sub createImageSplit {
+ 			$rootTarget,$this-&gt;{imageDest}))
+ 		) {
+ 			undef $kic;
+-			if (! -d $main::RootTree.$baseSystem) {
++			if (! -d $checkBase) {
+ 				qxx (&quot;rm -rf $tmpdir&quot;);
+ 			}
+ 			return undef;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003462.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 36340d7d29985dc961e1d930dc75d59fb3594f08
+</A></li>
+	<LI>Next message: <A HREF="003464.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7d80be143062da1769aa0b48ea9e255c486380e5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3463">[ date ]</a>
+              <a href="thread.html#3463">[ thread ]</a>
+              <a href="subject.html#3463">[ subject ]</a>
+              <a href="author.html#3463">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

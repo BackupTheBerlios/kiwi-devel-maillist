@@ -1,0 +1,538 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 7a84755a532069ddd78494fc580f21ca8af78ca7
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%207a84755a532069ddd78494fc580f21ca8af78ca7&In-Reply-To=%3C201004150935.o3F9ZevC030874%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002102.html">
+   <LINK REL="Next"  HREF="002104.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 7a84755a532069ddd78494fc580f21ca8af78ca7</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%207a84755a532069ddd78494fc580f21ca8af78ca7&In-Reply-To=%3C201004150935.o3F9ZevC030874%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 7a84755a532069ddd78494fc580f21ca8af78ca7">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Apr 15 11:35:40 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002102.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f69584809895aa57142c2a313376c001ce9fcc36
+</A></li>
+        <LI>Next message: <A HREF="002104.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0f563535173769b3bd657f47616abde766a951ea
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2103">[ date ]</a>
+              <a href="thread.html#2103">[ thread ]</a>
+              <a href="subject.html#2103">[ subject ]</a>
+              <a href="author.html#2103">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-374-SuSE-11-1-SLE-SP-Devel has been updated
+       via  7a84755a532069ddd78494fc580f21ca8af78ca7 (commit)
+      from  bedf1516f15bddad2689a12990bfc2f740bc3f82 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 7a84755a532069ddd78494fc580f21ca8af78ca7
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Apr 15 11:35:29 2010 +0200
+
+    - fixed info module to work with loop media like <A HREF="iso://">iso://</A>
+    - added package version and architecture information when
+      requesting the solved packages list via --info
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index a75c865..b8fca0d 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -1767,7 +1767,7 @@ sub listXMLInfo {
+ 		exit 1;
+ 	}
+ 	$kiwi -&gt; info (&quot;Reading image description [ListXMLInfo]...\n&quot;);
+-	my $xml  = new KIWIXML ($kiwi,$listXMLInfo);
++	my $xml  = new KIWIXML ($kiwi,$listXMLInfo,undef,undef,\@Profiles);
+ 	if (! defined $xml) {
+ 		exit 1;
+ 	}
+@@ -1796,6 +1796,40 @@ sub listXMLInfo {
+ 		);
+ 	}
+ 	#==========================================
++	# Setup loop sources
++	#------------------------------------------
++	my @mountlist = ();
++	if ($xml-&gt;{urlhash}) {
++		foreach my $source (keys %{$xml-&gt;{urlhash}}) {
++			#==========================================
++			# <A HREF="iso://">iso://</A> sources
++			#------------------------------------------
++			if ($source =~ /^iso:\/\/(.*)/) {
++				my $iso  = $1;
++				my $dir  = $xml-&gt;{urlhash}-&gt;{$source};
++				my $data = qxx (&quot;mkdir -p $dir; mount -o loop $iso $dir 2&gt;&amp;1&quot;);
++				my $code = $? &gt;&gt; 8;
++				if ($code != 0) {
++					$kiwi -&gt; failed ();
++					$kiwi -&gt; error  (&quot;Failed to loop mount ISO path: $data&quot;);
++					$kiwi -&gt; failed ();
++					rmdir $dir;
++					exit 1;
++				}
++				push (@mountlist,$dir);
++			}
++		}
++	}
++	sub newCleanMount {
++		my @list = shift;
++		return sub {
++			foreach my $dir (@list) {
++				qxx (&quot;umount $dir ; rmdir $dir 2&gt;&amp;1&quot;);
++			}
++		}
++	}
++	*cleanMount = newCleanMount (@mountlist);
++	#==========================================
+ 	# Walk through selection list
+ 	#------------------------------------------
+ 	foreach my $info (@listXMLInfoSelection) {
+@@ -1808,6 +1842,7 @@ sub listXMLInfo {
+ 					($meta,$delete,$solfile,$satlist) = $xml-&gt;getInstallSize();
+ 					if (! $meta) {
+ 						$kiwi -&gt; failed();
++						cleanMount();
+ 						exit 1;
+ 					}
+ 				}
+@@ -1831,6 +1866,7 @@ sub listXMLInfo {
+ 						$xml-&gt;getInstallSize();
+ 					if (! $meta) {
+ 						$kiwi -&gt; failed();
++						cleanMount();
+ 						exit 1;
+ 					}
+ 				}
+@@ -1884,13 +1920,15 @@ sub listXMLInfo {
+ 						$xml-&gt;getInstallSize();
+ 					if (! $meta) {
+ 						$kiwi -&gt; failed();
++						cleanMount();
+ 						exit 1;
+ 					}
+ 				}
+ 				my $size = 0;
+ 				my %meta = %{$meta};
+ 				foreach my $p (keys %meta) {
+-					$size += $meta{$p};
++					my @metalist = split (/:/,$meta{$p});
++					$size += $metalist[0];
+ 				}
+ 				if ($size &gt; 0) {
+ 					$kiwi-&gt;info (&quot;Estimated root tree size: $size kB\n&quot;);
+@@ -1899,7 +1937,8 @@ sub listXMLInfo {
+ 				if ($delete) {
+ 					foreach my $del (@{$delete}) {
+ 						if ($meta{$del}) {
+-							$size += $meta{$del};
++							my @metalist = split (/:/,$meta{$del});
++							$size += $metalist[0];
+ 						}
+ 					}
+ 				}
+@@ -1917,23 +1956,21 @@ sub listXMLInfo {
+ 						$xml-&gt;getInstallSize();
+ 					if (! $meta) {
+ 						$kiwi -&gt; failed();
++						cleanMount();
+ 						exit 1;
+ 					}
+ 				}
+-				my @packs;
+-				my @solved = @{$solp};
+-				foreach my $s (@solved) {
+-					if ($s =~ /pattern:.*/) {
+-						next;
+-					}
+-					push (@packs,$s);
+-				}
+-				if (! @packs) {
+-					$kiwi -&gt; info (&quot;No packages solved\n&quot;);
++				if (! keys %{$meta}) {
++					$kiwi -&gt; info (&quot;No packages/patterns solved\n&quot;);
+ 				} else {
+-					$kiwi -&gt; info (&quot;Image Packages:\n&quot;);
+-					foreach my $package (@packs) {
+-						$kiwi -&gt; info (&quot;--&gt; $package\n&quot;);
++					$kiwi -&gt; info (&quot;Image Packages:\n\n&quot;);
++					foreach my $p (sort keys %{$meta}) {
++						if ($p =~ /pattern:.*/) {
++							next;
++						}
++						my @m = split (/:/,$meta-&gt;{$p});
++						my $l = sprintf (&quot;=&gt; %-20s | %-8s | %s&quot;,$p,$m[1],$m[2]);
++						$kiwi -&gt; note (&quot;$l\n&quot;);
+ 					}
+ 				}
+ 				last SWITCH;
+@@ -1955,6 +1992,7 @@ sub listXMLInfo {
+ 			};
+ 		}
+ 	}
++	cleanMount();
+ 	exit 0;
+ }
+ 
+diff --git a/modules/KIWISatSolver.pm b/modules/KIWISatSolver.pm
+index caab9a6..d193612 100644
+--- a/modules/KIWISatSolver.pm
++++ b/modules/KIWISatSolver.pm
+@@ -157,28 +157,22 @@ sub new {
+ 	my $list = $solver -&gt; getInstallList ($pool);
+ 	my @plist= ();
+ 	my %slist= ();
+-	my $count= 0;
+-	my $pprev;
+-	foreach my $name (@{$list}) {
+-		if ($count == 0) {
+-			push @plist,$name;
+-			$pprev = $name;
+-			$count = 1;
+-		} else {
+-			$slist{$pprev} = &quot;$name&quot;;
+-			$count = 0;
++	if ($list) {
++		foreach my $package (keys %{$list}) {
++			push (@plist,$package);
++			$slist{$package} = $list-&gt;{$package};
+ 		}
+-	}
+-	foreach my $name (@plist) {
+-		if ($name =~ /^(pattern|product):(.*)/) {
+-			my $type = $1;
+-			my $text = $2;
+-			if (! defined $quiet) {
+-				$kiwi -&gt; info (&quot;Including $type $text&quot;);
+-				$kiwi -&gt; done ();
++		foreach my $name (@plist) {
++			if ($name =~ /^(pattern|product):(.*)/) {
++				my $type = $1;
++				my $text = $2;
++				if (! defined $quiet) {
++					$kiwi -&gt; info (&quot;Including $type $text&quot;);
++					$kiwi -&gt; done ();
++				}
++			} else {
++				push (@solved,$name);
+ 			}
+-		} else {
+-			push (@solved,$name);
+ 		}
+ 	}
+ 	#==========================================
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 17d5fc5..6d79939 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -473,6 +473,7 @@ sub createURLList {
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my %repository  = ();
+ 	my @urllist     = ();
++	my %urlhash     = ();
+ 	my @sourcelist  = ();
+ 	%repository = $this-&gt;getRepository();
+ 	if (! %repository) {
+@@ -487,8 +488,10 @@ sub createURLList {
+ 		my $urlHandler  = new KIWIURL ($kiwi,undef);
+ 		my $publics_url = $urlHandler -&gt; normalizePath ($source);
+ 		push (@urllist,$publics_url);
++		$urlhash{$source} = $publics_url;
+ 	}
+ 	$this-&gt;{urllist} = \@urllist;
++	$this-&gt;{urlhash} = \%urlhash;
+ 	return $this;
+ }
+ 
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index c3fc07a..4b8fadd 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Thu Apr 15 11:31:10 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed info module to work with loop media like <A HREF="iso://">iso://</A>
++- added package version and architecture information when
++  requesting the solved packages list via --info
++
++-------------------------------------------------------------------
+ Mon Apr 12 10:26:46 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ug at suse.de</A>
+ 
+ - calling mkinitrd in netboot image doesn't work 
+diff --git a/tools/satplugin/SaT.i b/tools/satplugin/SaT.i
+index 1c33b1f..1ef326f 100644
+--- a/tools/satplugin/SaT.i
++++ b/tools/satplugin/SaT.i
+@@ -208,9 +208,11 @@ extern &quot;C&quot;
+ 
+     SV* getInstallList (Pool *pool) {
+         int b = 0;
+-        AV *myav = newAV();
+-        SV *res  = 0;
++        SV *result = 0;
+         int len = self-&gt;decisionq.count;
++        HV *hash = newHV();
++        SV **svs = (SV**) malloc(len*sizeof(SV*));
++
+         for (b = 0; b &lt; len; b++) {
+             Id p = self-&gt;decisionq.elements[b];
+             if (p &lt; 0) {
+@@ -220,23 +222,30 @@ extern &quot;C&quot;
+                 continue; // ignore system solvable
+             }
+             Solvable *s = self-&gt;pool-&gt;solvables + p;
+-            //printf (&quot;SOLVER NAME: %d %s\n&quot;,p,id2str(pool, s-&gt;name));
++            // lookup package install size
+             unsigned int bytes=solvable_lookup_num(s, SOLVABLE_INSTALLSIZE, 0);
++            // lookup package version
++            const char* vers = solvable_lookup_str(s,SOLVABLE_EVR);
++            // lookup package architecture
++            const char* arch = solvable_lookup_str(s,SOLVABLE_ARCH);
++            // lockup package name
+             const char* myel = (char*)id2str(pool, s-&gt;name);
+-            char* myis = (char*)malloc (sizeof (char) * 11);
+-            sprintf (myis,&quot;%u&quot;,bytes);
+-            SV* mysv1 = sv_newmortal();
+-            mysv1 = perl_get_sv (myel,TRUE);
+-            sv_setpv(mysv1, myel);
+-            av_push (myav,mysv1);
+-            SV* mysv2 = sv_newmortal();
+-            mysv2 = perl_get_sv ((const char*)myis,TRUE);
+-            sv_setpv(mysv2, myis);
+-            av_push (myav,mysv2);
++
++            // store data into perl hash
++            char* val = (char*)malloc (
++                sizeof (char) * (strlen(vers)+1+strlen(arch)+1+20)
++            );
++            sprintf (val,&quot;%u:%s:%s&quot;,bytes,arch,vers);
++            svs[b] = sv_newmortal();
++            hv_store(hash,
++                myel,strlen(myel)+1,
++                newSVpv(val,strlen(val)+1),0
++            );
+         }
+-        res = newRV((SV*)myav);
+-        sv_2mortal (res);
+-        return res;
++        free (svs);
++        result = newRV((SV*)hash);
++        sv_2mortal (result);
++        return result;
+     }
+ 
+     int getProblemsCount (void) {
+diff --git a/tools/satplugin/example.pl b/tools/satplugin/example.pl
+index d81a013..5e3b518 100644
+--- a/tools/satplugin/example.pl
++++ b/tools/satplugin/example.pl
+@@ -6,7 +6,7 @@ use strict;
+ use KIWI::SaT;
+ 
+ # Open Solvable file
+-open(F, &quot;cat /var/cache/kiwi/satsolver/0df87b1388d164da67caf952a9ea49fc |&quot;) || die;
++open(F, &quot;cat /var/cache/kiwi/satsolver/51c98db6cde4ff149b3cf5bbfcb57567 |&quot;) || die;
+ 
+ # Create Pool and Repository 
+ my $pool = new KIWI::SaT::_Pool;
+@@ -25,13 +25,14 @@ $pool -&gt; initializeLookupTable();
+ # Create Queue
+ my $queue = new KIWI::SaT::Queue;
+ 
+-my @pats = qw(apparmor apparmor_opt base devel_C_C++ devel_qt4);
++my @packs = qw(vim);
++#my @pats = qw(apparmor apparmor_opt base devel_C_C++ devel_qt4);
+ #my @pats = qw(mono_everything);
+ 
+ #my @pats = qw(apparmor apparmor_opt base devel_C_C++ devel_qt4 devel_tcl enhanced_base file_server fonts games games_opt gateway_server gnome_basis_opt imaging imaging_opt kde kde3_games kde3_internet kde3_laptop kde3_multimedia kde3_office kde3_office_opt kde3_utilities kde3_utilities_opt kde3_yast kde4 kde4_basis kde4_games kde4_imaging kde4_imaging_opt kde4_internet kde4_laptop kde4_multimedia kde4_office kde4_office_opt kde4_utilities kde4_utilities_opt kde4_yast lamp_server misc_server multimedia non_oss non_oss_java office print_server remote_desktop sw_management sw_management_kde3 sw_management_kde4 voip x11 x11_opt xgl yast2_basis yast2_install_wf);
+ 
+-foreach my $p (@pats) {
+-	my $id = $pool -&gt; selectSolvable ($repo,&quot;pattern:$p&quot;);
++foreach my $p (@packs) {
++	my $id = $pool -&gt; selectSolvable ($repo,$solver,$p);
+ 	if (! $id) {
+ 		print (&quot;failed to push job: $p\n&quot;);
+ 		next;
+@@ -58,8 +59,8 @@ if ($solver-&gt;getProblemsCount()) {
+ 
+ 
+ # Print packages to install
+-$a = $solver -&gt; getInstallList($pool);
+-foreach my $c (@{$a}) {
+-	print &quot;$c\n&quot;;
++my %a = %{$solver -&gt; getInstallList($pool)};
++foreach my $c (keys %a) {
++	print &quot;$c -&gt; $a{$c}\n&quot;;
+ }
+ 
+diff --git a/tools/satplugin/sat.c b/tools/satplugin/sat.c
+index 0e30e3e..097d338 100644
+--- a/tools/satplugin/sat.c
++++ b/tools/satplugin/sat.c
+@@ -3,24 +3,31 @@
+ #include &lt;fcntl.h&gt;
+ #include &lt;unistd.h&gt;
+ #include &lt;satsolver/solver.h&gt;
++#include &lt;satsolver/poolarch.h&gt;
+ #include &lt;satsolver/solverdebug.h&gt;
+ #include &lt;satsolver/repo_solv.h&gt;
+ #include &lt;satsolver/policy.h&gt;
++#include &lt;sys/utsname.h&gt;
+ 
+-Id select_solvable (Repo*, Pool*,char*);
++Id select_solvable (Repo*, Pool*,Solver*,char*);
+ 
+ int main (void) {
+ 	Pool   *pool   = 0;
+ 	Solver *solver = 0;
+ 	FILE   *fp     = 0;
++	struct utsname hw;
+ 	int b;
+ 	Queue  queue;
+-	int fd = open (&quot;/var/cache/kiwi/satsolver/0df87b1388d164da67caf952a9ea49fc&quot;, O_RDONLY);
++	int fd = open (&quot;/var/cache/kiwi/satsolver/51c98db6cde4ff149b3cf5bbfcb57567&quot;, O_RDONLY);
+ 	if (fd == -1) {
+ 		return 1;
+ 	}
+ 
+ 	pool = pool_create();
++	uname (&amp;hw);
++	
++	printf (&quot;Using Architecture: %s\n&quot;,hw.machine);	
++	pool_setarch (pool,hw.machine);
+ 
+ 	fp = fdopen(fd, &quot;r&quot;);
+ 	Repo *new_repo = repo_create (pool, &quot;empty&quot;);
+@@ -36,22 +43,37 @@ int main (void) {
+ 	#endif
+ 	pool_createwhatprovides(pool);
+ 
++	#ifdef SOLV_VERSION_8
++	solver = solver_create (pool);
++	#else
++	solver = solver_create (pool,empty_installed);
++	#endif
++
+ 	queue_init (&amp;queue);
+ 	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+-	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:apparmor&quot;));
++    queue_push (&amp;queue, select_solvable(new_repo,pool,solver,&quot;libcurl-devel&quot;));
++
++	#if 0
+ 	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+-	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:apparmor_opt&quot;));
++	queue_push (
++		&amp;queue, select_solvable(new_repo,pool,solver,&quot;pattern:apparmor&quot;)
++	);
+ 	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+-	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:base&quot;));
++	queue_push (
++		&amp;queue, select_solvable(new_repo,pool,solver,&quot;pattern:apparmor_opt&quot;)
++	);
+ 	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+-	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:devel_C_C++&quot;));
++	queue_push (
++		&amp;queue, select_solvable(new_repo,pool,solver,&quot;pattern:base&quot;)
++	);
+ 	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+-	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:devel_qt4&quot;));
+-
+-	#ifdef SOLV_VERSION_8
+-	solver = solver_create (pool);
+-	#else
+-	solver = solver_create (pool,empty_installed);
++	queue_push (
++		&amp;queue, select_solvable(new_repo,pool,solver,&quot;pattern:devel_C_C++&quot;)
++	);
++	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
++	queue_push (
++		&amp;queue, select_solvable(new_repo,pool,solver,&quot;pattern:devel_qt4&quot;)
++	);
+ 	#endif
+ 
+ 	solver_solve (solver, &amp;queue);
+@@ -80,8 +102,10 @@ int main (void) {
+ 		}
+ 		Solvable *s = solver-&gt;pool-&gt;solvables + p;
+ 		unsigned int bytes = solvable_lookup_num(s, SOLVABLE_INSTALLSIZE, 0);
++		const char* ver = solvable_lookup_str(s,SOLVABLE_EVR);
++		const char* arc = solvable_lookup_str(s,SOLVABLE_ARCH);
+ 		size += bytes;
+-		printf (&quot;SOLVER NAME: %s %ukB\n&quot;, id2str(pool, s-&gt;name),bytes);
++		printf (&quot;SOLVER NAME: %s %ukB %s %s\n&quot;, id2str(pool, s-&gt;name),bytes,ver,arc);
+ 	}	
+ 	printf (&quot;REQUIRED SIZE: %ldkB\n&quot;,size);
+ 	return 0;
+@@ -89,7 +113,7 @@ int main (void) {
+ 
+ 
+ 
+-Id select_solvable (Repo *repo, Pool* pool,char *name) {
++Id select_solvable (Repo *repo, Pool* pool,Solver* solver,char *name) {
+ 	Id id;
+ 	Queue plist;
+ 	int i, end;
+@@ -109,7 +133,7 @@ Id select_solvable (Repo *repo, Pool* pool,char *name) {
+ 			queue_push(&amp;plist, i);
+ 		}
+ 	}
+-	prune_to_best_arch (pool, &amp;plist);
++	prune_best_arch_name_version (solver,pool,&amp;plist);
+ 	if (plist.count == 0) {
+ 		printf(&quot;unknown package '%s'\n&quot;, name);
+ 		exit(1);
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002102.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f69584809895aa57142c2a313376c001ce9fcc36
+</A></li>
+	<LI>Next message: <A HREF="002104.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0f563535173769b3bd657f47616abde766a951ea
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2103">[ date ]</a>
+              <a href="thread.html#2103">[ thread ]</a>
+              <a href="subject.html#2103">[ subject ]</a>
+              <a href="author.html#2103">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

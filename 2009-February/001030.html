@@ -1,0 +1,228 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1909 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1909%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200902171344.n1HDiQ9X005683%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001029.html">
+   <LINK REL="Next"  HREF="001031.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1909 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1909%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200902171344.n1HDiQ9X005683%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1909 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Feb 17 14:44:26 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001029.html">[Kiwi-devel] r1908 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel: rpm	system/boot/ix86/oemboot
+</A></li>
+        <LI>Next message: <A HREF="001031.html">[Kiwi-devel] r1910 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1030">[ date ]</a>
+              <a href="thread.html#1030">[ thread ]</a>
+              <a href="subject.html#1030">[ subject ]</a>
+              <a href="author.html#1030">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-02-17 14:44:20 +0100 (Tue, 17 Feb 2009)
+New Revision: 1909
+
+Added:
+   kiwi-head/modules/KIWISplit.txt
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIXML.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+Log:
+
+- v3.19
+- added default split section if no split section is set in
+  config.xml. The contents of the default section are stored
+  in /usr/share/kiwi/modules/KIWISplit.txt. At the moment we
+  use /var and /boot in a temporary location (bnc #473826)
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2009-02-17 10:13:55 UTC (rev 1908)
++++ kiwi-head/kiwi.pl	2009-02-17 13:44:20 UTC (rev 1909)
+@@ -44,7 +44,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.18&quot;;
++our $Version       = &quot;3.19&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+@@ -94,6 +94,7 @@
+ our $SchemeTST= $BasePath.&quot;/modules/KIWISchemeTest.rng&quot;;
+ our $KConfig  = $BasePath.&quot;/modules/KIWIConfig.sh&quot;;
+ our $KMigrate = $BasePath.&quot;/modules/KIWIMigrate.txt&quot;;
++our $KSplit   = $BasePath.&quot;/modules/KIWISplit.txt&quot;;
+ our $Revision = $BasePath.&quot;/.revision&quot;;
+ our $TestBase = $BasePath.&quot;/tests&quot;;
+ our @SchemeCVT= (
+
+Added: kiwi-head/modules/KIWISplit.txt
+===================================================================
+--- kiwi-head/modules/KIWISplit.txt	2009-02-17 10:13:55 UTC (rev 1908)
++++ kiwi-head/modules/KIWISplit.txt	2009-02-17 13:44:20 UTC (rev 1909)
+@@ -0,0 +1,8 @@
++&lt;split&gt;
++   &lt;temporary&gt;
++      &lt;file name=&quot;/var&quot;/&gt;
++      &lt;file name=&quot;/var/*&quot;/&gt;
++      &lt;file name=&quot;/boot&quot;/&gt;
++      &lt;file name=&quot;/boot/*&quot;/&gt;
++   &lt;/temporary&gt;
++&lt;/split&gt;
+
+Modified: kiwi-head/modules/KIWIXML.pm
+===================================================================
+--- kiwi-head/modules/KIWIXML.pm	2009-02-17 10:13:55 UTC (rev 1908)
++++ kiwi-head/modules/KIWIXML.pm	2009-02-17 13:44:20 UTC (rev 1909)
+@@ -182,6 +182,18 @@
+ 		return undef;
+ 	}
+ 	#==========================================
++	# Store object data
++	#------------------------------------------
++	$this-&gt;{kiwi}            = $kiwi;
++	$this-&gt;{foreignRepo}     = $foreignRepo;
++	$this-&gt;{optionsNodeList} = $optionsNodeList;
++	#==========================================
++	# Add default split section of not defined
++	#------------------------------------------
++	if (! $splitNodeList) {
++		$splitNodeList = $this -&gt; addDefaultSplitNode();
++	}
++	#==========================================
+ 	# Validate xml input with current scheme
+ 	#------------------------------------------
+ 	eval {
+@@ -211,13 +223,6 @@
+ 		}
+ 	}
+ 	#==========================================
+-	# Store object data
+-	#------------------------------------------
+-	$this-&gt;{kiwi}            = $kiwi;
+-	$this-&gt;{foreignRepo}     = $foreignRepo;
+-	$this-&gt;{optionsNodeList} = $optionsNodeList;
+-
+-	#==========================================
+ 	# Set packagemanager if set on commandline
+ 	#------------------------------------------
+ 	if (defined $main::PackageManager) {
+@@ -3073,4 +3078,31 @@
+ 	return undef;
+ }
+ 
++#==========================================
++# addDefaultSplitNode
++#------------------------------------------
++sub addDefaultSplitNode {
++    # ...
++	# if no split section is setup we add a default section
++	# from the contents of the KIWISplit.txt file and use it
++	# ---
++	my $this = shift;
++	my $kiwi = $this-&gt;{kiwi};
++	my $splitTree;
++	my $splitXML = new XML::LibXML;
++	eval {
++		$splitTree = $splitXML
++			-&gt; parse_file ( $main::KSplit );
++	};
++	if ($@) {
++		my $evaldata=$@;
++		$kiwi -&gt; error  (&quot;Problem reading split file: $main::KSplit&quot;);
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;$evaldata\n&quot;);
++		return undef;
++	}
++	return $splitTree
++		-&gt; getElementsByTagName (&quot;split&quot;);
++}
++
+ 1;
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2009-02-17 10:13:55 UTC (rev 1908)
++++ kiwi-head/rpm/kiwi.changes	2009-02-17 13:44:20 UTC (rev 1909)
+@@ -1,4 +1,13 @@
+ -------------------------------------------------------------------
++Tue Feb 17 14:42:28 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.19
++- added default split section if no split section is set in
++  config.xml. The contents of the default section are stored
++  in /usr/share/kiwi/modules/KIWISplit.txt. At the moment we
++  use /var and /boot in a temporary location (bnc #473826)
++
++-------------------------------------------------------------------
+ Mon Feb 16 10:27:00 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.18
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2009-02-17 10:13:55 UTC (rev 1908)
++++ kiwi-head/rpm/kiwi.spec	2009-02-17 13:44:20 UTC (rev 1909)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.18
++# spec file for package kiwi (Version 3.19
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.18
++Version:        3.19
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001029.html">[Kiwi-devel] r1908 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel: rpm	system/boot/ix86/oemboot
+</A></li>
+	<LI>Next message: <A HREF="001031.html">[Kiwi-devel] r1910 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1030">[ date ]</a>
+              <a href="thread.html#1030">[ thread ]</a>
+              <a href="subject.html#1030">[ subject ]</a>
+              <a href="author.html#1030">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

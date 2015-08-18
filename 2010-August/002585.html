@@ -1,0 +1,127 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 448c478f095f1f0907e4779c349081d601ea4c7c
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20448c478f095f1f0907e4779c349081d601ea4c7c&In-Reply-To=%3C20100824150238.818AB480992%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002588.html">
+   <LINK REL="Next"  HREF="002586.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 448c478f095f1f0907e4779c349081d601ea4c7c</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20448c478f095f1f0907e4779c349081d601ea4c7c&In-Reply-To=%3C20100824150238.818AB480992%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 448c478f095f1f0907e4779c349081d601ea4c7c">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Aug 24 17:02:38 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002588.html">[Kiwi-devel] yum error checking.
+</A></li>
+        <LI>Next message: <A HREF="002586.html">[Kiwi-devel] incompatible squash versions between the host the kernel installed in the image.
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2585">[ date ]</a>
+              <a href="thread.html#2585">[ thread ]</a>
+              <a href="subject.html#2585">[ subject ]</a>
+              <a href="author.html#2585">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  448c478f095f1f0907e4779c349081d601ea4c7c (commit)
+      from  e3a28e42cae74b54f8bfd870a2df2dde5ee57278 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 448c478f095f1f0907e4779c349081d601ea4c7c
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Aug 24 17:00:13 2010 +0200
+
+    - don't check the return code of dhcpcd it's always zero.
+      Therefore the check has been changed to check for the creation
+      of the /var/lib/dhcpcd/dhcpcd-$PXE_IFACE.info file (bnc #634057)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 64cdbca..b9bd2f1 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -3090,6 +3090,7 @@ function setupNetwork {
+ 	local index=0
+ 	local hwicmd=/usr/sbin/hwinfo
+ 	local iface=eth0
++	local setup=0
+ 	for i in `$hwicmd --netcard`;do
+ 		IFS=$IFS_ORIG
+ 		if echo $i | grep -q &quot;HW Address:&quot;;then
+@@ -3127,16 +3128,19 @@ function setupNetwork {
+ 	fi
+ 	export PXE_IFACE=$iface
+ 	dhcpcd -p $PXE_IFACE 1&gt;&amp;2
+-	if test $? != 0;then
++	for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20;do
++		if [ -s /var/lib/dhcpcd/dhcpcd-$PXE_IFACE.info ];then
++			setup=1
++			break
++		fi
++		sleep 2
++	done
++	if [ $setup = 0 ];then
+ 		systemException \
+ 			&quot;Failed to setup DHCP network interface !&quot; \
+ 		&quot;reboot&quot;
+ 	fi
+ 	ifconfig lo 127.0.0.1 netmask 255.0.0.0 up
+-	for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20;do
+-		[ -s /var/lib/dhcpcd/dhcpcd-$PXE_IFACE.info ] &amp;&amp; break
+-		sleep 2
+-	done
+ 	importFile &lt; /var/lib/dhcpcd/dhcpcd-$PXE_IFACE.info
+ 	if [ -z &quot;$DOMAIN&quot; ] &amp;&amp; [ -n &quot;$DNSDOMAIN&quot; ];then
+ 		export DOMAIN=$DNSDOMAIN
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002588.html">[Kiwi-devel] yum error checking.
+</A></li>
+	<LI>Next message: <A HREF="002586.html">[Kiwi-devel] incompatible squash versions between the host the kernel installed in the image.
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2585">[ date ]</a>
+              <a href="thread.html#2585">[ thread ]</a>
+              <a href="subject.html#2585">[ subject ]</a>
+              <a href="author.html#2585">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

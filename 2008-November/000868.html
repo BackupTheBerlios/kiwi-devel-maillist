@@ -1,0 +1,532 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1775 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1775%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200811192007.mAJK7KsX007705%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000867.html">
+   <LINK REL="Next"  HREF="000869.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1775 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1775%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200811192007.mAJK7KsX007705%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1775 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Nov 19 21:07:20 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000867.html">[Kiwi-devel] r1774 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool
+</A></li>
+        <LI>Next message: <A HREF="000869.html">[Kiwi-devel] r1776 - kiwi-head/rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#868">[ date ]</a>
+              <a href="thread.html#868">[ thread ]</a>
+              <a href="subject.html#868">[ subject ]</a>
+              <a href="author.html#868">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-11-19 21:07:17 +0100 (Wed, 19 Nov 2008)
+New Revision: 1775
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIConfig.sh
+   kiwi-head/modules/KIWIImage.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- added kernel consistency check (bnc #445309)
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-11-19 17:31:00 UTC (rev 1774)
++++ kiwi-head/kiwi.pl	2008-11-19 20:07:17 UTC (rev 1775)
+@@ -196,6 +196,7 @@
+ our $Verbosity = 0;         # control the verbosity level
+ our $TargetArch;            # target architecture -&gt; writes zypp.conf
+ our $InstSourceLocal;       # create installation source from local metadata
++our $CheckKernel;           # check for kernel matches in boot and system image
+ our $kiwi;                  # global logging handler object
+ 
+ #============================================
+@@ -1158,6 +1159,7 @@
+ 		&quot;partitioner=s&quot;         =&gt; \$Partitioner,
+ 		&quot;instsource-local&quot;      =&gt; \$InstSourceLocal,
+ 		&quot;target-arch=s&quot;         =&gt; \$TargetArch,
++		&quot;check-kernel&quot;          =&gt; \$CheckKernel,
+ 		&quot;help|h&quot;                =&gt; \&amp;usage,
+ 		&quot;&lt;&gt;&quot;                    =&gt; \&amp;usage
+ 	);
+@@ -1501,6 +1503,11 @@
+ 	print &quot;    used architecture for the image-packages in zypp.conf.\n&quot;;
+ 	print &quot;    When used with smart this option doesn't have any effect.\n&quot;;
+ 	print &quot;\n&quot;;
++	print &quot;  [ --check-kernel ]\n&quot;;
++	print &quot;    Activates check for matching kernels between boot and\n&quot;;
++	print &quot;    system image. The kernel check also tries to fix the boot\n&quot;;
++	print &quot;    image if no matching kernel was found.\n&quot;;
++	print &quot;\n&quot;;
+ 	print &quot;  [ -v | --verbose &lt;1|2|3&gt; ]\n&quot;;
+ 	print &quot;    Control the verbosity level. At the moment this option\n&quot;;
+ 	print &quot;    has an effect on the create-instsource module only\n&quot;;
+
+Modified: kiwi-head/modules/KIWIConfig.sh
+===================================================================
+--- kiwi-head/modules/KIWIConfig.sh	2008-11-19 17:31:00 UTC (rev 1774)
++++ kiwi-head/modules/KIWIConfig.sh	2008-11-19 20:07:17 UTC (rev 1775)
+@@ -960,10 +960,16 @@
+ 	local d
+ 	local mod
+ 	local stripdir
++	local kdata
+ 	for kversion in /lib/modules/*;do
+ 		IFS=&quot;
+ 		&quot;
+-		for p in `rpm -qf $kversion`;do
++		if [ -x /bin/rpm ];then
++			kdata=$(rpm -qf $kversion)
++		else
++			kdata=$kversion
++		fi
++		for p in $kdata;do
+ 			#==========================================
+ 			# get kernel VERSION information
+ 			#------------------------------------------
+
+Modified: kiwi-head/modules/KIWIImage.pm
+===================================================================
+--- kiwi-head/modules/KIWIImage.pm	2008-11-19 17:31:00 UTC (rev 1774)
++++ kiwi-head/modules/KIWIImage.pm	2008-11-19 20:07:17 UTC (rev 1775)
+@@ -23,6 +23,7 @@
+ use Carp qw (cluck);
+ use KIWILog;
+ use KIWIBoot;
++use KIWIXML;
+ use KIWIIsoLinux;
+ use Math::BigFloat;
+ use File::Basename;
+@@ -375,7 +376,7 @@
+ 	}
+ 	if (! $pblt) {
+ 		#==========================================
+-		# build the split boot image
++		# build the ec2 boot image
+ 		#------------------------------------------
+ 		undef @main::AddPackage;
+ 		undef $main::Upgrade;
+@@ -397,13 +398,24 @@
+ 		qxx (&quot;rm -rf $tmpdir&quot;);
+ 	}
+ 	#==========================================
+-	# Include splash screen to initrd
++	# setup initrd name 
+ 	#------------------------------------------
+ 	my $kernel = $main::Destination.&quot;/&quot;.$main::ImageName.&quot;.kernel&quot;;
+ 	my $initrd = $main::Destination.&quot;/&quot;.$main::ImageName.&quot;.gz&quot;;
+ 	if (! -f $initrd) {
+ 		$initrd = $main::Destination.&quot;/&quot;.$main::ImageName;
+ 	}
++	#==========================================
++	# Check boot and system image kernel
++	#------------------------------------------
++	if (defined $main::CheckKernel) {
++		if (! $this -&gt; checkKernel ($initrd,$imageTree)) {
++			return undef;
++		}
++	}
++	#==========================================
++	# Include splash screen to initrd
++	#------------------------------------------
+ 	my $kboot  = new KIWIBoot ($kiwi,$initrd);
+ 	if (! defined $kboot) {
+ 		return undef;
+@@ -653,14 +665,13 @@
+ 	# call kiwi with the --bootstick option after the image creation
+ 	# process is finished
+ 	#
+-	# Note: Virtual machine images requires the same steps than USB
+-	# images. The only difference is that there is no real disk
+-	# (USB-storage) the images are deployed to. Because of this we
+-	# are using the same code for creating the system and boot image
+-	# in the createImageVMX() method
++	# Note: vmx|xen|pxe images requires the same steps than USB
++	# images. Therefore this function is used inside the
++	# createImageVMX(), createImagePXE() and createImageXen()
++	# functions too 
+ 	# ---
+ 	#==========================================
+-	# Create USB boot and system image
++	# Create usb|vmx|xen|pxe system image
+ 	#------------------------------------------
+ 	my $this = shift;
+ 	my $para = shift;
+@@ -735,7 +746,7 @@
+ 	}
+ 	$result{systemImage} = $main::ImageName;
+ 	#==========================================
+-	# Prepare and Create USB boot image
++	# Prepare usb|vmx|xen|pxe boot image
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Creating $text boot image: $boot...\n&quot;);
+ 	my $Prepare = $imageTree.&quot;/image&quot;;
+@@ -840,7 +851,7 @@
+ 	}
+ 	if (! $pblt) {
+ 		#==========================================
+-		# build the boot image
++		# build the usb|vmx|xen|pxe boot image
+ 		#------------------------------------------
+ 		undef @main::AddPackage;
+ 		undef $main::Upgrade;
+@@ -861,12 +872,23 @@
+ 		qxx (&quot;rm -rf $tmpdir&quot;);
+ 	}
+ 	#==========================================
+-	# Include splash screen to initrd
++	# setup initrd name
+ 	#------------------------------------------
+ 	my $initrd = $main::Destination.&quot;/&quot;.$main::ImageName.&quot;.gz&quot;;
+ 	if (! -f $initrd) {
+ 		$initrd = $main::Destination.&quot;/&quot;.$main::ImageName;
+ 	}
++	#==========================================
++	# Check boot and system image kernel
++	#------------------------------------------
++	if (defined $main::CheckKernel) {
++		if (! $this -&gt; checkKernel ($initrd,$imageTree)) {
++			return undef;
++		}
++	}
++	#==========================================
++	# Include splash screen to initrd
++	#------------------------------------------
+ 	my $kboot  = new KIWIBoot ($kiwi,$initrd);
+ 	if (! defined $kboot) {
+ 		return undef;
+@@ -1375,7 +1397,7 @@
+ 	}
+ 	if (! $pblt) {
+ 		#==========================================
+-		# build an isoboot boot image
++		# build the isoboot boot image
+ 		#------------------------------------------
+ 		undef @main::AddPackage;
+ 		undef $main::Upgrade;
+@@ -1393,6 +1415,24 @@
+ 	$main::Survive = &quot;default&quot;;
+ 	undef %main::ForeignRepo;
+ 	#==========================================
++	# Check boot and system image kernel
++	#------------------------------------------
++	if (defined $main::CheckKernel) {
++		my $initrd = $pinitrd;
++		if (! $pblt) {
++			$initrd = &quot;$imageDest/$iso$arch-$ver.gz&quot;;
++		}
++		if (! $this -&gt; checkKernel ($initrd,$imageTree)) {
++			if (! -d $main::RootTree.$baseSystem) {
++				qxx (&quot;rm -rf $main::RootTree&quot;);
++				qxx (&quot;rm -rf $tmpdir&quot;);
++				qxx (&quot;rm -rf $imageTreeReadOnly&quot;);
++			}
++			$this -&gt; restoreCDRootData();
++			return undef;
++		}
++	}
++	#==========================================
+ 	# Prepare for CD ISO image
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Creating CD filesystem&quot;);
+@@ -2405,12 +2445,23 @@
+ 		qxx (&quot;rm -rf $tmpdir&quot;);
+ 	}
+ 	#==========================================
+-	# Include splash screen to initrd
++	# setup initrd name
+ 	#------------------------------------------
+ 	my $initrd = $main::Destination.&quot;/&quot;.$main::ImageName.&quot;.gz&quot;;
+ 	if (! -f $initrd) {
+ 		$initrd = $main::Destination.&quot;/&quot;.$main::ImageName;
+ 	}
++	#==========================================
++	# Check boot and system image kernel
++	#------------------------------------------
++	if (defined $main::CheckKernel) {
++		if (! $this -&gt; checkKernel ($initrd,$imageTree)) {
++			return undef;
++		}
++	}
++	#==========================================
++	# Include splash screen to initrd
++	#------------------------------------------
+ 	my $kboot  = new KIWIBoot ($kiwi,$initrd);
+ 	if (! defined $kboot) {
+ 		return undef;
+@@ -3039,6 +3090,23 @@
+ 			last SWITCH;
+ 		};
+ 	}
++	#==========================================
++	# this is a boot image, extract kernel
++	#------------------------------------------
++	return $this -&gt; extractLinux (
++		$name,$imageTree,$imageDest
++	);
++}
++
++#==========================================
++# extractLinux
++#------------------------------------------
++sub extractLinux {
++	my $this      = shift;
++	my $name      = shift;
++	my $imageTree = shift;
++	my $imageDest = shift;
++	my $kiwi      = $this-&gt;{kiwi};
+ 	if ((-f &quot;$imageTree/boot/vmlinux.gz&quot;) ||
+ 		(-f &quot;$imageTree/boot/vmlinux&quot;)    ||
+ 		(-f &quot;$imageTree/boot/vmlinuz&quot;)
+@@ -3556,6 +3624,191 @@
+ }
+ 
+ #==========================================
++# checkKernel
++#------------------------------------------
++sub checkKernel {
++	# ...
++	# this function receives two parameters. The initrd image
++	# file and the system image tree directory path. It checks
++	# whether at least one kernel matches both, the initrd and
++	# the system image. If not the function tries to copy the
++	# kernel from the system image into the initrd. If the
++	# system image specifies more than one kernel an error
++	# is printed pointing out that the boot image needs to
++	# specify one of the found system image kernels
++	# ---
++	my $this    = shift;
++	my $initrd  = shift;
++	my $systree = shift;
++	my $kiwi    = $this-&gt;{kiwi};
++	my $arch    = $this-&gt;{arch};
++	my %sysk    = ();
++	my %bootk   = ();
++	my $status;
++	my $tmpdir;
++	#==========================================
++	# find system image kernel(s)
++	#------------------------------------------
++	foreach my $dir (glob (&quot;$systree/lib/modules/*&quot;)) {
++		if ($dir =~ /-debug$/) {
++			next;
++		}
++		$dir =~ s/$systree\///;
++		$sysk{$dir} = &quot;system-kernel&quot;;
++	}
++	if (! %sysk) {
++		$kiwi -&gt; error  (&quot;Can't find any system image kernel&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	#==========================================
++	# find boot image kernel
++	#------------------------------------------
++	my $cmd = &quot;cat $initrd&quot;;
++	my $zip = 0;
++	if ($initrd =~ /\.gz$/) {
++		$cmd = &quot;$main::Gzip -cd $initrd&quot;;
++		$zip = 1;
++	}
++	my @status = qxx (&quot;$cmd|cpio -it --quiet 'lib/modules/*'|cut -f1-3 -d/&quot;);
++	my $result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; error  (&quot;Can't find any boot image kernel&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	foreach my $module (@status) {
++		chomp $module;
++		$bootk{$module} = &quot;boot-kernel&quot;;
++	}
++	if (! %bootk) {
++		$kiwi -&gt; error  (&quot;Can't find any boot image kernel&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	#==========================================
++	# search system image kernel in initrd 
++	#------------------------------------------
++	foreach my $system (keys %sysk) {
++		if ($bootk{$system}) {
++			# found system image kernel in initrd, ok
++			return $this;
++		}
++	}
++	#==========================================
++	# check system image kernel count
++	#------------------------------------------
++	if (keys %sysk &gt; 1) {
++		$kiwi -&gt; error  (&quot;*** kernel check failed ***&quot;);
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; note (&quot;Can't find a system kernel matching the initrd\n&quot;);
++		$kiwi -&gt; note (&quot;multiple system kernels were found, make sure your\n&quot;);
++		$kiwi -&gt; note (&quot;boot image includes the intended kernel\n&quot;);
++		return undef;
++	}
++	#==========================================
++	# fix kernel inconsistency:
++	#------------------------------------------
++	$kiwi -&gt; info (&quot;Fixing kernel inconsistency...&quot;);
++	$tmpdir = qxx (&quot;mktemp -q -d /tmp/kiwi-fixboot.XXXXXX&quot;); chomp $tmpdir;
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Couldn't create tmp dir: $tmpdir: $!&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	#==========================================
++    # 1) unpack initrd...
++    #------------------------------------------
++	$status = qxx (&quot;cd $tmpdir &amp;&amp; $cmd|cpio -i --quiet&quot;);
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Couldn't unpack initrd: $status&quot;);
++		$kiwi -&gt; failed ();
++		qxx (&quot;rm -rf $tmpdir&quot;);
++		return undef;
++	}
++	#==========================================
++	# 2) create images.sh script...
++	#------------------------------------------
++	if (! open (FD,&quot;&gt;$tmpdir/images.sh&quot;)) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Couldn't create image.sh file: $!&quot;);
++		$kiwi -&gt; failed ();
++		qxx (&quot;rm -rf $tmpdir&quot;);
++		return undef;
++	}
++	print FD '#!/bin/sh'.&quot;\n&quot;;
++	print FD 'test -f /.kconfig &amp;&amp; . /.kconfig'.&quot;\n&quot;;
++	print FD 'test -f /.profile &amp;&amp; . /.profile'.&quot;\n&quot;;
++	print FD 'echo &quot;*** Fixing kernel inconsistency ***&quot;'.&quot;\n&quot;;
++	print FD 'suseStripKernel'.&quot;\n&quot;;
++	print FD 'exit 0'.&quot;\n&quot;;
++	close FD;
++	#==========================================
++	# 3) copy system kernel to initrd...
++	#------------------------------------------
++	qxx (&quot;rm -rf $tmpdir/boot&quot;);
++	qxx (&quot;cp -a  $systree/boot $tmpdir&quot;);
++	qxx (&quot;rm -rf $tmpdir/lib/modules&quot;);
++	qxx (&quot;cp -a  $systree/lib/modules $tmpdir/lib&quot;);
++	qxx (&quot;cp $main::BasePath/modules/KIWIConfig.sh $tmpdir/.kconfig&quot;);
++	qxx (&quot;chmod u+x $tmpdir/images.sh&quot;);
++	#==========================================
++	# 4) call images.sh script...
++	#------------------------------------------
++	$status = qxx (&quot;chroot $tmpdir /images.sh 2&gt;&amp;1&quot;);
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; info   ($status);
++		qxx (&quot;rm -rf $tmpdir&quot;);
++		return undef;
++	} else {
++		$kiwi -&gt; loginfo (&quot;images.sh: $status&quot;);
++	}
++	$kiwi -&gt; done();
++	#==========================================
++	# 5) extract kernel files...
++	#------------------------------------------
++	my $xml  = new KIWIXML ($kiwi,$tmpdir.&quot;/image&quot;);
++	my $name = $xml -&gt; getImageName();
++	my $iver = $xml -&gt; getImageVersion();
++	my $dest = dirname $initrd;
++	$name = $name.$arch.&quot;-&quot;.$iver;
++	qxx (&quot;rm -f $dest/$name*&quot;);
++	if (! $this -&gt; extractLinux ($name,$tmpdir,$dest)) {
++		qxx (&quot;rm -rf $tmpdir&quot;);
++		return undef;
++	}
++	#==========================================
++	# 6) rebundle initrd...
++	#------------------------------------------
++	my @cpio = (&quot;--create&quot;, &quot;--format=newc&quot;, &quot;--quiet&quot;);
++	$status = qxx ( &quot;cd $tmpdir &amp;&amp; find . | cpio @cpio &gt; $dest/$name&quot;);
++	if ($zip) {
++		$status = qxx (
++			&quot;cd $tmpdir &amp;&amp; cat $dest/$name | $main::Gzip -f &gt; $initrd&quot;
++		);
++	} 
++	#==========================================
++	# 7) recreate md5 file...
++	#------------------------------------------
++	my $origDest = $this-&gt;{imageDest};
++	$this-&gt;{imageDest} = $dest;
++	if (! $this -&gt; buildMD5Sum ($name)) {
++		$this-&gt;{imageDest} = $origDest;
++		qxx (&quot;rm -rf $tmpdir&quot;);
++		return undef;
++	}
++	$this-&gt;{imageDest} = $origDest;
++	qxx (&quot;rm -rf $tmpdir&quot;);
++	return $this;
++}
++
++#==========================================
+ # cleanMount
+ #------------------------------------------
+ sub cleanMount {
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-11-19 17:31:00 UTC (rev 1774)
++++ kiwi-head/rpm/kiwi.changes	2008-11-19 20:07:17 UTC (rev 1775)
+@@ -7,6 +7,8 @@
+ -------------------------------------------------------------------
+ Tue Nov 18 18:57:44 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- added kernel consistency check (bnc #445309)
++- set framebuffer to verbose mode in sax init script
+ - added SLE[SD]11 boot image templates used by JeOS
+ 
+ -------------------------------------------------------------------
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000867.html">[Kiwi-devel] r1774 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool
+</A></li>
+	<LI>Next message: <A HREF="000869.html">[Kiwi-devel] r1776 - kiwi-head/rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#868">[ date ]</a>
+              <a href="thread.html#868">[ thread ]</a>
+              <a href="subject.html#868">[ subject ]</a>
+              <a href="author.html#868">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

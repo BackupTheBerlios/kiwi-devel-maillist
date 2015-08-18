@@ -1,0 +1,162 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a6a411cfe2ecd289012a348ce89df5ce6973875d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a6a411cfe2ecd289012a348ce89df5ce6973875d&In-Reply-To=%3C200910121511.n9CFBMxI021070%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001509.html">
+   <LINK REL="Next"  HREF="001518.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a6a411cfe2ecd289012a348ce89df5ce6973875d</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a6a411cfe2ecd289012a348ce89df5ce6973875d&In-Reply-To=%3C200910121511.n9CFBMxI021070%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a6a411cfe2ecd289012a348ce89df5ce6973875d">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Oct 12 17:11:22 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001509.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bc21bca81c77f4490157612de5e3c7ab59ab70e9
+</A></li>
+        <LI>Next message: <A HREF="001518.html">[Kiwi-devel] bugs and questions
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1517">[ date ]</a>
+              <a href="thread.html#1517">[ thread ]</a>
+              <a href="subject.html#1517">[ subject ]</a>
+              <a href="author.html#1517">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  a6a411cfe2ecd289012a348ce89df5ce6973875d (commit)
+      from  bc21bca81c77f4490157612de5e3c7ab59ab70e9 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit a6a411cfe2ecd289012a348ce89df5ce6973875d
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Oct 12 17:11:10 2009 +0200
+
+    - fixed error log switch in Echo function
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index ef28783..c04d4e3 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -24,6 +24,7 @@ export ELOG_BOOTSHELL=/dev/tty2
+ export ELOG_EXCEPTION=/dev/tty1
+ export KLOG_CONSOLE=4
+ export KLOG_DEFAULT=1
++export ELOG_STOPPED=0
+ export PARTITIONER=sfdisk
+ export TRANSFER_ERRORS_FILE=/tmp/transfer.errors
+ export DEFAULT_VGA=0x314
+@@ -87,7 +88,9 @@ function Echo {
+ 	# /.../
+ 	# print a message to the controling terminal
+ 	# ----
+-	set +x
++	if [ $ELOG_STOPPED = 0 ];then
++		set +x
++	fi
+ 	if [ ! $UTIMER = 0 ];then
+ 		kill -HUP $UTIMER
+ 		local prefix=$(cat /tmp/utimer)
+@@ -106,11 +109,17 @@ function Echo {
+ 		esac
+ 	done
+ 	shift $(($OPTIND - 1))
+-	set -x
++	if [ $ELOG_STOPPED = 0 ];then
++		set -x
++	fi
+ 	echo $optn $opte &quot;$prefix $1&quot;
+-	set +x
++	if [ $ELOG_STOPPED = 0 ];then
++		set +x
++	fi
+ 	OPTIND=1
+-	set -x
++	if [ $ELOG_STOPPED = 0 ];then
++		set -x
++	fi
+ }
+ #======================================
+ # WaitKey
+@@ -336,6 +345,7 @@ function createFramebufferDevices {
+ #--------------------------------------
+ function errorLogStop {
+ 	set +x
++	export ELOG_STOPPED=1
+ 	exec 2&gt;$ELOG_EXCEPTION
+ }
+ #======================================
+@@ -343,6 +353,7 @@ function errorLogStop {
+ #--------------------------------------
+ function errorLogContinue {
+ 	exec 2&gt;&gt;$ELOG_FILE
++	export ELOG_STOPPED=0
+ 	set -x
+ }
+ #======================================
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 587c816..00abb3b 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,9 @@
+ -------------------------------------------------------------------
++Mon Oct 12 16:07:35 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed error log switch in Echo function
++
++-------------------------------------------------------------------
+ Mon Oct 12 10:59:31 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed hwclock and timezone setup (bnc #546096)
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001509.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bc21bca81c77f4490157612de5e3c7ab59ab70e9
+</A></li>
+	<LI>Next message: <A HREF="001518.html">[Kiwi-devel] bugs and questions
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1517">[ date ]</a>
+              <a href="thread.html#1517">[ thread ]</a>
+              <a href="subject.html#1517">[ subject ]</a>
+              <a href="author.html#1517">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

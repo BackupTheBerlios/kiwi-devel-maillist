@@ -1,0 +1,166 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 8af1032cc2cd693ae94db2cd2260bfa470514cfb
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%208af1032cc2cd693ae94db2cd2260bfa470514cfb&In-Reply-To=%3C20110304125019.28928481413%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003160.html">
+   <LINK REL="Next"  HREF="003162.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 8af1032cc2cd693ae94db2cd2260bfa470514cfb</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%208af1032cc2cd693ae94db2cd2260bfa470514cfb&In-Reply-To=%3C20110304125019.28928481413%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 8af1032cc2cd693ae94db2cd2260bfa470514cfb">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Mar  4 13:50:18 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003160.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8cf9714017cd575e91d972d1aa7bd4ba2b8e2c36
+</A></li>
+        <LI>Next message: <A HREF="003162.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 8b2e6eeb4edb6716f0369640bbaa847ca780d6ee
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3161">[ date ]</a>
+              <a href="thread.html#3161">[ thread ]</a>
+              <a href="subject.html#3161">[ subject ]</a>
+              <a href="author.html#3161">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-374-SuSE-11-1-SLE-SP-Devel has been updated
+       via  8af1032cc2cd693ae94db2cd2260bfa470514cfb (commit)
+      from  34a99264c4e1afbe827ec6383942dd6f704e247f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 8af1032cc2cd693ae94db2cd2260bfa470514cfb
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Mar 4 13:48:21 2011 +0100
+
+    - netboot: allow network boot in degraded raid mode (bnc #668014)
+    - netboot: remove superblocks from raid disks if RAID
+      has been dectivated in config.&lt;MAC&gt; (bnc #668014)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index b505a29..c55d04e 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -5483,6 +5483,7 @@ function pxeRaidAssemble {
+ 	local count=0
+ 	local mdcount=0
+ 	local field=0
++	local devices
+ 	local IFS=&quot;;&quot;
+ 	local raidFirst
+ 	local raidSecond
+@@ -5499,17 +5500,46 @@ function pxeRaidAssemble {
+ 		raidFirst=$(ddn $raidDiskFirst $count)
+ 		raidSecond=$(ddn $raidDiskSecond $count)
+ 		if ! waitForStorageDevice $raidFirst;then
+-			return
++			echo &quot;Warning: device $raidFirst did not appear&quot;
++		else
++			devices=$raidFirst
+ 		fi
+ 		if ! waitForStorageDevice $raidSecond;then
+-			return
++			echo &quot;Warning: device $raidSecond did not appear&quot;
++		else
++			devices=&quot;$devices $raidSecond&quot;
+ 		fi
+-		mdadm --assemble /dev/md$mdcount \
+-			$raidFirst $raidSecond
++		IFS=$IFS_ORIG
++		mdadm --assemble --run /dev/md$mdcount $devices
+ 		mdcount=$((mdcount + 1))
+ 	done
+ }
+ #======================================
++# pxeRaidZeroSuperBlock
++#--------------------------------------
++function pxeRaidZeroSuperBlock {
++	# /.../
++	# if we switch from a raid setup back to a non-raid
++	# setup and use the same partition table setup as before
++	# it might happen that the raid superblock survives.
++	# This function removes all raid super blocks from
++	# all partitions in the PART setup. If the partition
++	# layout is different compared to the former raid layout
++	# the superblock is not valid anymore
++	# ----
++	local count=1
++	local device
++	local IFS=&quot;,&quot;
++	for i in $PART;do
++		device=$(ddn $DISK $count)
++		if ! waitForStorageDevice $device;then
++			continue
++		fi
++		mdadm --zero-superblock $device
++		count=$((count + 1))
++	done
++}
++#======================================
+ # pxeRaidStop
+ #--------------------------------------
+ function pxeRaidStop {
+diff --git a/system/boot/ix86/netboot/suse-linuxrc b/system/boot/ix86/netboot/suse-linuxrc
+index c62ecb2..295388f 100755
+--- a/system/boot/ix86/netboot/suse-linuxrc
++++ b/system/boot/ix86/netboot/suse-linuxrc
+@@ -366,6 +366,8 @@ then
+ 	#--------------------------------------
+ 	if [ ! -z &quot;$RAID&quot; ];then
+ 		pxeRaidAssemble
++	else
++		pxeRaidZeroSuperBlock
+ 	fi
+ 	count=0
+ 	IFS=&quot;,&quot; ; for i in $IMAGE;do
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003160.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8cf9714017cd575e91d972d1aa7bd4ba2b8e2c36
+</A></li>
+	<LI>Next message: <A HREF="003162.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 8b2e6eeb4edb6716f0369640bbaa847ca780d6ee
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3161">[ date ]</a>
+              <a href="thread.html#3161">[ thread ]</a>
+              <a href="subject.html#3161">[ subject ]</a>
+              <a href="author.html#3161">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

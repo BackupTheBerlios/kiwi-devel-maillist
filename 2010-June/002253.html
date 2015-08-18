@@ -1,0 +1,685 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d3bfa55ebe63d461a6442e2a86f076c6dc9dda59
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20d3bfa55ebe63d461a6442e2a86f076c6dc9dda59&In-Reply-To=%3C201006021351.o52DpOWM010908%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002251.html">
+   <LINK REL="Next"  HREF="002254.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d3bfa55ebe63d461a6442e2a86f076c6dc9dda59</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20d3bfa55ebe63d461a6442e2a86f076c6dc9dda59&In-Reply-To=%3C201006021351.o52DpOWM010908%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d3bfa55ebe63d461a6442e2a86f076c6dc9dda59">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jun  2 15:51:24 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002251.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 204838aa809c4a0c348c610d7ee02c0c8f578e78
+</A></li>
+        <LI>Next message: <A HREF="002254.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ec8faa65f4da1c67256245cb089657514794b556
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2253">[ date ]</a>
+              <a href="thread.html#2253">[ thread ]</a>
+              <a href="subject.html#2253">[ subject ]</a>
+              <a href="author.html#2253">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  d3bfa55ebe63d461a6442e2a86f076c6dc9dda59 (commit)
+      from  204838aa809c4a0c348c610d7ee02c0c8f578e78 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit d3bfa55ebe63d461a6442e2a86f076c6dc9dda59
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jun 2 15:51:13 2010 +0200
+
+    - use vmxboot linuxrc for usbboot too, make sure --bootstick
+      deployment does a cleanup of the write partition if used
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index c81989a..b9f92c3 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -1338,6 +1338,25 @@ sub setupBootStick {
+ 		}
+ 		$this -&gt; luksClose();
+ 		$kiwi -&gt; done();
++	} elsif ($dmapper) {
++		# /.../
++		# for USB sticks we need to make sure the write partition
++		# has been cleaned before re-use with filesystem like clicfs
++		# and friends
++		# ----
++		$root = $deviceMap{2};
++		$kiwi -&gt; info (&quot;Clean sweep read-write filesystem&quot;);
++		$status = qxx (&quot;dd if=/dev/zero of=$root bs=32k count=32 2&gt;&amp;1&quot;);
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Couldn't cleanup partition $root: $status&quot;);
++			$kiwi -&gt; failed ();
++			$this -&gt; cleanDbus();
++			$this -&gt; cleanLoop ();
++			return undef;
++		}
++		$kiwi -&gt; done();
+ 	}
+ 	#==========================================
+ 	# create bootloader filesystem if needed
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 6035ef5..d51a063 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -2,6 +2,8 @@
+ Mon May 31 15:49:53 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - don't touch modules in updates and weak-updates (bnc #609879)
++- use vmxboot linuxrc for usbboot too, make sure --bootstick
++  deployment does a cleanup of the write partition if used
+ 
+ -------------------------------------------------------------------
+ Tue May 25 16:10:30 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+diff --git a/system/boot/ix86/usbboot/suse-11.1/config.xml b/system/boot/ix86/usbboot/suse-11.1/config.xml
+index be9219b..cde7bcd 100644
+--- a/system/boot/ix86/usbboot/suse-11.1/config.xml
++++ b/system/boot/ix86/usbboot/suse-11.1/config.xml
+@@ -113,6 +113,8 @@
+ 		&lt;package name=&quot;dialog&quot;/&gt;
+ 		&lt;package name=&quot;kiwi-tools&quot;/&gt;
+ 		&lt;package name=&quot;parted&quot;/&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
++		&lt;package name=&quot;gettext-runtime&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+@@ -121,6 +123,7 @@
+ 		&lt;package name=&quot;procps&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+ 		&lt;package name=&quot;PolicyKit&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-11.2/config.xml b/system/boot/ix86/usbboot/suse-11.2/config.xml
+index 27ffc08..eb8a9d9 100644
+--- a/system/boot/ix86/usbboot/suse-11.2/config.xml
++++ b/system/boot/ix86/usbboot/suse-11.2/config.xml
+@@ -108,6 +108,7 @@
+ 		&lt;package name=&quot;kiwi-tools&quot;/&gt;
+ 		&lt;package name=&quot;parted&quot;/&gt;
+ 		&lt;package name=&quot;syslinux&quot;/&gt;
++		&lt;package name=&quot;gettext-runtime&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-11.3/config.xml b/system/boot/ix86/usbboot/suse-11.3/config.xml
+index 734b612..9caa115 100644
+--- a/system/boot/ix86/usbboot/suse-11.3/config.xml
++++ b/system/boot/ix86/usbboot/suse-11.3/config.xml
+@@ -107,6 +107,8 @@
+ 		&lt;package name=&quot;dialog&quot;/&gt;
+ 		&lt;package name=&quot;kiwi-tools&quot;/&gt;
+ 		&lt;package name=&quot;parted&quot;/&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
++		&lt;package name=&quot;gettext-runtime&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+@@ -115,6 +117,7 @@
+ 		&lt;package name=&quot;procps&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+ 		&lt;package name=&quot;PolicyKit&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-SLED10/config.xml b/system/boot/ix86/usbboot/suse-SLED10/config.xml
+index d7aa8e7..96e087a 100644
+--- a/system/boot/ix86/usbboot/suse-SLED10/config.xml
++++ b/system/boot/ix86/usbboot/suse-SLED10/config.xml
+@@ -89,6 +89,8 @@
+ 		&lt;package name=&quot;tar&quot;/&gt;
+ 		&lt;package name=&quot;lvm2&quot;/&gt;
+ 		&lt;package name=&quot;parted&quot;/&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
++		&lt;package name=&quot;gettext-runtime&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+@@ -98,6 +100,7 @@
+ 		&lt;package name=&quot;openssl&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+ 		&lt;package name=&quot;PolicyKit&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-SLED11/config.xml b/system/boot/ix86/usbboot/suse-SLED11/config.xml
+index e82531c..021ebd4 100644
+--- a/system/boot/ix86/usbboot/suse-SLED11/config.xml
++++ b/system/boot/ix86/usbboot/suse-SLED11/config.xml
+@@ -105,6 +105,8 @@
+ 		&lt;package name=&quot;dialog&quot;/&gt;
+ 		&lt;package name=&quot;kiwi-tools&quot;/&gt;
+ 		&lt;package name=&quot;parted&quot;/&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
++		&lt;package name=&quot;gettext-runtime&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+@@ -114,6 +116,7 @@
+ 		&lt;package name=&quot;openssl-certs&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+ 		&lt;package name=&quot;PolicyKit&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-SLES10/config.xml b/system/boot/ix86/usbboot/suse-SLES10/config.xml
+index 0ce81a1..7a0ca4f 100644
+--- a/system/boot/ix86/usbboot/suse-SLES10/config.xml
++++ b/system/boot/ix86/usbboot/suse-SLES10/config.xml
+@@ -89,6 +89,8 @@
+ 		&lt;package name=&quot;tar&quot;/&gt;
+ 		&lt;package name=&quot;lvm2&quot;/&gt;
+ 		&lt;package name=&quot;parted&quot;/&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
++		&lt;package name=&quot;gettext-runtime&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+@@ -98,6 +100,7 @@
+ 		&lt;package name=&quot;openssl&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+ 		&lt;package name=&quot;PolicyKit&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-SLES11/config.xml b/system/boot/ix86/usbboot/suse-SLES11/config.xml
+index dbe9745..6472088 100644
+--- a/system/boot/ix86/usbboot/suse-SLES11/config.xml
++++ b/system/boot/ix86/usbboot/suse-SLES11/config.xml
+@@ -105,6 +105,8 @@
+ 		&lt;package name=&quot;dialog&quot;/&gt;
+ 		&lt;package name=&quot;kiwi-tools&quot;/&gt;
+ 		&lt;package name=&quot;parted&quot;/&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
++		&lt;package name=&quot;gettext-runtime&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+@@ -114,6 +116,7 @@
+ 		&lt;package name=&quot;openssl-certs&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+ 		&lt;package name=&quot;PolicyKit&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-linuxrc b/system/boot/ix86/usbboot/suse-linuxrc
+index 6ca500d..3f853a6 100755
+--- a/system/boot/ix86/usbboot/suse-linuxrc
++++ b/system/boot/ix86/usbboot/suse-linuxrc
+@@ -17,20 +17,48 @@
+ # STATUS        : BETA
+ #----------------
+ #======================================
+-# Exports (General)...
++# Exports (General)
+ #--------------------------------------
+ export PATH=&quot;/sbin:/bin:/usr/sbin:/usr/bin&quot;
+ export IFS_ORIG=$IFS
++export ARCH=`arch`
+ export DEBUG=0
+ 
+ #======================================
+ # Exports (Booting)
+ #--------------------------------------
+-export LOCAL_BOOT=no
++export DOMURD_MODULES=&quot;xennet xenblk&quot;
++export INITRD_MODULES=&quot;reiserfs&quot;
++export LOCAL_BOOT=&quot;no&quot;
+ export systemIntegrity=&quot;clean&quot;
++export KERNEL_LIST
+ 
+ #======================================
+-# Functions...
++# Exports (Alias)
++#--------------------------------------
++export SYSALIAS=&quot;undefined&quot;
++export NAME=0
++
++#======================================
++# Exports (Partitioning)
++#--------------------------------------
++export PART_FILE=&quot;/etc/partition.table&quot;
++export PART_MOUNT
++export PART_DEV
++export PART_COUNT=0
++export PART_NUMBER=0
++export PART_NEED_EXTENDED=0
++export PART_NEED_FILL=0
++export NO_FILE_SYSTEM=0
++
++#======================================
++# Exports (Status)
++#--------------------------------------
++export SYSTEM_INTEGRITY
++export SYSTEM_MD5STATUS
++
++#======================================
++# Functions
+ #--------------------------------------
+ . /include
+ initialize
+@@ -38,8 +66,8 @@ initialize
+ #======================================
+ # Beautify Startup
+ #--------------------------------------
+-echo &quot;Loading KIWI USB-Stick Boot-System...&quot;
+-echo &quot;-------------------------------------&quot;
++echo &quot;Loading KIWI USB Boot-System...&quot;
++echo &quot;-------------------------------&quot;
+ 
+ #======================================
+ # Update library path
+@@ -62,10 +90,22 @@ touch /lib/modules/*/modules.dep
+ # 3) run udevd
+ #--------------------------------------
+ udevStart
++
++#======================================
++# 4) Include proc/cmdline information
++#--------------------------------------
+ includeKernelParameters
++if [ ! -z $UNIONFS_CONFIG ] || [ &quot;$COMBINED_IMAGE&quot; = &quot;local&quot; ];then
++	# /.../
++	# if the unionfs/combined information is already in place at this
++	# stage it comes from the cmdline data which means we are not
++	# booting the first time
++	# ----
++	export LOCAL_BOOT=&quot;yes&quot;
++fi
+ 
+ #======================================
+-# 4) start boot shell
++# 5) start boot shell
+ #--------------------------------------
+ startBlogD
+ startShell
+@@ -73,81 +113,134 @@ errorLogStart
+ openKernelConsole
+ 
+ #======================================
+-# 5) Including required kernel modules
++# 6) Including required kernel modules
+ #--------------------------------------
+ probeDevices
+ 
+ #======================================
+-# 6) Setup device names...
++# 7) Select language if not in cmdline
++#--------------------------------------
++selectLanguage
++
++#======================================
++# 8) Search boot device...
++#--------------------------------------
++Echo &quot;Searching for boot device...&quot;
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
++	if ! searchBIOSBootDevice;then
++		systemException &quot;$biosBootDevice&quot; &quot;reboot&quot;
++	fi
++	export imageDiskDevice=$biosBootDevice
++else
++	export imageDiskDevice=$(dn $disk)
++fi
++Echo &quot;Found boot device: $imageDiskDevice&quot;
++
++#======================================
++# 9) Setup device names...
+ #--------------------------------------
+-if ! searchBIOSBootDevice;then
+-	systemException &quot;$biosBootDevice&quot; &quot;reboot&quot;
++export imageRootDevice=$(ddn $imageDiskDevice 1)
++export imageRWDevice=$(ddn $imageDiskDevice 2)
++export imageRODevice=$(ddn $imageDiskDevice 1)
++if [ -z &quot;$imageDiskDevice&quot; ];then
++	systemException \
++		&quot;Couldn't find any boot device... abort&quot; \
++	&quot;reboot&quot;
+ fi
+-export stickRoot=$biosBootDevice
+-export stickDevice=$(ddn $stickRoot 1)
+-export stickRWDevice=$(ddn $stickRoot 2)
+-export stickRODevice=$(ddn $stickRoot 1)
+-export imageDiskDevice=$stickRoot
+ Echo &quot;Searching for $VGROUP volume group...&quot;
+ if searchVolumeGroup; then
+ 	export haveLVM=yes
+ 	if [ -e /dev/$VGROUP/LVComp ];then
+-		export stickDevice=/dev/$VGROUP/LVComp
++		export imageRootDevice=/dev/$VGROUP/LVComp
+ 	else
+-		export stickDevice=/dev/$VGROUP/LVRoot
++		export imageRootDevice=/dev/$VGROUP/LVRoot
+ 	fi
+-	export stickRWDevice=/dev/$VGROUP/LVRoot
+-	export stickRODevice=/dev/$VGROUP/LVComp
+-	export stickBootDevice=$(ddn $stickRoot 2)
++	export imageRWDevice=/dev/$VGROUP/LVRoot
++	export imageRODevice=/dev/$VGROUP/LVComp
++	export imageBootDevice=$(ddn $imageDiskDevice 2)
+ fi
+ 
+ #======================================
+-# 7) Probe filesystem of stick system
++# 10) Get filesystem type
+ #--------------------------------------
+-probeFileSystem $stickDevice
++probeFileSystem $imageRootDevice
+ if [ &quot;$FSTYPE&quot; = &quot;luks&quot; ];then
+-	stickDevice=$(luksOpen $stickDevice)
+-	stickRODevice=$stickDevice
+-	probeFileSystem $stickDevice
++	imageRootDevice=$(luksOpen $imageRootDevice)
++	imageRODevice=$imageRootDevice
++	probeFileSystem $imageRootDevice
+ 	export haveLuks=yes
+ fi
+-if [ $FSTYPE = &quot;unknown&quot; ];then
++if [ &quot;$FSTYPE&quot; = &quot;unknown&quot; ];then
+ 	systemException \
+ 		&quot;Couldn't determine filesystem type... abort&quot; \
+ 	&quot;reboot&quot;
+ fi
+ 
+ #======================================
+-# 8) Setup union on compressed root
++# 11) Check filesystem
+ #--------------------------------------
+-Echo &quot;Filesystem of stick system is: $FSTYPE -&gt; $stickDevice&quot;
++Echo &quot;Filesystem of USB system is: $FSTYPE -&gt; $imageRootDevice&quot;
+ if isFSTypeReadOnly;then
+-	setupUnionFS $stickRWDevice $stickRODevice $unionFST
++	setupUnionFS $imageRWDevice $imageRODevice $unionFST
+ fi
+ 
+ #======================================
+-# 9) Mount USB stick (system)
++# 12) Mount VM (boot)
+ #--------------------------------------
+-if ! mountSystem $stickDevice;then
++if ! mountSystem $imageRootDevice;then
+ 	systemException &quot;Failed to mount root filesystem&quot; &quot;reboot&quot;
+ fi
+ validateRootTree
+ 
+ #======================================
+-# 10) check for local boot
++# 13) Get kernel list for local boot
+ #--------------------------------------
+-if [ -e /mnt/etc/ImagePackages ];then
+-	export LOCAL_BOOT=yes
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
++	kernelList /mnt
+ fi
+ 
+ #======================================
+-# 11) Create system dependant files
++# 14) setup ird/kernel links for union
++#--------------------------------------
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
++	if isFSTypeReadOnly;then
++		# /.../
++		# we are using a special root setup with aufs. In this case
++		# we can't use the SuSE Linux initrd but must stick to the
++		# kiwi boot system.
++		# ----
++		mountCalled=no
++		if [ -e &quot;$imageRWDevice&quot; ];then
++			kiwiMount $imageRWDevice &quot;/mnt&quot;
++			mountCalled=yes
++		fi
++		pushd /mnt/boot &gt;/dev/null
++		IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
++			if test -z &quot;$i&quot;;then
++				continue
++			fi
++			kernel=`echo $i | cut -f1 -d:`
++			initrd=`echo $i | cut -f2 -d:`
++			rm -f $initrd &amp;&amp; ln -s initrd.vmx $initrd
++			rm -f $kernel &amp;&amp; ln -s linux.vmx  $kernel
++			break
++		done
++		IFS=$IFS_ORIG
++		popd &gt;/dev/null
++		if [ &quot;$mountCalled&quot; = &quot;yes&quot; ];then
++			umount /mnt
++		fi
++	fi
++fi
++
++#======================================
++# 15) Create system dependant files
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	setupDefaultFstab /config
+-	updateRootDeviceFstab /config $stickDevice
++	updateRootDeviceFstab /config $imageRootDevice
+ 	if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
+-		updateLVMBootDeviceFstab /config $stickBootDevice
++		updateLVMBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+ 		updateClicBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
+@@ -155,54 +248,71 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
+ 		updateLuksBootDeviceFstab /config $imageBootDevice
+ 	fi
++	if [ ! -z &quot;$UNIONFS_CONFIG&quot; ]; then
++		export KIWI_INITRD_PARAMS=&quot;UNIONFS_CONFIG=yes&quot;
++	fi
++	if [ ! -z &quot;$COMBINED_IMAGE&quot; ]; then
++		export KIWI_INITRD_PARAMS=&quot;COMBINED_IMAGE=local&quot;
++	fi
++	bootid=0
++	if [ ! -z &quot;$UNIONFS_CONFIG&quot; ] || [ ! -z &quot;$COMBINED_IMAGE&quot; ]; then
++		bootid=1
++	fi
++	if \
++		[ &quot;$loader&quot; = &quot;syslinux&quot; ]  ||\
++		[ &quot;$loader&quot; = &quot;extlinux&quot; ]  ||\
++		[ &quot;$haveClicFS&quot; = &quot;yes&quot; ]   ||\
++		[ &quot;$haveLuks&quot; = &quot;yes&quot; ]
++	then
++		bootid=$(($bootid + 1))
++	fi
++	setupBootLoader /mnt /config $bootid $imageRootDevice USB
++	setupKernelModules /config
+ fi
+ 
+ #======================================
+-# 12) copy system dependant files
++# 16) copy system dependant files
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	setupConfigFiles
+ fi
+ 
+ #======================================
+-# 13) update system dependant files
++# 17) update system dependant files
+ #--------------------------------------
+-if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+-	setupInittab /mnt
+-fi
++setupInittab /mnt
+ 
+ #======================================
+-# 14) setup real root device
++# 18) setup real root device
+ #--------------------------------------
+ echo 256 &gt; /proc/sys/kernel/real-root-dev
+ 
+ #======================================
+-# 15) umount system filesystems
++# 19) umount system filesystems
+ #--------------------------------------
+ umountSystemFilesystems
+ 
+ #======================================
+-# 16) copy initrd files to image
++# 20) copy initrd files to image
+ #--------------------------------------
+-if [ ! -f /mnt/boot/deployed ];then
+-	touch /mnt/boot/deployed
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	importBranding
+ fi
+ cp /preinit /mnt
+ cp /include /mnt
+ 
+ #======================================
+-# 17) kill boot shell
++# 21) kill boot shell
+ #--------------------------------------
+ killShell
+ killBlogD
+ 
+ #======================================
+-# 18) Activate new root
++# 22) Activate new root
+ #--------------------------------------
+ activateImage
+ 
+ #======================================
+-# 19) Unmount initrd / system init
++# 23) Unmount initrd / system init
+ #--------------------------------------
+ bootImage $@
+diff --git a/system/boot/ix86/usbboot/suse-preinit b/system/boot/ix86/usbboot/suse-preinit
+index 9ce8fc0..968909c 100755
+--- a/system/boot/ix86/usbboot/suse-preinit
++++ b/system/boot/ix86/usbboot/suse-preinit
+@@ -33,19 +33,65 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;yes&quot; ];then
+ fi
+ 
+ #======================================
+-# 3) update mount table
++# 3) start udev
++#--------------------------------------
++mountSystemFilesystems
++udevSystemStart
++
++#======================================
++# 4) update mount table
+ #--------------------------------------
+ updateMTAB
+ 
+ #======================================
+-# 4) create framebuffer devices
++# 5) create framebuffer devices
+ #--------------------------------------
+ createFramebufferDevices
+ 
+ #======================================
+-# 5) create /etc/ImagePackages
++# 6) create /etc/ImagePackages
+ #--------------------------------------
+ if [ -x /bin/rpm ];then
+ 	Echo &quot;Creating initial image package info file&quot;
+ 	rpm -qa --last &gt; /etc/ImagePackages
+ fi
++
++#======================================
++# 7) create initrd on diskful
++#--------------------------------------
++if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
++	setupSUSEInitrd
++fi
++
++#======================================
++# 8) Check FAT requires on syslinux
++#--------------------------------------
++if [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
++	# /.../
++	# if syslinux is used we need to make sure that the
++	# filename on the boot partition is correct 8+3
++	# ----
++	count=1
++	IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
++		if test -z &quot;$i&quot;;then
++			continue
++		fi
++		kernel=`echo $i | cut -f1 -d:`
++		initrd=`echo $i | cut -f2 -d:`
++		mv /boot/$kernel /boot/linux.$count
++		mv /boot/$initrd /boot/initrd.$count
++		running=$(uname -r)
++		rlinux=vmlinuz-$running
++		rinitrd=initrd-$running
++		ln -s /boot/linux.$count  /boot/$rlinux
++		ln -s /boot/initrd.$count /boot/$rinitrd
++		count=`expr $count + 1`
++	done
++	IFS=$IFS_ORIG
++fi
++
++#======================================
++# 9) kill udev
++#--------------------------------------
++udevSystemStop
++umountSystemFilesystems
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002251.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 204838aa809c4a0c348c610d7ee02c0c8f578e78
+</A></li>
+	<LI>Next message: <A HREF="002254.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ec8faa65f4da1c67256245cb089657514794b556
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2253">[ date ]</a>
+              <a href="thread.html#2253">[ thread ]</a>
+              <a href="subject.html#2253">[ subject ]</a>
+              <a href="author.html#2253">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

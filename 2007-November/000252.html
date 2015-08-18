@@ -1,0 +1,194 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] v1.85 released
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2007-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20v1.85%20released&In-Reply-To=%3C20071108132249.GA3141%40D7.ddts.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000251.html">
+   <LINK REL="Next"  HREF="000253.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] v1.85 released</H1>
+    <B>Marcus Sch&#228;fer</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20v1.85%20released&In-Reply-To=%3C20071108132249.GA3141%40D7.ddts.net%3E"
+       TITLE="[Kiwi-devel] v1.85 released">ms at suse.de
+       </A><BR>
+    <I>Thu Nov  8 14:22:50 CET 2007</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000251.html">[Kiwi-devel] language setting for clients
+</A></li>
+        <LI>Next message: <A HREF="000253.html">[Kiwi-devel] [Kiwi-users] v1.85 released
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#252">[ date ]</a>
+              <a href="thread.html#252">[ thread ]</a>
+              <a href="subject.html#252">[ subject ]</a>
+              <a href="author.html#252">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi All,
+
+v1.85 is building. The following is a list of bugfixes and
+enhancements. With the latest release we have two enhancements.
+One is based on the new split system by James Willcox, the other
+one is the possibility to have your complete image under version
+from the first deployment on.
+
+Bugzilla:
+=========
+   - check result of copying root/ data to image (#339814)
+   - added read-only check for mounting the repositories. If a
+     repository path has no write permissions it doesn't make sense to
+     use aufs/unionfs to implement a read-only mount. Use bind mount
+     directly in that situation (#339503)
+   - fixed killing dhcpcd if no system update is required (#339460)
+   - fixed fstab setup, overwritten due to wrong IO redirection (#339458)
+   - added startShell and killShell function to KIWILinuxRC.sh (#335678)
+   - added netboot/suse-11.0 target and fix diskless profile (#332595)
+   - fixed use of uninitialized value in KIWIURL.pm:87 (#339117)
+   - fixed packagemanager adaption if system image and boot image
+     description doesn't use the same packagemanager (#338378)
+   - added option --bootcd which allows to create a bootable CD
+     based on the given initrd file (#338467)
+
+Enhancements:
+=============
+   - added baseSetupInPlaceGITRepository() function
+     With this function you can create a git repository for the root
+     filesystem of your image. I'm using this feature for my servers
+     at home. In many cases one installs a system and needs to
+     configure or install additional stuff afterwards. Sometimes it's
+     hard to see the differences during the live time of such a system.
+     With the repository in place your root filesystem acts like a checkout
+     and you can do all version, dif, branch stuff you like on your
+     operating system. Of course in case of binary changes like you have
+     installed new software you only will recognize that there is new
+     software installed after initial deployment, but this information
+     is also valuable and with the new /etc/ImagePackages in place you
+     also can check if this new software is part of an add-on package
+     or if it is something installed/compiled manually
+
+   - optional split section added by James Willcox &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">james at ximian.com</A>&gt;
+     The following applies to the new split image type:
+     ---snip---
+     In the new split image type, files/directories can exist in one
+     of three places: 
+  
+        1) read-only disk area
+        2) read-write disk area
+        3) tmpfs
+    
+     By default, every directory is in tmpfs and every file is a symbolic
+     link to the read-only location.  The patch I have attached allows you to
+     specify which files/directories should be in one of the two other 
+     locations.  For instance, take the following:
+  
+     &lt;split&gt;
+           &lt;temporary&gt;
+                  &lt;file name=&quot;/etc/fstab&quot;/&gt;
+                  &lt;file name=&quot;/etc/mtab&quot;/&gt;
+           &lt;/temporary&gt;
+           &lt;persistent&gt;
+                  &lt;file name=&quot;/boot&quot;/&gt;
+           &lt;/persistent&gt;
+     &lt;/split&gt;
+
+     This would copy /etc/fstab and /etc/mtab to tmpfs and put /boot in the
+     read-write disk area.  Note, however, that none of the files
+     *within* /boot are affected.  They remain symbolic links to the real
+     files in the read-only area.  The main advantage to putting just a
+     directory in the read-write area is that any new files created there are
+     stored on the disk instead of tmpfs.  Of course files can be specified
+     here too, and wildcards are allowed.  Example:
+
+     &lt;split&gt;
+           &lt;temporary&gt;
+                  &lt;file name=&quot;/etc/fstab&quot;/&gt;
+                  &lt;file name=&quot;/etc/mtab&quot;/&gt;
+           &lt;/temporary&gt;
+           &lt;persistent&gt;
+                  &lt;file name=&quot;/boot&quot;/&gt;
+                  &lt;file name=&quot;/boot/*&quot;/&gt;
+           &lt;/persistent&gt;
+     &lt;/split&gt;
+
+     This time, all files and directories within /boot are copied to the
+     read-write disk image as well.
+
+     The 'split' information is optional.  When left out, no read-write disk
+     image is produced since everything is either read-only or on tmpfs in
+     that case.
+     ---snap---
+
+Other Bugfixes:
+===============
+   - changed arch call to uname -m to prevent requirement on
+     util-linux package
+   - fixed oemboot missing md5 file problem
+   - cleaned KIWILinuxRC.sh code according to shell syntax
+   - added /etc/ImagePackages file on initial deployment
+     This is the information of rpm -qa --last
+   - added hwinfo to be part of the usbboot boot images
+   - added integrity check for --force-new-root option
+
+* Thanks for all your testings and ideas and a special thanks to all
+  code contributors. The system starts to become more and more stable
+  and I like the ltsp setup ;)
+
+* We still have some problems with small systems especially in case
+  of less RAM (means less than 128MB). This is not only kiwi which needs
+  to improve but also the base tree's of a SUSE Linux operating system.
+  Improvement at that level means to be able to provide minimal
+  functionality in a little amount of disk space and to be able to
+  enhance the functionality by installing more packages. The package
+  structure of SUSE packages is good but the packages are big and
+  have a lot of requirements. I'm not sure whether the Awareness for
+  small systems will grow but I think we are on the right track.
+
+Have Fun :)
+
+Best Regards,
+Marcus
+-- 
+ Public Key available
+ gpg --keyserver gpg-keyserver.de --recv-keys 0xCCE3C6A2
+ -------------------------------------------------------
+ Marcus Sch&#228;fer (Res. &amp; Dev.)   SUSE LINUX Products GmbH
+ Tel: 0911-740 53 0             Maxfeldstrasse 5
+ FAX: 0911-740 53 479           D-90409 N&#252;rnberg
+ GF: Markus Rex                 HRB: 16746 (AG N&#252;rnberg)
+ <A HREF="http://www.suse.de">http://www.suse.de</A>             Germany
+ -------------------------------------------------------
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000251.html">[Kiwi-devel] language setting for clients
+</A></li>
+	<LI>Next message: <A HREF="000253.html">[Kiwi-devel] [Kiwi-users] v1.85 released
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#252">[ date ]</a>
+              <a href="thread.html#252">[ thread ]</a>
+              <a href="subject.html#252">[ subject ]</a>
+              <a href="author.html#252">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

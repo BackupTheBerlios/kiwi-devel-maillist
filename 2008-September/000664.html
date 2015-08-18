@@ -1,0 +1,1314 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1567 - in kiwi-head: . modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1567%20-%20in%20kiwi-head%3A%20.%20modules%20rpm%0A%09system/boot/ix86/netboot%20system/boot/ix86/oemboot&In-Reply-To=%3C200809170942.m8H9g8l9002656%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000663.html">
+   <LINK REL="Next"  HREF="000665.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1567 - in kiwi-head: . modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1567%20-%20in%20kiwi-head%3A%20.%20modules%20rpm%0A%09system/boot/ix86/netboot%20system/boot/ix86/oemboot&In-Reply-To=%3C200809170942.m8H9g8l9002656%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1567 - in kiwi-head: . modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Sep 17 11:42:08 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000663.html">[Kiwi-devel] r1566 - in kiwi-head: modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000665.html">[Kiwi-devel] r1568 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#664">[ date ]</a>
+              <a href="thread.html#664">[ thread ]</a>
+              <a href="subject.html#664">[ subject ]</a>
+              <a href="author.html#664">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-09-17 11:41:58 +0200 (Wed, 17 Sep 2008)
+New Revision: 1567
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/modules/KIWILog.pm
+   kiwi-head/modules/KIWIManager.pm
+   kiwi-head/modules/KIWIPattern.pm
+   kiwi-head/modules/KIWIURL.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+   kiwi-head/system/boot/ix86/netboot/suse-linuxrc
+   kiwi-head/system/boot/ix86/oemboot/suse-linuxrc
+Log:
+
+- v2.77
+- added support for parted in kiwi. All partition tasks inside
+  KIWIBoot.pm and in linuxrc are now possible with parted. Even
+  though there is one exception which is the oemboot linuxrc.
+  the repartition code in this boot code is still based on fdisk.
+  All changes required due to bug (bnc #413637)
+- added log excerpt information and fixed exit code handling
+  if kiwi operation doesn't take place in a screen session. Last
+  part of the fix is related to (bnc #420320)
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-09-15 11:56:06 UTC (rev 1566)
++++ kiwi-head/kiwi.pl	2008-09-17 09:41:58 UTC (rev 1567)
+@@ -43,7 +43,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;2.76&quot;;
++our $Version       = &quot;2.77&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+ our $ConfigFile    = &quot;$ENV{'HOME'}/.kiwirc&quot;;
+ our $ConfigName    = &quot;config.xml&quot;;
+@@ -250,12 +250,11 @@
+ 	# Prepare image and build chroot system
+ 	#----------------------------------------
+ 	if (defined $Prepare) {
+-		$kiwi -&gt; info (&quot;Reading image description...&quot;);
++		$kiwi -&gt; info (&quot;Reading image description [Prepare]...\n&quot;);
+ 		my $xml = new KIWIXML ( $kiwi,$Prepare,\%ForeignRepo,undef,\@Profiles );
+ 		if (! defined $xml) {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
+-		$kiwi -&gt; done();
+ 		if (! $xml -&gt; haveMD5File()) {
+ 			$kiwi -&gt; warning (&quot;Description provides no MD5 hash, check&quot;);
+ 			$kiwi -&gt; skipped ();
+@@ -437,7 +436,7 @@
+ 		#------------------------------------------
+ 		my $xml;
+ 		if (! @Profiles) {
+-			$kiwi -&gt; info (&quot;Reading image description...&quot;);
++			$kiwi -&gt; info (&quot;Reading image description [Create]...\n&quot;);
+ 			$xml = new KIWIXML (
+ 				$kiwi,&quot;$Create/image&quot;,\%ForeignRepo,$SetImageType
+ 			);
+@@ -447,7 +446,6 @@
+ 				}
+ 				my $code = kiwiExit (1); return $code;
+ 			}
+-			$kiwi -&gt; done();
+ 			my %type = %{$xml-&gt;getImageTypeAndAttributes()};
+ 			if (($type{&quot;type&quot;} eq &quot;cpio&quot;) &amp;&amp; ($type{bootprofile})) {
+ 				@Profiles = split (/,/,$type{bootprofile});
+@@ -457,7 +455,7 @@
+ 			}
+ 		}
+ 		if (! defined $xml) {
+-			$kiwi -&gt; info (&quot;Reading image description...&quot;);
++			$kiwi -&gt; info (&quot;Reading image description [Create]...\n&quot;);
+ 			$xml = new KIWIXML (
+ 				$kiwi,&quot;$Create/image&quot;,undef,$SetImageType,\@Profiles
+ 			);
+@@ -467,7 +465,6 @@
+ 				}
+ 				my $code = kiwiExit (1); return $code;
+ 			}
+-			$kiwi -&gt; done();
+ 		}
+ 		#==========================================
+ 		# Update .profile env, current type
+@@ -692,14 +689,13 @@
+ 		#==========================================
+ 		# install testing packages if any
+ 		#------------------------------------------
+-		$kiwi -&gt; info (&quot;Reading image description...&quot;);
++		$kiwi -&gt; info (&quot;Reading image description [TestSuite]...\n&quot;);
+ 		my $xml = new KIWIXML (
+ 			$kiwi,&quot;$RunTestSuite/image&quot;,undef,undef,\@Profiles
+ 		);
+ 		if (! defined $xml) {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
+-		$kiwi -&gt; done();
+ 		my @testingPackages = $xml -&gt; getTestingList();
+ 		if (@testingPackages) {
+ 			#==========================================
+@@ -817,12 +813,11 @@
+ 	# Upgrade image in chroot system
+ 	#------------------------------------------
+ 	if (defined $Upgrade) {
+-		$kiwi -&gt; info (&quot;Reading image description...&quot;);
++		$kiwi -&gt; info (&quot;Reading image description [Upgrade]...\n&quot;);
+ 		my $xml = new KIWIXML ( $kiwi,&quot;$Upgrade/image&quot; );
+ 		if (! defined $xml) {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
+-		$kiwi -&gt; done();
+ 		#==========================================
+ 		# Check for default base root in XML
+ 		#------------------------------------------
+@@ -1514,12 +1509,11 @@
+ 	# list the available profiles in image
+ 	# ---
+ 	my $kiwi = new KIWILog(&quot;tiny&quot;);
+-	$kiwi -&gt; info (&quot;Reading image description...&quot;);
++	$kiwi -&gt; info (&quot;Reading image description [ListProfiles]...\n&quot;);
+ 	my $xml  = new KIWIXML ($kiwi, $ListProfiles);
+ 	if (! defined $xml) {
+ 		exit 1;
+ 	}
+-	$kiwi -&gt; done();
+ 	my @profiles = $xml -&gt; getProfiles ();
+ 	if ((scalar @profiles) == 0) {
+ 		$kiwi -&gt; info (&quot;No profiles available&quot;);
+@@ -1545,12 +1539,11 @@
+ 	# not specified in its format
+ 	# ---
+ 	my $kiwi = new KIWILog(&quot;tiny&quot;);
+-	$kiwi -&gt; info (&quot;Reading image description...&quot;);
++	$kiwi -&gt; info (&quot;Reading image description [ListXMLInfo]...\n&quot;);
+ 	my $xml  = new KIWIXML ($kiwi,$listXMLInfo,undef,$SetImageType);
+ 	if (! defined $xml) {
+ 		exit 1;
+ 	}
+-	$kiwi -&gt; done();
+ 	my %type = %{$xml-&gt;getImageTypeAndAttributes()};
+ 	#==========================================
+ 	# print boot information of type section
+@@ -1583,14 +1576,15 @@
+ 	if (! defined $kiwi) {
+ 		$kiwi = new KIWILog(&quot;tiny&quot;);
+ 	}
++	$kiwi -&gt; setLogHumanReadable();
+ 	if ($code != 0) {
++		$kiwi -&gt; printLogExcerpt();
+ 		$kiwi -&gt; error  (&quot;KIWI exited with error(s)&quot;);
+ 		$kiwi -&gt; done ();
+ 	} else {
+ 		$kiwi -&gt; info (&quot;KIWI exited successfully&quot;);
+ 		$kiwi -&gt; done ();
+ 	}
+-	$kiwi -&gt; setLogHumanReadable();
+ 	if (! defined $LogFile) {
+ 		my $rootLog = $kiwi -&gt; getRootLog();
+ 		if ((defined $rootLog) &amp;&amp;
+@@ -1598,7 +1592,7 @@
+ 		) {
+ 			my $logfile = $1;
+ 			$logfile = &quot;$logfile.log&quot;;
+-			$kiwi -&gt; info (&quot;Logfile available at: $logfile&quot;);
++			$kiwi -&gt; info (&quot;Complete logfile at: $logfile&quot;);
+ 			qxx (&quot;mv $rootLog $logfile 2&gt;&amp;1&quot;);
+ 			$kiwi -&gt; done ();
+ 		}
+@@ -1987,12 +1981,11 @@
+ 		$kiwi-&gt;info(&quot;Module KIWICollect loaded successfully...&quot;);
+ 		$kiwi-&gt;done();
+ 	}
+-	$kiwi -&gt; info (&quot;Reading image description for insallation source...&quot;);
++	$kiwi -&gt; info (&quot;Reading image description [InstSource]...\n&quot;);
+ 	my $xml = new KIWIXML ( $kiwi,$CreateInstSource );
+ 	if (! defined $xml) {
+ 		my $code = kiwiExit (1); return $code;
+ 	}
+-	$kiwi -&gt; done();
+ 	#==========================================
+ 	# Initialize installation source tree
+ 	#------------------------------------------
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2008-09-15 11:56:06 UTC (rev 1566)
++++ kiwi-head/modules/KIWIBoot.pm	2008-09-17 09:41:58 UTC (rev 1567)
+@@ -337,6 +337,7 @@
+ 	$this-&gt;{isxen}  = $isxen;
+ 	$this-&gt;{xengz}  = $xengz;
+ 	$this-&gt;{arch}   = $arch;
++	$this-&gt;{ptool}  = &quot;fdisk&quot;;
+ 	return $this;
+ }
+ 
+@@ -2952,6 +2953,88 @@
+ }
+ 
+ #==========================================
++# resetSectors
++#------------------------------------------
++sub resetSectors {
++	# ...
++	# reset global sector and disk marks
++	# ---
++	my $this = shift;
++	undef $this-&gt;{pDiskSectors};
++	undef $this-&gt;{pDiskFactor};
++	undef $this-&gt;{pStart};
++	undef $this-&gt;{pStopp};
++	return $this;
++}
++
++#==========================================
++# initSectors
++#------------------------------------------
++sub initSectors {
++	# ...
++	# calculate start/end sector values for parted to create
++	# the appropriate partition. On success the sector count
++	# will be returned, on error zero is returned
++	# ---
++	my $this    = shift;
++	my $device  = shift;
++	my $size    = shift;
++	my $kiwi    = $this-&gt;{kiwi};
++	my $sectors = 0;
++	my $status;
++	my $result;
++	if (! defined $this-&gt;{pDiskSectors}) {
++		$status = qxx (&quot;dd if=/dev/zero of=$device bs=512 count=1 2&gt;&amp;1&quot;);
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; loginfo ($status);
++			return 0;
++		}
++		$status = qxx (&quot;/usr/sbin/parted -s $device mklabel msdos 2&gt;&amp;1&quot;);
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; loginfo ($status);
++			return 0;
++		}
++		my $unit   = &quot;s&quot;;
++		my $parted = &quot;/usr/sbin/parted -m -s $device unit $unit print 2&gt;&amp;1&quot;;
++		$status = qxx (&quot;$parted | grep ^$device | cut -f2 -d: | tr -d $unit&quot;);
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; loginfo ($status);
++			return 0;
++		}
++		chomp $status;
++		$this-&gt;{pDiskSectors} = $status - 1;
++		$unit   = &quot;MB&quot;;
++		$parted = &quot;/usr/sbin/parted -m -s $device unit $unit print 2&gt;&amp;1&quot;;
++		$status = qxx (&quot;$parted | grep ^$device | cut -f2 -d: | tr -d $unit&quot;);
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; loginfo ($status);
++			return 0;
++		}
++		$this-&gt;{pDiskFactor} = $this-&gt;{pDiskSectors} / $status;
++		$this-&gt;{pDiskFactor} = int $this-&gt;{pDiskFactor};
++	}
++	if ($size =~ /\+(.*)M$/) {
++		$sectors = $1 * $this-&gt;{pDiskFactor};
++	} else {
++		$sectors = $this-&gt;{pDiskSectors};
++	}
++	if (! defined $this-&gt;{pStart}) {
++		$this-&gt;{pStart} = 64;
++	} else {
++		$this-&gt;{pStart} = $this-&gt;{pStopp} + 1;
++	}
++	$this-&gt;{pStopp} = $this-&gt;{pStart} + $sectors;
++	if ($this-&gt;{pStopp} &gt; $this-&gt;{pDiskSectors}) {
++		$this-&gt;{pStopp} = $this-&gt;{pDiskSectors}
++	}
++	return $sectors;
++}
++
++#==========================================
+ # setStoragePartition
+ #------------------------------------------
+ sub setStoragePartition {
+@@ -2962,38 +3045,79 @@
+ 	my $this     = shift;
+ 	my $device   = shift;
+ 	my $cmdref   = shift;
++	my $tool     = $this-&gt;{ptool};
+ 	my $kiwi     = $this-&gt;{kiwi};
+ 	my $tmpdir   = $this-&gt;{tmpdir};
+ 	my @commands = @{$cmdref};
+-	$kiwi -&gt; loginfo (
+-		&quot;FDISK input: $device [@commands]&quot;
+-	);
+-	if (! open (FD,&quot;|/sbin/fdisk $device &amp;&gt; $tmpdir/fdisk.log&quot;)) {
+-		return undef;
++	my $result;
++	my $status;
++	if (! defined $tool) {
++		$tool = &quot;fdisk&quot;;
+ 	}
+-	foreach my $cmd (@commands) {
+-		if ($cmd eq &quot;.&quot;) {
+-			print FD &quot;\n&quot;;
+-		} else {
+-			print FD &quot;$cmd\n&quot;;
++	SWITCH: for ($tool) {
++		#==========================================
++		# fdisk
++		#------------------------------------------
++		/^fdisk/  &amp;&amp; do {
++			$kiwi -&gt; loginfo (
++				&quot;FDISK input: $device [@commands]&quot;
++			);
++			if (! open (FD,&quot;|/sbin/fdisk $device &amp;&gt; $tmpdir/fdisk.log&quot;)) {
++				return undef;
++			}
++			foreach my $cmd (@commands) {
++				if ($cmd eq &quot;.&quot;) {
++					print FD &quot;\n&quot;;
++				} else {
++					print FD &quot;$cmd\n&quot;;
++				}
++			}
++			close FD;
++			$result = $? &gt;&gt; 8;
++			my $flog;
++			if (open (FD,&quot;$tmpdir/fdisk.log&quot;)) {
++				my @flog = &lt;FD&gt;; close FD;
++				$flog = join (&quot;\n&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">, at flog</A>);
++				$kiwi -&gt; loginfo (&quot;FDISK: $flog&quot;);
++			}
++			last SWITCH;
++		};
++		#==========================================
++		# parted
++		#------------------------------------------
++		/^parted/  &amp;&amp; do {
++			my @p_cmd = ();
++			$this -&gt; resetSectors();
++			for (my $count=0;$count&lt;@commands;$count++) {
++				my $cmd = $commands[$count];
++				if ($cmd eq &quot;n&quot;) {
++					my $size = $commands[$count+4];
++					$this -&gt; initSectors ($device,$size);
++					push (@p_cmd,
++						&quot;mkpart primary $this-&gt;{pStart} $this-&gt;{pStopp}&quot;
++					);
++				}
++				if ($cmd eq &quot;t&quot;) {
++					my $index= $commands[$count+1];
++					my $type = $commands[$count+2];
++					push (@p_cmd,&quot;set $index type $type&quot;);
++				}
++				if ($cmd eq &quot;a&quot;) {
++					my $index= $commands[$count+1];
++					push (@p_cmd,&quot;set $index boot on&quot;);
++				}
++			}
++			$kiwi -&gt; loginfo (
++				&quot;PARTED input: $device [@p_cmd]&quot;
++			);
++			foreach my $p_cmd (@p_cmd) {
++				$status= qxx (&quot;/usr/sbin/parted -s $device unit s $p_cmd 2&gt;&amp;1&quot;);
++				$result= $? &gt;&gt; 8;
++				$kiwi -&gt; loginfo ($status);
++			}
++			last SWITCH;
+ 		}
+ 	}
+-	close FD;
+-	my $result = $? &gt;&gt; 8;
+-	my $flog;
+-	if (open (FD,&quot;$tmpdir/fdisk.log&quot;)) {
+-		my @flog = &lt;FD&gt;; close FD;
+-		$flog = join (&quot;\n&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">, at flog</A>);
+-		$kiwi -&gt; loginfo (&quot;FDISK: $flog&quot;);
+-	}
+-	if ($result != 0) {
+-		# /.../
+-		# fdisk will complain about not being able to re-read
+-		# the partition table and will exit != 0 but the table
+-		# was written correctly so we will return success here
+-		# ---
+-		return $this;
+-	}
+ 	return $this;
+ }
+ 
+@@ -3008,8 +3132,37 @@
+ 	# --- 
+ 	my $this = shift;
+ 	my $pdev = shift;
+-	my $status = qxx (&quot;/sbin/sfdisk -s $pdev 2&gt;&amp;1&quot;);
+-	my $result = $? &gt;&gt; 8;
++	my $tool = $this-&gt;{ptool};
++	my $result;
++	my $status;
++	if (! defined $tool) {
++		$tool = &quot;fdisk&quot;;
++	}
++	SWITCH: for ($tool) {
++		#==========================================
++		# fdisk
++		#------------------------------------------
++		/^fdisk/  &amp;&amp; do {
++			$status = qxx (&quot;/sbin/sfdisk -s $pdev 2&gt;&amp;1&quot;);
++			$result = $? &gt;&gt; 8;
++			last SWITCH;
++		};
++		#==========================================
++		# parted
++		#------------------------------------------
++		/^parted/  &amp;&amp; do {
++			my $parted = &quot;/usr/sbin/parted -m -s $pdev unit kB print 2&gt;&amp;1&quot;;
++			$status = qxx (&quot;$parted | grep ^$pdev | cut -f2 -d: | tr -d kB&quot;);
++			$result = $? &gt;&gt; 8;
++			$status = int $status;
++			if ((! $status) &amp;&amp; ($pdev =~ /loop/)) {
++				$status= qxx (&quot;/usr/sbin/parted -s $pdev mklabel msdos 2&gt;&amp;1&quot;);
++				$status= qxx (&quot;$parted | grep ^$pdev | cut -f2 -d: | tr -d kB&quot;);
++				$result = $? &gt;&gt; 8;
++			}
++			last SWITCH;
++		}
++	}
+ 	if ($result == 0) {
+ 		return $status;
+ 	}
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-09-15 11:56:06 UTC (rev 1566)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-09-17 09:41:58 UTC (rev 1567)
+@@ -1323,7 +1323,7 @@
+ 				if [ ! -f $isremovable ];then
+ 					continue;
+ 				fi
+-				if ! sfdisk -s $device &gt;/dev/null;then
++				if ! partitionSize $device &gt;/dev/null;then
+ 					continue;
+ 				fi
+ 				if [ ! -f $serial ];then
+@@ -1429,7 +1429,7 @@
+ 	diskdevs=`echo $diskdevs | sed -e &quot;s@(.*)@@&quot;`
+ 	for diskdev in $diskdevs;do
+ 		for disknr in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15;do
+-			id=`/sbin/sfdisk --print-id $diskdev $disknr`
++			id=`partitionID $diskdev $disknr`
+ 			if [ &quot;$id&quot; = &quot;82&quot; ];then
+ 				echo $diskdev$disknr
+ 				return
+@@ -1452,7 +1452,7 @@
+ 	diskdevs=`echo $diskdevs | sed -e &quot;s@(.*)@@&quot;`
+ 	for diskdev in $diskdevs;do
+ 		for disknr in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15;do
+-			id=`/sbin/sfdisk --print-id $diskdev $disknr`
++			id=`partitionID $diskdev $disknr`
+ 			if [ -z $id ];then
+ 				id=0
+ 			fi
+@@ -1699,7 +1699,7 @@
+ 	diskPartition=$1
+ 	diskID=`echo $diskPartition | sed -e s@[^0-9]@@g`
+ 	diskPD=`echo $diskPartition | sed -e s@[0-9]@@g`
+-	diskPartitionType=`sfdisk -c $diskPD $diskID`
++	diskPartitionType=`partitionID $diskPD $diskID`
+ 	if test &quot;$diskPartitionType&quot; = &quot;8e&quot;;then
+ 		Echo &quot;Creating Volume group [systemvg]&quot;
+ 		pvcreate $diskPartition &gt;/dev/null
+@@ -1727,25 +1727,6 @@
+ 	fi
+ }
+ #======================================
+-# sfdiskPartitionCount
+-#--------------------------------------
+-function sfdiskPartitionCount {
+-	# /.../
+-	# calculate the number of partitions to create. If the
+-	# number is more than 4 an extended partition needs to be
+-	# created.
+-	# ----
+-	IFS=&quot;,&quot; ; for i in $PART;do
+-		PART_NUMBER=`expr $PART_NUMBER + 1`
+-	done
+-	if [ $PART_NUMBER -gt 4 ];then
+-		PART_NEED_EXTENDED=1
+-	fi
+-	PART_NUMBER=`expr $PART_NUMBER + 1`
+-	PART_NEED_FILL=`expr $PART_NUMBER / 8`
+-	PART_NEED_FILL=`expr 8 - \( $PART_NUMBER - $PART_NEED_FILL \* 8 \)`
+-}
+-#======================================
+ # checkExtended
+ #--------------------------------------
+ function checkExtended {
+@@ -1771,6 +1752,43 @@
+ 	fi
+ }
+ #======================================
++# sfdiskGetPartitionID
++#--------------------------------------
++function sfdiskGetPartitionID {
++	# /.../
++	# prints the partition ID for the given device and number
++	# ----
++	sfdisk -c $1 $2
++}
++#======================================
++# sfdiskGetPartitionSize
++#--------------------------------------
++function sfdiskGetPartitionSize {
++	# /.../
++	# prints the partition or disk size in kB
++	# ----
++	sfdisk -s $1
++}
++#======================================
++# sfdiskPartitionCount
++#--------------------------------------
++function sfdiskPartitionCount {
++	# /.../
++	# calculate the number of partitions to create. If the
++	# number is more than 4 an extended partition needs to be
++	# created.
++	# ----
++	IFS=&quot;,&quot; ; for i in $PART;do
++		PART_NUMBER=`expr $PART_NUMBER + 1`
++	done
++	if [ $PART_NUMBER -gt 4 ];then
++		PART_NEED_EXTENDED=1
++	fi
++	PART_NUMBER=`expr $PART_NUMBER + 1`
++	PART_NEED_FILL=`expr $PART_NUMBER / 8`
++	PART_NEED_FILL=`expr 8 - \( $PART_NUMBER - $PART_NEED_FILL \* 8 \)`
++}
++#======================================
+ # sfdiskFillPartition
+ #--------------------------------------
+ function sfdiskFillPartition {
+@@ -1867,6 +1885,48 @@
+ 	export PART_DEV
+ }
+ #======================================
++# sfdiskWritePartitionTable
++#--------------------------------------
++function sfdiskWritePartitionTable {
++	# /.../
++	# write the partition table using PART_FILE as
++	# input for sfdisk
++	# ----
++	diskDevice=$1
++	dd if=/dev/zero of=$diskDevice bs=512 count=1 &gt;/dev/null
++	sfdisk -uM --force $diskDevice &lt; $PART_FILE &gt;/dev/null
++	if test $? != 0;then
++		systemException \
++			&quot;Failed to create partition table on: $diskDevice !&quot; \
++		&quot;reboot&quot;
++	fi
++	verifyOutput=`sfdisk -V $diskDevice`
++	if test $? != 0;then
++		systemException \
++			&quot;Failed to verify partition table on $diskDevice: $verifyOutput&quot; \
++		&quot;reboot&quot;
++	fi
++	rm -f $PART_FILE
++}
++#======================================
++# partedGetPartitionID
++#--------------------------------------
++function partedGetPartitionID {
++	# /.../
++	# prints the partition ID for the given device and number
++	# ----
++	parted -m -s $1 print | grep ^$2: | cut -f10 -d, | cut -f2 -d=
++}
++#======================================
++# partedGetPartitionSize
++#--------------------------------------
++function partedGetPartitionSize {
++	# /.../
++	# prints the partition or disk size in kB
++	# ----
++	parted -m -s $1 unit kB | grep ^$1 | cut -f2 -d: | tr -d kB
++}
++#======================================
+ # partedCreatePartition
+ #--------------------------------------
+ function partedCreatePartition {
+@@ -1887,8 +1947,6 @@
+ 	p_size=`echo $p_size`
+ 	p_size=`expr $p_size - 1`
+ 	p_cmd=&quot;/usr/sbin/parted -s $DISK unit s&quot;
+-	p_idc=&quot;/sbin/sfdisk -c $DISK&quot;
+-	p_ids=&quot;true&quot;
+ 	IFS=&quot;,&quot; ; for i in $PART;do
+ 		field=0
+ 		IFS=&quot;;&quot; ; for n in $i;do
+@@ -1917,17 +1975,17 @@
+ 		partedGetSectors $p_stopp $partSize
+ 		if [ $PART_COUNT -le 3 ];then
+ 			p_cmd=&quot;$p_cmd mkpart primary $p_start $p_stopp&quot;
+-			p_ids=&quot;$p_ids &amp;&amp; $p_idc $PART_COUNT $partID&quot;
++			p_cmd=&quot;$p_cmd set $PART_COUNT type $partID&quot;
+ 		else
+ 			if [ $PART_COUNT -eq 4 ];then
+ 				p_cmd=&quot;$p_cmd mkpart extended $p_start $p_size&quot;
+-				p_ids=&quot;$p_ids &amp;&amp; $p_idc $PART_COUNT 85&quot;
++				p_cmd=&quot;$p_cmd set $PART_COUNT type 85&quot;
+ 				PART_COUNT=`expr $PART_COUNT + 1`
+ 				NO_FILE_SYSTEM=1
+ 			fi
+ 			p_start=`expr $p_start + 1`
+ 			p_cmd=&quot;$p_cmd mkpart logical $p_start $p_stopp&quot;
+-			p_ids=&quot;$p_ids &amp;&amp; $p_idc $PART_COUNT $partID&quot;
++			p_cmd=&quot;$p_cmd set $PART_COUNT type $partID&quot;
+ 		fi
+ 		if test -z &quot;$PART_MOUNT&quot;;then
+ 			PART_MOUNT=&quot;$partMount&quot;
+@@ -1972,46 +2030,32 @@
+ 	# write the partition table using parted
+ 	# ----
+ 	diskDevice=$1
+-
+ 	eval $p_cmd
+ 	if test $? != 0;then
+ 		systemException \
+ 			&quot;Failed to create partition table on: $diskDevice !&quot; \
+-			&quot;reboot&quot;
++		&quot;reboot&quot;
+ 	fi
+-	eval $p_ids &gt;/dev/null
+-	if test $? != 0;then
+-		systemException \
+-			&quot;Failed to setup partition IDs on: $diskDevice !&quot; \
+-			&quot;reboot&quot;
++}
++#======================================
++# partitionID
++#--------------------------------------
++function partitionID {
++	if [ $PARTITIONER = &quot;sfdisk&quot; ];then
++		sfdiskGetPartitionID
++	else
++		partedGetPartitionID
+ 	fi
+ }
+ #======================================
+-# sfdiskWritePartitionTable
++# partitionSize
+ #--------------------------------------
+-function sfdiskWritePartitionTable {
+-	# /.../
+-	# write the partition table using PART_FILE as
+-	# input for sfdisk
+-	# ----
+-	diskDevice=$1
+-
+-	dd if=/dev/zero of=$diskDevice bs=512 count=1 &gt;/dev/null
+-	sfdisk -uM --force $diskDevice &lt; $PART_FILE &gt;/dev/null
+-	if test $? != 0;then
+-		systemException \
+-			&quot;Failed to create partition table on: $diskDevice !&quot; \
+-			&quot;reboot&quot;
++function partitionSize {
++	if [ $PARTITIONER = &quot;sfdisk&quot; ];then
++		sfdiskGetPartitionSize
++	else
++		partedGetPartitionSize
+ 	fi
+-
+-	verifyOutput=`sfdisk -V $diskDevice`
+-	if test $? != 0;then
+-		systemException \
+-			&quot;Failed to verify partition table on $diskDevice: $verifyOutput&quot; \
+-			&quot;reboot&quot;
+-	fi
+-	
+-	rm -f $PART_FILE
+ }
+ #======================================
+ # partitionCount
+@@ -2058,7 +2102,7 @@
+ 	# using the given disk device. On success return 0
+ 	# ----
+ 	diskDevice=$1
+-	diskPartitionType=`sfdisk -c $diskDevice 2`
++	diskPartitionType=`partitionID $diskDevice 2`
+ 	if test &quot;$diskPartitionType&quot; = &quot;83&quot;;then
+ 		return 0
+ 	fi
+@@ -2134,7 +2178,7 @@
+ 	# check if the image fits into the requested partition.
+ 	# An information about the sizes is printed out
+ 	# ----
+-	haveBytes=`sfdisk -s $imageDevice`
++	haveBytes=`partitionSize $imageDevice`
+ 	haveBytes=`expr $haveBytes \* 1024`
+ 	haveMByte=`expr $haveBytes / 1048576`
+ 	needBytes=`expr $blocks \* $blocksize`
+@@ -2509,7 +2553,7 @@
+ 	rm -rf /read-only &gt;/dev/null
+ 	ln -s /mnt/read-only /read-only &gt;/dev/null || return 1
+ 	if ! echo $rwDevice | grep -q loop;then
+-		if sfdisk -s $rwDevice &amp;&gt;/dev/null;then
++		if partitionSize $rwDevice &amp;&gt;/dev/null;then
+ 			# /.../
+ 			# mount the read-write partition to /mnt/read-write and create
+ 			# a link to it: /read-write -&gt; /mnt/read-write 
+@@ -2711,10 +2755,13 @@
+ 	local device=$1
+ 	local check=0
+ 	while true;do
+-		sfdisk -s $device &amp;&gt;/dev/null
+-		if [ $? = 0 ] || [ $check -eq 4 ];then
+-			break
++		partitionSize $device &amp;&gt;/dev/null
++		if [ $? = 0 ];then
++			return 0
+ 		fi
++		if [ $check -eq 4 ];then
++			return 1
++		fi
+ 		Echo &quot;Waiting for device $device to settle...&quot;
+ 		check=`expr $check + 1`
+ 		sleep 2
+
+Modified: kiwi-head/modules/KIWILog.pm
+===================================================================
+--- kiwi-head/modules/KIWILog.pm	2008-09-15 11:56:06 UTC (rev 1566)
++++ kiwi-head/modules/KIWILog.pm	2008-09-17 09:41:58 UTC (rev 1567)
+@@ -650,6 +650,22 @@
+ }
+ 
+ #==========================================
++# printLogExcerpt
++#------------------------------------------
++sub printLogExcerpt {
++	my $this    = shift;
++	my $rootLog = $this-&gt;{rootLog};
++	if ((! defined $rootLog) || (! open (FD, $rootLog))) {
++		return undef;
++	}
++	seek (FD,-1000,2);
++	my @lines = &lt;FD&gt;; close FD;
++	unshift (@lines,&quot;[*** log excerpt follows, last 1 Kbyte ***]\n&quot;);
++	push    (@lines,&quot;[*** end ***]\n&quot;);
++	print STDERR @lines;
++}
++
++#==========================================
+ # setLogHumanReadable
+ #------------------------------------------
+ sub setLogHumanReadable {
+
+Modified: kiwi-head/modules/KIWIManager.pm
+===================================================================
+--- kiwi-head/modules/KIWIManager.pm	2008-09-15 11:56:06 UTC (rev 1566)
++++ kiwi-head/modules/KIWIManager.pm	2008-09-17 09:41:58 UTC (rev 1567)
+@@ -295,7 +295,7 @@
+ 		if (($logs) &amp;&amp; ($data)) {
+ 			my @lines = split (&quot;\n&quot;,$data);
+ 			@lines = @lines[-10,-9,-8,-7,-6,-5,-4,-3,-2,-1];
+-			unshift (@lines,&quot;[*** log excerpt follows ***]&quot;);
++			unshift (@lines,&quot;[*** log excerpt follows, screen ***]&quot;);
+ 			push    (@lines,&quot;[*** end ***]\n&quot;);
+ 			$data = join (&quot;\n&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">, at lines</A>);
+ 			printf STDERR $data;
+@@ -623,17 +623,17 @@
+ 			my @opts = @{$source{$stype}{$chl}};
+ 			@opts = map { if (defined $_) { $_ }  } @opts;
+ 			if (! $chroot) {
+-				$kiwi -&gt; info (&quot;Adding local smart channel: $chl&quot;);
++				$kiwi -&gt; info (&quot;Adding bootstrap smart channel: $chl&quot;);
+ 				$data = qxx (&quot;$cmds $chl @opts 2&gt;&amp;1&quot;);
+ 				$code = $? &gt;&gt; 8;
+ 			} else {
+-				$kiwi -&gt; info (&quot;Adding image smart channel: $chl&quot;);
++				$kiwi -&gt; info (&quot;Adding chroot smart channel: $chl&quot;);
+ 				$data = qxx (&quot;chroot \&quot;$root\&quot; $cmds $chl @opts 2&gt;&amp;1&quot;);
+ 				$code = $? &gt;&gt; 8;
+ 			}
+ 			if ($code != 0) {
+ 				$kiwi -&gt; failed ();
+-				$kiwi -&gt; error  ($data);
++				$kiwi -&gt; error  (&quot;smart: $data&quot;);
+ 				return undef;
+ 			}
+ 			push (@channelList,$chl);
+@@ -694,17 +694,17 @@
+ 			}
+ 			my $sadd = &quot;addrepo @zopts $alias&quot;;
+ 			if (! $chroot) {
+-				$kiwi -&gt; info (&quot;Adding local zypper service: $alias&quot;);
++				$kiwi -&gt; info (&quot;Adding bootstrap zypper service: $alias&quot;);
+ 				$data = qxx (&quot;@zypper --root \&quot;$root\&quot; $sadd 2&gt;&amp;1&quot;);
+ 				$code = $? &gt;&gt; 8;
+ 			} else {
+-				$kiwi -&gt; info (&quot;Adding image zypper service: $alias&quot;);
++				$kiwi -&gt; info (&quot;Adding chroot zypper service: $alias&quot;);
+ 				$data = qxx (&quot;chroot \&quot;$root\&quot; @zypper $sadd 2&gt;&amp;1&quot;);
+ 				$code = $? &gt;&gt; 8;
+ 			}
+ 			if ($code != 0) {
+ 				$kiwi -&gt; failed ();
+-				$kiwi -&gt; error  ($data);
++				$kiwi -&gt; error  (&quot;zypper: $data&quot;);
+ 				return undef;
+ 			}
+ 			push (@channelList,$alias);
+@@ -851,8 +851,10 @@
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		print $fd &quot;test \$? = 0 &amp;&amp; @smart download @pacs @loadOpts &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-		print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;ECODE=\$?\n&quot;;
++		print $fd &quot;echo \$ECODE &gt; $screenCall.exit\n&quot;;
+ 		print $fd &quot;rm -f $root/etc/smart/channels/*\n&quot;;
++		print $fd &quot;exit \$ECODE\n&quot;;
+ 		$fd -&gt; close();
+ 	}
+ 	#==========================================
+@@ -927,7 +929,9 @@
+ 		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @smart install -y &quot;;
+ 		print $fd &quot;@addonPackages || false &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-		print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;ECODE=\$?\n&quot;;
++		print $fd &quot;echo \$ECODE &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;exit \$ECODE\n&quot;;
+ 		$fd -&gt; close();
+ 	}
+ 	#==========================================
+@@ -951,7 +955,9 @@
+ 		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @zypper install &quot;;
+ 		print $fd &quot;@installOpts @addonPackages &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-		print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;ECODE=\$?\n&quot;;
++		print $fd &quot;echo \$ECODE &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;exit \$ECODE\n&quot;;
+ 		$fd -&gt; close();
+ 	}
+ 	#==========================================
+@@ -964,7 +970,9 @@
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;$main::Prepare/ensconce &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-		print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;ECODE=\$?\n&quot;;
++		print $fd &quot;echo \$ECODE &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;exit \$ECODE\n&quot;;
+ 		$fd -&gt; close();
+ 	}
+ 	return $this -&gt; setupScreenCall();
+@@ -1019,7 +1027,9 @@
+ 		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @smart remove -y &quot;;
+ 		print $fd &quot;@removePackages || false &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-		print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;ECODE=\$?\n&quot;;
++		print $fd &quot;echo \$ECODE &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;exit \$ECODE\n&quot;;
+ 		$fd -&gt; close();
+ 	}
+ 	#==========================================
+@@ -1043,7 +1053,9 @@
+ 		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @zypper remove &quot;;
+ 		print $fd &quot;@installOpts @removePackages &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-		print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;ECODE=\$?\n&quot;;
++		print $fd &quot;echo \$ECODE &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;exit \$ECODE\n&quot;;
+ 		$fd -&gt; close();
+ 	}
+ 	#==========================================
+@@ -1056,7 +1068,9 @@
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;$main::Prepare/ensconce &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-		print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;ECODE=\$?\n&quot;;
++		print $fd &quot;echo \$ECODE &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;exit \$ECODE\n&quot;;
+ 		$fd -&gt; close();
+ 	}
+ 	return $this -&gt; setupScreenCall();
+@@ -1125,7 +1139,9 @@
+ 			print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @smart upgrade @opts &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		}
+-		print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;ECODE=\$?\n&quot;;
++		print $fd &quot;echo \$ECODE &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;exit \$ECODE\n&quot;;
+ 		$fd -&gt; close();
+ 	}
+ 	#==========================================
+@@ -1189,7 +1205,9 @@
+ 			print $fd &quot;chroot $root @zypper dist-upgrade &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		}
+-		print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;ECODE=\$?\n&quot;;
++		print $fd &quot;echo \$ECODE &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;exit \$ECODE\n&quot;;
+ 		$fd -&gt; close();
+ 	}
+ 	#==========================================
+@@ -1320,8 +1338,10 @@
+ 			print $fd &quot;test \$? = 0 &amp;&amp; @smart @rootdir install &quot;;
+ 			print $fd &quot;@packs @installOpts &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-			print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
++			print $fd &quot;ECODE=\$?\n&quot;;
++			print $fd &quot;echo \$ECODE &gt; $screenCall.exit\n&quot;;
+ 			print $fd &quot;rm -f $root/etc/smart/channels/*\n&quot;;
++			print $fd &quot;exit \$ECODE\n&quot;;
+ 		} else {
+ 			#==========================================
+ 			# setup install options inside of chroot
+@@ -1350,7 +1370,9 @@
+ 			print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @smart install &quot;;
+ 			print $fd &quot;@install @installOpts &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-			print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
++			print $fd &quot;ECODE=\$?\n&quot;;
++			print $fd &quot;echo \$ECODE &gt; $screenCall.exit\n&quot;;
++			print $fd &quot;exit \$ECODE\n&quot;;
+ 		}
+ 		$fd -&gt; close();
+ 	}
+@@ -1427,7 +1449,9 @@
+ 				print $fd &quot;@installOpts @packs &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+-			print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
++			print $fd &quot;ECODE=\$?\n&quot;;
++			print $fd &quot;echo \$ECODE &gt; $screenCall.exit\n&quot;;
++			print $fd &quot;exit \$ECODE\n&quot;;
+ 		} else {
+ 			#==========================================
+ 			# select patterns and packages
+@@ -1490,7 +1514,9 @@
+ 				print $fd &quot;@installOpts @install &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+-			print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
++			print $fd &quot;ECODE=\$?\n&quot;;
++			print $fd &quot;echo \$ECODE &gt; $screenCall.exit\n&quot;;
++			print $fd &quot;exit \$ECODE\n&quot;;
+ 		}
+ 		$fd -&gt; close();
+ 	}
+@@ -1508,7 +1534,9 @@
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;$main::Prepare/ensconce $ensconce_args &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-		print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;ECODE=\$?\n&quot;;
++		print $fd &quot;echo \$ECODE &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;exit \$ECODE\n&quot;;
+ 		$fd -&gt; close();
+ 	}
+ 	return $this -&gt; setupScreenCall();
+
+Modified: kiwi-head/modules/KIWIPattern.pm
+===================================================================
+--- kiwi-head/modules/KIWIPattern.pm	2008-09-15 11:56:06 UTC (rev 1566)
++++ kiwi-head/modules/KIWIPattern.pm	2008-09-17 09:41:58 UTC (rev 1567)
+@@ -316,7 +316,7 @@
+ 		#------------------------------------------
+ 		my $urlHandler  = new KIWIURL ($kiwi,undef);
+ 		my $publics_url = $url;
+-		my $highlvl_url = $urlHandler -&gt; openSUSEpath ($publics_url);
++		my $highlvl_url = $urlHandler -&gt; openSUSEpath ($publics_url,&quot;quiet&quot;);
+ 		if (defined $highlvl_url) {
+ 			$publics_url = $highlvl_url;
+ 		}
+@@ -575,7 +575,7 @@
+ 		#------------------------------------------
+ 		my $urlHandler  = new KIWIURL ($kiwi,undef);
+ 		my $publics_url = $url;
+-		my $highlvl_url = $urlHandler -&gt; openSUSEpath ($publics_url);
++		my $highlvl_url = $urlHandler -&gt; openSUSEpath ($publics_url,&quot;quiet&quot;);
+ 		if (defined $highlvl_url) {
+ 			$publics_url = $highlvl_url;
+ 		}
+
+Modified: kiwi-head/modules/KIWIURL.pm
+===================================================================
+--- kiwi-head/modules/KIWIURL.pm	2008-09-15 11:56:06 UTC (rev 1566)
++++ kiwi-head/modules/KIWIURL.pm	2008-09-17 09:41:58 UTC (rev 1567)
+@@ -353,6 +353,7 @@
+ 	# ---
+ 	my $this     = shift;
+ 	my $module   = shift;
++	my $quiet    = shift;
+ 	my $browser  = LWP::UserAgent-&gt;new;
+ 	my $location = $main::openSUSE;
+ 	my @dists    = qw (standard);
+@@ -362,48 +363,62 @@
+ 	# normalize URL data
+ 	#------------------------------------------
+ 	if ((! defined $module) || ($module !~ /^opensuse:\/\//)) {
+-		return ( undef,undef );
++		return undef;
+ 	}
+ 	$module =~ s/opensuse:\/\///;
+ 	$module =~ s/\/$//;
+ 	$module =~ s/^\///;
+ 	if ((! defined $module) || ($module eq &quot;&quot;)) {
+-		return ( undef,undef );
++		return undef;
+ 	}
+ 	#==========================================
+ 	# Create urllist for later testing
+ 	#------------------------------------------
+ 	foreach my $dist (@dists) {
+ 		my $url1 = $location.$module.&quot;/&quot;;
+-		my $url2 = $location.$module.&quot;/&quot;.$dist.&quot;/&quot;;
+ 		push @urllist,$url1;
+-		push @urllist,$url2;
++		if ($url1 !~ /\/$dist/) {
++			my $url2 = $location.$module.&quot;/&quot;.$dist.&quot;/&quot;;
++			push @urllist,$url2;
++		}
+ 	}
+ 	#==========================================
+ 	# Check url entries in urllist
+ 	#------------------------------------------
++	my @responses = ();
+ 	foreach my $url (@urllist) {
+ 		my $request = HTTP::Request-&gt;new (GET =&gt; $url);
+-		my $response = $browser -&gt; request  ( $request );
+-		my $title = $response -&gt; title ();
++		my $response= $browser -&gt; request  ( $request );
++		my $title   = $response-&gt; title ();
+ 		if ((defined $title) &amp;&amp; ($title !~ /not found/i)) {
+ 			my $repourl = $url;
+-			my $request = HTTP::Request-&gt;new (GET =&gt; $repourl.&quot;/repodata&quot;);
+-			my $answer  = $browser -&gt; request  ( $request );
+-			my $title = $answer -&gt; title ();
++			$request = HTTP::Request-&gt;new (GET =&gt; $repourl.&quot;/repodata&quot;);
++			$response= $browser -&gt; request  ( $request );
++			$title   = $response-&gt; title ();
+ 			if ((defined $title) &amp;&amp; ($title !~ /not found/i)) {
+ 				$this-&gt;{type} = &quot;rpm-md&quot;;
+-				return ( $response,$url );
++				return $url;
++			} else {
++				push (@responses,&quot;$repourl/repodata -&gt; $title&quot;);
+ 			}
+ 			$request = HTTP::Request-&gt;new (GET =&gt; $repourl.&quot;/media.1&quot;);
+-			$answer  = $browser -&gt; request  ( $request );
+-			$title = $answer -&gt; title ();
++			$response= $browser -&gt; request  ( $request );
++			$title   = $response-&gt; title ();
+ 			if ((defined $title) &amp;&amp; ($title !~ /not found/i)) {
+ 				$this-&gt;{type} = &quot;yast2&quot;;
+-				return ( $response,$url );
++				return $url;
++			} else {
++				push (@responses,&quot;$repourl//media.1 -&gt; $title&quot;);
+ 			}
++		} else {
++			push (@responses,&quot;$url -&gt; $title&quot;);
+ 		}
+ 	}
++	if (! defined $quiet) {
++		my $response = join (&quot;\n&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">, at responses</A>);
++		$kiwi -&gt; warning (&quot;Couldn't resolve opensuse URL: $response&quot;);
++		$kiwi -&gt; skipped ();
++	}
+ 	return undef;
+ }
+ 
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-09-15 11:56:06 UTC (rev 1566)
++++ kiwi-head/rpm/kiwi.changes	2008-09-17 09:41:58 UTC (rev 1567)
+@@ -1,4 +1,17 @@
+ -------------------------------------------------------------------
++Tue Sep 16 17:22:41 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v2.77
++- added support for parted in kiwi. All partition tasks inside
++  KIWIBoot.pm and in linuxrc are now possible with parted. Even
++  though there is one exception which is the oemboot linuxrc.
++  the repartition code in this boot code is still based on fdisk.
++  All changes required due to bug (bnc #413637)
++- added log excerpt information and fixed exit code handling
++  if kiwi operation doesn't take place in a screen session. Last
++  part of the fix is related to (bnc #420320)
++
++-------------------------------------------------------------------
+ Mon Sep 15 12:00:17 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.76
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-09-15 11:56:06 UTC (rev 1566)
++++ kiwi-head/rpm/kiwi.spec	2008-09-17 09:41:58 UTC (rev 1567)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 2.76
++# spec file for package kiwi (Version 2.77
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        2.76
++Version:        2.77
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+Modified: kiwi-head/system/boot/ix86/netboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/netboot/suse-linuxrc	2008-09-15 11:56:06 UTC (rev 1566)
++++ kiwi-head/system/boot/ix86/netboot/suse-linuxrc	2008-09-17 09:41:58 UTC (rev 1567)
+@@ -273,8 +273,7 @@
+ 		esac
+ 		done
+ 		count=1
+-		waitForStorageDevice $DISK
+-		if ! sfdisk -s $DISK &amp;&gt;/dev/null;then
++		if ! waitForStorageDevice $DISK;then
+ 			systemException \
+ 				&quot;Disk $DISK doesn't appear... fatal !&quot; \
+ 			&quot;reboot&quot;
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-linuxrc	2008-09-15 11:56:06 UTC (rev 1566)
++++ kiwi-head/system/boot/ix86/oemboot/suse-linuxrc	2008-09-17 09:41:58 UTC (rev 1567)
+@@ -301,8 +301,7 @@
+ 	#--------------------------------------
+ 	blockdev --rereadpt $deviceDisk
+ 	deviceTest=&quot;$deviceDisk&quot;1
+-	waitForStorageDevice $deviceTest
+-	if ! sfdisk -s $deviceTest &amp;&gt;/dev/null;then
++	if ! waitForStorageDevice $deviceTest:then
+ 		systemException \
+ 			&quot;Partition $deviceTest doesn't appear... fatal !&quot; \
+ 		&quot;reboot&quot;
+@@ -406,7 +405,7 @@
+ 		#====================================== 
+ 		# 10.2 check for read-write partition
+ 		#--------------------------------------
+-		if ! sfdisk -s &quot;$deviceDisk&quot;2 &amp;&gt;/dev/null;then
++		if ! partitionSize &quot;$deviceDisk&quot;2 &amp;&gt;/dev/null;then
+ 			Echo &quot;No read-write partition in this split image&quot;
+ 			DONT_PARTITION=1
+ 		fi
+@@ -415,11 +414,11 @@
+ 		#--------------------------------------
+ 		if [ -z &quot;$DONT_PARTITION&quot; ];then
+ 			swapXMBytes=$swapsize
+-			diskXMBytes=`sfdisk -s $deviceDisk`
++			diskXMBytes=`partitionSize $deviceDisk`
+ 			diskXMBytes=`expr $diskXMBytes / 1000`
+-			disk1MBytes=`sfdisk -s &quot;$deviceDisk&quot;1`
++			disk1MBytes=`partitionSize &quot;$deviceDisk&quot;1`
+ 			disk1MBytes=`expr $disk1MBytes / 1000`
+-			disk2MBytes=`sfdisk -s &quot;$deviceDisk&quot;2`
++			disk2MBytes=`partitionSize &quot;$deviceDisk&quot;2`
+ 			disk2MBytes=`expr $disk2MBytes / 1000`
+ 			diskXLBytes=`expr $diskXMBytes - $disk1MBytes - $disk2MBytes`
+ 			diskXABytes=`expr $diskXLBytes - $swapXMBytes`
+@@ -483,7 +482,7 @@
+ 		#======================================
+ 		# 10.6 Activate swap space
+ 		#--------------------------------------
+-		if sfdisk -s $deviceSwap &amp;&gt;/dev/null;then
++		if partitionSize $deviceSwap &amp;&gt;/dev/null;then
+ 			Echo &quot;Activating swap space on $deviceSwap&quot;
+ 			if ! mkswap $deviceSwap &gt;/dev/null 2&gt;&amp;1;then
+ 				systemException &quot;Failed to create swap signature&quot; &quot;reboot&quot;
+@@ -521,8 +520,8 @@
+ 			# ----
+ 			input=/part.input
+ 			rm -f $input
+-			diskXMBytes=`sfdisk -s $deviceDisk`
+-			diskPMBytes=`sfdisk -s $deviceDisk&quot;1&quot;`
++			diskXMBytes=`partitionSize $deviceDisk`
++			diskPMBytes=`partitionSize $deviceDisk&quot;1&quot;`
+ 			diskPMBytes=`expr $diskPMBytes / 1000`
+ 			diskXMBytes=`expr $diskXMBytes / 1000`
+ 			disk1MBytes=10240
+@@ -741,7 +740,7 @@
+ 			#======================================
+ 			# 10.4 Activate swap space
+ 			#--------------------------------------
+-			if sfdisk -s $deviceSwap &amp;&gt;/dev/null;then
++			if partitionSize $deviceSwap &amp;&gt;/dev/null;then
+ 				Echo &quot;Activating swap space on $deviceSwap&quot;
+ 				if ! mkswap $deviceSwap &gt;/dev/null 2&gt;&amp;1;then
+ 					systemException &quot;Failed to create swap signature&quot; &quot;reboot&quot;
+@@ -800,9 +799,9 @@
+ 			# 10.2 calculate end block - swapspace
+ 			#--------------------------------------
+ 			swapXMBytes=$swapsize
+-			diskXMBytes=`sfdisk -s $deviceDisk`
++			diskXMBytes=`partitionSize $deviceDisk`
+ 			diskXMBytes=`expr $diskXMBytes / 1000`
+-			disk1MBytes=`sfdisk -s &quot;$deviceDisk&quot;1`
++			disk1MBytes=`partitionSize &quot;$deviceDisk&quot;1`
+ 			disk1MBytes=`expr $disk1MBytes / 1000`
+ 			disk2MBytes=`expr $diskXMBytes - $disk1MBytes - $swapsize`
+ 			if [ $disk2MBytes -lt 100 ];then
+@@ -862,7 +861,7 @@
+ 			#======================================
+ 			# 10.5 Activate swap space
+ 			#--------------------------------------
+-			if sfdisk -s $deviceSwap &amp;&gt;/dev/null;then
++			if partitionSize $deviceSwap &amp;&gt;/dev/null;then
+ 				Echo &quot;Activating swap space on $deviceSwap&quot;
+ 				if ! mkswap $deviceSwap &gt;/dev/null 2&gt;&amp;1;then
+ 					systemException &quot;Failed to create swap signature&quot; &quot;reboot&quot;
+@@ -889,7 +888,7 @@
+ 		KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS deviceRoot=\&quot;$deviceRoot\&quot;&quot;
+ 		export KIWI_INITRD_PARAMS
+ 	fi
+-	if [ ! -z &quot;$deviceResize&quot; ] &amp;&amp; sfdisk -s $deviceResize &amp;&gt;/dev/null;then
++	if [ ! -z &quot;$deviceResize&quot; ] &amp;&amp; partitionSize $deviceResize &amp;&gt;/dev/null;then
+ 		if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ 			KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS LOCAL_BOOT=yes&quot;
+ 			KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS deviceRoot=$deviceRoot&quot;
+@@ -991,7 +990,7 @@
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	export HAVE_SWAP=0
+ 	setupDefaultFstab /config
+-	if sfdisk -s $deviceSwap &amp;&gt;/dev/null;then
++	if partitionSize $deviceSwap &amp;&gt;/dev/null;then
+ 		updateSwapDeviceFstab /config $deviceSwap
+ 		HAVE_SWAP=1
+ 	fi
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000663.html">[Kiwi-devel] r1566 - in kiwi-head: modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000665.html">[Kiwi-devel] r1568 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#664">[ date ]</a>
+              <a href="thread.html#664">[ thread ]</a>
+              <a href="subject.html#664">[ subject ]</a>
+              <a href="author.html#664">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

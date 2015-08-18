@@ -1,0 +1,278 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1497 - in kiwi-head: . modules rpm tools/satplugin
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1497%20-%20in%20kiwi-head%3A%20.%20modules%20rpm%20tools/satplugin&In-Reply-To=%3C200807291607.m6TG7c26016230%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000582.html">
+   <LINK REL="Next"  HREF="000584.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1497 - in kiwi-head: . modules rpm tools/satplugin</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1497%20-%20in%20kiwi-head%3A%20.%20modules%20rpm%20tools/satplugin&In-Reply-To=%3C200807291607.m6TG7c26016230%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1497 - in kiwi-head: . modules rpm tools/satplugin">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jul 29 18:07:38 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000582.html">[Kiwi-devel] r1496 - in kiwi-head: modules tools/satplugin
+</A></li>
+        <LI>Next message: <A HREF="000584.html">[Kiwi-devel] r1498 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#583">[ date ]</a>
+              <a href="thread.html#583">[ thread ]</a>
+              <a href="subject.html#583">[ subject ]</a>
+              <a href="author.html#583">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-07-29 18:07:22 +0200 (Tue, 29 Jul 2008)
+New Revision: 1497
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWISatSolver.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+   kiwi-head/tools/satplugin/SaT.i
+   kiwi-head/tools/satplugin/example.pl
+   kiwi-head/tools/satplugin/sat.c
+Log:
+
+- fixed use of satsolver. It's required to queue jobs as
+  how, what pairs otherwise the result is not solved
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-07-29 10:16:56 UTC (rev 1496)
++++ kiwi-head/kiwi.pl	2008-07-29 16:07:22 UTC (rev 1497)
+@@ -43,7 +43,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;2.62&quot;;
++our $Version       = &quot;2.63&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+ our $ConfigFile    = &quot;$ENV{'HOME'}/.kiwirc&quot;;
+ our $ConfigName    = &quot;config.xml&quot;;
+
+Modified: kiwi-head/modules/KIWISatSolver.pm
+===================================================================
+--- kiwi-head/modules/KIWISatSolver.pm	2008-07-29 10:16:56 UTC (rev 1496)
++++ kiwi-head/modules/KIWISatSolver.pm	2008-07-29 16:07:22 UTC (rev 1497)
+@@ -74,7 +74,7 @@
+ 	my $pool;     # sat pool object
+ 	my $repo;     # sat repo object
+ 	my $solver;   # sat solver object
+-	my $job;      # sat job queue
++	my $queue;    # sat job queue
+ 	my @solved;   # solve result
+ 	if (! defined $kiwi) {
+ 		$kiwi = new KIWILog(&quot;tiny&quot;);
+@@ -115,21 +115,22 @@
+ 	$repo -&gt; addSolvable (*FD); close FD;
+ 	$solver = new SaT::Solver ($pool);
+ 	$pool -&gt; createWhatProvides();
+-	$job = new SaT::Queue;
+-	$job -&gt; queuePush ( $SaT::SOLVER_INSTALL_SOLVABLE );
++	$queue = new SaT::Queue;
+ 	foreach my $p (@{$pref}) {
+ 		my $name = &quot;pattern:&quot;.$p;
+-		if (! $pool -&gt; selectSolvable ($repo,$job,$name)) {
+-			$kiwi -&gt; error (&quot;--&gt; Failed to queue job: $name&quot;);
+-			$kiwi -&gt; failed ();
+-			return undef;
++		my $id = $pool -&gt; selectSolvable ($repo,$name);
++		if (! $id) {
++			$kiwi -&gt; warning (&quot;--&gt; Failed to queue job: $name&quot;);
++			$kiwi -&gt; skipped ();
++			next;
+ 		}
++		$queue -&gt; queuePush ( $SaT::SOLVER_INSTALL_SOLVABLE );
++		$queue -&gt; queuePush ( $id );
+ 	}
+ 	#==========================================
+ 	# Solve the job(s)
+ 	#------------------------------------------
+-	$solver -&gt; solve ($job);
+-	$job -&gt; queue_free();
++	$solver -&gt; solve ($queue);
+ 	my $list = $solver -&gt; getInstallList ($pool);
+ 	foreach my $name (@{$list}) {
+ 		if ($name =~ /^pattern:(.*)/) {
+@@ -145,7 +146,7 @@
+ 	$this-&gt;{kiwi}    = $kiwi;
+ 	$this-&gt;{urllist} = $urlref;
+ 	$this-&gt;{plist}   = $pref;
+-	$this-&gt;{job}     = $job;
++	$this-&gt;{queue}   = $queue;
+ 	$this-&gt;{repo}    = $repo;
+ 	$this-&gt;{solver}  = $solver;
+ 	$this-&gt;{result}  = \@solved;
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-07-29 10:16:56 UTC (rev 1496)
++++ kiwi-head/rpm/kiwi.changes	2008-07-29 16:07:22 UTC (rev 1497)
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Tue Jul 29 18:03:24 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v2.63
++- fixed use of satsolver. It's required to queue jobs as
++  how, what pairs otherwise the result is not solved
++
++-------------------------------------------------------------------
+ Mon Jul 28 17:28:59 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.62
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-07-29 10:16:56 UTC (rev 1496)
++++ kiwi-head/rpm/kiwi.spec	2008-07-29 16:07:22 UTC (rev 1497)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 2.62
++# spec file for package kiwi (Version 2.63
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        2.62
++Version:        2.63
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+Modified: kiwi-head/tools/satplugin/SaT.i
+===================================================================
+--- kiwi-head/tools/satplugin/SaT.i	2008-07-29 10:16:56 UTC (rev 1496)
++++ kiwi-head/tools/satplugin/SaT.i	2008-07-29 16:07:22 UTC (rev 1497)
+@@ -74,13 +74,15 @@
+         return pool_id2solvable(self, p);
+     }
+ 
+-    bool selectSolvable (Repo *repo, Queue plist, char *name) {
++    Id selectSolvable (Repo *repo, char *name) {
+         Id id;
++        Queue plist;
+         int i, end;
+         Solvable *s;
+-        Pool *pool;
++        Pool* pool;
+         pool = self;
+         id = str2id(pool, name, 1);
++        queue_init( &amp;plist);
+         i = repo ? repo-&gt;start : 1;
+         end = repo ? repo-&gt;start + repo-&gt;nsolvables : pool-&gt;nsolvables;
+         for (; i &lt; end; i++) {
+@@ -97,7 +99,9 @@
+             //printf(&quot;unknown package '%s'\n&quot;, name);
+             return 0;
+         }
+-        return 1;
++        id = plist.elements[0];
++        queue_free(&amp;plist);
++        return id;
+     }
+ 
+     Repo* createRepo(const char *reponame) {
+
+Modified: kiwi-head/tools/satplugin/example.pl
+===================================================================
+--- kiwi-head/tools/satplugin/example.pl	2008-07-29 10:16:56 UTC (rev 1496)
++++ kiwi-head/tools/satplugin/example.pl	2008-07-29 16:07:22 UTC (rev 1497)
+@@ -23,24 +23,24 @@
+ $pool -&gt; createWhatProvides();
+ 
+ # Create Queue
+-my $job = new SaT::Queue;
++my $queue = new SaT::Queue;
+ 
+-# Push jobs on Queue
+-$job -&gt; queuePush ( $SaT::SOLVER_INSTALL_SOLVABLE );
++my @pats = qw(apparmor apparmor_opt base devel_C_C++ devel_qt4);
+ 
+-my @pats = qw(default);
+-
+ #my @pats = qw(apparmor apparmor_opt base devel_C_C++ devel_qt4 devel_tcl enhanced_base file_server fonts games games_opt gateway_server gnome_basis_opt imaging imaging_opt kde kde3_games kde3_internet kde3_laptop kde3_multimedia kde3_office kde3_office_opt kde3_utilities kde3_utilities_opt kde3_yast kde4 kde4_basis kde4_games kde4_imaging kde4_imaging_opt kde4_internet kde4_laptop kde4_multimedia kde4_office kde4_office_opt kde4_utilities kde4_utilities_opt kde4_yast lamp_server misc_server multimedia non_oss non_oss_java office print_server remote_desktop sw_management sw_management_kde3 sw_management_kde4 voip x11 x11_opt xgl yast2_basis yast2_install_wf);
+ 
+ foreach my $p (@pats) {
+-	if (! $pool -&gt; selectSolvable ($repo,$job,&quot;pattern:$p&quot;)) {
+-		die &quot;failed to push job&quot;;
++	my $id = $pool -&gt; selectSolvable ($repo,&quot;pattern:$p&quot;);
++	if (! $id) {
++		print (&quot;failed to push job: $p&quot;);
++		next;
+ 	}
++	$queue -&gt; queuePush ( $SaT::SOLVER_INSTALL_SOLVABLE );
++	$queue -&gt; queuePush ( $id );
+ }
+ 
+ # Solve the jobs
+-$solver -&gt; solve ($job);
+-$job -&gt; queue_free();
++$solver -&gt; solve ($queue);
+ 
+ # Print packages to install
+ $a = $solver -&gt; getInstallList($pool);
+
+Modified: kiwi-head/tools/satplugin/sat.c
+===================================================================
+--- kiwi-head/tools/satplugin/sat.c	2008-07-29 10:16:56 UTC (rev 1496)
++++ kiwi-head/tools/satplugin/sat.c	2008-07-29 16:07:22 UTC (rev 1497)
+@@ -34,9 +34,13 @@
+ 	queue_init (&amp;queue);
+ 	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+ 	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:apparmor&quot;));
++	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+ 	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:apparmor_opt&quot;));
++	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+ 	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:base&quot;));
++	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+ 	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:devel_C_C++&quot;));
++	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+ 	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:devel_qt4&quot;));
+ 
+ 	solver = solver_create (pool,empty_installed);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000582.html">[Kiwi-devel] r1496 - in kiwi-head: modules tools/satplugin
+</A></li>
+	<LI>Next message: <A HREF="000584.html">[Kiwi-devel] r1498 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#583">[ date ]</a>
+              <a href="thread.html#583">[ thread ]</a>
+              <a href="subject.html#583">[ subject ]</a>
+              <a href="author.html#583">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

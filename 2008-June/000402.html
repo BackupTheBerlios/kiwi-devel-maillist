@@ -1,0 +1,270 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1312 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1312%20-%20kiwi-head/modules&In-Reply-To=%3C200806051515.m55FFhOs000081%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000401.html">
+   <LINK REL="Next"  HREF="000403.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1312 - kiwi-head/modules</H1>
+    <B>jcborn at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1312%20-%20kiwi-head/modules&In-Reply-To=%3C200806051515.m55FFhOs000081%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1312 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Thu Jun  5 17:15:43 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000401.html">[Kiwi-devel] [SVN:KIWI-Team] r1311 - in kiwi-head: rpm
+</A></li>
+        <LI>Next message: <A HREF="000403.html">[Kiwi-devel] [SVN:KIWI-Team] r1313 - in kiwi-head: rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#402">[ date ]</a>
+              <a href="thread.html#402">[ thread ]</a>
+              <a href="subject.html#402">[ subject ]</a>
+              <a href="author.html#402">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: Thu Jun  5 17:15:40 2008
+New Revision: 1312
+
+Modified:
+   kiwi-head/modules/KIWICollect.pm
+
+Log:
+- fixed a bug in metapackage handling: only the first metapackage was
+  unpacked if more were available
+- fixed a bug in create_package_descr call: order of dirs is in fact
+  important
+
+
+Modified: kiwi-head/modules/KIWICollect.pm
+==============================================================================
+--- kiwi-head/modules/KIWICollect.pm	(original)
++++ kiwi-head/modules/KIWICollect.pm	Thu Jun  5 17:15:40 2008
+@@ -738,101 +738,103 @@
+       next;
+       #return undef; # rock hard exit here, can't proceed without the proper input
+     }
+-    my $dir = (sort(keys(%dirs)))[0];	# experimental! TODO
+ 
+-    $this-&gt;{m_util}-&gt;unpac_package($this-&gt;{m_packages}-&gt;{$metapack}-&gt;{$dir}-&gt;{'source'}, &quot;$tmp&quot;);
+-    ## all metapackages contain at least a CD1 dir and _may_ contain another /usr/share/&lt;name&gt; dir
+-    qx(cp -r $tmp/CD1/* $this-&gt;{m_basesubdir}-&gt;{$medium});
+-    for my $sub(&quot;usr&quot;, &quot;etc&quot;) {
+-      if(-d &quot;$tmp/$sub&quot;) {
+-	qx(cp -r $tmp/$sub $this-&gt;{m_basesubdir}-&gt;{$medium});
+-      }
+-    }
+-    ## copy content of CD2 ... CD&lt;i&gt; subdirs if exists:
+-    for(2..10) {
+-      if(-d &quot;$tmp/CD$_&quot; and defined $this-&gt;{m_basesubdir}-&gt;{$_}) {
+-	qx(cp -r $tmp/CD$_/* $this-&gt;{m_basesubdir}-&gt;{$_});
+-      }
+-      ## add handling for &quot;DVD&lt;i&gt;&quot; subdirs if necessary FIXME
+-    }
+-
+-    ## THEMING
+-    $this-&gt;{m_logger}-&gt;info(&quot;[INFO] Handling theming for package $metapack\n&quot;);
+-    $this-&gt;{m_logger}-&gt;info(&quot;\ttarget theme $this-&gt;{m_prodvars}-&gt;{PRODUCT_THEME}\n&quot;);
+-    my $thema = $this-&gt;{m_prodvars}-&gt;{'PRODUCT_THEME'};
+-    if(-d &quot;$tmp/SuSE&quot;) { # and -d &quot;$tmp/SuSE/$thema&quot;) {
+-      if(not opendir(TD, &quot;$tmp/SuSE&quot;)) {
+-	$this-&gt;{m_logger}-&gt;warning(&quot;[WARNING] [unpackMetapackages] Can't open theme directory for reading!\nSkipping themes for package $metapack\n&quot;);
+-	next;
++    foreach my $dir(keys(%dirs)) {
++    #my $dir = (sort(keys(%dirs)))[0];	# experimental! TODO
++
++      $this-&gt;{m_util}-&gt;unpac_package($this-&gt;{m_packages}-&gt;{$metapack}-&gt;{$dir}-&gt;{'source'}, &quot;$tmp&quot;);
++      ## all metapackages contain at least a CD1 dir and _may_ contain another /usr/share/&lt;name&gt; dir
++      qx(cp -r $tmp/CD1/* $this-&gt;{m_basesubdir}-&gt;{$medium});
++      for my $sub(&quot;usr&quot;, &quot;etc&quot;) {
++	if(-d &quot;$tmp/$sub&quot;) {
++	  qx(cp -r $tmp/$sub $this-&gt;{m_basesubdir}-&gt;{$medium});
++	}
+       }
+-      my @themes = readdir(TD);
+-      closedir(TD);
+-      my $found=0;
+-      foreach my $d(@themes) {
+-	if($d =~ m{$thema}i) {
+-	  $this-&gt;{m_logger}-&gt;info(&quot;Using thema $d\n&quot;);
+-	  $thema = $d;	# changed after I saw that yast2-slideshow has a thema &quot;SuSE-SLES&quot; (matches &quot;SuSE&quot;, but not in line 831)
+-	  $found=1;
+-	  last;
++      ## copy content of CD2 ... CD&lt;i&gt; subdirs if exists:
++      for(2..10) {
++	if(-d &quot;$tmp/CD$_&quot; and defined $this-&gt;{m_basesubdir}-&gt;{$_}) {
++	  qx(cp -r $tmp/CD$_/* $this-&gt;{m_basesubdir}-&gt;{$_});
+ 	}
++	## add handling for &quot;DVD&lt;i&gt;&quot; subdirs if necessary FIXME
+       }
+-      if($found==0) {
++
++      ## THEMING
++      $this-&gt;{m_logger}-&gt;info(&quot;[INFO] Handling theming for package $metapack\n&quot;);
++      $this-&gt;{m_logger}-&gt;info(&quot;\ttarget theme $this-&gt;{m_prodvars}-&gt;{PRODUCT_THEME}\n&quot;);
++      my $thema = $this-&gt;{m_prodvars}-&gt;{'PRODUCT_THEME'};
++      if(-d &quot;$tmp/SuSE&quot;) { # and -d &quot;$tmp/SuSE/$thema&quot;) {
++	if(not opendir(TD, &quot;$tmp/SuSE&quot;)) {
++	  $this-&gt;{m_logger}-&gt;warning(&quot;[WARNING] [unpackMetapackages] Can't open theme directory for reading!\nSkipping themes for package $metapack\n&quot;);
++	  next;
++	}
++	my @themes = readdir(TD);
++	closedir(TD);
++	my $found=0;
+ 	foreach my $d(@themes) {
+-	  if($d =~ m{Linux|SLES}i) {
+-	    $this-&gt;{m_logger}-&gt;info(&quot;Using fallback theme $d instead of $thema\n&quot;);
+-	    $thema = $d;
++	  if($d =~ m{$thema}i) {
++	    $this-&gt;{m_logger}-&gt;info(&quot;Using thema $d\n&quot;);
++	    $thema = $d;	# changed after I saw that yast2-slideshow has a thema &quot;SuSE-SLES&quot; (matches &quot;SuSE&quot;, but not in line 831)
++	    $found=1;
+ 	    last;
+ 	  }
+ 	}
+-      }
+-      ## $thema is now the thema to use:
+-      for my $i(1..3) {
+-	## @lars: wtf soll denn sein, wenn es CD2 gibt, aber die Konfig der Medien kein Medium &quot;2&quot; hat?
+-	## Laut Rudi (tm) ist das zul&#228;ssig!
+-	if(-d &quot;$tmp/SuSE/$thema/CD$i&quot; and $this-&gt;{m_basesubdir}-&gt;{$i} and -d &quot;$tmp/SuSE/$thema/CD$i&quot;) {
+-	  qx(cp -a $tmp/SuSE/$thema/CD$i/* $this-&gt;{m_basesubdir}-&gt;{$i});
++	if($found==0) {
++	  foreach my $d(@themes) {
++	    if($d =~ m{Linux|SLES}i) {
++	      $this-&gt;{m_logger}-&gt;info(&quot;Using fallback theme $d instead of $thema\n&quot;);
++	      $thema = $d;
++	      last;
++	    }
++	  }
++	}
++	## $thema is now the thema to use:
++	for my $i(1..3) {
++	  ## @lars: wtf soll denn sein, wenn es CD2 gibt, aber die Konfig der Medien kein Medium &quot;2&quot; hat?
++	  ## Laut Rudi (tm) ist das zul&#228;ssig!
++	  if(-d &quot;$tmp/SuSE/$thema/CD$i&quot; and $this-&gt;{m_basesubdir}-&gt;{$i} and -d &quot;$tmp/SuSE/$thema/CD$i&quot;) {
++	    qx(cp -a $tmp/SuSE/$thema/CD$i/* $this-&gt;{m_basesubdir}-&gt;{$i});
++	  }
+ 	}
+       }
+-    }
+ 
+-    ## handling optional special scripts if given (``anchor of the last choice'')
+-    if($tmp{'script'}) {
+-      my $scriptfile;
+-      $tmp{'script'} =~ m{.*/([^/]+)$};
+-      if(defined($1)) {
+-	$scriptfile = $1;
+-      }
+-      else {
+-	$this-&gt;{m_logger}-&gt;warning(&quot;[WARNING] [executeScripts] malformed script name: $tmp{'script'}&quot;);
+-	next;
+-      }
++      ## handling optional special scripts if given (``anchor of the last choice'')
++      if($tmp{'script'}) {
++	my $scriptfile;
++	$tmp{'script'} =~ m{.*/([^/]+)$};
++	if(defined($1)) {
++	  $scriptfile = $1;
++	}
++	else {
++	  $this-&gt;{m_logger}-&gt;warning(&quot;[WARNING] [executeScripts] malformed script name: $tmp{'script'}&quot;);
++	  next;
++	}
+ 
+-      print &quot;Downloading script $tmp{'script'} to $this-&gt;{m_scriptbase}:&quot;;
+-      $this-&gt;{m_xml}-&gt;getInstSourceFile($tmp{'script'}, &quot;$this-&gt;{m_scriptbase}/$scriptfile&quot;);
++	print &quot;Downloading script $tmp{'script'} to $this-&gt;{m_scriptbase}:&quot;;
++	$this-&gt;{m_xml}-&gt;getInstSourceFile($tmp{'script'}, &quot;$this-&gt;{m_scriptbase}/$scriptfile&quot;);
+ 
+-      # TODO I don't like this. Not at all. use chroot in next version!
+-      qx(chmod u+x &quot;$this-&gt;{m_scriptbase}/$scriptfile&quot;);
+-      $this-&gt;{m_logger}-&gt;info(&quot;[INFO] [executeScripts] Execute script $this-&gt;{m_scriptbase}/$scriptfile:\n&quot;);
+-      if(-f &quot;$this-&gt;{m_scriptbase}/$scriptfile&quot; and -x &quot;$this-&gt;{m_scriptbase}/$scriptfile&quot;) {
+-	my $status = qx($this-&gt;{m_scriptbase}/$scriptfile);
+-	my $retcode = $? &gt;&gt; 8;
+-	print &quot;STATUS:\n$status\n&quot;;
+-	print &quot;RETURNED:\n$retcode\n&quot;;
++	# TODO I don't like this. Not at all. use chroot in next version!
++	qx(chmod u+x &quot;$this-&gt;{m_scriptbase}/$scriptfile&quot;);
++	$this-&gt;{m_logger}-&gt;info(&quot;[INFO] [executeScripts] Execute script $this-&gt;{m_scriptbase}/$scriptfile:\n&quot;);
++	if(-f &quot;$this-&gt;{m_scriptbase}/$scriptfile&quot; and -x &quot;$this-&gt;{m_scriptbase}/$scriptfile&quot;) {
++	  my $status = qx($this-&gt;{m_scriptbase}/$scriptfile);
++	  my $retcode = $? &gt;&gt; 8;
++	  print &quot;STATUS:\n$status\n&quot;;
++	  print &quot;RETURNED:\n$retcode\n&quot;;
++	}
++	else {
++	  $this-&gt;{m_logger}-&gt;warning(&quot;[WARNING] [executeScripts] script $this-&gt;{m_scriptbase}/$scriptfile for metapackage $metapack could not be executed successfully!\n&quot;);
++	}
+       }
+       else {
+-	$this-&gt;{m_logger}-&gt;warning(&quot;[WARNING] [executeScripts] script $this-&gt;{m_scriptbase}/$scriptfile for metapackage $metapack could not be executed successfully!\n&quot;);
++	$this-&gt;{m_logger}-&gt;info(&quot;No script defined for metapackage $metapack\n&quot;);
+       }
+-    }
+-    else {
+-      $this-&gt;{m_logger}-&gt;info(&quot;No script defined for metapackage $metapack\n&quot;);
+-    }
+ 
+-		if($nokeep == 1) {
+-			foreach my $d(keys(%{$this-&gt;{m_packages}-&gt;{$metapack}})) {
+-				unlink(&quot;$this-&gt;{m_packages}-&gt;{$metapack}-&gt;{$d}-&gt;{'newpath'}/$this-&gt;{m_packages}-&gt;{$metapack}-&gt;{$d}-&gt;{'newfile'}&quot;);
+-			}
+-			print &quot;flonz.&quot;;
+-		}
++      if($nokeep == 1) {
++	foreach my $d(keys(%{$this-&gt;{m_packages}-&gt;{$metapack}})) {
++	  unlink(&quot;$this-&gt;{m_packages}-&gt;{$metapack}-&gt;{$d}-&gt;{'newpath'}/$this-&gt;{m_packages}-&gt;{$metapack}-&gt;{$d}-&gt;{'newfile'}&quot;);
++	}
++      }
++    }
+   }
+ 
+   ## cleanup old files:
+@@ -1468,7 +1470,7 @@
+   ## step 2: create_package_descr
+   #==============================
+   my @paths = values(%{$this-&gt;{m_basesubdir}});
+-  @paths = reverse map { $_.&quot;/suse&quot; =&gt; &quot;-d&quot; if $_ !~ m{.*0}} @paths;
++  @paths = reverse map { $_.&quot;/suse&quot; =&gt; &quot;-d&quot; if $_ !~ m{.*0}} reverse @paths;
+   my $pathlist = join(' ', @paths);
+ 
+   $this-&gt;{m_logger}-&gt;info(&quot;Calling create_package_descr for directories @paths:&quot;);
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000401.html">[Kiwi-devel] [SVN:KIWI-Team] r1311 - in kiwi-head: rpm
+</A></li>
+	<LI>Next message: <A HREF="000403.html">[Kiwi-devel] [SVN:KIWI-Team] r1313 - in kiwi-head: rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#402">[ date ]</a>
+              <a href="thread.html#402">[ thread ]</a>
+              <a href="subject.html#402">[ subject ]</a>
+              <a href="author.html#402">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,441 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. fdfe4595d30d9bf692ff7b74e9dce4cf32784ae2
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20fdfe4595d30d9bf692ff7b74e9dce4cf32784ae2&In-Reply-To=%3C200908041004.n74A4tph024811%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001376.html">
+   <LINK REL="Next"  HREF="001378.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. fdfe4595d30d9bf692ff7b74e9dce4cf32784ae2</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20fdfe4595d30d9bf692ff7b74e9dce4cf32784ae2&In-Reply-To=%3C200908041004.n74A4tph024811%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. fdfe4595d30d9bf692ff7b74e9dce4cf32784ae2">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Aug  4 12:04:55 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001376.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5703020487854bb955b669293eabee7a6e4d3332
+</A></li>
+        <LI>Next message: <A HREF="001378.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4c441f96a2f4a5c1bcd1d0f7a35066faba97a80b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1377">[ date ]</a>
+              <a href="thread.html#1377">[ thread ]</a>
+              <a href="subject.html#1377">[ subject ]</a>
+              <a href="author.html#1377">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  fdfe4595d30d9bf692ff7b74e9dce4cf32784ae2 (commit)
+      from  5703020487854bb955b669293eabee7a6e4d3332 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit fdfe4595d30d9bf692ff7b74e9dce4cf32784ae2
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Aug 4 12:04:23 2009 +0200
+
+    - add a sleep of one second between kpartx -d and losetup -d
+    - wait for process to finish when sending interrupt signal (bnc #525986)
+    - added support for hybrid ISO's. This feature exists with
+      openSUSE 11.2 or later. In order to use it add the attribute
+      hybrid=&quot;true&quot; to your iso type line. If you use the iso on
+      a read/write medium the isoboot code will search for a 0x83
+      partition used for writing OS data (bnc #496505)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 580ae2e..b91ea78 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -230,6 +230,7 @@ sub new {
+ 				#------------------------------------------
+ 				main::umount();
+ 				qxx (&quot;kpartx -d $this-&gt;{loop}&quot;);
++				sleep (1);
+ 				qxx (&quot;losetup -d $this-&gt;{loop}&quot;);
+ 			} else {
+ 				#==========================================
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index b6c176a..66b0cf0 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -1977,11 +1977,26 @@ function CDMount {
+ 	# ----
+ 	local silent=$1
+ 	local count=0
++	local ecode=0
+ 	local cdopt
+ 	mkdir -p /cdrom
+ 	if [ -f /.profile ];then
+ 		importFile &lt; /.profile
+ 	fi
++	#======================================
++	# check for hybrid mbr ID
++	#--------------------------------------
++	searchBIOSBootDevice
++	ecode=$?
++	if [ ! $ecode = 0 ];then
++		if [ $ecode = 2 ];then
++			systemException &quot;$biosBootDevice&quot; &quot;reboot&quot;
++		fi
++		unset kiwi_hybrid
++	fi
++	#======================================
++	# walk through media
++	#--------------------------------------
+ 	if [ -z &quot;$kiwi_hybrid&quot; ];then
+ 		#======================================
+ 		# search for CD/DVD devices
+@@ -2003,12 +2018,18 @@ function CDMount {
+ 					if [ -z &quot;$silent&quot; ]; then
+ 						echo
+ 					fi
++					#======================================
++					# run mediacheck if requested and boot
++					#--------------------------------------
+ 					if [ &quot;$mediacheck&quot; = 1 ] &amp;&amp; [ -z &quot;$silent&quot; ]; then
+ 						test -e /proc/splash &amp;&amp; echo verbose &gt; /proc/splash
+ 						checkmedia $cddev
+ 						Echo -n &quot;Press ENTER for reboot: &quot;; read nope
+ 						/sbin/reboot -f -i &gt;/dev/null
+ 					fi
++					#======================================
++					# device found go with it
++					#--------------------------------------
+ 					IFS=$IFS_ORIG
+ 					return
+ 				fi
+@@ -2032,19 +2053,34 @@ function CDMount {
+ 		if [ -z &quot;$silent&quot; ];then
+ 			Echo -n &quot;Mounting hybrid live boot drive...&quot;
+ 		fi
+-		cddev=`searchBIOSBootDevice`
+-		cddev=$cddev&quot;1&quot;
++		cddev=$biosBootDevice&quot;1&quot;
+ 		kiwiMount $cddev /cdrom
+ 		if [ -f $LIVECD_CONFIG ];then
+ 			if [ -z &quot;$silent&quot; ]; then
+ 				echo
+ 			fi
++			#======================================
++			# run mediacheck if requested and boot
++			#--------------------------------------
+ 			if [ &quot;$mediacheck&quot; = 1 ] &amp;&amp; [ -z &quot;$silent&quot; ]; then
+ 				test -e /proc/splash &amp;&amp; echo verbose &gt; /proc/splash
+ 				checkmedia $cddev
+ 				Echo -n &quot;Press ENTER for reboot: &quot;; read nope
+ 				/sbin/reboot -f -i &gt;/dev/null
+ 			fi
++			#======================================
++			# search hybrid for a write partition
++			#--------------------------------------
++			for disknr in 2 3 4;do
++				id=`partitionID $biosBootDevice $disknr`
++				if [ &quot;$id&quot; = &quot;83&quot; ];then
++					export HYBRID_RW=$biosBootDevice$disknr
++					break
++				fi
++			done
++			#======================================
++			# device found go with it
++			#--------------------------------------
+ 			return
+ 		fi
+ 		umount $cddev &amp;&gt;/dev/null
+@@ -2106,8 +2142,8 @@ function searchBIOSBootDevice {
+ 		CDMount silent
+ 		umount $cddev
+ 		curd=$cddev
+-		echo $curd
+-		return
++		export biosBootDevice=$curd
++		return 0
+ 	fi
+ 	#======================================
+ 	# Search and copy all mbrid files 
+@@ -2132,9 +2168,8 @@ function searchBIOSBootDevice {
+ 	#--------------------------------------
+ 	file=$(ls -1t $cmpd 2&gt;/dev/null | head -n 1)
+ 	if [ -z &quot;$file&quot; ];then
+-		systemException \
+-			&quot;Failed to find MBR identifier !&quot; \
+-		&quot;reboot&quot;
++		export biosBootDevice=&quot;Failed to find MBR identifier !&quot;
++		return 1
+ 	fi
+ 	read mbrI &lt; $cmpd/$file
+ 	#======================================
+@@ -2147,16 +2182,17 @@ function searchBIOSBootDevice {
+ 			ifix=1
+ 			matched=$curd
+ 			if [ &quot;$curd&quot; = &quot;$bios&quot; ];then
+-				echo $curd; return
++				export biosBootDevice=$curd
++				return 0
+ 			fi
+ 		fi
+ 	done
+ 	if [ $ifix -eq 1 ];then
+-		echo $matched; return
++		export biosBootDevice=$matched
++		return 0
+ 	fi
+-	systemException \
+-		&quot;No devices matches MBR identifier: $mbrI !&quot; \
+-	&quot;reboot&quot;
++	export biosBootDevice=&quot;No devices matches MBR identifier: $mbrI !&quot;
++	return 2
+ }
+ #======================================
+ # searchVolumeGroup
+@@ -3361,7 +3397,7 @@ function mountSystemClicFS {
+ 	else
+ 		haveBytes=`blockdev --getsize64 $rwDevice`
+ 		haveMByte=`expr $haveBytes / 1024 / 1024`
+-		clic_cmd=&quot;$clic_cmd -m $haveMByte -c $rwDevice  --ignore-cow-errors&quot;
++		clic_cmd=&quot;$clic_cmd -m $haveMByte -c $rwDevice&quot;
+ 	fi
+ 	#======================================
+ 	# mount/check clic file
+diff --git a/modules/KIWIManager.pm b/modules/KIWIManager.pm
+index fc06646..9a3a46c 100644
+--- a/modules/KIWIManager.pm
++++ b/modules/KIWIManager.pm
+@@ -890,6 +890,7 @@ sub setupDownload {
+ 		# Create screen call file
+ 		#------------------------------------------
+ 		print $fd &quot;function clean { kill \$SPID; &quot;;
++		print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;done;&quot;;
+ 		print $fd &quot;rm -f $root/etc/smart/channels/*; &quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+@@ -967,6 +968,7 @@ sub installPackages {
+ 		#------------------------------------------
+ 		$kiwi -&gt; info (&quot;Installing addon packages...&quot;);
+ 		print $fd &quot;function clean { kill \$SPID;&quot;;
++		print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;done;&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;@kchroot @smart update &amp;\n&quot;;
+@@ -993,6 +995,7 @@ sub installPackages {
+ 			&quot;--auto-agree-with-licenses&quot;
+ 		);
+ 		print $fd &quot;function clean { kill \$SPID;&quot;;
++		print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;done;&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+@@ -1014,6 +1017,7 @@ sub installPackages {
+ 	if ($manager eq &quot;ensconce&quot;) {
+ 		$kiwi -&gt; info (&quot;Installing addon packages...&quot;);
+ 		print $fd &quot;function clean { kill \$SPID; &quot;;
++		print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;done;&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;$main::Prepare/ensconce &amp;\n&quot;;
+@@ -1070,6 +1074,7 @@ sub removePackages {
+ 		#------------------------------------------
+ 		$kiwi -&gt; info (&quot;Removing addon packages...&quot;);
+ 		print $fd &quot;function clean { kill \$SPID;&quot;;
++		print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;done;&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;@kchroot @smart update &amp;\n&quot;;
+@@ -1096,6 +1101,7 @@ sub removePackages {
+ 			&quot;--force-resolution&quot;
+ 		);
+ 		print $fd &quot;function clean { kill \$SPID;&quot;;
++		print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;done;&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+@@ -1117,6 +1123,7 @@ sub removePackages {
+ 	if ($manager eq &quot;ensconce&quot;) {
+ 		$kiwi -&gt; info (&quot;Installing addon packages...&quot;);
+ 		print $fd &quot;function clean { kill \$SPID; &quot;;
++		print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;done;&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;$main::Prepare/ensconce &amp;\n&quot;;
+@@ -1173,6 +1180,7 @@ sub setupUpgrade {
+ 		#------------------------------------------
+ 		$kiwi -&gt; info (&quot;Upgrading image...&quot;);
+ 		print $fd &quot;function clean { kill \$SPID;&quot;;
++		print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;done;&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;@kchroot @smart update &amp;\n&quot;;
+@@ -1225,6 +1233,7 @@ sub setupUpgrade {
+ 			push (@installOpts,&quot;--no-recommends&quot;);
+ 		}
+ 		print $fd &quot;function clean { kill \$SPID;&quot;;
++		print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;done;&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+@@ -1406,6 +1415,7 @@ sub setupArchives {
+ 	# Create screen call file
+ 	#------------------------------------------
+ 	print $fd &quot;function clean { kill \$SPID;&quot;;
++	print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;done;&quot;;
+ 	print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 	print $fd &quot;trap clean INT TERM\n&quot;;
+ 	print $fd &quot;for i in @tars;do\n&quot;;
+@@ -1477,6 +1487,7 @@ sub setupRootSystem {
+ 			# Create screen call file
+ 			#------------------------------------------
+ 			print $fd &quot;function clean { kill \$SPID;&quot;;
++			print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;done;&quot;;
+ 			print $fd &quot;rm -f $root/etc/smart/channels/*; &quot;;
+ 			print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+@@ -1511,6 +1522,7 @@ sub setupRootSystem {
+ 			#------------------------------------------
+ 			$kiwi -&gt; info (&quot;Installing image packages...&quot;);
+ 			print $fd &quot;function clean { kill \$SPID;&quot;;
++			print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;done;&quot;;
+ 			print $fd &quot;echo 1 &gt; $screenCall.exit;exit 1; }\n&quot;;
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+ 			print $fd &quot;@kchroot @smart update &amp;\n&quot;;
+@@ -1571,6 +1583,7 @@ sub setupRootSystem {
+ 			#------------------------------------------
+ 			mkdir &quot;$root/tmp&quot;;
+ 			print $fd &quot;function clean { kill \$SPID;&quot;;
++			print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;done;&quot;;
+ 			print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+ 			print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+@@ -1637,6 +1650,7 @@ sub setupRootSystem {
+ 			#------------------------------------------
+ 			$kiwi -&gt; info (&quot;Installing image packages...&quot;);
+ 			print $fd &quot;function clean { kill \$SPID;&quot;;
++			print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;done;&quot;;
+ 			print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+ 			print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+@@ -1682,6 +1696,7 @@ sub setupRootSystem {
+ 		} 
+ 		$kiwi -&gt; info (&quot;Installing bootstrap packages...&quot;);
+ 		print $fd &quot;function clean { kill \$SPID; &quot;;
++		print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;done;&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;$main::Prepare/ensconce $ensconce_args &amp;\n&quot;;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index b590fb1..1ff32a8 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -2,9 +2,13 @@
+ Mon Aug  3 14:30:02 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.68
++- add a sleep of one second between kpartx -d and losetup -d
++- wait for process to finish when sending interrupt signal (bnc #525986)
+ - added support for hybrid ISO's. This feature exists with
+   openSUSE 11.2 or later. In order to use it add the attribute
+-  hybrid=&quot;true&quot; to your iso type line.
++  hybrid=&quot;true&quot; to your iso type line. If you use the iso on
++  a read/write medium the isoboot code will search for a 0x83
++  partition used for writing OS data (bnc #496505)
+ 
+ -------------------------------------------------------------------
+ Fri Jul 31 11:42:59 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+diff --git a/system/boot/ix86/isoboot/suse-linuxrc b/system/boot/ix86/isoboot/suse-linuxrc
+index 734095a..29a269a 100755
+--- a/system/boot/ix86/isoboot/suse-linuxrc
++++ b/system/boot/ix86/isoboot/suse-linuxrc
+@@ -90,6 +90,13 @@ CDMount
+ # 8) Load configuration
+ #--------------------------------------
+ importFile &lt; $LIVECD_CONFIG
++if [ ! -z &quot;$HYBRID_RW&quot; ];then
++	if [ ! -z &quot;$UNIONFS_CONFIG&quot; ];then
++		UNIONFS_CONFIG=$(echo $UNIONFS_CONFIG | sed -e s@/dev/ram1@$HYBRID_RW@)
++	else
++		IMAGE=$(echo $IMAGE | sed -e s@/dev/ram1@$HYBRID_RW@)
++	fi
++fi
+ 
+ #======================================
+ # 9) Download RW part of the CD image
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index cf6be7a..2ed8e99 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -208,7 +208,10 @@ fi
+ #--------------------------------------
+ Echo &quot;Searching for boot device...&quot;
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+-	export imageDiskDevice=`searchBIOSBootDevice`
++	if ! searchBIOSBootDevice;then
++		systemException &quot;$biosBootDevice&quot; &quot;reboot&quot;
++	fi
++	export imageDiskDevice=$biosBootDevice
+ else
+ 	export imageDiskDevice=`getDiskDevice $root | tr -d [0-9]+`
+ fi
+diff --git a/system/boot/ix86/vmxboot/suse-linuxrc b/system/boot/ix86/vmxboot/suse-linuxrc
+index fb6f201..6bb093a 100755
+--- a/system/boot/ix86/vmxboot/suse-linuxrc
++++ b/system/boot/ix86/vmxboot/suse-linuxrc
+@@ -116,7 +116,10 @@ probeDevices
+ #--------------------------------------
+ Echo &quot;Searching for boot device...&quot;
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+-	export imageDiskDevice=`searchBIOSBootDevice`
++	if ! searchBIOSBootDevice;then
++		systemException &quot;$biosBootDevice&quot; &quot;reboot&quot;
++	fi
++	export imageDiskDevice=$biosBootDevice
+ else
+ 	export imageDiskDevice=`getDiskDevice $root | tr -d [0-9]+`
+ fi
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001376.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5703020487854bb955b669293eabee7a6e4d3332
+</A></li>
+	<LI>Next message: <A HREF="001378.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4c441f96a2f4a5c1bcd1d0f7a35066faba97a80b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1377">[ date ]</a>
+              <a href="thread.html#1377">[ thread ]</a>
+              <a href="subject.html#1377">[ subject ]</a>
+              <a href="author.html#1377">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

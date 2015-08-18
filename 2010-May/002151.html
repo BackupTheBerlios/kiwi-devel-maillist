@@ -1,0 +1,206 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 361b6042d8a9ed3bd9527ef9e9ab0cc58cc48578
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20361b6042d8a9ed3bd9527ef9e9ab0cc58cc48578&In-Reply-To=%3C201005041710.o44HAUY7016300%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002150.html">
+   <LINK REL="Next"  HREF="002152.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 361b6042d8a9ed3bd9527ef9e9ab0cc58cc48578</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20361b6042d8a9ed3bd9527ef9e9ab0cc58cc48578&In-Reply-To=%3C201005041710.o44HAUY7016300%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 361b6042d8a9ed3bd9527ef9e9ab0cc58cc48578">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue May  4 19:10:30 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002150.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7406261c365c687ac92cf6e6f2c7aefb9867b5c1
+</A></li>
+        <LI>Next message: <A HREF="002152.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e52fda0f0734e643128c4ab6db68bee0c2de51f5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2151">[ date ]</a>
+              <a href="thread.html#2151">[ thread ]</a>
+              <a href="subject.html#2151">[ subject ]</a>
+              <a href="author.html#2151">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  361b6042d8a9ed3bd9527ef9e9ab0cc58cc48578 (commit)
+      from  7406261c365c687ac92cf6e6f2c7aefb9867b5c1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 361b6042d8a9ed3bd9527ef9e9ab0cc58cc48578
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue May 4 19:08:26 2010 +0200
+
+    - package scripts change: use File::lchown qw( lutimes ); for
+      changing the a|mtime of the symlinks inside the source tarball.
+      This means all people who use &quot;make build&quot; from the kiwi source
+      need to make sure they have the File::lchown module installed
+      from CPAN
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/.archive b/.archive
+index 6b746e4..593e978 100755
+--- a/.archive
++++ b/.archive
+@@ -11,23 +11,22 @@
+ #===========================================
+ # make tarball from the current source tree
+ #-------------------------------------------
+-rev_new=$(./.version)
+-rev_old=$(cat ./.revision)
+-if [ ! $rev_new = $rev_old ];then
+-	echo $rev_new &gt; .revision
+-fi
++./.version &gt; .revision
++touch -c -r kiwi.pl .revision
++
+ find -type d | grep .git | xargs rm -rf
+ find -name &quot;*.swp&quot; | xargs rm -f
+ 
+ tar -cjf ../kiwi-docu.tar.bz2 doc
+ tar -cjf ../kiwi-repo.tar.bz2 system/*repo
+ 
+-rm -rf rpm/
+-rm -rf doc/
+-rm -rf system/*repo
+-
+ cd ..
+-tar -cjf kiwi.tar.bz2 kiwi/
++touch -c -r kiwi/kiwi.pl kiwi
++tar -cjf kiwi.tar.bz2 \
++	--exclude=system/*repo \
++	--exclude=rpm \
++	--exclude=doc \
++	kiwi/
+ 
+ mv kiwi.tar.bz2      kiwi/
+ mv kiwi-repo.tar.bz2 kiwi/
+diff --git a/.doit b/.doit
+index 8ad3972..5950440 100755
+--- a/.doit
++++ b/.doit
+@@ -14,6 +14,8 @@ use strict;
+ use Time::localtime;
+ use Time::Local;
+ use Getopt::Long;
++use File::lchown qw( lutimes );
++use POSIX qw( ENOENT );
+ use Env;
+ 
+ #=====================================
+@@ -113,6 +115,7 @@ sub repoup {
+ 	#-------------------------------------------
+ 	print &quot;Checkout source level [local]...\n&quot;;
+ 	qx( cp -a -p $parent/ $tmpdir );
++	qx ($parent/.lutime $parent $tmpdir);
+ 	chdir $tmpdir
+ 		|| die &quot;Could not create temp dir: $!&quot;;
+ 	return $tmpdir;
+diff --git a/.lutime b/.lutime
+new file mode 100755
+index 0000000..e23d6a2
+--- /dev/null
++++ b/.lutime
+@@ -0,0 +1,43 @@
++#!/usr/bin/perl
++
++use strict;
++use File::Find;
++use File::stat;
++
++use File::lchown qw( lutimes );
++use POSIX qw( ENOENT );
++
++my %reference;
++my %result;
++
++my $Source = $ARGV[0];
++my $Target = $ARGV[1].&quot;/kiwi&quot;;
++
++sub generateWanted {
++	my $filehash = shift;
++	my $base     = shift;
++	return sub {
++		if ((-l $File::Find::name) &amp;&amp; (-e $File::Find::name)) {
++			my $file = $File::Find::name;
++			my $attr = lstat ($file);
++			$file =~ s/$base//;
++			$filehash-&gt;{$file} = $attr;
++		}
++	}
++};
++
++my $wref = generateWanted (\%reference,$Source);
++find ({ wanted =&gt; $wref }, $Source );
++
++my $wref = generateWanted (\%result,$Target);
++find ({ wanted =&gt; $wref }, $Target );
++
++foreach my $name (keys %result) {
++	my $atime;
++	my $mtime;
++	$atime = $mtime = $reference{$name}-&gt;mtime;
++	lutimes $atime, $mtime, $Target.&quot;/&quot;.$name;
++}
++
++
++
+diff --git a/.revision b/.revision
+deleted file mode 100644
+index a9d03eb..0000000
+--- a/.revision
++++ /dev/null
+@@ -1 +0,0 @@
+-3ebe2eec9dbc126808c5dde1cd76ffb2fc5bb690
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002150.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7406261c365c687ac92cf6e6f2c7aefb9867b5c1
+</A></li>
+	<LI>Next message: <A HREF="002152.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e52fda0f0734e643128c4ab6db68bee0c2de51f5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2151">[ date ]</a>
+              <a href="thread.html#2151">[ thread ]</a>
+              <a href="subject.html#2151">[ subject ]</a>
+              <a href="author.html#2151">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

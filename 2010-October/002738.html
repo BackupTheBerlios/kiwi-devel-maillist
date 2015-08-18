@@ -1,0 +1,133 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] out of bounds partitioning attempt
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20out%20of%20bounds%20partitioning%20attempt&In-Reply-To=%3C4CB7383B.4010202%40novell.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002737.html">
+   <LINK REL="Next"  HREF="002739.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] out of bounds partitioning attempt</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20out%20of%20bounds%20partitioning%20attempt&In-Reply-To=%3C4CB7383B.4010202%40novell.com%3E"
+       TITLE="[Kiwi-devel] out of bounds partitioning attempt">rschweikert at novell.com
+       </A><BR>
+    <I>Thu Oct 14 19:04:59 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002737.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. ec396999afbe3807339f7a873b005b40e350c7e0
+</A></li>
+        <LI>Next message: <A HREF="002739.html">[Kiwi-devel] out of bounds partitioning attempt
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2738">[ date ]</a>
+              <a href="thread.html#2738">[ thread ]</a>
+              <a href="subject.html#2738">[ subject ]</a>
+              <a href="author.html#2738">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi,
+
+While trying to add support for XFS, following what was done for btrfs,
+I managed to construct a test case that triggers an attempt to partition
+past the end of the disk. At first I thought this was probably a problem
+I introduced with my changes, but I was able to reproduce the problem
+with btrfs using the latest release build (4.62)
+
+I think the key here is that my configuration (OEM image) does not
+create a home or a swap partition.
+
+As far as I can tell the problem occurs in KIWILinuxRC.sh in
+createPartedInput. The code enters the
+
+elif echo $pstopp | grep -qi M;then
+
+condition and ends up calculating an improper end cylinder. Here is the
+snippet from the log.
+
++ cmdq=' mkpart primary 524184886s 32637'
++ partedWrite /dev/sda ' mkpart primary 524184886s 32637'
++ local device=/dev/sda
++ local 'cmds= mkpart primary 524184886s 32637'
++ local opts
++ '[' 1 -eq 1 ']'
++ opts='-a cyl'
++ parted -a cyl -m /dev/sda unit cyl mkpart primary 524184886s 32637
+
+However, as fdisk shows there are only 32635 cylinders:
+
+Disk /dev/sda: 268.4 GB, 268435456000 bytes
+255 heads, 63 sectors/track, 32635 cylinders
+Units = cylinders of 16065 * 512 = 8225280 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk identifier: 0xd66789fc
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sda1               1       32630   262092442+  83  Linux
+
+As I am not sure what is supposed to happen here, i.e. we could be
+expecting a '.' for ${pcmds[$index + 4]} to avoid this calculation all
+together I thought it best to check in before I start fiddling with the
+code.
+
+The logfile and my configuration are attached for info purposes.
+
+Help is appreciated.
+
+Thanks,
+Robert
+-- 
+Robert Schweikert                           MAY THE SOURCE BE WITH YOU
+Software Engineer Consultant                          LINUX
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>
+781-464-8147
+
+Novell
+Making IT Work As One
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: btrfsBoot.log
+Type: text/x-log
+Size: 22983 bytes
+Desc: not available
+URL: &lt;<A HREF="https://lists.berlios.de/pipermail/kiwi-devel/attachments/20101014/0c5c62b3/attachment.bin">https://lists.berlios.de/pipermail/kiwi-devel/attachments/20101014/0c5c62b3/attachment.bin</A>&gt;
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: config.xml
+Type: text/xml
+Size: 1536 bytes
+Desc: not available
+URL: &lt;<A HREF="https://lists.berlios.de/pipermail/kiwi-devel/attachments/20101014/0c5c62b3/attachment.xml">https://lists.berlios.de/pipermail/kiwi-devel/attachments/20101014/0c5c62b3/attachment.xml</A>&gt;
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002737.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. ec396999afbe3807339f7a873b005b40e350c7e0
+</A></li>
+	<LI>Next message: <A HREF="002739.html">[Kiwi-devel] out of bounds partitioning attempt
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2738">[ date ]</a>
+              <a href="thread.html#2738">[ thread ]</a>
+              <a href="subject.html#2738">[ subject ]</a>
+              <a href="author.html#2738">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

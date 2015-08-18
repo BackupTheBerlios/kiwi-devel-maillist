@@ -1,0 +1,333 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9f963af5bdd06cf199d15f93a9aabed3da7aa1b2
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%209f963af5bdd06cf199d15f93a9aabed3da7aa1b2&In-Reply-To=%3C20101126103814.DDACD480F68%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002854.html">
+   <LINK REL="Next"  HREF="002858.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9f963af5bdd06cf199d15f93a9aabed3da7aa1b2</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%209f963af5bdd06cf199d15f93a9aabed3da7aa1b2&In-Reply-To=%3C20101126103814.DDACD480F68%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9f963af5bdd06cf199d15f93a9aabed3da7aa1b2">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Nov 26 11:38:14 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002854.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e3bd374fe760f090285350f5dfb62485db933148
+</A></li>
+        <LI>Next message: <A HREF="002858.html">[Kiwi-devel] Fix Perl error - please apply prior to this weeks	release
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2855">[ date ]</a>
+              <a href="thread.html#2855">[ thread ]</a>
+              <a href="subject.html#2855">[ subject ]</a>
+              <a href="author.html#2855">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  9f963af5bdd06cf199d15f93a9aabed3da7aa1b2 (commit)
+      from  e3bd374fe760f090285350f5dfb62485db933148 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 9f963af5bdd06cf199d15f93a9aabed3da7aa1b2
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Nov 26 11:12:27 2010 +0100
+
+    - make sure bootstrap packages are handled when using a cache
+    - fixed time when KIWIImage.pm mounts the overlay and provide
+      a function getImageTree() which returns the currently used
+      root tree. Move the recovery creation, profile update, and
+      cleanup after the KIWIImage module creation
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 4e7dffa..da83d27 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -504,14 +504,12 @@ sub main {
+ 			$kiwi -&gt; failed ();
+ 			my $code = kiwiExit (1); return $code;
+ 		}
+-		if (! defined $CacheRoot) {
+-			if (! defined $root -&gt; init ()) {
+-				$kiwi -&gt; error (&quot;Base initialization failed&quot;);
+-				$kiwi -&gt; failed ();
+-				$root -&gt; copyBroken();
+-				undef $root;
+-				my $code = kiwiExit (1); return $code;
+-			}
++		if (! defined $root -&gt; init ()) {
++			$kiwi -&gt; error (&quot;Base initialization failed&quot;);
++			$kiwi -&gt; failed ();
++			$root -&gt; copyBroken();
++			undef $root;
++			my $code = kiwiExit (1); return $code;
+ 		}
+ 		#==========================================
+ 		# Check for pre chroot call
+@@ -584,7 +582,6 @@ sub main {
+ 		#==========================================
+ 		# Process system image description
+ 		#------------------------------------------
+-		my $origcreate = $Create;
+ 		$kiwi -&gt; info (&quot;Reading image description [Create]...\n&quot;);
+ 		my $xml = new KIWIXML (
+ 			$kiwi,&quot;$Create/image&quot;,\%ForeignRepo,$SetImageType,\@Profiles
+@@ -712,26 +709,27 @@ sub main {
+ 			undef $main::Upgrade;
+ 		}
+ 		#==========================================
+-		# Check for overlay structure
++		# Create KIWIImage object
+ 		#------------------------------------------
+-		my $overlay = new KIWIOverlay (
+-			$kiwi,$Create,$CacheRoot,$CacheRootMode
++		$image = new KIWIImage (
++			$kiwi,$xml,$Create,$Destination,$StripImage,
++			&quot;/base-system&quot;,$Create
+ 		);
+-		if (! defined $overlay) {
+-			my $code = kiwiExit (1); return $code;
+-		}
+-		$Create = $overlay -&gt; mountOverlay();
+-		if (! defined $Create) {
++		if (! defined $image) {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
+ 		#==========================================
++		# Obtain currently used image tree path
++		#------------------------------------------
++		my $tree = $image -&gt; getImageTree();
++		#==========================================
+ 		# Cleanup the tree according to prev runs
+ 		#------------------------------------------
+-		if (-f &quot;$Create/rootfs.tar&quot;) {
+-			qxx (&quot;rm -f $Create/rootfs.tar&quot;);
++		if (-f &quot;$tree/rootfs.tar&quot;) {
++			qxx (&quot;rm -f $tree/rootfs.tar&quot;);
+ 		}
+-		if (-f &quot;$Create/recovery.tar.gz&quot;) {
+-			qxx (&quot;rm -f $Create/recovery.*&quot;);
++		if (-f &quot;$tree/recovery.tar.gz&quot;) {
++			qxx (&quot;rm -f $tree/recovery.*&quot;);
+ 		}
+ 		#==========================================
+ 		# Update .profile env, current type
+@@ -739,7 +737,7 @@ sub main {
+ 		$kiwi -&gt; info (&quot;Updating type in .profile environment&quot;);
+ 		my $type = $attr{type};
+ 		qxx (
+-			&quot;sed -i -e 's#kiwi_type=.*#kiwi_type=\&quot;$type\&quot;#' $Create/.profile&quot;
++			&quot;sed -i -e 's#kiwi_type=.*#kiwi_type=\&quot;$type\&quot;#' $tree/.profile&quot;
+ 		);
+ 		$kiwi -&gt; done();
+ 		#==========================================
+@@ -747,7 +745,7 @@ sub main {
+ 		#------------------------------------------
+ 		if ($type eq &quot;oem&quot;) {
+ 			my $configure = new KIWIConfigure (
+-				$kiwi,$xml,$Create,$Create.&quot;/image&quot;,$Destination
++				$kiwi,$xml,$tree,$tree.&quot;/image&quot;,$Destination
+ 			);
+ 			if (! defined $configure) {
+ 				my $code = kiwiExit (1); return $code;
+@@ -757,21 +755,6 @@ sub main {
+ 			}
+ 		}
+ 		#==========================================
+-		# Close overlay mount if active
+-		#------------------------------------------
+-		undef $overlay;
+-		$Create  = $origcreate;
+-		#==========================================
+-		# Create KIWIImage object
+-		#------------------------------------------
+-		$image = new KIWIImage (
+-			$kiwi,$xml,$Create,$Destination,$StripImage,
+-			&quot;/base-system&quot;,$Create
+-		);
+-		if (! defined $image) {
+-			my $code = kiwiExit (1); return $code;
+-		}
+-		#==========================================
+ 		# Initialize logical image extend
+ 		#------------------------------------------
+ 		my $ok;
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 5f5de5f..01b31fb 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -118,6 +118,10 @@ sub new {
+ 	$this-&gt;{baseSystem} = $baseSystem;
+ 	$this-&gt;{arch}       = $arch;
+ 	#==========================================
++	# Mount overlay tree if required...
++	#------------------------------------------
++	$this -&gt; setupOverlay();
++	#==========================================
+ 	# Store a disk label ID for this object
+ 	#------------------------------------------
+ 	$this -&gt; getMBRDiskLabel();
+@@ -129,6 +133,19 @@ sub new {
+ }
+ 
+ #==========================================
++# getImageTree
++#------------------------------------------
++sub getImageTree {
++	# ...
++	# return current value of system image tree. Normally
++	# this is the same as given in the module parameter list
++	# but in case of an overlay cache mount the path changes
++	# ---
++	my $this = shift;
++	return $this-&gt;{imageTree}
++}
++
++#==========================================
+ # setupOverlay
+ #------------------------------------------
+ sub setupOverlay {
+@@ -2817,10 +2834,6 @@ sub preImage {
+ 	my $haveExtend = shift;
+ 	my $quiet      = shift;
+ 	#==========================================
+-	# Mount overlay tree if required...
+-	#------------------------------------------
+-	$this -&gt; setupOverlay();
+-	#==========================================
+ 	# Get image creation date and name
+ 	#------------------------------------------
+ 	my $name = $this -&gt; buildImageName ();
+diff --git a/modules/KIWIRoot.pm b/modules/KIWIRoot.pm
+index ea894a2..2085acd 100644
+--- a/modules/KIWIRoot.pm
++++ b/modules/KIWIRoot.pm
+@@ -337,35 +337,37 @@ sub init {
+ 	# Copy/touch some defaults files
+ 	#----------------------------------
+ 	$kiwi -&gt; info (&quot;Creating default template files for new root system&quot;);
+-	qxx (&quot;mkdir -p $root/dev&quot;);
+-	qxx (&quot;mkdir -m 755 -p $root/dev/pts&quot;);
+-	qxx (&quot;mknod -m 666 $root/dev/null c 1 3&quot;);
+-	qxx (&quot;mknod -m 666 $root/dev/zero c 1 5&quot;);
+-	qxx (&quot;mknod -m 622 $root/dev/full c 1 7&quot;);
+-	qxx (&quot;mknod -m 666 $root/dev/random c 1 8&quot;);
+-	qxx (&quot;mknod -m 644 $root/dev/urandom c 1 9&quot;);
+-	qxx (&quot;mknod -m 666 $root/dev/tty c 5 0&quot;);
+-	qxx (&quot;mknod -m 666 $root/dev/ptmx c 5 2&quot;);
+-	qxx (&quot;ln -s /proc/self/fd $root/dev/fd&quot;);
+-	qxx (&quot;ln -s fd/2 $root/dev/stderr&quot;);
+-	qxx (&quot;ln -s fd/0 $root/dev/stdin&quot;);
+-	qxx (&quot;ln -s fd/1 $root/dev/stdout&quot;);
+-	qxx (&quot;mknod -m 640 $root/dev/loop0 b 7 0&quot;);
+-	qxx (&quot;mknod -m 640 $root/dev/loop1 b 7 1&quot;);
+-	qxx (&quot;mknod -m 640 $root/dev/loop2 b 7 2&quot;);
+-	qxx (&quot;mknod -m 640 $root/dev/loop3 b 7 3&quot;);
+-	qxx (&quot;mkdir -p $root/etc/sysconfig&quot;);
+-	qxx (&quot;mkdir -p $root/var/log/YaST2&quot;);
+-	# for smart we need the dpkg default file
+-	qxx (&quot;mkdir -p $root/var/lib/dpkg&quot;);
+-	qxx (&quot;touch $root/var/lib/dpkg/status&quot;);
+-	qxx (&quot;mkdir -p $root/var/lib/dpkg/updates&quot;);
+-	qxx (&quot;touch $root/var/lib/dpkg/available&quot;);
+-	# for building in suse autobuild we need the following file
+-	qxx (&quot;touch $root/.buildenv&quot;);
+-	# need mtab at least empty for mount calls
+-	qxx (&quot;touch $root/etc/mtab&quot;);
+-	qxx (&quot;touch $root/etc/sysconfig/bootloader&quot;);
++	if (! defined $this-&gt;{cacheRoot}) {
++		qxx (&quot;mkdir -p $root/dev&quot;);
++		qxx (&quot;mkdir -m 755 -p $root/dev/pts&quot;);
++		qxx (&quot;mknod -m 666 $root/dev/null c 1 3&quot;);
++		qxx (&quot;mknod -m 666 $root/dev/zero c 1 5&quot;);
++		qxx (&quot;mknod -m 622 $root/dev/full c 1 7&quot;);
++		qxx (&quot;mknod -m 666 $root/dev/random c 1 8&quot;);
++		qxx (&quot;mknod -m 644 $root/dev/urandom c 1 9&quot;);
++		qxx (&quot;mknod -m 666 $root/dev/tty c 5 0&quot;);
++		qxx (&quot;mknod -m 666 $root/dev/ptmx c 5 2&quot;);
++		qxx (&quot;ln -s /proc/self/fd $root/dev/fd&quot;);
++		qxx (&quot;ln -s fd/2 $root/dev/stderr&quot;);
++		qxx (&quot;ln -s fd/0 $root/dev/stdin&quot;);
++		qxx (&quot;ln -s fd/1 $root/dev/stdout&quot;);
++		qxx (&quot;mknod -m 640 $root/dev/loop0 b 7 0&quot;);
++		qxx (&quot;mknod -m 640 $root/dev/loop1 b 7 1&quot;);
++		qxx (&quot;mknod -m 640 $root/dev/loop2 b 7 2&quot;);
++		qxx (&quot;mknod -m 640 $root/dev/loop3 b 7 3&quot;);
++		qxx (&quot;mkdir -p $root/etc/sysconfig&quot;);
++		qxx (&quot;mkdir -p $root/var/log/YaST2&quot;);
++		# for smart we need the dpkg default file
++		qxx (&quot;mkdir -p $root/var/lib/dpkg&quot;);
++		qxx (&quot;touch $root/var/lib/dpkg/status&quot;);
++		qxx (&quot;mkdir -p $root/var/lib/dpkg/updates&quot;);
++		qxx (&quot;touch $root/var/lib/dpkg/available&quot;);
++		# for building in suse autobuild we need the following file
++		qxx (&quot;touch $root/.buildenv&quot;);
++		# need mtab at least empty for mount calls
++		qxx (&quot;touch $root/etc/mtab&quot;);
++		qxx (&quot;touch $root/etc/sysconfig/bootloader&quot;);
++	}
+ 	# need user/group files as template
+ 	my $groupTemplate = &quot;/etc/group&quot;; 
+ 	my $paswdTemplate = &quot;/etc/passwd&quot;;
+@@ -396,7 +398,9 @@ sub init {
+ 	#==========================================
+ 	# Create package keys
+ 	#------------------------------------------
+-	$manager -&gt; setupPackageKeys();
++	if (! defined $this-&gt;{cacheRoot}) {
++		$manager -&gt; setupPackageKeys();
++	}
+ 	#==========================================
+ 	# Setup shared cache directory
+ 	#------------------------------------------
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002854.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e3bd374fe760f090285350f5dfb62485db933148
+</A></li>
+	<LI>Next message: <A HREF="002858.html">[Kiwi-devel] Fix Perl error - please apply prior to this weeks	release
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2855">[ date ]</a>
+              <a href="thread.html#2855">[ thread ]</a>
+              <a href="subject.html#2855">[ subject ]</a>
+              <a href="author.html#2855">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

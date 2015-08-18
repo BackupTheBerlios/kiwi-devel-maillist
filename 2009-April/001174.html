@@ -1,0 +1,175 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] /dev/mapper/loop0p1: Cannot create filesystem	with requested number of inodes
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20/dev/mapper/loop0p1%3A%20Cannot%20create%20filesystem%09with%0A%20requested%20number%20of%20inodes&In-Reply-To=%3C49E893A8.7090900%40novell.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001173.html">
+   <LINK REL="Next"  HREF="001175.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] /dev/mapper/loop0p1: Cannot create filesystem	with requested number of inodes</H1>
+    <B>Simon Crute</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20/dev/mapper/loop0p1%3A%20Cannot%20create%20filesystem%09with%0A%20requested%20number%20of%20inodes&In-Reply-To=%3C49E893A8.7090900%40novell.com%3E"
+       TITLE="[Kiwi-devel] /dev/mapper/loop0p1: Cannot create filesystem	with requested number of inodes">scrute at novell.com
+       </A><BR>
+    <I>Fri Apr 17 16:35:20 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001173.html">[Kiwi-devel] A patch for kiwi
+</A></li>
+        <LI>Next message: <A HREF="001175.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a03783aa877bdd796a639ee6af1fd071c2d40c6f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1174">[ date ]</a>
+              <a href="thread.html#1174">[ thread ]</a>
+              <a href="subject.html#1174">[ subject ]</a>
+              <a href="author.html#1174">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Marcus Sch&#228;fer wrote:
+&gt;<i> Hi,
+</I>&gt;<i> 
+</I>&gt;&gt;<i> Mar-27 16:01:56 &lt;3&gt; : Failed creating filesystem: mke2fs 1.41.1 (01-Sep-2008)
+</I>&gt;&gt;<i> /dev/mapper/loop0p1: Cannot create filesystem with requested number of inodes 
+</I>&gt;&gt;<i> while setting up superblock
+</I>&gt;&gt;<i>    failed
+</I>&gt;<i> 
+</I>&gt;<i> Either use reiserfs or use the kiwi option 
+</I>&gt;<i> 
+</I>&gt;<i>   --fs-maxinodes
+</I>&gt;<i> 
+</I>&gt;<i> to change the inode count for this filesystem
+</I>&gt;<i> 
+</I>&gt;<i> Regards,
+</I>&gt;<i> Marcus
+</I>
+
+Hi Marcus,
+I'm looking at this again after a few weeks off,
+
+Adding the --fs-maxinodes to the create step seemed to fix the problem.
+
+
+Looking through the logs in detail, it looks like kiwi is trying to put 
+   about 255000 inodes on a 32mB  partition.
+
+Apr-17 13:41:01 &lt;1&gt; : EXEC [qemu-img create 
+myoem/sled-11-live.i686-2.5.1.raw.install.raw 1561M 2&gt;&amp;1]
+    done
+Apr-17 13:41:01 &lt;1&gt; : Binding virtual disk to loop device
+Apr-17 13:41:01 &lt;1&gt; : EXEC [/sbin/losetup -s -f 
+myoem/sled-11-live.i686-2.5.1.raw.install.raw 2&gt;&amp;1]
+    done
+Apr-17 13:41:01 &lt;1&gt; : Create partition table for virtual disk
+Apr-17 13:41:01 &lt;1&gt; : FDISK input: /dev/loop1 [n p 1 . +24M n p 2 . . a 
+1 w q]
+Apr-17 13:41:01 &lt;1&gt; : EXEC [dd if=/dev/zero of=/dev/loop1 bs=512 count=1 
+2&gt;&amp;1]
+Apr-17 13:41:08 &lt;1&gt; : FDISK: Device contains neither a valid DOS 
+partition table, nor Sun, SGI or OSF disklabel
+
+Building a new DOS disklabel with disk identifier 0x103cecf0.
+
+Changes will remain in memory only, until you decide to write them.
+
+After that, of course, the previous content won't be recoverable.
+
+
+
+Warning: invalid flag 0x0000 of partition table 4 will be corrected by 
+w(rite)
+
+
+
+Command (m for help): Command action
+
+    e   extended
+
+    p   primary partition (1-4)
+
+Partition number (1-4): First cylinder (1-198, default 1): Using default 
+value 1
+
+Last cylinder, +cylinders or +size{K,M,G} (1-198, default 198):
+
+Command (m for help): Command action
+
+    e   extended
+
+    p   primary partition (1-4)
+
+Partition number (1-4): First cylinder (5-198, default 5): Using default 
+value 5
+
+Last cylinder, +cylinders or +size{K,M,G} (5-198, default 198): Using 
+default value 198
+
+
+
+Command (m for help): Partition number (1-4):
+
+Command (m for help): The partition table has been altered!
+
+
+
+Calling ioctl() to re-read partition table.
+
+
+
+WARNING: Re-reading the partition table failed with error 22: Invalid 
+argument.
+
+The kernel still uses the old table.
+
+The new table will be used at the next reboot.
+
+Syncing disks.
+    done
+Apr-17 13:41:08 &lt;1&gt; : Setup device mapper for virtual partition access
+Apr-17 13:41:08 &lt;1&gt; : EXEC [/sbin/kpartx -a /dev/loop1 2&gt;&amp;1]
+    done
+Apr-17 13:41:08 &lt;1&gt; : Creating ext3 filesystem on /dev/mapper/loop1p1 
+partition
+Apr-17 13:41:08 &lt;1&gt; : EXEC [/sbin/mke2fs -N 255774 -j 
+/dev/mapper/loop1p1 2&gt;&amp;1]
+    failed
+Apr-17 13:41:08 &lt;3&gt; : Failed creating filesystem: mke2fs 1.41.1 
+(01-Sep-2008)
+/dev/mapper/loop1p1: Cannot create filesystem with requested number of 
+inodes while setting up superblock
+    failed
+
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001173.html">[Kiwi-devel] A patch for kiwi
+</A></li>
+	<LI>Next message: <A HREF="001175.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a03783aa877bdd796a639ee6af1fd071c2d40c6f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1174">[ date ]</a>
+              <a href="thread.html#1174">[ thread ]</a>
+              <a href="subject.html#1174">[ subject ]</a>
+              <a href="author.html#1174">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

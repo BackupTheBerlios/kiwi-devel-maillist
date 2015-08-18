@@ -1,0 +1,477 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 14c42665a5c98826645337ca71ccb1932e27912f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2014c42665a5c98826645337ca71ccb1932e27912f&In-Reply-To=%3C20110629173926.AB438480F93%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003583.html">
+   <LINK REL="Next"  HREF="003585.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 14c42665a5c98826645337ca71ccb1932e27912f</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2014c42665a5c98826645337ca71ccb1932e27912f&In-Reply-To=%3C20110629173926.AB438480F93%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 14c42665a5c98826645337ca71ccb1932e27912f">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jun 29 19:39:26 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003583.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c1900fd2dd66c44b36c2d2dded7a7baaccee2560
+</A></li>
+        <LI>Next message: <A HREF="003585.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d8d2105b2de6dace7eab0ab09ea723c8793848bb
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3584">[ date ]</a>
+              <a href="thread.html#3584">[ thread ]</a>
+              <a href="subject.html#3584">[ subject ]</a>
+              <a href="author.html#3584">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  14c42665a5c98826645337ca71ccb1932e27912f (commit)
+      from  c1900fd2dd66c44b36c2d2dded7a7baaccee2560 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 14c42665a5c98826645337ca71ccb1932e27912f
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jun 29 19:37:13 2011 +0200
+
+    - fixed and cleaned up disk size setup. There are two new
+      functions __initDiskSize() and __updateDiskSize() which are
+      used to create an initial disk size value and an update
+      function if there are conditions which requires to increase
+      the disk size. That actions are now also part of the kiwi
+      log file
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 91809d7..2ee7d83 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -247,7 +247,9 @@ sub new {
+ 			#==========================================
+ 			# Determine size of /boot area
+ 			#------------------------------------------
+-			$this -&gt;{bootsize} = $this -&gt; __getBootSize ($system);
++			if (defined $initrd) {
++				$this -&gt;{bootsize} = $this -&gt; __getBootSize ($system);
++			}
+ 		} else {
+ 			my %fsattr = $main::global -&gt; checkFileSystem ($system);
+ 			if ((! $fsattr{type}) || ($fsattr{type} eq &quot;auto&quot;)) {
+@@ -309,7 +311,9 @@ sub new {
+ 				#==========================================
+ 				# Determine size of /boot area
+ 				#------------------------------------------
+-				$this -&gt;{bootsize} = $this -&gt; __getBootSize ($tmpdir);
++				if (defined $initrd) {
++					$this -&gt;{bootsize} = $this -&gt; __getBootSize ($tmpdir);
++				}
+ 				#==========================================
+ 				# clean up
+ 				#------------------------------------------
+@@ -350,7 +354,9 @@ sub new {
+ 				#==========================================
+ 				# Determine size of /boot area
+ 				#------------------------------------------
+-				$this -&gt;{bootsize} = $this -&gt; __getBootSize ($tmpdir);
++				if (defined $initrd) {
++					$this -&gt;{bootsize} = $this -&gt; __getBootSize ($tmpdir);
++				}
+ 				#==========================================
+ 				# clean up
+ 				#------------------------------------------
+@@ -375,16 +381,17 @@ sub new {
+ 	#==========================================
+ 	# Setup disk size and inode count
+ 	#------------------------------------------
+-	if (defined $system) {
++	if ((defined $system) &amp;&amp; (defined $initrd)) {
+ 		my $sizeBytes;
+ 		my $minInodes;
+ 		my $sizeXMLBytes = 0;
+-		my $cmdlBytes    = 0;
+ 		my $spare        = 1.5;
+ 		my $journal      = 12 * 1024 * 1024;
+ 		my $fsopts       = $cmdL -&gt; getFilesystemOptions();
+ 		my $inodesize    = $fsopts-&gt;[1];
+ 		my $inoderatio   = $fsopts-&gt;[2];
++		my $kernelSize   = $main::global -&gt; isize ($kernel);
++		my $initrdSize   = $main::global -&gt; isize ($initrd);
+ 		#==========================================
+ 		# Calculate minimum size of the system
+ 		#------------------------------------------
+@@ -398,13 +405,17 @@ sub new {
+ 			$sizeBytes+= $minInodes * $inodesize;
+ 			$sizeBytes*= $spare;
+ 			$sizeBytes+= $journal;
++			$sizeBytes+= $kernelSize;
++			$sizeBytes+= ($initrdSize * 1.5);
+ 		} else {
+ 			# system is specified as a file...
+ 			$sizeBytes = $main::global -&gt; isize ($system);
++			$sizeBytes+= $kernelSize;
++			$sizeBytes+= ($initrdSize * 1.5);
+ 			$sizeBytes*= 1.1;
+ 		}
+ 		#==========================================
+-		# Decide for a size prefer 1)cmdline 2)XML
++		# Store optional size setup from XML
+ 		#------------------------------------------
+ 		my $sizeXMLAddBytes = $xml -&gt; getImageSizeAdditiveBytes();
+ 		if ($sizeXMLAddBytes) {
+@@ -412,34 +423,10 @@ sub new {
+ 		} else {
+ 			$sizeXMLBytes = $xml -&gt; getImageSizeBytes();
+ 		}
+-		if ($vmsize =~ /^(\d+)([MG])$/i) {
+-			my $value= $1;
+-			my $unit = $2;
+-			if ($unit eq &quot;G&quot;) {
+-				# convert GB to MB...
+-				$value *= 1024;
+-			}
+-			# convert MB to Byte
+-			$cmdlBytes = $value * 1048576;
+-		}
+-		if ($cmdlBytes &gt; $sizeBytes) {
+-			$sizeBytes = $cmdlBytes;
+-			$vmsize = $sizeBytes;
+-		} elsif ($sizeXMLBytes &gt; $sizeBytes) {
+-			$sizeBytes = $sizeXMLBytes;
+-			$vmsize = $sizeBytes;
+-		} else {
+-			#==========================================
+-			# Sum up system + kernel + initrd
+-			#------------------------------------------
+-			# /.../
+-			# if system is a split system the vmsize will be
+-			# adapted within the image creation function accordingly
+-			# ----
+-			my $kernelSize = $main::global -&gt; isize ($kernel);
+-			my $initrdSize = $main::global -&gt; isize ($initrd);
+-			$vmsize = $kernelSize + ($initrdSize * 1.5) + $sizeBytes;
+-		}
++		#==========================================
++		# Store initial disk size
++		#------------------------------------------
++		$this -&gt; __initDiskSize ($sizeBytes,$vmsize,$sizeXMLBytes);
+ 		#==========================================
+ 		# Calculate required inode count for root
+ 		#------------------------------------------
+@@ -449,21 +436,11 @@ sub new {
+ 			# will be created during the image creation. In this
+ 			# case we need to create the inode count
+ 			# ----
+-			$this-&gt;{inodes} = int ($sizeBytes / $inoderatio);
++			$this-&gt;{inodes} = int ($this-&gt;{vmmbytes} / $inoderatio);
+ 			$kiwi -&gt; loginfo (
+ 				&quot;Using &quot;.$this-&gt;{inodes}.&quot; inodes for the root filesystem\n&quot;
+ 			);
+ 		}
+-		#==========================================
+-		# Create vmsize MB string and vmmbyte value
+-		#------------------------------------------
+-		$vmsize  = $vmsize / 1048576;
+-		$vmsize  = sprintf (&quot;%.0f&quot;, $vmsize);
+-		$vmmbyte = $vmsize;
+-		$vmsize  = $vmsize.&quot;M&quot;;
+-		$kiwi -&gt; loginfo (
+-			&quot;Starting with disk size: $vmsize\n&quot;
+-		);
+ 	}
+ 	#==========================================
+ 	# round compressed image size
+@@ -507,8 +484,6 @@ sub new {
+ 	$this-&gt;{initrd}    = $initrd;
+ 	$this-&gt;{system}    = $system;
+ 	$this-&gt;{kernel}    = $kernel;
+-	$this-&gt;{vmmbyte}   = $vmmbyte;
+-	$this-&gt;{vmsize}    = $vmsize;
+ 	$this-&gt;{syszip}    = $syszip;
+ 	$this-&gt;{device}    = $device;
+ 	$this-&gt;{zipped}    = $zipped;
+@@ -1030,7 +1005,6 @@ sub setupInstallStick {
+ 	my $initrd    = $this-&gt;{initrd};
+ 	my $system    = $this-&gt;{system};
+ 	my $oldird    = $this-&gt;{initrd};
+-	my $vmsize    = $this-&gt;{vmsize};
+ 	my $device    = $this-&gt;{device};
+ 	my $loopdir   = $this-&gt;{loopdir};
+ 	my $zipped    = $this-&gt;{zipped};
+@@ -1038,6 +1012,7 @@ sub setupInstallStick {
+ 	my $xml       = $this-&gt;{xml};
+ 	my $cmdL      = $this-&gt;{cmdL};
+ 	my $irdsize   = $main::global -&gt; isize ($initrd);
++	my $vmsize    = $main::global -&gt; isize ($system);
+ 	my $diskname  = $system.&quot;.install.raw&quot;;
+ 	my $md5name   = $system;
+ 	my $destdir   = dirname ($initrd);
+@@ -1200,7 +1175,6 @@ sub setupInstallStick {
+ 	#------------------------------------------
+ 	$irdsize= ($irdsize / 1e6) + 20;
+ 	$irdsize= sprintf (&quot;%.0f&quot;, $irdsize);
+-	$vmsize = $main::global -&gt; isize ($system);
+ 	$vmsize = ($vmsize / 1e6) * 1.3 + $irdsize;
+ 	$vmsize = sprintf (&quot;%.0f&quot;, $vmsize);
+ 	$vmsize = $vmsize.&quot;M&quot;;
+@@ -1513,7 +1487,6 @@ sub setupBootDisk {
+ 	my $kiwi      = $this-&gt;{kiwi};
+ 	my $arch      = $this-&gt;{arch};
+ 	my $system    = $this-&gt;{system};
+-	my $vmsize    = $this-&gt;{vmsize};
+ 	my $syszip    = $this-&gt;{syszip};
+ 	my $tmpdir    = $this-&gt;{tmpdir};
+ 	my $initrd    = $this-&gt;{initrd};
+@@ -1632,19 +1605,12 @@ sub setupBootDisk {
+ 				#==========================================
+ 				# increase total vm disk size
+ 				#------------------------------------------
++				$kiwi-&gt;loginfo (&quot;Increasing disk size for volume $pname\n&quot;);
+ 				if ($haveAbsolute) {
+-					$vmsize = $this-&gt;{vmmbyte} + 30 + $diff;
+-					$vmsize = sprintf (&quot;%.0f&quot;, $vmsize);
++					$this -&gt; __updateDiskSize ($diff + 30);
+ 				} else {
+-					$vmsize = $this-&gt;{vmmbyte} + 30 + $space;
+-					$vmsize = sprintf (&quot;%.0f&quot;, $vmsize);
++					$this -&gt; __updateDiskSize ($space+ 30);
+ 				}
+-				$this-&gt;{vmmbyte} = $vmsize;
+-				$vmsize = $vmsize.&quot;M&quot;;
+-				$this-&gt;{vmsize}  = $vmsize;
+-				$kiwi-&gt;loginfo (
+-					&quot;Increasing disk size to: $vmsize for volume $pname\n&quot;
+-				);
+ 			}
+ 		}
+ 	}
+@@ -1706,47 +1672,31 @@ sub setupBootDisk {
+ 		}
+ 	}
+ 	#==========================================
+-	# increase vmsize on in-place recovery
++	# increase disk size for in-place recovery
+ 	#------------------------------------------
+ 	my $inplace = $xml -&gt; getOEMRecoveryInPlace();
+ 	if (($inplace) &amp;&amp; (&quot;$inplace&quot; eq &quot;true&quot;)) {
+ 		my ($FD,$recoMB);
+ 		my $sizefile = &quot;$destdir/recovery.partition.size&quot;;
+ 		if (open ($FD,$sizefile)) {
+-			$recoMB = &lt;$FD&gt;; chomp $recoMB;
++			$recoMB = &lt;$FD&gt;; chomp $recoMB;	close $FD; unlink $sizefile;
+ 			$kiwi -&gt; info (
+ 				&quot;Adding $recoMB MB spare space for in-place recovery&quot;
+ 			);
+-			close $FD;
+-			unlink $sizefile;
+-			$vmsize = $this-&gt;{vmmbyte} + $recoMB;
+-			$this-&gt;{vmmbyte} = $vmsize;
+-			$vmsize = $vmsize.&quot;M&quot;;
+-			$this-&gt;{vmsize}  = $vmsize;
++			$this -&gt; __updateDiskSize ($recoMB);
+ 			$kiwi -&gt; done ();
+ 		}
+ 	}
+ 	#==========================================
+-	# increase vmsize if image split portion
++	# increase vmsize if image split RW portion
+ 	#------------------------------------------
+ 	if (($imgtype eq &quot;split&quot;) &amp;&amp; (-f $splitfile)) {
+ 		my $splitsize = $main::global -&gt; isize ($splitfile);
+-		$splitsize /= 1048576;
+-		$vmsize = $this-&gt;{vmmbyte} + ($splitsize * 1.5) + $bootsize;
+-		$vmsize = sprintf (&quot;%.0f&quot;, $vmsize);
+-		$this-&gt;{vmmbyte} = $vmsize;
+-		$vmsize = $vmsize.&quot;M&quot;;
+-		$this-&gt;{vmsize}  = $vmsize;
+-	}
+-	#==========================================
+-	# increase vmsize if single boot partition
+-	#------------------------------------------
+-	if ($bootsize) {
+-		$vmsize = $this-&gt;{vmmbyte} + ($bootsize * 1.3);
+-		$vmsize = sprintf (&quot;%.0f&quot;, $vmsize);
+-		$this-&gt;{vmmbyte} = $vmsize;
+-		$vmsize = $vmsize.&quot;M&quot;;
+-		$this-&gt;{vmsize}  = $vmsize;
++		my $splitMB = $splitsize / 1048576;
++		$kiwi -&gt; info (
++			&quot;Adding $splitMB MB space for split read-write portion&quot;
++		);
++		$this -&gt; __updateDiskSize ($splitMB);
+ 	}
+ 	#==========================================
+ 	# obtain filesystem type from xml data
+@@ -1790,6 +1740,18 @@ sub setupBootDisk {
+ 	}
+ 	$this-&gt;{bootpart} = $bootpart;
+ 	#==========================================
++	# Update raw disk size if boot part is used
++	#------------------------------------------
++	if (($syszip)    ||
++		($haveSplit) ||
++		($haveluks)  ||
++		($needBootP) ||
++		($dmapper)   ||
++		($lvm)
++	) {
++		$this -&gt; __updateDiskSize ($bootsize);
++	}
++	#==========================================
+ 	# Import boot loader stages
+ 	#------------------------------------------
+ 	if (! $this -&gt; setupBootLoaderStages ($bootloader)) {
+@@ -1818,7 +1780,7 @@ sub setupBootDisk {
+ 		}
+ 		if (! $haveDiskDevice) {
+ 			$kiwi -&gt; info (&quot;Creating virtual disk...&quot;);
+-			$status = qxx (&quot;qemu-img create $diskname $vmsize 2&gt;&amp;1&quot;);
++			$status = qxx (&quot;qemu-img create $diskname $this-&gt;{vmsize} 2&gt;&amp;1&quot;);
+ 			$result = $? &gt;&gt; 8;
+ 			if ($result != 0) {
+ 				$kiwi -&gt; failed ();
+@@ -1839,7 +1801,7 @@ sub setupBootDisk {
+ 			# size of the image target disk. It has no relevance for the
+ 			# standard build process and is therefore called without any
+ 			# return value check. 
+-			qxx (&quot;qemu-img create $diskname $vmsize 2&gt;&amp;1&quot;);
++			qxx (&quot;qemu-img create $diskname $this-&gt;{vmsize} 2&gt;&amp;1&quot;);
+ 			# ----
+ 			$this-&gt;{loop} = $haveDiskDevice;
+ 			if (! -b $this-&gt;{loop}) {
+@@ -5176,7 +5138,7 @@ sub __getBootSize {
+ 	if ($gotMB &lt; $minMB) {
+ 		$gotMB = $minMB;
+ 	}
+-	$kiwi -&gt; loginfo (&quot;Set boot space to: $gotMB\n&quot;);
++	$kiwi -&gt; loginfo (&quot;Set boot space to: &quot;.$gotMB.&quot;M\n&quot;);
+ 	return $gotMB;
+ }
+ 
+@@ -5269,4 +5231,78 @@ sub __expandFS {
+ 	return $this;
+ }
+ 
++#==========================================
++# __initDiskSize
++#------------------------------------------
++sub __initDiskSize {
++	# ...
++	# setup initial disk size value
++	# ---
++	my $this      = shift;
++	my $kiwi      = $this-&gt;{kiwi};
++	my $minBytes  = shift;
++	my $cmdlsize  = shift;
++	my $XMLBytes  = shift;
++	my $cmdlBytes = 0;
++	my $vmsize    = 0;
++	my $vmmbyte   = 0;
++	#===========================================
++	# turn optional size from cmdline into bytes
++	#-------------------------------------------
++	if ($cmdlsize =~ /^(\d+)([MG])$/i) {
++		my $value= $1;
++		my $unit = $2;
++		if ($unit eq &quot;G&quot;) {
++			# convert GB to MB...
++			$value *= 1024;
++		}
++		# convert MB to Byte
++		$cmdlBytes = $value * 1048576;
++	}
++	#===========================================
++	# adapt min size according to cmdline or XML
++	#-------------------------------------------
++	if ($cmdlBytes &gt; $minBytes) {
++		$minBytes = $cmdlBytes;
++	} elsif ($XMLBytes &gt; $minBytes) {
++		$minBytes = $XMLBytes;
++	}
++	#==========================================
++	# Create vmsize MB string and vmmbyte value
++	#------------------------------------------
++	$vmsize  = $minBytes / 1048576;
++	$vmsize  = sprintf (&quot;%.0f&quot;, $vmsize);
++	$vmmbyte = $vmsize;
++	$vmsize  = $vmsize.&quot;M&quot;;
++	$kiwi -&gt; loginfo (
++		&quot;Starting with disk size: $vmsize\n&quot;
++	);
++	$this-&gt;{vmmbyte} = $vmmbyte;
++	$this-&gt;{vmsize}  = $vmsize;
++	return $this;
++}
++
++#==========================================
++# __updateDiskSize
++#------------------------------------------
++sub __updateDiskSize {
++	# ...
++	# increase the current virtual disk size value
++	# by the specified value. value is treated as
++	# number in MB
++	# ---
++	my $this   = shift;
++	my $addMB  = shift;
++	my $kiwi   = $this-&gt;{kiwi};
++	my $vmsize = $this-&gt;{vmmbyte} + $addMB;
++	$vmsize = sprintf (&quot;%.0f&quot;, $vmsize);
++	$this-&gt;{vmmbyte} = $vmsize;
++	$vmsize = $vmsize.&quot;M&quot;;
++	$this-&gt;{vmsize}  = $vmsize;
++	$kiwi-&gt;loginfo (
++		&quot;Increasing disk size by &quot;.$addMB.&quot;M to: &quot;.$vmsize.&quot;\n&quot;
++	);
++	return $this;
++}
++
+ 1;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003583.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c1900fd2dd66c44b36c2d2dded7a7baaccee2560
+</A></li>
+	<LI>Next message: <A HREF="003585.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d8d2105b2de6dace7eab0ab09ea723c8793848bb
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3584">[ date ]</a>
+              <a href="thread.html#3584">[ thread ]</a>
+              <a href="subject.html#3584">[ subject ]</a>
+              <a href="author.html#3584">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

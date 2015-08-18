@@ -1,0 +1,1143 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1657 - in kiwi-head: .	doc/examples/suse-11.1/suse-live-stick	doc/examples/suse-11.1/suse-live-stick/root/etc/init.d modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1657%20-%20in%20kiwi-head%3A%20.%0A%09doc/examples/suse-11.1/suse-live-stick%0A%09doc/examples/suse-11.1/suse-live-stick/root/etc/init.d%20modules%20rpm&In-Reply-To=%3C200810210915.m9L9FKtR012464%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000748.html">
+   <LINK REL="Next"  HREF="000750.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1657 - in kiwi-head: .	doc/examples/suse-11.1/suse-live-stick	doc/examples/suse-11.1/suse-live-stick/root/etc/init.d modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1657%20-%20in%20kiwi-head%3A%20.%0A%09doc/examples/suse-11.1/suse-live-stick%0A%09doc/examples/suse-11.1/suse-live-stick/root/etc/init.d%20modules%20rpm&In-Reply-To=%3C200810210915.m9L9FKtR012464%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1657 - in kiwi-head: .	doc/examples/suse-11.1/suse-live-stick	doc/examples/suse-11.1/suse-live-stick/root/etc/init.d modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Oct 21 11:15:20 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000748.html">[Kiwi-devel] r1656 - in kiwi-head: . modules rpm	system/boot/ix86/oemboot
+</A></li>
+        <LI>Next message: <A HREF="000750.html">[Kiwi-devel] r1658 -	kiwi-head/doc/examples/suse-11.1/suse-live-stick
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#749">[ date ]</a>
+              <a href="thread.html#749">[ thread ]</a>
+              <a href="subject.html#749">[ subject ]</a>
+              <a href="author.html#749">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-21 11:15:15 +0200 (Tue, 21 Oct 2008)
+New Revision: 1657
+
+Added:
+   kiwi-head/doc/examples/suse-11.1/suse-live-stick/root/etc/init.d/sax
+   kiwi-head/doc/examples/suse-11.1/suse-live-stick/root/etc/init.d/xdm
+Removed:
+   kiwi-head/doc/examples/suse-11.1/suse-live-stick/root/etc/init.d/boot
+Modified:
+   kiwi-head/doc/examples/suse-11.1/suse-live-stick/config.sh
+   kiwi-head/doc/examples/suse-11.1/suse-live-stick/config.xml
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWILog.pm
+   kiwi-head/modules/KIWIManager.pm
+   kiwi-head/modules/KIWIQX.pm
+   kiwi-head/modules/KIWIXML.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+Log:
+
+- v2.95
+- export ZYPP_CONF to point to /var/cache/kiwi/zypp.conf
+- removed warn overwrite, use eval { Carp::longmess ... }
+- update suse-11.1/suse-live-stick example to serve as
+  1GB stick with KDE4 + dmidecoded X11 setup
+
+
+
+Modified: kiwi-head/doc/examples/suse-11.1/suse-live-stick/config.sh
+===================================================================
+--- kiwi-head/doc/examples/suse-11.1/suse-live-stick/config.sh	2008-10-20 16:16:49 UTC (rev 1656)
++++ kiwi-head/doc/examples/suse-11.1/suse-live-stick/config.sh	2008-10-21 09:15:15 UTC (rev 1657)
+@@ -29,9 +29,25 @@
+ #======================================
+ # Activate services
+ #--------------------------------------
+-suseActivateDefaultServices
++#suseActivateDefaultServices
++suseInsertService sshd
+ suseInsertService boot.device-mapper
++suseInsertService sax
++suseRemoveService avahi-dnsconfd
++suseRemoveService avahi-daemon
+ 
++#==========================================
++# remove unneeded packages
++#------------------------------------------
++rpm -e --nodeps --noscripts \
++	$(rpm -q `baseGetPackagesForDeletion` | grep -v &quot;is not installed&quot;)
++
++#==========================================
++# remove package docs
++#------------------------------------------
++rm -rf /usr/share/doc/packages/*
++rm -rf /opt/kde3
++
+ #======================================
+ # SuSEconfig
+ #--------------------------------------
+
+Modified: kiwi-head/doc/examples/suse-11.1/suse-live-stick/config.xml
+===================================================================
+--- kiwi-head/doc/examples/suse-11.1/suse-live-stick/config.xml	2008-10-20 16:16:49 UTC (rev 1656)
++++ kiwi-head/doc/examples/suse-11.1/suse-live-stick/config.xml	2008-10-21 09:15:15 UTC (rev 1657)
+@@ -12,8 +12,10 @@
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;False&lt;/rpm-check-signatures&gt;
+ 		&lt;rpm-force&gt;True&lt;/rpm-force&gt;
+-		&lt;locale&gt;en_US&lt;/locale&gt;
+-		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
++		&lt;rpm-excludedocs&gt;True&lt;/rpm-excludedocs&gt;
++		&lt;locale&gt;en_US.UTF-8&lt;/locale&gt;
++		&lt;keytable&gt;de-latin1-nodeadkeys.map.gz&lt;/keytable&gt;
++		&lt;timezone&gt;Europe/Berlin&lt;/timezone&gt;
+ 	&lt;/preferences&gt;
+ 	&lt;users group=&quot;users&quot;&gt;
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/home/tux&quot; name=&quot;tux&quot;/&gt;
+@@ -22,8 +24,8 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;/image/CDs/full-i386&quot;/&gt;
+-		&lt;!--&lt;source path=&quot;<A HREF="opensuse://openSUSE:11.1/standard/">opensuse://openSUSE:11.1/standard/</A>&quot;/&gt;--&gt;
++		&lt;!--&lt;source path=&quot;/image/CDs/full-i386&quot;/&gt;--&gt;
++		&lt;source path=&quot;<A HREF="ftp://dist.suse.de/install/SLP/openSUSE-11.1-Beta3/i386/DVD1">ftp://dist.suse.de/install/SLP/openSUSE-11.1-Beta3/i386/DVD1</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+@@ -37,4 +39,29 @@
+ 		&lt;package name=&quot;filesystem&quot;/&gt; 
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+ 	&lt;/packages&gt;
++	&lt;packages type=&quot;delete&quot;&gt;
++		&lt;package name=&quot;MozillaFirefox&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-branding-openSUSE&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-templates-labels-a4&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-calc&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-thesaurus-en&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-pyuno&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-templates-presentation-layouts&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-icon-themes&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-writer&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-impress&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-Quickstarter&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-filters&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-templates-labels-letter&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-kde&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-base&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-mailmerge&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-hyphen&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-math&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-templates-en&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org&quot;/&gt;
++		&lt;package name=&quot;OpenOffice_org-draw&quot;/&gt;
++		&lt;package name=&quot;koffice&quot;/&gt;
++		&lt;package name=&quot;koffice-illustration&quot;/&gt;
++	&lt;/packages&gt;
+ &lt;/image&gt;
+
+Deleted: kiwi-head/doc/examples/suse-11.1/suse-live-stick/root/etc/init.d/boot
+===================================================================
+--- kiwi-head/doc/examples/suse-11.1/suse-live-stick/root/etc/init.d/boot	2008-10-20 16:16:49 UTC (rev 1656)
++++ kiwi-head/doc/examples/suse-11.1/suse-live-stick/root/etc/init.d/boot	2008-10-21 09:15:15 UTC (rev 1657)
+@@ -1,331 +0,0 @@
+-#! /bin/bash
+-#
+-# Copyright (c) 1996-2004 SuSE Linux AG, Nuernberg, Germany.
+-# All rights reserved.
+-#
+-# Author: Ruediger Oertel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ro at suse.de</A>&gt;, 1996-2002
+-#         Werner Fink &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">werner at suse.de</A>&gt;, 1996-2004
+-#         Burchard Steinbild, 1996-2000
+-#         Florian La Roche, 1996
+-#
+-# Please send feedback to <A HREF="http://www.suse.de/feedback">http://www.suse.de/feedback</A>
+-#
+-# /etc/init.d/boot
+-#
+-# first script to be executed from init on system startup
+-#
+-
+-#
+-# Avoid be interrupted by child or keyboard
+-# 
+-trap &quot;echo&quot; SIGINT SIGSEGV SIGQUIT
+-set +e
+-
+-#
+-# Get terminal size of standard input of the system console
+-#
+-test -z &quot;$CONSOLE&quot; &amp;&amp; CONSOLE=/dev/console
+-set -- $(stty size &lt; $CONSOLE)
+-  LINES=$1
+-COLUMNS=$2
+-export LINES COLUMNS CONSOLE
+-
+-#
+-# Set I/O of this script and its childs to console
+-#
+-exec 0&lt;&gt; $CONSOLE 1&gt;&amp;0 2&gt;&amp;0
+-
+-#
+-# Export the real device in variable REDIRECT.
+-#
+-REDIRECT=&quot;`showconsole 2&gt;/dev/null`&quot;
+-export REDIRECT
+-if test $COLUMNS -eq 0 ; then
+-    # Serial: columns and lines are not defined
+-      LINES=24
+-    COLUMNS=80
+-    test &quot;$TERM&quot; = &quot;linux&quot; -o -z &quot;$TERM&quot; &amp;&amp; TERM=vt102
+-fi
+-
+-#
+-# Configuration and coloring of the boot messages
+-#
+-
+-. /etc/rc.status
+-. /etc/sysconfig/boot
+-
+-echo -n &quot;System Boot Control: &quot;
+-echo &quot;Running $0&quot;
+-
+-#
+-# Start of e.g. blogd, requires /proc and /dev/pts.
+-#
+-rc_reset
+-echo -n &quot;Mounting procfs at /proc&quot;
+-mount -n -t proc proc /proc
+-rc_status -v -r
+-
+-echo -n &quot;Mounting sysfs at /sys&quot;
+-mount -n -t sysfs sysfs /sys
+-rc_status -v -r
+-
+-if test -d /sys/kernel/debug ; then
+-    while read dev type ; do
+-	if test &quot;$type&quot; = &quot;debugfs&quot; ; then
+-	    echo -n &quot;Mounting debugfs at /sys/kernel/debug&quot;
+-	    mount -n -t debugfs debugfs /sys/kernel/debug
+-	    rc_status -v -r
+-	fi
+-    done &lt; /proc/filesystems
+-fi
+-#
+-# mount tmpfs on /dev if not already done by initramfs
+-#
+-while read dev dir type options; do
+-    if test &quot;$dir&quot; = &quot;/dev&quot; -a &quot;$type&quot; = &quot;tmpfs&quot;; then
+-	DEV_MOUNTED=1;
+-	break;
+-    fi
+-done &lt; /proc/mounts
+-if test -z &quot;$DEV_MOUNTED&quot;; then
+-    echo -n &quot;Mounting tmpfs at /dev&quot;
+-    mount -n -t tmpfs -o mode=0755 udev /dev
+-    rc_status -v -r
+-fi
+-
+-#
+-# populate /dev with initial content
+-#
+-echo -n &quot;Initializing /dev&quot;
+-cp --preserve=all --recursive --remove-destination /lib/udev/devices/* /dev
+-chmod 1777 /dev/shm
+-rc_status -v -r
+-
+-echo -n &quot;Mounting devpts at /dev/pts&quot;
+-mount -n -t devpts -o mode=0620,gid=5 devpts /dev/pts
+-rc_status -v -r
+-
+-#
+-# Save old terminal settings and set -nl to avoid staircase
+-# effect, do not lock scrolling, and avoid break characters.
+-#
+-otty=$(stty -g)
+-if test &quot;$FLOW_CONTROL&quot; = &quot;yes&quot; ; then
+-    stty -nl  ixon ignbrk -brkint
+-else
+-    stty -nl -ixon ignbrk -brkint
+-fi
+-
+-#
+-# Should we ask for interactive boot mode
+-#
+-DO_CONFIRM=&quot;&quot;
+-read -t 2 check &lt; /proc/cmdline 2&gt; /dev/null
+-case &quot;$check&quot; in
+-    *confirm*) DO_CONFIRM=yes ;;
+-esac
+-test -z &quot;$CONFIRM_PROMPT_TIMEOUT&quot; &amp;&amp; CONFIRM_PROMPT_TIMEOUT=5
+-if test &quot;$PROMPT_FOR_CONFIRM&quot; = &quot;yes&quot; -a &quot;$DO_CONFIRM&quot; != &quot;yes&quot; ; then
+-    echo -en &quot;${extd}Enter Interactive startup mode?${norm}&quot;
+-    rc_timer_on &quot;$CONFIRM_PROMPT_TIMEOUT&quot; 37
+-    read -t &quot;$CONFIRM_PROMPT_TIMEOUT&quot; -n 1 \
+-	-p &quot; ${extd}y${norm}/[${extd}n${norm}](&quot;${CONFIRM_PROMPT_TIMEOUT}s&quot;) &quot; answer
+-    rc_timer_off
+-    case &quot;$answer&quot; in
+-    [yYiI]) DO_CONFIRM=yes ;;
+-    *)      DO_CONFIRM=    ;;
+-    esac
+-    unset answer
+-    echo
+-fi
+-export DO_CONFIRM
+-
+-#
+-# Start blogd, requires /proc and /dev/pts.
+-# Export the real device in variable REDIRECT.
+-#
+-test -x /sbin/blogd -a -n &quot;$REDIRECT&quot; &amp;&amp; /sbin/blogd $REDIRECT
+-if test -z &quot;$REDIRECT&quot; ; then
+-    if (echo -n &gt; /dev/tty) 2&gt;/dev/null ; then
+-	REDIRECT=/dev/tty
+-    else
+-	REDIRECT=/dev/console
+-    fi
+-fi
+-
+-#
+-# Common used variables
+-#
+-bootrc=/etc/init.d/boot.d
+-rex=&quot;[0-9][0-9]&quot;
+-failed=&quot;&quot;
+-skipped=&quot;&quot;
+-callord=&quot;&quot;
+-
+-#
+-# Initialize boosplash progressbar variables
+-#
+-. /etc/rc.splash B
+-splashtrigger &quot;rlchange B&quot;
+-
+-#
+-# Check if we are able to use make for booting
+-#
+-test -s /etc/init.d/.depend.boot || RUN_PARALLEL=&quot;no&quot;
+-test -s /etc/init.d/Makefile	 || RUN_PARALLEL=&quot;no&quot;
+-test &quot;$DO_CONFIRM&quot;   = &quot;yes&quot;	 &amp;&amp; RUN_PARALLEL=&quot;no&quot;
+-type -p startpar &amp;&gt; /dev/null    || RUN_PARALLEL=&quot;no&quot;
+-startpar -v &amp;&gt; /dev/null	 || RUN_PARALLEL=&quot;no&quot;
+-
+-#
+-# Start bootup client scripts.
+-#
+-if test &quot;$RUN_PARALLEL&quot; = &quot;yes&quot; ; then
+-
+-    #
+-    # Start scripts in parallel with make behaviour of startpar
+-    #
+-
+-    startopt=&quot;-p4 -t 30 -T 3 $(splashmake)&quot;
+-    eval $(startpar $startopt -M boot)
+-    failed=&quot;${failed:+$failed }$failed_service&quot;
+-    skipped=&quot;${skipped:+$skipped }$skipped_service&quot;
+-
+-    unset failed_service skipped_service startopt
+-
+-elif test -d ${bootrc}/ ; then
+-
+-    #
+-    # Start scripts in given link order
+-    #
+-    for i in ${bootrc}/S${rex}*; do
+-
+-	test -f $i || continue
+-
+-	B=${i##*/}
+-	script=${B#*S$rex}
+-	B=${B%$script}
+-
+-	if test &quot;$DO_CONFIRM&quot; = &quot;yes&quot; ; then
+-	    rc_confirm -t $CONFIRM_PROMPT_TIMEOUT &quot;Start bootup script ${script}&quot; &lt; $REDIRECT &gt; $REDIRECT 2&gt;&amp;1
+-	    case &quot;$?&quot; in
+-	    0) true     ;;
+-	    1) continue ;;
+-	    2) DO_CONFIRM=&quot;&quot;
+-	    esac
+-	fi
+-
+-	blogger &quot;$script start&quot;
+-
+-	if test -x &quot;$i&quot; ; then
+-		$i start
+-	else
+-	    echo Running $i
+-	    /bin/sh $i b
+-	    rc_status -v1 -r
+-	fi
+-	status=$?
+-	echo -en &quot;$rc_reset&quot;
+-	splashprogress &quot;$script start&quot;
+-
+-	case $status in
+-	[1-47])  failed=&quot;${failed:+$failed }$script&quot;   ;;
+-	[56])   skipped=&quot;${skipped:+$skipped }$script&quot; ;;
+-	0|*) ;;
+-	esac
+-
+-	blogger &quot;'$script start' exits with status $status&quot;
+-    done
+-fi
+-
+-splashtrigger &quot;rlreached B&quot;
+-
+-#
+-# Be verbose and print stats
+-#
+-echo -n &quot;System Boot Control: &quot;
+-echo -e &quot;The system has been ${stat}${extd}set up${norm}&quot;
+-if test -n &quot;$failed&quot; ; then
+-    n=$((${#failed} + 7))
+-    echo -n  &quot;Failed features: &quot;
+-    test $n -lt 47 &amp;&amp; echo -en &quot;\033[${COLUMNS}C\033[${n}D&quot;
+-    echo -e  &quot;${warn}${failed}${norm}&quot;
+-fi
+-if test -n &quot;$skipped&quot; ; then
+-    n=$((${#skipped} + 7))
+-    echo -n  &quot;Skipped features: &quot;
+-    test $n -lt 47 &amp;&amp; echo -en &quot;\033[${COLUMNS}C\033[${n}D&quot;
+-    echo -e  &quot;${attn}${skipped}${norm}&quot;
+-fi
+-
+-#
+-# Start user defined bootup script.
+-#
+-if test -f /etc/init.d/boot.local ; then
+-    echo -n &quot;System Boot Control: &quot;
+-    echo &quot;Running /etc/init.d/boot.local&quot;
+-    /bin/sh /etc/init.d/boot.local
+-    rc_status -v1 -r
+-    splashtrigger &quot;boot.local&quot;
+-fi
+-
+-#
+-# Stop blogd
+-#
+-test -x /sbin/blogd &amp;&amp; killproc -QUIT /sbin/blogd
+-
+-#
+-# Check for boot cycle detection
+-#
+-test -s /lib/bootcycle/stats &amp;&amp; . /lib/bootcycle/stats
+-
+-#
+-# Remember for master resource script
+-#
+-if test &quot;$DO_CONFIRM&quot; = &quot;yes&quot; ; then
+-    touch /var/run/do_confirm
+-fi
+-
+-#
+-# Restore old terminal settings
+-#
+-stty $otty
+-
+-# create config file if not yet done
+-xconf=0
+-if [ -f /etc/dmidecode.md5 ];then
+-	dmidecode | md5sum --check /etc/dmidecode.md5 || xconf=1
+-fi
+-if [ ! -f /etc/X11/xorg.conf ] ;then
+-	xconf=1
+-fi
+-if [ $xconf = 1 ] ;then
+-	/usr/sbin/sax2 -c 0 -a -i &amp;&gt;/dev/null
+-fi
+-dmidecode | md5sum &gt; /etc/dmidecode.md5
+-
+-#
+-# Let YaST2 finish its installation, if you installed with YaST2
+-#
+-if test -f /var/lib/YaST2/runme_at_boot ; then
+-    HOSTTYPE=$(uname -m)
+-    splashtrigger &quot;YaST&quot;
+-    exec 0&lt;&gt; $REDIRECT 1&gt;&amp;0 2&gt;&amp;0
+-    # if yast2 failed, this ensures proper system setup
+-    #ulimit -c unlimited
+-    touch /var/lib/YaST2/run_suseconfig
+-    if test -x /usr/lib/YaST2/startup/YaST2.Second-Stage; then
+-	/usr/lib/YaST2/startup/YaST2.Second-Stage
+-    else
+-	# oops, yast2 not installed
+-	rm -f /var/lib/YaST2/runme_at_boot
+-    fi
+-fi
+-# run SuSEconfig (with args) if needed
+-if test -f /var/lib/YaST2/run_suseconfig ; then
+-    /sbin/SuSEconfig `cat /var/lib/YaST2/run_suseconfig`
+-    rm -f /var/lib/YaST2/run_suseconfig
+-fi
+-
+-rc_reset
+-exit 0
+
+Added: kiwi-head/doc/examples/suse-11.1/suse-live-stick/root/etc/init.d/sax
+===================================================================
+--- kiwi-head/doc/examples/suse-11.1/suse-live-stick/root/etc/init.d/sax	2008-10-20 16:16:49 UTC (rev 1656)
++++ kiwi-head/doc/examples/suse-11.1/suse-live-stick/root/etc/init.d/sax	2008-10-21 09:15:15 UTC (rev 1657)
+@@ -0,0 +1,68 @@
++#!/bin/sh
++# Copyright (c) 2008 SuSE Linux AG, Nuernberg, Germany.
++# All rights reserved.
++#
++# Author: Marcus Sch&#228;fer
++#
++# /etc/init.d/sax
++#
++#   and it's symbolic link
++#
++# /usr/sbin/rcsax
++#
++### BEGIN INIT INFO
++# Provides:       sax
++# Required-Start: $remote_fs $syslog
++# Should-Start:
++# Required-Stop:
++# Should-Stop:
++# Default-Start:  3 5
++# Default-Stop: 
++# Description:    run sax2    
++# Short-Description: run sax2 if required 
++### END INIT INFO
++
++. /etc/rc.status
++
++# First reset status of this service
++rc_reset
++
++case &quot;$1&quot; in
++	start)
++		echo -n &quot;Creating X configuration...&quot;
++		xconf=0
++		if [ -f /etc/dmidecode.md5 ];then
++			dmidecode | md5sum --check /etc/dmidecode.md5 &amp;&gt;/dev/null || xconf=1
++		fi
++		if [ ! -f /etc/X11/xorg.conf ] ;then
++			xconf=1
++		fi
++		if [ $xconf = 1 ] ;then
++			/usr/sbin/sax2 -c 0 -a &amp;&gt;/dev/null
++		else
++			rc_status -s
++			rc_exit
++		fi
++		dmidecode | md5sum &gt; /etc/dmidecode.md5		
++		rc_status -v
++		;;
++	stop)
++		echo -n &quot;Creating X configuration...&quot;
++		rc_status -v
++		;;
++	try-restart)
++		$0 status &gt;/dev/null &amp;&amp;  $0 restart
++		rc_status
++		;;
++	restart)
++		$0 stop
++		$0 start
++		rc_status
++		;;
++	*)
++		echo &quot;Usage: $0 {start|stop|try-restart|restart}&quot;
++		exit 1
++		;;
++esac
++rc_exit
++
+
+
+Property changes on: kiwi-head/doc/examples/suse-11.1/suse-live-stick/root/etc/init.d/sax
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: kiwi-head/doc/examples/suse-11.1/suse-live-stick/root/etc/init.d/xdm
+===================================================================
+--- kiwi-head/doc/examples/suse-11.1/suse-live-stick/root/etc/init.d/xdm	2008-10-20 16:16:49 UTC (rev 1656)
++++ kiwi-head/doc/examples/suse-11.1/suse-live-stick/root/etc/init.d/xdm	2008-10-21 09:15:15 UTC (rev 1657)
+@@ -0,0 +1,259 @@
++#! /bin/bash
++# Copyright (c) 1996-2002 SuSE Linux AG, Nuernberg, Germany.
++# All rights reserved.
++#
++# Author: Florian La Roche, 1996
++#	  Werner Fink &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">werner at suse.de</A>&gt;, 1996,98,99
++#         Martin Scherbaum, 1997
++#         Reinhard Max &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">max at suse.de</A>&gt;, 1997
++#
++# Please send feedback to <A HREF="http://www.suse.de/feedback">http://www.suse.de/feedback</A>
++#
++# /etc/init.d/xdm
++#
++### BEGIN INIT INFO
++# Provides:          xdm
++# Required-Start:    $remote_fs sax
++# Should-Start: ypbind $syslog gpm firstboot kbd resmgr earlyxdm winbind acpid
++# Required-Stop:
++# Default-Start:     5
++# Default-Stop:
++# Description:       X Display Manager
++### END INIT INFO
++
++. /etc/rc.status
++. /etc/sysconfig/displaymanager
++. /etc/sysconfig/language
++. /etc/sysconfig/windowmanager
++test -e /etc/SuSEconfig/profile        &amp;&amp; . /etc/SuSEconfig/profile
++test -r /etc/profile.d/desktop-data.sh &amp;&amp; . /etc/profile.d/desktop-data.sh
++
++locale_vars=&quot;     \
++LANG              \
++LC_CTYPE          \
++LC_NUMERIC        \
++LC_TIME           \
++LC_COLLATE        \
++LC_MONETARY       \
++LC_MESSAGES       \
++LC_PAPER          \
++LC_NAME           \
++LC_ADDRESS        \
++LC_TELEPHONE      \
++LC_MEASUREMENT    \
++LC_IDENTIFICATION \
++LC_ALL&quot;
++
++unset LC_ALL
++for lc in $locale_vars
++do
++    eval val=&quot;\$RC_$lc&quot;
++    if test -n &quot;$val&quot;; then
++        eval $lc=&quot;\$RC_$lc&quot;
++        export $lc
++    fi
++done
++unset lc val
++
++test -z &quot;$DEFAULT_WM&quot; &amp;&amp; DEFAULT_WM=twm
++SAVEPATH=$PATH
++PATH=$PATH:/usr/X11R6/bin:/opt/gnome/bin:/usr/openwin/bin
++WINDOWMANAGER=&quot;`type -p ${DEFAULT_WM##*/}`&quot;
++PATH=$SAVEPATH
++export WINDOWMANAGER
++unset DEFAULT_WM SAVEPATH
++
++XDM_PIDFILE=&quot;/var/run/xdm.pid&quot;
++KDM_PIDFILE=&quot;/var/run/kdm.pid&quot;
++GDM_PIDFILE=&quot;/var/run/gdm.pid&quot;
++PIDFILE=$XDM_PIDFILE
++KDEROOTHOME=/root/.kdm
++export KDEROOTHOME
++XDMDIR=/etc/X11/xdm
++if [ -x /usr/bin/xdm ]; then
++  XDM_BIN=/usr/bin/xdm
++else
++  XDM_BIN=/usr/X11R6/bin/xdm
++fi
++if [ -x /usr/sbin/gdm ]; then
++  GDM_BIN=/usr/sbin/gdm
++else
++  GDM_BIN=/opt/gnome/sbin/gdm
++fi
++KDM_BIN=/opt/kde3/bin/kdm
++KDM4_BIN=/usr/bin/kdm
++WDM_BIN=/usr/bin/wdm
++RELOADSIGNAL=&quot;-HUP&quot;
++
++case &quot;${DISPLAYMANAGER##*/}&quot; in
++    kdm3)		 DISPLAYMANAGER=$KDM_BIN
++			 PIDFILE=$KDM_PIDFILE
++			 ;;
++    kdm|kde|KDM|KDE)	 DISPLAYMANAGER=$KDM_BIN
++			 if [ ! -r &quot;$DISPLAYMANAGER&quot; ]; then
++				DISPLAYMANAGER=$KDM4_BIN
++			 fi
++			 PIDFILE=$KDM_PIDFILE
++			 ;;
++    kdm4)                DISPLAYMANAGER=$KDM4_BIN
++			 PIDFILE=$KDM_PIDFILE
++			 ;;
++    xdm)		 DISPLAYMANAGER=$XDM_BIN
++			 ;;
++    gdm|GDM|Gnome|GNOME) DISPLAYMANAGER=$GDM_BIN
++			 PIDFILE=$GDM_PIDFILE
++			 RELOADSIGNAL=&quot;-USR1&quot;
++			 ;;
++    wdm|WDM)		 DISPLAYMANAGER=$WDM_BIN
++			 ;;
++    console)		 exit 0
++			 ;;
++    *)			 DISPLAYMANAGER=$XDM_BIN
++			 if test -x $KDM_BIN; then
++				DISPLAYMANAGER=$KDM_BIN
++				PIDFILE=$KDM_PIDFILE
++			 elif test -x $KDM4_BIN; then
++				DISPLAYMANAGER=$KDM4_BIN
++				PIDFILE=$KDM_PIDFILE
++			 fi 
++			 ;;
++esac
++test ! -x &quot;$DISPLAYMANAGER&quot; &amp;&amp; DISPLAYMANAGER=$XDM_BIN
++
++DM=${DISPLAYMANAGER##*/}
++
++rc_reset
++case &quot;$1&quot; in
++    start)
++        # Avoid duplicated messages when earlyxdm is in use
++	if [ &quot;$DISPLAYMANAGER&quot; = &quot;$KDM_BIN&quot; -a -s $KDM_PIDFILE ]; then
++	   /sbin/checkproc -p $KDM_PIDFILE $KDM_BIN &amp;&amp; rc_exit 0
++	elif [ &quot;$DISPLAYMANAGER&quot; = &quot;$KDM4_BIN&quot; -a -s $KDM_PIDFILE ]; then
++	   /sbin/checkproc -p $KDM_PIDFILE $KDM4_BIN &amp;&amp; rc_exit 0
++	fi
++
++        if [ &quot;$DISPLAYMANAGER&quot; != &quot;$KDM_BIN&quot; -a \
++             &quot;$DISPLAYMANAGER&quot; != &quot;$KDM4_BIN&quot; ]; then
++           test -x /etc/X11/xdm/SuSEconfig.xdm &amp;&amp; \
++           MD5DIR=&quot;/var/adm/SuSEconfig/md5&quot; \
++              /etc/X11/xdm/SuSEconfig.xdm | \
++              sed 's+\(.*\)+/etc/init.d/xdm: \1+g' | \
++              /bin/logger
++        fi        
++
++	echo -n &quot;Starting service $DM&quot;
++	# Don't start xdm if no Xserver is configured and xdm is not 
++	# configured for remote access 
++	if [ ! -x /usr/bin/X -a ! -x /usr/X11R6/bin/X -a \
++		&quot;$DISPLAYMANAGER_REMOTE_ACCESS&quot; = &quot;no&quot; ]; then 
++			rc_status -u 
++			rc_exit 
++	fi
++	if [ &quot;$DISPLAYMANAGER&quot; = &quot;$GDM_BIN&quot; -a \
++		 &quot;$DISPLAYMANAGER_REMOTE_ACCESS&quot; = &quot;yes&quot;  -a \
++		 &quot;$DISPLAYMANAGER_STARTS_XSERVER&quot; = &quot;no&quot; ]; then
++		XDMOPTIONS=&quot;--no-console&quot;
++	fi
++	# Graphical failsafe mode (Bug #246158).
++	#
++	# Needs changes in kernel commandline of &quot;Failsafe&quot; entry in
++	# /boot/grub/menu.lst.
++	#
++	#  * use the same &quot;vga&quot; option value as in the non-&quot;Failsafe&quot; entry
++	#  * remove &quot;3&quot; option (runlevel)
++	#  * add &quot;x11failsafe&quot; option
++	if cat /proc/cmdline | grep -q x11failsafe; then
++            if [ -f /etc/X11/xorg.conf.install ]; then
++		export XORGCONFIG=xorg.conf.install
++                echo 
++                echo &quot;Using failsafe X.Org configuration /etc/X11/xorg.conf.install&quot;
++            else
++                echo
++                echo &quot;The failsafe X.Org configuration /etc/X11/xorg.conf.install no longer exists.&quot;
++                echo &quot;Either move it back (if still available) or copy /etc/X11/xorg.conf to&quot;
++                echo &quot;/etc/X11/xorg.conf.install to use the native graphics driver instead of the&quot;
++                echo &quot;failsafe graphics driver. Of course the latter option no longer can be called&quot;
++                echo &quot;failsafe.&quot;
++                rc_status -u
++                rc_exit
++            fi
++	fi
++	startproc -p $PIDFILE $DISPLAYMANAGER $XDMOPTIONS || rc_failed
++	# After a crash or a kill signal we may have
++	# a wrong owner ship of /dev/xconsole
++	if rc_status ; then
++	    if test -x $XDMDIR/TakeDevices ; then
++		$XDMDIR/TakeDevices
++	    else
++		chown root:tty /dev/xconsole /dev/tty0
++		chmod 622      /dev/xconsole /dev/tty0
++	    fi
++	fi
++	rc_status -v
++	;;
++    stop)
++        # make sure to stop the running one (Bug #306035)
++	if test -s $KDM_PIDFILE; then
++	    PIDFILE=$KDM_PIDFILE
++	elif test -s $GDM_PIDFILE; then
++	    PIDFILE=$GDM_PIDFILE
++	elif test -s $XDM_PIDFILE; then
++	    PIDFILE=$XDM_PIDFILE
++	fi
++	if test -f $PIDFILE; then
++	    PID=$(cat $PIDFILE)
++	    DISPLAYMANAGER=$(ps -p $PID -o command h | cut -d' ' -f1)
++	fi
++	DM=${DISPLAYMANAGER##*/}
++
++	echo -n &quot;Shutting down service $DM&quot;
++
++	# 
++	# killproc(8) sleep upto five seconds and sends
++	# SIGKILL if xdm does not terminate within
++	#
++
++	killproc -p $PIDFILE -TERM $DISPLAYMANAGER
++	rc_status -v
++	;;
++    restart)
++	$0 stop
++        $0 start
++	rc_status
++	;;
++    reload|force-reload)
++        test -x /etc/X11/xdm/SuSEconfig.xdm &amp;&amp; \
++        MD5DIR=&quot;/var/adm/SuSEconfig/md5&quot; \
++          /etc/X11/xdm/SuSEconfig.xdm | \
++          sed 's+\(.*\)+/etc/init.d/xdm: \1+g' | \
++          /bin/logger
++	echo -n &quot;Reload service $DM&quot;
++	killproc -p $PIDFILE $RELOADSIGNAL $DISPLAYMANAGER
++	rc_status -v
++	;;
++    status|check)
++	echo -n &quot;Checking for service ${DM}: &quot;
++	checkproc -p $PIDFILE $DISPLAYMANAGER
++	rc_status -v
++	;;
++    probe)
++	if test $XDMDIR/xdm-config -nt $PIDFILE -o \
++	        $XDMDIR/Xservers   -nt $PIDFILE
++	then
++	    echo reload
++	fi
++	;;
++    try-restart|condrestart)
++	$0 status
++	if test $? = 0; then
++	    $0 restart
++	else
++	    rc_reset
++	fi
++	rc_status
++	;;
++    *)
++	echo &quot;Usage: $0 {start|stop|status|restart|reload|force-reload|probe|try-restart}&quot;
++	exit 1
++esac
++rc_exit
+
+
+Property changes on: kiwi-head/doc/examples/suse-11.1/suse-live-stick/root/etc/init.d/xdm
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-10-20 16:16:49 UTC (rev 1656)
++++ kiwi-head/kiwi.pl	2008-10-21 09:15:15 UTC (rev 1657)
+@@ -26,13 +26,6 @@
+ $DB::inhibit_exit = 0;
+ 
+ #============================================
+-# Overwrite
+-#--------------------------------------------
+-BEGIN {
+-	*CORE::GLOBAL::warn = sub { return $_[0]; };
+-}
+-
+-#============================================
+ # Modules
+ #--------------------------------------------
+ use warnings;
+@@ -51,7 +44,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;2.94&quot;;
++our $Version       = &quot;2.95&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+@@ -1917,7 +1910,7 @@
+ 			my $code = $? &gt;&gt; 8;
+ 			my $type;
+ 			if ($code != 0) {
+-				$main::BT.=cluck ($main::TT.$main::TL++);
++				$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+ 				return undef;
+ 			}
+ 			SWITCH: for ($data) {
+@@ -1953,7 +1946,7 @@
+ 				}
+ 			}
+ 		} else {
+-			$main::BT.=cluck ($main::TT.$main::TL++);
++			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+ 			return undef;
+ 		}
+ 	}
+@@ -1971,7 +1964,7 @@
+ 	my $dir    = shift;
+ 	my $config = &quot;$dir/$ConfigName&quot;;
+ 	if (! -d $dir) {
+-		$main::BT.=cluck ($main::TT.$main::TL++);
++		$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		return undef;
+ 	}
+ 	if (-f $config) {
+@@ -1980,10 +1973,10 @@
+ 	my @globsearch = glob ($dir.&quot;/*.kiwi&quot;);
+ 	my $globitems  = @globsearch;
+ 	if ($globitems == 0) {
+-		$main::BT.=cluck ($main::TT.$main::TL++);
++		$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		return undef;
+ 	} elsif ($globitems &gt; 1) {
+-		$main::BT.=cluck ($main::TT.$main::TL++);
++		$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		return undef;
+ 	} else {
+ 		$config = pop @globsearch;
+
+Modified: kiwi-head/modules/KIWILog.pm
+===================================================================
+--- kiwi-head/modules/KIWILog.pm	2008-10-20 16:16:49 UTC (rev 1656)
++++ kiwi-head/modules/KIWILog.pm	2008-10-21 09:15:15 UTC (rev 1657)
+@@ -144,7 +144,7 @@
+ 	my $level   = $this-&gt;{level};
+ 	my $date    = $this-&gt;{date};
+ 	if (! defined $smem) {
+-		$main::BT.=cluck ($main::TT.$main::TL++);
++		$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		return undef;
+ 	}
+ 	my $data;
+@@ -181,7 +181,7 @@
+ 	my $this = shift;
+ 	my $smem = $this-&gt;{smem};
+ 	if (! defined $smem) {
+-		$main::BT.=cluck ($main::TT.$main::TL++);
++		$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		return undef;
+ 	}
+ 	return $smem -&gt; get();
+@@ -407,7 +407,7 @@
+ 		return $this;
+ 	}
+ 	if (! (open EFD,&quot;&gt;&gt;$file&quot;)) {
+-		$main::BT.=cluck ($main::TT.$main::TL++);
++		$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		return undef;
+ 	}
+ 	binmode(EFD,':unix');
+@@ -497,7 +497,7 @@
+ 			$result = $needcr.$logdata;
+ 		} elsif ($lglevel == 3) {
+ 			$result = $needcr.$date.$logdata;
+-			$main::BT.=cluck ($main::TT.$main::TL++);
++			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		} else {
+ 			$result = Carp::longmess($needcr.$logdata);
+ 		}
+@@ -677,7 +677,7 @@
+ 	}
+ 	if (! (open FD,&quot;&gt;$file&quot;)) {
+ 		$this -&gt; warning (&quot;Couldn't open log channel: $!\n&quot;);
+-		$main::BT.=cluck ($main::TT.$main::TL++);
++		$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		return undef;
+ 	}
+ 	binmode(FD,':unix');
+@@ -725,7 +725,7 @@
+ 	my $line = &quot;&quot;;
+ 	my $cr   = 0;
+ 	if (! open (FD, &quot;&gt;$rootLog&quot;)) {
+-		$main::BT.=cluck ($main::TT.$main::TL++);
++		$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		return undef;
+ 	}
+ 	foreach my $l (@stream) {
+@@ -878,7 +878,7 @@
+ 		$this -&gt; skipped ();
+ 		$this -&gt; {smem} -&gt; closeSegment();
+ 		undef $this -&gt; {smem};
+-		$main::BT.=cluck ($main::TT.$main::TL++);
++		$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		return undef;
+ 	}
+ 	if ($child) {
+
+Modified: kiwi-head/modules/KIWIManager.pm
+===================================================================
+--- kiwi-head/modules/KIWIManager.pm	2008-10-20 16:16:49 UTC (rev 1656)
++++ kiwi-head/modules/KIWIManager.pm	2008-10-21 09:15:15 UTC (rev 1657)
+@@ -303,7 +303,7 @@
+ 			$kiwi -&gt; doNorm();
+ 		}
+ 		$this -&gt; resetInstallationSource();
+-		$main::BT.=cluck ($main::TT.$main::TL++);
++		$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		return undef;
+ 	}
+ 	$kiwi -&gt; done ();
+@@ -497,6 +497,7 @@
+ 				$zconfig-&gt;newval('main', $optionParam, 'yes');
+ 			}
+ 			$zconfig-&gt;RewriteConfig;
++			$kiwi -&gt; done ();
+ 		}
+ 	}
+ 
+@@ -564,6 +565,7 @@
+ 				$zconfig-&gt;delval('main', $optionParam);
+ 			}
+ 			$zconfig-&gt;RewriteConfig;
++			$kiwi -&gt; done ();
+ 		}
+ 	}
+ 	
+@@ -952,6 +954,7 @@
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+ 		print $fd &quot;export YAST_IS_RUNNING=true\n&quot;;
++		print $fd &quot;export ZYPP_CONF=/var/cache/kiwi/zypp.conf\n&quot;;
+ 		print $fd &quot;chroot $root @zypper refresh &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @zypper install &quot;;
+@@ -1050,6 +1053,7 @@
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+ 		print $fd &quot;export YAST_IS_RUNNING=true\n&quot;;
++		print $fd &quot;export ZYPP_CONF=/var/cache/kiwi/zypp.conf\n&quot;;
+ 		print $fd &quot;chroot $root @zypper refresh &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @zypper remove &quot;;
+@@ -1168,6 +1172,7 @@
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+ 		print $fd &quot;export YAST_IS_RUNNING=true\n&quot;;
++		print $fd &quot;export ZYPP_CONF=/var/cache/kiwi/zypp.conf\n&quot;;
+ 		print $fd &quot;chroot $root @zypper refresh &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+@@ -1427,6 +1432,7 @@
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+ 			print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+ 			print $fd &quot;export YAST_IS_RUNNING=true\n&quot;;
++			print $fd &quot;export ZYPP_CONF=$root/var/cache/kiwi/zypp.conf\n&quot;;
+ 			print $fd &quot;@zypper --root $root refresh &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+@@ -1492,6 +1498,7 @@
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+ 			print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+ 			print $fd &quot;export YAST_IS_RUNNING=true\n&quot;;
++			print $fd &quot;export ZYPP_CONF=/var/cache/kiwi/zypp.conf\n&quot;;
+ 			print $fd &quot;chroot $root @zypper refresh &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+
+Modified: kiwi-head/modules/KIWIQX.pm
+===================================================================
+--- kiwi-head/modules/KIWIQX.pm	2008-10-20 16:16:49 UTC (rev 1656)
++++ kiwi-head/modules/KIWIQX.pm	2008-10-21 09:15:15 UTC (rev 1657)
+@@ -84,7 +84,7 @@
+ 		if (defined $main::kiwi) {
+ 			$main::kiwi-&gt;loginfo (&quot;EXEC [Failed: $prog]\n&quot;);
+ 		}
+-		$main::BT.=cluck ($main::TT.$main::TL++);
++		$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		return 0xffff;
+ 	}
+ 	#==========================================
+
+Modified: kiwi-head/modules/KIWIXML.pm
+===================================================================
+--- kiwi-head/modules/KIWIXML.pm	2008-10-20 16:16:49 UTC (rev 1656)
++++ kiwi-head/modules/KIWIXML.pm	2008-10-21 09:15:15 UTC (rev 1657)
+@@ -2658,7 +2658,7 @@
+ 		}
+ 	}
+ 	if ( $rootError ) {
+-		$main::BT.=cluck ($main::TT.$main::TL++);
++		$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		return undef;
+ 	}
+ 	my $origroot = $root;
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-20 16:16:49 UTC (rev 1656)
++++ kiwi-head/rpm/kiwi.changes	2008-10-21 09:15:15 UTC (rev 1657)
+@@ -1,4 +1,13 @@
+ -------------------------------------------------------------------
++Tue Oct 21 10:13:10 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v2.95
++- export ZYPP_CONF to point to /var/cache/kiwi/zypp.conf
++- removed warn overwrite, use eval { Carp::longmess ... }
++- update suse-11.1/suse-live-stick example to serve as
++  1GB stick with KDE4 + dmidecoded X11 setup
++
++-------------------------------------------------------------------
+ Mon Oct 20 17:43:21 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.94
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-10-20 16:16:49 UTC (rev 1656)
++++ kiwi-head/rpm/kiwi.spec	2008-10-21 09:15:15 UTC (rev 1657)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 2.94
++# spec file for package kiwi (Version 2.95
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        2.94
++Version:        2.95
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000748.html">[Kiwi-devel] r1656 - in kiwi-head: . modules rpm	system/boot/ix86/oemboot
+</A></li>
+	<LI>Next message: <A HREF="000750.html">[Kiwi-devel] r1658 -	kiwi-head/doc/examples/suse-11.1/suse-live-stick
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#749">[ date ]</a>
+              <a href="thread.html#749">[ thread ]</a>
+              <a href="subject.html#749">[ subject ]</a>
+              <a href="author.html#749">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

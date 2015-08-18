@@ -1,0 +1,444 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1391 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1391%20-%20kiwi-head/modules&In-Reply-To=%3C200806191944.m5JJiGNp003202%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000480.html">
+   <LINK REL="Next"  HREF="000482.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1391 - kiwi-head/modules</H1>
+    <B>jcborn at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1391%20-%20kiwi-head/modules&In-Reply-To=%3C200806191944.m5JJiGNp003202%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1391 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Thu Jun 19 21:44:16 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000480.html">[Kiwi-devel] [SVN:KIWI-Team] r1390 - kiwi-head/modules
+</A></li>
+        <LI>Next message: <A HREF="000482.html">[Kiwi-devel] [SVN:KIWI-Team] r1392 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#481">[ date ]</a>
+              <a href="thread.html#481">[ thread ]</a>
+              <a href="subject.html#481">[ subject ]</a>
+              <a href="author.html#481">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: Thu Jun 19 21:44:15 2008
+New Revision: 1391
+
+Added:
+   kiwi-head/modules/KIWIProductData.pm
+
+Log:
+- new module for administration of metadata variables and product
+  information
+- shall extract the prodvar/prodinfo/prodopts handling in extra module
+  (this is needed in multiple places)
+- this is not integrated into KIWICollect yet!
+
+
+Added: kiwi-head/modules/KIWIProductData.pm
+==============================================================================
+--- (empty file)
++++ kiwi-head/modules/KIWIProductData.pm	Thu Jun 19 21:44:15 2008
+@@ -0,0 +1,363 @@
++#================
++# FILE          : KIWIProductData.pm
++#----------------
++# PROJECT       : OpenSUSE Build-Service
++# COPYRIGHT     : (c) 2006 SUSE LINUX Products GmbH, Germany
++#               :
++# AUTHOR        : Jan-Christoph Bornschlegel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">jcborn at suse.de</A>&gt;
++#               :
++# BELONGS TO    : Operating System images
++#               :
++# DESCRIPTION   : This module administers all kinds of product
++#               : data stored in different structures
++#               :
++#               :
++# STATUS        : Development
++#----------------
++
++package KIWIProductData;
++
++use strict;
++
++
++#===========================
++# This module deals with the following datasets:
++#   &lt;productvar name=&quot;DISTNAME&quot;&gt;JeOS&lt;/productvar&gt;
++#   &lt;productinfo name=&quot;PROVIDES&quot;&gt;product:$DISTNAME = $DISTVERSION&lt;/productinfo&gt;
++#   &lt;productoption name=&quot;SOURCEMEDIUM&quot;&gt;2&lt;/productoption&gt;
++# These three types of information have two different kinds of representations.
++# For details look at KIWIXML.pl and the following methods therein:
++# - sub getInstSourceProductVar
++# - sub getInstSourceProductOption
++# - sub getInstSourceProductStuff
++# - sub getInstSourceProductInfo
++#
++# The information has these structures:
++# - var/option:
++#   + name=value hashes
++# - info:
++#   + index=[name, value] hash of lists
++#
++# Reason for the difference is that the info flows into the content file
++# and there the order matters (according to Rudi)
++#---------------------------
++
++
++
++#==========================================
++# Constructor
++#------------------------------------------
++sub new
++{
++  my $class = shift;
++  my $this = {
++    m_collect =&gt; shift,
++    prodinfo  =&gt; undef,
++    prodvars  =&gt; undef,
++    prodopts  =&gt; undef,
++    m_trans   =&gt; undef,
++    m_prodinfo_updated   =&gt; 0,
++    m_prodvars_updated   =&gt; 0,
++    m_prodopts_updated   =&gt; 0,
++  };
++  bless ($this, $class);
++
++  return undef if not defined($this-&gt;{m_collect});
++  return $this;
++}
++# / constructor
++
++
++
++#==========================================
++# addSet
++#------------------------------------------
++# add a set of information to the respective
++# data structure
++#------------------------------------------
++sub addSet
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  my $name = shift;
++  my $hashref = shift;
++
++  if(not(defined($name) and defined($hashref))) {
++    $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;Name and hashref must be defined!&quot;);
++    return undef;
++  }
++  else {
++    my $what = shift;
++    return undef if not defined $what;	#just to be on the safe side
++    if($what eq &quot;prodinfo&quot;) {
++      foreach my $index(keys(%{$hashref})) {
++	my @list = @{$hashref-&gt;{$index}};
++	if(not defined($this-&gt;{$what}-&gt;{$list[0]})) {
++	  $this-&gt;{$what}-&gt;{$index} = \@list;
++	  $this-&gt;{$what.&quot;-indices&quot;}-&gt;{$list[0]} = $index;
++	  $this-&gt;{m_prodinfo_updated} = 1;
++	}
++	else {
++	  $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;ProductData::addSet(): element with index $index already exists in m_inforef hash!&quot;);
++	}
++      }
++      #%{$this-&gt;{$what.&quot;-hash&quot;}} = map { $_-&gt;[0], $_-&gt;[1] } values %{$this-&gt;{$what}};
++    }
++    elsif($what eq &quot;prodvars&quot; or $what eq &quot;prodopts&quot;) {
++      foreach my $name(keys(%{$hashref})) {
++	my $value = $hashref-&gt;{$name};
++	if(not defined($this-&gt;{$what}-&gt;{$name})) {
++	  $this-&gt;{$what}-&gt;{$name} = $value;
++	  $this-&gt;{&quot;m_&quot;.$what.&quot;_updated&quot;} = 1;
++	}
++	else {
++	  $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;ProductData::addSet(): element with index $name already exists in $what hash!&quot;);
++	}
++      }
++    }
++    else {
++      # error
++	  $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;ProductData::addSet(): $what is not a valid element!&quot;);
++    }
++  }
++}
++# /addSet
++
++
++
++#==========================================
++# getSet
++#------------------------------------------
++# retrieve a reference to a specified hash
++#------------------------------------------
++sub getSet
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  my $name = shift;
++  if(not defined($name)) {
++    return undef;
++  }
++  else {
++    return $this-&gt;{$name};
++  }
++}
++# /getSet
++
++
++
++#==========================================
++# getVar
++#------------------------------------------
++# retrieve a specific variable by name
++#------------------------------------------
++sub getVar
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return &quot;&quot;;
++  }
++  my $var = shift;
++  if(not defined($var)) {
++    return &quot;&quot;;
++  }
++  else {
++    if(defined($this-&gt;{prodvars}-&gt;{$var})) {
++      return $this-&gt;{prodvars}-&gt;{$var};
++    }
++    else {
++      $this-&gt;{m_collect}-&gt;logger()-&gt;warning(&quot;ProductData:getVar($var) is not set&quot;);
++      return &quot;&quot;;
++    }
++  }
++}
++# /getVar
++
++
++
++#==========================================
++# getInfo
++#------------------------------------------
++# retrieve a specific productinfo by name
++#------------------------------------------
++sub getInfo
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return &quot;&quot;;
++  }
++  my $info = shift;
++  if(not defined($info)) {
++    return &quot;&quot;;
++  }
++  else {
++    if(defined($this-&gt;{'prodinfo'}-&gt;{$this-&gt;{'prodinfo-indices'}-&gt;{$info}})) {
++      return $this-&gt;{'prodinfo'}-&gt;{$this-&gt;{'prodinfo-indices'}-&gt;{$info}}-&gt;[1];
++    }
++    else {
++      $this-&gt;{m_collect}-&gt;logger()-&gt;warning(&quot;ProductData:getInfo($info) is not set&quot;);
++      return &quot;&quot;;
++    }
++  }
++}
++# /getInfo
++
++
++
++#==========================================
++# getOpt
++#------------------------------------------
++# retrieve a specific productopt by name
++#------------------------------------------
++sub getOpt
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return &quot;&quot;;
++  }
++  my $opt = shift;
++  if(not defined($opt)) {
++    return &quot;&quot;;
++  }
++  else {
++    if(defined($this-&gt;{prodopts}-&gt;{$opt})) {
++      return $this-&gt;{prodopts}-&gt;{$opt};
++    }
++    else {
++      $this-&gt;{m_collect}-&gt;logger()-&gt;warning(&quot;ProductData:getOpt($opt) is not set&quot;);
++      return &quot;&quot;;
++    }
++  }
++}
++# /getOpt
++
++
++
++#==========================================
++# internal (&quot;private&quot;) methods
++#------------------------------------------
++
++
++
++#==========================================
++# _expand
++#------------------------------------------
++# expand variables in other variables
++#------------------------------------------
++sub _expand
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++
++  #------------------------------------------
++  # The workflow shall be as follows:
++  # - check if the vars changed (must be set by
++  #   addSet for instance)
++  # - if yes, reread the variables to the trans-
++  #   formation hash
++  # - use the transformation hash's content to
++  #   substitute all occurences of $varname in
++  #   any variable's content
++  #------------------------------------------
++
++  # make m_trans hash up to date:
++  if($this-&gt;{m_prodinfo_updated}) {
++    foreach my $i(keys(%{$this-&gt;{prodinfo}})) {
++      if(not defined($this-&gt;{m_trans}-&gt;{$i}) or $this-&gt;{m_trans}-&gt;{$this-&gt;{prodinfo}-&gt;{$i}-&gt;[0]} ne $this-&gt;{prodinfo}-&gt;{$i}-&gt;[0]) {
++	$this-&gt;{m_trans}-&gt;{$this-&gt;{prodinfo}-&gt;{$i}-&gt;[0]} = $this-&gt;{prodinfo}-&gt;{$i}-&gt;[1];
++	$this-&gt;{m_prodinfo_updated} = 0;
++      }
++    }
++  }
++
++  if($this-&gt;{m_prodvars_updated}) {
++    foreach my $var(keys(%{$this-&gt;{prodvars}})) {
++      if(not defined($this-&gt;{m_trans}-&gt;{$var}) or $this-&gt;{m_trans}-&gt;{$var} ne $this-&gt;{prodvars}-&gt;{$var}) {
++	$this-&gt;{m_trans}-&gt;{$var} = $this-&gt;{prodvars}-&gt;{$var};
++	$this-&gt;{m_prodvars_updated} = 0;
++      }
++    }
++  }
++
++  if($this-&gt;{m_prodopts_updated}) {
++    foreach my $opt(keys(%{$this-&gt;{prodopts}})) {
++      if(not defined($this-&gt;{m_trans}-&gt;{$opt}) or $this-&gt;{m_trans}-&gt;{$opt} ne $this-&gt;{prodopts}-&gt;{$opt}) {
++	$this-&gt;{m_trans}-&gt;{$opt} = $this-&gt;{prodopts}-&gt;{$opt};
++	$this-&gt;{m_prodopts_updated} = 0;
++      }
++    }
++  }
++
++  # now substitute:
++  foreach my $i(keys(%{$this-&gt;{prodinfo}})) {
++    $this-&gt;{prodinfo}-&gt;{$i}-&gt;[1] = $this-&gt;_substitute($this-&gt;{prodinfo}-&gt;{$i}-&gt;[1]);
++  }
++  foreach my $name(keys(%{$this-&gt;{prodvars}})) {
++    $this-&gt;{prodvars}-&gt;{$name} = $this-&gt;_substitute($this-&gt;{prodvars}-&gt;{$name});
++  }
++  foreach my $name(keys(%{$this-&gt;{prodopts}})) {
++    $this-&gt;{prodopts}-&gt;{$name} = $this-&gt;_substitute($this-&gt;{prodopts}-&gt;{$name});
++  }
++ 
++  return 0;
++}
++
++
++
++#==========================================
++# _substitute
++#------------------------------------------
++# substitute variables in strings
++# use m_trans as translation table.
++# Redo a line if one variable contains another
++# examlpe:
++#   VERSION = 11
++#   RELEASE = 0
++#   FULLVER = $VERSION.$RELEASE
++#   PRODUCT = openSUSE-$FULLVER
++# shall expand to:
++#   PRODUCT = openSUSE-11.0
++# if product is expanded first:
++#   PRODUCT = openSUSE-$FULLVER and redo expansion
++#   until all $ are slashed
++#------------------------------------------
++sub _substitute
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++
++  my $string = shift;
++  if(not defined($string)) {
++    return undef;
++  }
++
++  #expression: \$([A-Za-z_]*).* = a dollar sign followed by any character/underscore combination
++  #while($string =~ m{\$([A-Za-z]*).*}) {
++  while($string =~ m{(\$)([A-Za-z_]*).*}) {
++    if(defined($this-&gt;{m_trans}-&gt;{$2})) {
++      my $repl = $this-&gt;{m_trans}-&gt;{$2};
++      $string =~ s{\$$2}{$repl};
++    }
++    else {
++      $this-&gt;{m_collect}-&gt;logger()-&gt;warning(&quot;ProductData::_substitute: pattern $1 is not in the translation hash!&quot;);
++      $string =~ s{\$$2}{--NOTDEFINED--};
++      next;
++    }
++  }
++
++  return $string;
++}
++
++
++
++
++1;
++
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000480.html">[Kiwi-devel] [SVN:KIWI-Team] r1390 - kiwi-head/modules
+</A></li>
+	<LI>Next message: <A HREF="000482.html">[Kiwi-devel] [SVN:KIWI-Team] r1392 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#481">[ date ]</a>
+              <a href="thread.html#481">[ thread ]</a>
+              <a href="subject.html#481">[ subject ]</a>
+              <a href="author.html#481">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

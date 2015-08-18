@@ -1,0 +1,317 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1584 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1584%20-%20kiwi-head/modules&In-Reply-To=%3C200809251135.m8PBZJZ1000209%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000680.html">
+   <LINK REL="Next"  HREF="000682.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1584 - kiwi-head/modules</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1584%20-%20kiwi-head/modules&In-Reply-To=%3C200809251135.m8PBZJZ1000209%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1584 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Thu Sep 25 13:35:19 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000680.html">[Kiwi-devel] r1583 - in kiwi-head: . modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000682.html">[Kiwi-devel] r1585 - kiwi-head/rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#681">[ date ]</a>
+              <a href="thread.html#681">[ thread ]</a>
+              <a href="subject.html#681">[ subject ]</a>
+              <a href="author.html#681">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2008-09-25 13:35:18 +0200 (Thu, 25 Sep 2008)
+New Revision: 1584
+
+Modified:
+   kiwi-head/modules/KIWIRepoMetaHandler.pm
+Log:
+- fixed empty name bug
+- added some access methods
+- fixed access method getPluginList
+- added enambleAll method
+
+
+Modified: kiwi-head/modules/KIWIRepoMetaHandler.pm
+===================================================================
+--- kiwi-head/modules/KIWIRepoMetaHandler.pm	2008-09-25 10:41:59 UTC (rev 1583)
++++ kiwi-head/modules/KIWIRepoMetaHandler.pm	2008-09-25 11:35:18 UTC (rev 1584)
+@@ -35,7 +35,7 @@
+     m_collect	=&gt; undef,     # phone back to KIWICollect (getMediaNumbers and the like)
+     m_handlers	=&gt; {},	      # list of specialised handlers
+     m_medianame	=&gt; undef,     # name of the media (CD, DVD, ...)
+-    m_baseurl	=&gt; undef,     # base url where $MEDIUMNAME$NR reside
++    m_baseurl	=&gt; undef,     # base url where $MEDIUMNAME$NR reside (m_united that is)
+   };
+   bless ($this, $class);
+ 
+@@ -44,7 +44,7 @@
+   if(not defined($this-&gt;{m_collect})) {
+     return undef; # rock hard get outta here: caller must check retval anyway
+   }
+-  $this-&gt;{m_unitedir}	= $this-&gt;{m_collect}-&gt;unitedDir();
++  #$this-&gt;{m_unitedir}	= $this-&gt;{m_collect}-&gt;unitedDir();
+   #$this-&gt;{m_logger}	= $this-&gt;{m_collect}-&gt;logger();
+ 
+   $this-&gt;gossip(&quot;Created $class object successfully.&quot;);
+@@ -146,10 +146,13 @@
+   my $retval = 0;
+   my $dir = shift;
+   if(not defined($dir)) {
+-    return $retval;
++    $dir = $this-&gt;collect()-&gt;productData()-&gt;getOpt(&quot;PLUGIN_DIR&quot;);
++    if(not defined($dir)) {
++      return $retval;
++    }
+   }
+-  # remove annoying trailing slashes:
+-  #$dir =~ s{(.*)/+$}{$1};
++
++  my $inidir = $this-&gt;collect()-&gt;productData()-&gt;getOpt(&quot;INI_DIR&quot;);
+   unshift @INC, $dir;
+   if(not opendir(PLUGINDIR, &quot;$dir&quot;)) {
+     $this-&gt;gossip(&quot;loadPlugins: cannot open directory $dir&quot;);
+@@ -159,18 +162,36 @@
+   my @plugins = readdir(PLUGINDIR);
+   closedir(PLUGINDIR);
+ 
++  # fish out plugins:
++  my %plugins;
+   foreach my $p(@plugins) {
+-    chomp $p;
+-    next if(-d &quot;$p&quot;);
+-    next if($p !~ m{.*Plugin[.]pm});
++    chomp($p);
++    next if( -d &quot;$p&quot;);
++    if($p =~m{(.*Plugin)\.pm}) {
++      my $prefix;
++      if(defined($inidir)) {
++	$prefix = &quot;$inidir/&quot;;
++      }
++      else {
++	$prefix = &quot;$dir/&quot;;
++      }
++      if( -f &quot;$prefix$1.ini&quot;) {
++	$plugins{$1} = &quot;$prefix$1.ini&quot;;
++      }
++      else {
++	$this-&gt;collect()-&gt;logger()-&gt;warning(&quot;[W] loadPlugins: no ini file found for plugin &lt;$1&gt;, skipping\n&quot;);
++      }
++    }
++  }
+ 
+-    my $loadsuccess = $this-&gt;loadPlugin(&quot;$dir/$p&quot;);
++  foreach my $p(keys(%plugins)) {
++    my $loadsuccess = $this-&gt;loadPlugin(&quot;$dir/$p&quot;, $plugins{$p});
+     if($loadsuccess == 1) {
+       $this-&gt;gossip(&quot;loadPlugins: loaded plugin $p from url $dir successfully.&quot;);
+       $retval++;
+     }
+     else {
+-      $this-&gt;gossip(&quot;loadPlugins: failed to load plugin $p from url $dir!&quot;);
++      $this-&gt;collect()-&gt;logger()-&gt;error(&quot;[E] loadPlugins: failed to load plugin &lt;$p&gt; from url &lt;$dir&gt;!&quot;);
+     }
+   }
+ 
+@@ -180,7 +201,7 @@
+ 
+ 
+ #...
+-# loadPlugin(FILE)
++# loadPlugin(plugin, inifile)
+ # - load a specific plugin and do all the checks
+ #   (required packages, directories, order number free etc.)
+ # return 1 on success, 0 on failure
+@@ -191,29 +212,37 @@
+   my $retval = 0;
+ 
+   my $file = shift;
++  if($file =~ m{^.*/[a-zA-Z_-]+$}) {
++    $file .= &quot;.pm&quot;;
++  }
+   if(not(defined($file) and -f $file)) {
+-    $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;loadPlugin: file=$file maybe not readable&quot;);
++    $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;[E] loadPlugin: file=&lt;$file&gt; maybe not readable&quot;);
+     return $retval;
+   }
+ 
+   $file =~ m{(.*)/(.*)([.]pm)$};
+   my $plugin = $2;
+   if(not defined($plugin)) {
+-    $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;loadPlugin: something in regexp broken: $file =~ m{(.*)/(.*)([.]pm)$}...?&quot;);
++    $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;[E] loadPlugin: something in regexp broken: $file =~ m{(.*)/(.*)([.]pm)$}...?&quot;);
+     return $retval;
+   }
+ 
+   eval &quot;require $plugin&quot;;
+   if($@) {
+-    $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;loadPlugin: loading $plugin failed&quot;);
++    $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;[E] loadPlugin: loading &lt;$plugin&gt; failed&quot;);
+   }
+   else {
+-    my $object = ($plugin)-&gt;new($this);
+-    my $addsuccess = $this-&gt;_addPlugin($object);
+-    #my $addsuccess = $this-&gt;_addPlugin(new($plugin, $this));
+-    if($addsuccess) {
+-      $retval = 1;
++    my $inifile = shift;
++    if(!$inifile) {
++      $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;[E] can't load inifile &lt;$inifile&gt; for plugin &lt;$plugin&gt;&quot;);
+     }
++    else {
++      my $object = ($plugin)-&gt;new($this, $inifile);
++      my $addsuccess = $this-&gt;_addPlugin($object);
++      if($addsuccess) {
++	$retval = 1;
++      }
++    }
+   }
+   return $retval;
+ }
+@@ -230,18 +259,20 @@
+   my $plugin = shift;
+ 
+   my $order = $plugin-&gt;order();
+-  #my $name  = $plugin-&gt;name();
+-  #my @dirs  = $plugin-&gt;requiredDirs();
+-  #my @reqs  = $plugin-&gt;requires();
+-  #my @desc  = $plugin-&gt;description();
+ 
+   if(not defined($order)) {
+-    $this-&gt;{m_collect}-&gt;logger()-&gt;info(&quot;Undefined order of plugin &quot;.$plugin-&gt;name());
++    my $n = $plugin-&gt;name();
++    if(not defined($n)) {
++      $n = &quot;Name not set&quot;;
++    }
++    $this-&gt;{m_collect}-&gt;logger()-&gt;info(&quot;[I] Undefined order of plugin &lt;$n&gt;&quot;);
+   }
+   else {
+     if(defined($this-&gt;{m_handlers}-&gt;{$order})) {
+       # we have a problem: (TODO in the future)
+-      die &quot;Can't handle mutliple occurences of ordernumbers yet! See next version!&quot;;
++      $this-&gt;collect()-&gt;logger()-&gt;error(&quot;[E] Can't handle multiple occurance of order!&quot;);
++      return $retval;
++      #die &quot;Can't handle mutliple occurences of ordernumbers yet!&quot;;
+     }
+     else {
+       $this-&gt;{m_handlers}-&gt;{$order} = $plugin;
+@@ -266,7 +297,7 @@
+   }
+   else {
+     if(not defined($this-&gt;{m_handlers}-&gt;{$index})) {
+-      $this-&gt;{m_collect}-&gt;logger()-&gt;warning(&quot;no plugin defined with index $index&quot;);
++      $this-&gt;collect()-&gt;logger()-&gt;warning(&quot;[W] no plugin defined with index &lt;$index&gt;\n&quot;);
+       return undef;
+     }
+     else {
+@@ -277,6 +308,18 @@
+ 
+ 
+ 
++sub getPluginList
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++
++  return %{$this-&gt;{m_handlers}};
++}
++
++
++
+ sub createMetadata
+ {
+   my $this = shift;
+@@ -286,7 +329,7 @@
+   my $retval = 0;
+   # execute all registered and activated plugins:
+ 
+-  foreach my $order(sort {$a lt $b } keys(%{$this-&gt;{m_handlers}})) {
++  foreach my $order(sort {$a &lt;=&gt; $b } keys(%{$this-&gt;{m_handlers}})) {
+     if($this-&gt;{m_handlers}-&gt;{$order}-&gt;ready()) {
+       $this-&gt;{m_handlers}-&gt;{$order}-&gt;execute();
+     }
+@@ -298,5 +341,41 @@
+ 
+ 
+ 
++sub enableAllPlugins
++{
++  my $this = shift;
++  if(not ref $this) {
++    return undef;
++  }
++
++  foreach(values(%{$this-&gt;{m_handlers}})) {
++    $_-&gt;ready(1);
++  }
++}
++
++
++
++sub enablePlugins
++{
++  my $this = shift;
++  if(not ref $this) {
++    return undef;
++  }
++
++  my @enable = @_;
++  if(not @enable) {
++    return undef;
++  }
++
++  my $retval = 0; # number of enabled plugins
++  foreach(@enable) {
++    $this-&gt;{m_handlers}-&gt;{$_}-&gt;ready(1);
++    $retval++;
++  }
++  return $retval;
++}
++
++
++
+ 1;
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000680.html">[Kiwi-devel] r1583 - in kiwi-head: . modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000682.html">[Kiwi-devel] r1585 - kiwi-head/rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#681">[ date ]</a>
+              <a href="thread.html#681">[ thread ]</a>
+              <a href="subject.html#681">[ subject ]</a>
+              <a href="author.html#681">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

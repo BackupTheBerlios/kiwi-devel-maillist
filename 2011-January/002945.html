@@ -1,0 +1,222 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Some restructuring
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Some%20restructuring&In-Reply-To=%3C4D2C7E23.9060101%40novell.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002942.html">
+   <LINK REL="Next"  HREF="002946.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Some restructuring</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Some%20restructuring&In-Reply-To=%3C4D2C7E23.9060101%40novell.com%3E"
+       TITLE="[Kiwi-devel] Some restructuring">rschweikert at novell.com
+       </A><BR>
+    <I>Tue Jan 11 16:58:27 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002942.html">[Kiwi-devel] Some restructuring
+</A></li>
+        <LI>Next message: <A HREF="002946.html">[Kiwi-devel] Some restructuring
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2945">[ date ]</a>
+              <a href="thread.html#2945">[ thread ]</a>
+              <a href="subject.html#2945">[ subject ]</a>
+              <a href="author.html#2945">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>
+
+On 01/11/2011 05:15 AM, Marcus Sch&#228;fer wrote:
+&gt;<i> Hi,
+</I>&gt;<i> 
+</I>&gt;&gt;<i> It all goes back to the attempt of turning KIWIXML into a mostly dumb
+</I>&gt;&gt;<i> container object with no knowledge of state or other things, and letting
+</I>&gt;&gt;<i> knowledge such as control file name and state be managed by objects
+</I>&gt;&gt;<i> external to KIWIXML. If we leave 'path to image description' as the
+</I>&gt;&gt;<i> argument then KIWIXML has to know to look for config.xml or an alternate
+</I>&gt;&gt;<i> name. However, if the argument is 'path to control file' than the XML
+</I>&gt;&gt;<i> object does not need to know anything about the name. All KIWIXML has to
+</I>&gt;&gt;<i> know is:
+</I>&gt;<i> 
+</I>&gt;<i> ok, but that doesn't mean that we have to change the parameter
+</I>&gt;<i> types of the XML object constructor. I don't see anything evil
+</I>&gt;<i> if the XML object constructor creates a XMLLocator object asking
+</I>&gt;<i> it for the file name of the xml it should read. Or if you don't
+</I>&gt;<i> want to create an object it would also be ok to call the exported
+</I>&gt;<i> XMLLocator function directly as you do it currently in kiwi.pl
+</I>&gt;<i> 
+</I>&gt;<i> As I said I don't want to change the meaning of constructor
+</I>&gt;<i> parameters and I think that's not against the attempt of turning
+</I>&gt;<i> KIWIXML into a mostly dumb container. 
+</I>
+Well, changing the KIWIXML ctor arguments is inevitable. Once we remove
+the state from the XML object the imageType and reqProfiles arguments
+will no longer be necessary to construct an XML object.
+
+If we think about this from a bottom line/minimalist perspective, all
+that should be needed to construct the XML object is the path to the
+control file (and the message logging object). Everything else is fluff.
+I think it would be great to get to the point of a 2 argument XML object
+&quot;new KIWIXML(KIWI_LOG, CONTROL_FILE)&quot;, it doesn't get much cleaner and
+nicer than that. Even the validation of the XML can and probably should
+be offloaded from the XML object. The object can certainly reasonably
+expect that the file given to it is valid and consistent.
+
+&gt;<i> The KIWIXML constructor
+</I>&gt;<i> also creates a KIWIXMLValidator object and calls validate()
+</I>&gt;<i> imho you can do the same with the KIWIXMLLocator and call locate()
+</I>&gt;<i> That also would follow the nature of the rest of the code because
+</I>&gt;<i> I did not work much with module exported anyonymous functions
+</I>&gt;<i> (which of course is ok too)
+</I>
+I realize this looks horrible now with calls to getControlFile()
+littered all over the code. However, don't forget that in the end there
+should be a lot fewer instantiations of the XML object (I'm still
+thinking 3 or 4, and all of those in one central place) and thus this
+will clean itself up automatically.
+
+With that said, if you want a call to getControlFile() in the XML ctor,
+rather than changing the argument at this point I can certainly rework
+the patch. However, it is inevitable that at some point we will reach
+this pint again, and thus have to revisit this discussion. As mentioned
+above the arguments of the XML ctor will need to change if we want to
+remove the state from the XML object.
+
+&gt;<i> 
+</I>&gt;&gt;<i> At this point I do not see the need for object data for the Locator.
+</I>&gt;&gt;<i> Thus, I did not create a class, but rather the module as a collector for
+</I>&gt;&gt;<i> functions.
+</I>&gt;<i> 
+</I>&gt;<i> That's ok but the module should be prepared as a class just
+</I>&gt;<i> for the following reasons:
+</I>&gt;<i> 
+</I>&gt;<i>  - consistency: all other modules are implemented as a class
+</I>&gt;<i>  - future code in that module might turn it into a class which
+</I>&gt;<i>    might have to manage named data
+</I>&gt;<i> 
+</I>&gt;<i> just add a simply new method and bless it as done in the other
+</I>&gt;<i> modules. it will not strike back :)
+</I>
+OK, I'll make it a class.
+
+&gt;<i> 
+</I>&gt;&gt;&gt;<i> 3) why can't the md5 hash check go into KIWIXMLValidator::validate() ?
+</I>&gt;&gt;<i>
+</I>&gt;&gt;<i> Because the md5 validation has nothing to do with XML validation. The
+</I>&gt;&gt;<i> md5 validation works on the image description not the XML and the
+</I>&gt;&gt;<i> KIWIXMLValidator should only validate the XML, nothing else. I am
+</I>&gt;&gt;<i> certain a better place than kiwi.pl will emerge for this function at
+</I>&gt;&gt;<i> some point.
+</I>&gt;&gt;<i>
+</I>&gt;&gt;&gt;<i>    we do more than just an XML validation here we also check the
+</I>&gt;&gt;&gt;<i>    consistency 
+</I>&gt;&gt;<i>
+</I>&gt;&gt;<i> But only consistency of the content of the XML file, not anything else
+</I>&gt;&gt;<i> in the image description.
+</I>&gt;<i> 
+</I>&gt;<i> Hmm, inside the KIWIXMLValidator we do checks like:
+</I>&gt;<i> 
+</I>&gt;<i>  - search for the kiwi revision file
+</I>
+Because the revision can be specified in the XML file via the
+kiwirevision attribute.
+
+&gt;<i>  - search for the schema file
+</I>
+Need to have the schema to validate the XML. Of course we can split the
+validator into two, one that does schematic validation and one that does
+consistency checking. The consistency checker would no longer need the
+schema.
+
+&gt;<i>  - search for the xslt master file
+</I>
+Need to make sure the XML file is upgraded to the latest schema.
+Although, it is very reasonable to argue that it is the clients
+responsibility (i.e. anyone using the validator) to assure the XML file
+to be validated is upgraded to the latest version.
+
+But in all three cases the validator does not search for the files, the
+files are given to it as arguments in the ctor. All the validator does
+is check that the ctor arguments are valied, i.e. the files exist.
+That's just defensive programming.
+
+&gt;<i>  
+</I>&gt;<i> why is it that bad to check the md5 sum of the description ?
+</I>
+Adding the md5 check to XMLValidator would mean that it has to know
+about the image description as a directory rather than just knowing
+about the control file.
+
+&gt;<i> You are right that includes other than XML files but it also
+</I>&gt;<i> includes the XML file itself. I'm not sure if we have to
+</I>&gt;<i> be that strict here ?
+</I>
+I think we should be. I am convinced that a better place than kiwi.pl
+will emerge for this function. I consider putting this function into
+kiwi.pl an eyesore and I agree with you that it should not live there.
+However, I also feel quite strongly that it should not be mingled in
+with the XML validation as it really has nothing to do with the
+validation step of the control file.
+&gt;<i> 
+</I>&gt;<i> What would be the negative effect to have the md5 check as
+</I>&gt;<i> part of the validation and consistency except that we are not
+</I>&gt;<i> 100% in the scope of XML files ?
+</I>
+Unit testing will be more difficult. While I have not implemented any
+unit tests, much to my own dismay, I have given this a fair amount of
+thought, especially for the validator. With the current implementation
+of the validator, focused solely on the XML, one can prepare one
+directory that contains a large number of XML files and feed them one by
+one through the validator. Each XML file can be appropriately named to
+reflect the test case.
+
+With the exception of the transformation of the config.xml file (as
+mentioned above) I think the validator is very focused on one task only,
+and thus I think we should not expand it's responsibilities beyond this
+tasks.
+
+Robert
+-- 
+Robert Schweikert                           MAY THE SOURCE BE WITH YOU
+Software Engineer Consultant                          LINUX
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>
+781-464-8147
+
+Novell
+Making IT Work As One
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002942.html">[Kiwi-devel] Some restructuring
+</A></li>
+	<LI>Next message: <A HREF="002946.html">[Kiwi-devel] Some restructuring
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2945">[ date ]</a>
+              <a href="thread.html#2945">[ thread ]</a>
+              <a href="subject.html#2945">[ subject ]</a>
+              <a href="author.html#2945">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

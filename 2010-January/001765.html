@@ -1,0 +1,371 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e14a54378f5ece4f3be5b0fd888217c6685dc080
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20e14a54378f5ece4f3be5b0fd888217c6685dc080&In-Reply-To=%3C201001121637.o0CGbmHP002660%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001764.html">
+   <LINK REL="Next"  HREF="001766.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e14a54378f5ece4f3be5b0fd888217c6685dc080</H1>
+    <B>cwh at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20e14a54378f5ece4f3be5b0fd888217c6685dc080&In-Reply-To=%3C201001121637.o0CGbmHP002660%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e14a54378f5ece4f3be5b0fd888217c6685dc080">cwh at mail.berlios.de
+       </A><BR>
+    <I>Tue Jan 12 17:37:48 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001764.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9c18af88194f32ab87cf59b691ed318cabe0b423
+</A></li>
+        <LI>Next message: <A HREF="001766.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d8a61d92807f1b58b4a62eac5aceab25f90d92db
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1765">[ date ]</a>
+              <a href="thread.html#1765">[ thread ]</a>
+              <a href="subject.html#1765">[ subject ]</a>
+              <a href="author.html#1765">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  e14a54378f5ece4f3be5b0fd888217c6685dc080 (commit)
+       via  8dfa41d405904f6083f5fccc3047f265ba614fea (commit)
+      from  9c18af88194f32ab87cf59b691ed318cabe0b423 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit e14a54378f5ece4f3be5b0fd888217c6685dc080
+Author: Christopher Hofmann &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">cwh at suse.de</A>&gt;
+Date:   Tue Jan 12 17:36:23 2010 +0100
+
+    Added autobuild script for generationg s390 cd kernel
+
+commit 8dfa41d405904f6083f5fccc3047f265ba614fea
+Author: Christopher Hofmann &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">cwh at suse.de</A>&gt;
+Date:   Tue Jan 12 15:55:49 2010 +0100
+
+    - Fixed s390 boot
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIIsoLinux-gen-s390-cd-kernel.pl b/modules/KIWIIsoLinux-gen-s390-cd-kernel.pl
+new file mode 100755
+index 0000000..9a6873e
+--- /dev/null
++++ b/modules/KIWIIsoLinux-gen-s390-cd-kernel.pl
+@@ -0,0 +1,169 @@
++#!/usr/bin/perl -w
++#
++# Generates a bootable CD-ROM for S/390
++#
++# Copyright (C) 2006 Novell Inc.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License
++# as published by the Free Software Foundation; either version 2
++# of the License, or (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin Street,
++# Fifth Floor,
++# Boston, MA  02110-1301,
++# USA.
++#
++# $Id: gen-s390-cd-kernel.pl 107 2009-03-06 11:48:14Z ro $
++
++use FileHandle;
++use Getopt::Long;
++use strict;
++
++# Help text
++#
++sub help($) {
++	my $exitcode = shift || 1;
++    print &quot;Usage: $0 &lt;OPTIONS&gt; - generate a kernel image for CD-ROM boot\n&quot;;
++    print &quot;SYNOPSIS: $0 [--initrd=file] \n&quot;;
++	print &quot;             [--parmfile=file] [--outfile=file] \n&quot;;
++	print &quot;	            [--kernel=file] [--cmdline=string] \n&quot;;
++    exit $exitcode;
++}
++
++# Parse command line options
++my ($initrd,       $image,        $parmfile, $outfile,        $cmdline ) =
++   ('/boot/initrd','/boot/image', '',        '/tmp/image.cd', 'root=/dev/sda2');
++
++Getopt::Long::Configure (&quot;bundling&quot;);
++eval {
++    unless (GetOptions (
++	'i|initrd=s' =&gt; \$initrd,
++	'k|kernel=s' =&gt; \$image,
++	'p|parmfile=s' =&gt; \$parmfile,
++	'o|outfile=s' =&gt; \$outfile,
++	'c|cmdline=s' =&gt; \$cmdline,
++	'h|help' =&gt; sub { help(0); } )) {
++	help(1);
++    }
++};
++
++if ($@) {
++    print &quot;$@&quot;;
++    help(1);
++}
++
++# Open input files
++sysopen(image_fh,$image,O_RDONLY) or die &quot;Cannot open $image: $!\n&quot;;
++sysopen(initrd_fh,$initrd,O_RDONLY) or die &quot;Cannot $initrd: $!\n&quot;;
++
++my $image_size = (stat(image_fh))[7];
++my $initrd_size = (stat(initrd_fh))[7];
++
++# Get the size of the input files
++printf(&quot;%s: offset 0x%x len 0x%x (%d blocks)\n&quot;, 
++       $image, 0, $image_size, ($image_size &gt;&gt; 12) + 1);
++
++# The kernel appearently needs some free space above the
++# actual image (bss? stack?), so use this hard-coded
++# limit (from include/asm-s390/setup.h)
++
++# my $initrd_offset = (($image_size &gt;&gt; 12) + 1) &lt;&lt; 12;
++my $initrd_offset = 0x800000;
++my $boot_size = ((($initrd_offset + $initrd_size) &gt;&gt; 12) + 1 ) &lt;&lt; 12;
++printf(&quot;%s: offset 0x%x len 0x%x (%d blocks)\n&quot;, 
++       $initrd, $initrd_offset, $initrd_size, ($initrd_size &gt;&gt;12) + 1);
++printf(&quot;%s: len 0x%x (%d blocks)\n&quot;, 
++       $outfile, $initrd_offset + $initrd_size, $boot_size / 4096);
++
++# Get the kernel command line arguments
++$cmdline .= &quot; &quot; if ($cmdline ne &quot;&quot;);
++
++if ($parmfile ne &quot;&quot;) {
++    my $line;
++
++    $cmdline = '';
++    open(parm_fh,$parmfile) or die &quot;Cannot open $parmfile: $!\n&quot;;
++    while($line=&lt;parm_fh&gt;) {
++	    chomp $line;
++        $cmdline .= $line . &quot; &quot;;
++    }
++    close(parm_fh);
++}
++
++if ($cmdline ne &quot;&quot;) {
++    chop $cmdline;
++}
++
++# Max length for the kernel command line is 896 bytes
++die &quot;Kernel commandline too long (&quot;. length($cmdline) .&quot; bytes)\n&quot; if (length($cmdline) &gt;= 896);
++
++# Now create the image file.
++sysopen(out_fh,$outfile,O_RDWR|O_CREAT|O_TRUNC) or die &quot;Cannot open $outfile: $!\n&quot;;
++
++# First fill the entire size with zeroes
++sysopen(null_fh,&quot;/dev/zero&quot;,O_RDONLY) or die &quot;Cannot open /dev/zero: $!\n&quot;;
++
++my $buffer=&quot;&quot;;
++my $blocks_read=0;
++while ($blocks_read &lt; ($boot_size &gt;&gt; 12)) {
++    sysread(null_fh,$buffer, 4096);
++    syswrite(out_fh,$buffer);
++    $blocks_read += 1;
++}
++
++print &quot;Read $blocks_read blocks from /dev/zero\n&quot;;
++close(null_fh);
++
++# Now copy the image file to location 0
++sysseek(out_fh,0,0);
++$blocks_read = 0;
++while (sysread(image_fh,$buffer, 4096) != 0) {
++    syswrite(out_fh,$buffer,4096);
++    $blocks_read += 1;
++}
++
++print &quot;Read $blocks_read blocks from $image\n&quot;;
++close(image_fh);
++
++# Then the initrd to location specified by initrd_offset
++sysseek(out_fh,$initrd_offset,0);
++$blocks_read = 0;
++while (sysread(initrd_fh,$buffer, 4096) != 0) {
++    syswrite(out_fh,$buffer,4096);
++    $blocks_read += 1;
++}
++
++print &quot;Read $blocks_read blocks from $initrd\n&quot;;
++
++close(initrd_fh);
++
++# Now for the real black magic.
++# If we are loading from CD-ROM or HMC, the kernel is already loaded
++# in memory by the first loader itself.
++print &quot;Setting boot loader control to 0x10000\n&quot;;
++
++sysseek(out_fh,4,0 );
++syswrite(out_fh,pack(&quot;N&quot;,0x80010000),4);
++
++print &quot;Writing kernel commandline (&quot;. length($cmdline) .&quot; bytes):\n$cmdline\n&quot;;
++
++sysseek(out_fh,0x10480,0);
++syswrite(out_fh,$cmdline,length($cmdline));
++
++print &quot;Setting initrd parameter: offset $initrd_offset size $initrd_size\n&quot;;
++
++sysseek(out_fh,0x1040C,0);
++syswrite(out_fh,pack(&quot;N&quot;,$initrd_offset),4);
++sysseek(out_fh,0x10414,0);
++syswrite(out_fh,pack(&quot;N&quot;,$initrd_size),4);
++
++close(out_fh);
+diff --git a/modules/KIWIIsoLinux.pm b/modules/KIWIIsoLinux.pm
+index 42edbfa..7b2a682 100644
+--- a/modules/KIWIIsoLinux.pm
++++ b/modules/KIWIIsoLinux.pm
+@@ -134,6 +134,14 @@ sub new {
+ 			if ($arch eq &quot;ppc64&quot;) {
+ 				$catalog[0] = &quot;ppc64_default&quot;;
+ 			}
++			if ($arch eq &quot;s390&quot;) {
++				$catalog[0] = &quot;ix86_legacy&quot;;
++				$catalog[1] = &quot;s390_ikr&quot;;
++			}
++			if ($arch eq &quot;s390x&quot;) {
++				$catalog[0] = &quot;ix86_legacy&quot;;
++				$catalog[1] = &quot;s390x_ikr&quot;;
++			}
+ 		}
+ 	}
+ 	#=======================================
+@@ -150,12 +158,6 @@ sub new {
+ 			if ($arch eq &quot;ia64&quot;) {
+ 				push (@catalog, &quot;ia64_efi&quot;);
+ 			}
+-			if ($arch eq &quot;s390&quot;) {
+-				push (@catalog, &quot;s390_ikr&quot;);
+-			}
+-			if ($arch eq &quot;s390x&quot;) {
+-				push (@catalog, &quot;s390x_ikr&quot;);
+-			}
+ 		}
+ 	}
+ 	#==========================================
+@@ -298,7 +300,8 @@ sub s390_ikr {
+ 	my $ikr  = $this -&gt; createS390CDLoader($boot);
+ 	$para.= &quot; -eltorito-alt-boot&quot;;
+ 	$para.= &quot; -hide $boot/boot.catalog -hide-joliet $boot/boot.catalog&quot;;
+-	$para.= &quot; -b $boot/cd.ikr&quot;;
++	$para.= &quot; -no-emul-boot&quot;;
++	$para.= &quot; -b $ikr&quot;;
+ 	$this -&gt; {params} = $para;
+ }
+ 
+@@ -314,7 +317,8 @@ sub s390x_ikr {
+ 	my $ikr  = $this -&gt; createS390CDLoader($boot);
+ 	$para.= &quot; -eltorito-alt-boot&quot;;
+ 	$para.= &quot; -hide $boot/boot.catalog -hide-joliet $boot/boot.catalog&quot;;
+-	$para.= &quot; -b $boot/cd.ikr&quot;;
++	$para.= &quot; -no-emul-boot&quot;;
++	$para.= &quot; -b $ikr&quot;;
+ 	$this -&gt; {params} = $para; 
+ }
+ 
+@@ -424,14 +428,25 @@ sub createS390CDLoader {
+ 		if (-e $parmfile.&quot;.cd&quot;) {
+ 			$parmfile = $parmfile.&quot;.cd&quot;;
+ 		}
+-		my $gen = &quot;gen-s390-cd-kernel.pl&quot;;
++		my $gen = &quot;perl $main::BasePath/modules/KIWIIsoLinux-gen-s390-cd-kernel.pl&quot;;
+ 		$gen .= &quot; --initrd=$src/$basez/initrd&quot;;
+ 		$gen .= &quot; --kernel=$src/$basez/vmrdr.ikr&quot;;
+ 		$gen .= &quot; --parmfile=$parmfile&quot;;
+-		$gen .= &quot; --outfile=$ldir/$basez/cd.ikr&quot;;
++		$gen .= &quot; --outfile=$src/$basez/cd.ikr&quot;;
++
++		$kiwi -&gt; info ( &quot;Calling: $gen\n&quot; );
+ 		qxx ($gen);
++
++		my $code = $? &gt;&gt; 8;
++		if ($code != 0) {
++		    $kiwi -&gt; error  (&quot;Failed calling KIWIIsoLinux-gen-s390-cd-kernel.pl: $code.&quot;);
++		    $kiwi -&gt; failed ();
++		    $this -&gt; cleanISO();
++		    return undef;
++		}
+ 	}
+-	if (-f &quot;$ldir/$basez/cd.ikr&quot;) {
++
++	if (-f &quot;$src/$basez/cd.ikr&quot;) {
+ 		return &quot;$basez/cd.ikr&quot;;
+ 	}
+ 	return undef
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index a855d66..1f18fd1 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -424,6 +424,7 @@ rm -rf $RPM_BUILD_ROOT
+ %{_datadir}/kiwi/locale
+ %{_datadir}/kiwi/repo
+ %exclude %{_datadir}/kiwi/modules/KIWIIsoLinux-AppleFileMapping.txt
++%exclude %{_datadir}/kiwi/modules/KIWIIsoLinux-gen-s390-cd-kernel.pl
+ %exclude %{_datadir}/kiwi/modules/KIWICollect.pm
+ %exclude %{_datadir}/kiwi/modules/KIWIRepoMetaHandler.pm
+ %exclude %{_datadir}/kiwi/modules/KIWIUtil.pm
+@@ -455,6 +456,7 @@ rm -rf $RPM_BUILD_ROOT
+ %files -n kiwi-instsource
+ %defattr(-, root, root)
+ %{_datadir}/kiwi/modules/KIWIIsoLinux-AppleFileMapping.txt
++%{_datadir}/kiwi/modules/KIWIIsoLinux-gen-s390-cd-kernel.pl
+ %{_datadir}/kiwi/modules/KIWICollect.pm
+ %{_datadir}/kiwi/modules/KIWIUtil.pm
+ %{_datadir}/kiwi/modules/KIWIRepoMetaHandler.pm
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001764.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9c18af88194f32ab87cf59b691ed318cabe0b423
+</A></li>
+	<LI>Next message: <A HREF="001766.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d8a61d92807f1b58b4a62eac5aceab25f90d92db
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1765">[ date ]</a>
+              <a href="thread.html#1765">[ thread ]</a>
+              <a href="subject.html#1765">[ subject ]</a>
+              <a href="author.html#1765">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

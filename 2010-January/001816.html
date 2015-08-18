@@ -1,0 +1,159 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. ae07e2a717fa287ecb64413533d0d86247fc5f15
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20ae07e2a717fa287ecb64413533d0d86247fc5f15&In-Reply-To=%3C201001281448.o0SEmBdr023991%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001815.html">
+   <LINK REL="Next"  HREF="001817.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. ae07e2a717fa287ecb64413533d0d86247fc5f15</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20ae07e2a717fa287ecb64413533d0d86247fc5f15&In-Reply-To=%3C201001281448.o0SEmBdr023991%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. ae07e2a717fa287ecb64413533d0d86247fc5f15">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jan 28 15:48:11 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001815.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5e9d71b5d638e2af2784f987bc16c1f5ed418ca2
+</A></li>
+        <LI>Next message: <A HREF="001817.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 04f9c507e2dde392a0e717ed997293f21a326675
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1816">[ date ]</a>
+              <a href="thread.html#1816">[ thread ]</a>
+              <a href="subject.html#1816">[ subject ]</a>
+              <a href="author.html#1816">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-374-SuSE-11-1-SLE-SP-Devel has been updated
+       via  ae07e2a717fa287ecb64413533d0d86247fc5f15 (commit)
+      from  3bcc3c1fb6ed56afffb3d76c365b6258c10452f3 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ae07e2a717fa287ecb64413533d0d86247fc5f15
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Jan 28 15:48:02 2010 +0100
+
+    - fixed inode calculation (bnc #574660)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 12becfc..d0508b0 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -4192,12 +4192,6 @@ sub getSize {
+ 	my $mini   = qxx (&quot;find $extend | wc -l&quot;); $mini *= 2;
+ 	my $size   = qxx (&quot;du -s --block-size=1 $extend | cut -f1&quot;); chomp $size;
+ 	my $spare  = 0.3 * $size;
+-	my $needi  = $size / $main::FSInodeRatio;
+-	#==========================================
+-	# Inode count for this filesystem
+-	#------------------------------------------
+-	$this-&gt;{inodes} =
+-		int ($mini &gt; $needi ? $mini : $needi);
+ 	#==========================================
+ 	# Minimum size calculated in MB
+ 	#------------------------------------------
+@@ -4219,6 +4213,26 @@ sub getSize {
+ 		$xmlsize = $size.&quot;M&quot;;
+ 	}
+ 	#==========================================
++	# Inode count for this filesystem
++	#------------------------------------------
++	my $sizeIMGBytes = $size * 1048576;
++	my $sizeXMLBytes = $sizeIMGBytes;
++	my $needi = $sizeIMGBytes / $main::FSInodeRatio;
++	if ($xmlsize =~ /^(\d+)([MG])$/i) {
++		$sizeXMLBytes = $1;
++		my $unit = $2;
++		if ($unit eq &quot;G&quot;) {
++			# convert GB to MB...
++			$sizeXMLBytes /= 1024;
++		}
++		$sizeXMLBytes *= 1048576;
++	}
++	if ($sizeXMLBytes &gt; $sizeIMGBytes) {
++		$needi = $sizeXMLBytes / $main::FSInodeRatio;
++	}
++	$this-&gt;{inodes} =
++		int ($mini &gt; $needi ? $mini : $needi);
++	#==========================================
+ 	# return result list
+ 	#------------------------------------------
+ 	return ($orig,$size,$xmlsize);
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 24d43b9..17d5fc5 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -585,6 +585,10 @@ sub getImageSize {
+ 		if ((! defined $plus) || ($plus eq &quot;false&quot;) || ($plus eq &quot;0&quot;)) {
+ 			my $unit = $node -&gt; getElementsByTagName (&quot;size&quot;)
+ 				-&gt; get_node(1) -&gt; getAttribute(&quot;unit&quot;);
++			if (! $unit) {
++				# no unit specified assume MB...
++				$unit = &quot;M&quot;;
++			}
+ 			# /.../
+ 			# the fixed size value was set, we will use this value
+ 			# connected with the unit string
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 495534f..8b8ae53 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,6 +1,7 @@
+ -------------------------------------------------------------------
+ Thu Jan 28 14:24:16 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- fixed inode calculation (bnc #574660)
+ - fixed backtrace creation. A trace can be switched off
+   completely with deactivateBackTrace()
+ 
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001815.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5e9d71b5d638e2af2784f987bc16c1f5ed418ca2
+</A></li>
+	<LI>Next message: <A HREF="001817.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 04f9c507e2dde392a0e717ed997293f21a326675
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1816">[ date ]</a>
+              <a href="thread.html#1816">[ thread ]</a>
+              <a href="subject.html#1816">[ subject ]</a>
+              <a href="author.html#1816">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,128 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8e04cc6acfb3170b0e51f4371a4c459881afd8a4
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%208e04cc6acfb3170b0e51f4371a4c459881afd8a4&In-Reply-To=%3C20110608152158.9A0FC481247%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003522.html">
+   <LINK REL="Next"  HREF="003524.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8e04cc6acfb3170b0e51f4371a4c459881afd8a4</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%208e04cc6acfb3170b0e51f4371a4c459881afd8a4&In-Reply-To=%3C20110608152158.9A0FC481247%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8e04cc6acfb3170b0e51f4371a4c459881afd8a4">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jun  8 17:21:58 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003522.html">[Kiwi-devel] 11.3 vm guest example update
+</A></li>
+        <LI>Next message: <A HREF="003524.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. a61e5c7448989e19d4f89cb130477b24b93bf5bd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3523">[ date ]</a>
+              <a href="thread.html#3523">[ thread ]</a>
+              <a href="subject.html#3523">[ subject ]</a>
+              <a href="author.html#3523">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  8e04cc6acfb3170b0e51f4371a4c459881afd8a4 (commit)
+      from  2d859fa68610ad60062d968cafaac677c9451c2a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 8e04cc6acfb3170b0e51f4371a4c459881afd8a4
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jun 8 17:20:59 2011 +0200
+
+    - remove the call to sax2 in the 11.3 vm guest example, sax2 is no
+      longer part of 11.3 and later as the X-server is self configuring.
+      Also added code to allow the firstboot sequence to be initiated.
+      While this particular example does not use the firstboot mechanism,
+      someone basing their build of the example and trying to get firstboot
+      to work would be hard pressed to find why it is not working.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/doc/examples/suse-11.3/suse-vm-guest/root/etc/init.d/boot b/doc/examples/suse-11.3/suse-vm-guest/root/etc/init.d/boot
+index 7572e8d..37c97f5 100755
+--- a/doc/examples/suse-11.3/suse-vm-guest/root/etc/init.d/boot
++++ b/doc/examples/suse-11.3/suse-vm-guest/root/etc/init.d/boot
+@@ -291,11 +291,6 @@ fi
+ #
+ stty $otty
+ 
+-# create config file if not yet done
+-if [ ! -f /etc/X11/xorg.conf ];then
+-	/usr/sbin/sax2 -c 0 -a -i &amp;&gt;/dev/null
+-fi
+-
+ #
+ # Let YaST2 finish its installation, if you installed with YaST2
+ #
+@@ -313,6 +308,18 @@ if test -f /var/lib/YaST2/runme_at_boot ; then
+ 	rm -f /var/lib/YaST2/runme_at_boot
+     fi
+ fi
++# trigger firstboot mechanism if configured
++if test -f /var/lib/YaST2/reconfig_system ; then
++    HOSTTYPE=$(uname -m)
++    splashtrigger &quot;YaST&quot;
++    exec 0&lt;&gt; $REDIRECT 1&gt;&amp;0 2&gt;&amp;0
++    if test -x /usr/lib/YaST2/startup/YaST2.Firstboot; then
++	/usr/lib/YaST2/startup/YaST2.Firstboot
++    else
++	# oops, yast2-firstboot not installed
++	rm -f /var/lib/YaST2/reconfig_system
++    fi
++fi
+ # run SuSEconfig (with args) if needed
+ if test -f /var/lib/YaST2/run_suseconfig ; then
+     /sbin/SuSEconfig `cat /var/lib/YaST2/run_suseconfig`
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003522.html">[Kiwi-devel] 11.3 vm guest example update
+</A></li>
+	<LI>Next message: <A HREF="003524.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. a61e5c7448989e19d4f89cb130477b24b93bf5bd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3523">[ date ]</a>
+              <a href="thread.html#3523">[ thread ]</a>
+              <a href="subject.html#3523">[ subject ]</a>
+              <a href="author.html#3523">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

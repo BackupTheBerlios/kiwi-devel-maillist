@@ -1,0 +1,2185 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b2ee55c3a610fb65c9ffc3ca9fefcc22237f439f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b2ee55c3a610fb65c9ffc3ca9fefcc22237f439f&In-Reply-To=%3C20110219215326.488174813EC%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003080.html">
+   <LINK REL="Next"  HREF="003081.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b2ee55c3a610fb65c9ffc3ca9fefcc22237f439f</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b2ee55c3a610fb65c9ffc3ca9fefcc22237f439f&In-Reply-To=%3C20110219215326.488174813EC%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b2ee55c3a610fb65c9ffc3ca9fefcc22237f439f">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Sat Feb 19 22:53:24 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003080.html">[Kiwi-devel] Error message improvement
+</A></li>
+        <LI>Next message: <A HREF="003081.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7567260b8b813bdd3aac49f94dced45458bd48b2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3083">[ date ]</a>
+              <a href="thread.html#3083">[ thread ]</a>
+              <a href="subject.html#3083">[ subject ]</a>
+              <a href="author.html#3083">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  b2ee55c3a610fb65c9ffc3ca9fefcc22237f439f (commit)
+      from  a985c4bce3a6fa4b151d98f0536adda5165c1deb (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b2ee55c3a610fb65c9ffc3ca9fefcc22237f439f
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Sat Feb 19 22:50:14 2011 +0100
+
+    - cosmetic changes to the unit tests
+      * fixed the repo specification to point to online repo
+      * updated the description to indicate what the test does
+    - improve the error message when an undefined profile is referenced
+    - added check for a consistent setting of the patternType
+      attribute value
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/Makefile b/Makefile
+index 3d662fd..c133a83 100644
+--- a/Makefile
++++ b/Makefile
+@@ -162,6 +162,7 @@ test:
+ 	#============================================
+ 	# Run unit tests...
+ 	#--------------------------------------------
++	tests/unit/cleanup.sh
+ 	for i in `find tests/unit -name &quot;*.t&quot;`;do \
+ 		perl $$i ;\
+ 	done
+diff --git a/modules/KIWISchema.rnc b/modules/KIWISchema.rnc
+index a8ca46a..da16355 100644
+--- a/modules/KIWISchema.rnc
++++ b/modules/KIWISchema.rnc
+@@ -2299,7 +2299,7 @@ div {
+ 	k.packages.profiles.attribute = k.profiles.attribute
+ 	k.packages.patternType.attribute =
+ 		## Selection type for patterns. Could be onlyRequired
+-		## plusSuggested or plusRecommended
++		## or plusRecommended
+ 		attribute patternType {
+ 			&quot;onlyRequired&quot; | &quot;plusRecommended&quot;
+ 		}
+diff --git a/modules/KIWIXMLValidator.pm b/modules/KIWIXMLValidator.pm
+index 961652b..edbfc88 100644
+--- a/modules/KIWIXMLValidator.pm
++++ b/modules/KIWIXMLValidator.pm
+@@ -305,6 +305,101 @@ sub __checkFilesysSpec {
+ }
+ 
+ #==========================================
++# __checkPatternTypeAttrConsistent
++#------------------------------------------
++sub __checkPatternTypeAttrConsistent {
++	# ...
++	# Check that the values for the patternType attribute do not conflict.
++	# If all &lt;packages&gt; sections use profiles attributes the patternType
++	# attribute value may be different for all &lt;packages&gt; sections. However,
++	# if a default &lt;packages&gt; section exists, i.e. no profiles attribute
++	# is used, then all patternType attribute values must be the same as
++	# the value set for the default profile.
++	# ---
++	my $this = shift;
++	my @pkgsNodes = $this-&gt;{systemTree} -&gt; getElementsByTagName(&quot;packages&quot;);
++	my $defPatternTypeVal = '';
++	my $defPackSection;
++	# Check if a &lt;packages&gt; spec without a profiles attribute exists
++	for my $pkgs (@pkgsNodes) {
++		if ( (! $pkgs -&gt; getAttribute( &quot;profiles&quot; ))
++			&amp;&amp; ($pkgs -&gt; getAttribute( &quot;type&quot; ) eq 'image')) {
++			$defPackSection = $pkgs;
++			my $patternType = $pkgs -&gt; getAttribute( &quot;patternType&quot; );
++			if ($patternType) {
++				$defPatternTypeVal = $patternType;
++			} else {
++				$defPatternTypeVal = 'onlyRequired';
++			}
++			last;
++		}
++	}
++	# Set up a hash for specified profiles for packages, if a profile is used
++	# multiple times, the value of patternType must be the same for eac use
++	my %profPatternUseMap = ();
++	for my $pkgs (@pkgsNodes) {
++		my $profiles = $pkgs -&gt; getAttribute( &quot;profiles&quot; );
++		if ($profiles) {
++			my @profNames = split /,/, $profiles;
++			my $patternType = $pkgs -&gt; getAttribute( &quot;patternType&quot; );
++			if (! $patternType) {
++				$patternType = 'onlyRequired';
++			}
++			for my $profName (@profNames) {
++				if (! grep /$profName/, (keys %profPatternUseMap) ) {
++					$profPatternUseMap{$profName} = $patternType;
++				} elsif ( $profPatternUseMap{$profName} ne $patternType) {
++					my $kiwi = $this-&gt;{kiwi};
++					my $msg = 'Conflicting patternType attribute values for &quot;'
++					. $profName
++					. '&quot; profile found.';
++					$kiwi -&gt; error ( $msg );
++					$kiwi -&gt; failed ();
++					return undef
++				}
++			}
++		}
++	}
++	if (! $defPackSection) {
++		# No default &lt;packages&gt; section exists, no additional checking
++		# required
++		return 1;
++	}
++	for my $pkgs (@pkgsNodes) {
++		if ($pkgs != $defPackSection) {
++			my $patternType = $pkgs -&gt; getAttribute( &quot;patternType&quot; );
++			if ($patternType &amp;&amp; $patternType ne $defPatternTypeVal) {
++				my $kiwi = $this-&gt;{kiwi};
++				my $msg = 'The specified value &quot;'
++				. $patternType
++				. '&quot; for the patternType attribute differs from the '
++				. 'specified default value: &quot;'
++				. $defPatternTypeVal
++				. '&quot;.';
++				$kiwi -&gt; error ( $msg );
++				$kiwi -&gt; failed ();
++				return undef
++			}
++			my $type = $pkgs -&gt; getAttribute( &quot;type&quot; );
++			if (! $patternType
++				&amp;&amp; $type ne 'bootstrap'
++				&amp;&amp; $type ne 'delete'
++				&amp;&amp; $defPatternTypeVal ne 'onlyRequired') {
++				my $kiwi = $this-&gt;{kiwi};
++				my $msg = 'The patternType attribute was omitted, but the '
++				. 'base &lt;packages&gt; specification requires &quot;'
++				. $defPatternTypeVal
++				. '&quot; the values must match.';
++				$kiwi -&gt; error ( $msg );
++				$kiwi -&gt; failed ();
++				return undef
++			}
++		}
++	}
++	return 1;
++}
++
++#==========================================
+ # __checkPatternTypeAttrUse
+ #------------------------------------------
+ sub __checkPatternTypeAttrUse {
+@@ -447,8 +542,9 @@ sub __checkReferencedProfDefined {
+ 				}
+ 			}
+ 			if (! $foundit) {
+-				my $msg = &quot;Found reference to profile $profile &quot;
+-				. 'but this profile does not exist.';
++				my $msg = 'Found reference to profile &quot;'
++                  . $profile
++				  . '&quot; but this profile is not defined.';
+ 				$kiwi -&gt; error ($msg);
+ 				$kiwi -&gt; failed ();
+ 				$status = undef;
+@@ -633,6 +729,9 @@ sub __validateConsistency {
+ 	if (! $this -&gt; __checkPatternTypeAttrUse()) {
+ 		return undef;
+ 	}
++	if (! $this -&gt; __checkPatternTypeAttrConsistent()) {
++		return undef;
++	}
+ 	if (! $this -&gt; __checkPostDumpAction()) {
+ 		return undef;
+ 	}
+diff --git a/tests/unit/cleanup.sh b/tests/unit/cleanup.sh
+new file mode 100755
+index 0000000..603c4f4
+--- /dev/null
++++ b/tests/unit/cleanup.sh
+@@ -0,0 +1,12 @@
++#!/bin/sh
++# cleanup
++#
++# Clean up any artifacts that may be left over from a previous test run
++# 
++# This script is part of the Kiwi test framework
++
++echo &quot;Cleaning up artifacts&quot;
++
++for i in `find . -name &quot;*.converted.xml&quot;`;do \
++    rm $i ;\
++done
+diff --git a/tests/unit/data/xmlValidator/defaultProfileInvalid_1.xml b/tests/unit/data/xmlValidator/defaultProfileInvalid_1.xml
+index fe8bcc4..fc7c0de 100644
+--- a/tests/unit/data/xmlValidator/defaultProfileInvalid_1.xml
++++ b/tests/unit/data/xmlValidator/defaultProfileInvalid_1.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 test profiles&lt;/specification&gt;
++		&lt;specification&gt;test profiles validation&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+@@ -50,7 +50,7 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/defaultProfileValid_1.xml b/tests/unit/data/xmlValidator/defaultProfileValid_1.xml
+index af93e92..64cc0f9 100644
+--- a/tests/unit/data/xmlValidator/defaultProfileValid_1.xml
++++ b/tests/unit/data/xmlValidator/defaultProfileValid_1.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 xen test profiles&lt;/specification&gt;
++		&lt;specification&gt;test profiles validation&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+@@ -50,7 +50,7 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/defaultProfileValid_2.xml b/tests/unit/data/xmlValidator/defaultProfileValid_2.xml
+index 6059370..d804f14 100644
+--- a/tests/unit/data/xmlValidator/defaultProfileValid_2.xml
++++ b/tests/unit/data/xmlValidator/defaultProfileValid_2.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test profiles, no profile specified&lt;/specification&gt;
++        &lt;specification&gt;test profiles, no profile specified&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -24,7 +24,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/defaultProfileValid_3.xml b/tests/unit/data/xmlValidator/defaultProfileValid_3.xml
+index b2b5575..59ddce0 100644
+--- a/tests/unit/data/xmlValidator/defaultProfileValid_3.xml
++++ b/tests/unit/data/xmlValidator/defaultProfileValid_3.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 test profiles&lt;/specification&gt;
++		&lt;specification&gt;test profiles validation&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+@@ -50,7 +50,7 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/defaultTypeInvalid_1.xml b/tests/unit/data/xmlValidator/defaultTypeInvalid_1.xml
+index f2d2ffa..56e6f53 100644
+--- a/tests/unit/data/xmlValidator/defaultTypeInvalid_1.xml
++++ b/tests/unit/data/xmlValidator/defaultTypeInvalid_1.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 test multiple default type per pref section&lt;/specification&gt;
++		&lt;specification&gt;test multiple default type per pref section&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+@@ -58,7 +58,7 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/defaultTypeInvalid_2.xml b/tests/unit/data/xmlValidator/defaultTypeInvalid_2.xml
+index e77a814..5bdc3bf 100644
+--- a/tests/unit/data/xmlValidator/defaultTypeInvalid_2.xml
++++ b/tests/unit/data/xmlValidator/defaultTypeInvalid_2.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 test multiple default type per pref section&lt;/specification&gt;
++		&lt;specification&gt;test multiple default type per pref section&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+         &lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
+@@ -25,7 +25,7 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/defaultTypeValid_1.xml b/tests/unit/data/xmlValidator/defaultTypeValid_1.xml
+index 4b73f24..68faf2d 100644
+--- a/tests/unit/data/xmlValidator/defaultTypeValid_1.xml
++++ b/tests/unit/data/xmlValidator/defaultTypeValid_1.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem test default type setting&lt;/specification&gt;
++        &lt;specification&gt;test default type setting&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/defaultTypeValid_2.xml b/tests/unit/data/xmlValidator/defaultTypeValid_2.xml
+index 914295a..47d920d 100644
+--- a/tests/unit/data/xmlValidator/defaultTypeValid_2.xml
++++ b/tests/unit/data/xmlValidator/defaultTypeValid_2.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 test one default type per pref section&lt;/specification&gt;
++		&lt;specification&gt;test one default type per pref section&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+@@ -57,7 +57,7 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/defaultTypeValid_3.xml b/tests/unit/data/xmlValidator/defaultTypeValid_3.xml
+index 9d7267d..c4e0554 100644
+--- a/tests/unit/data/xmlValidator/defaultTypeValid_3.xml
++++ b/tests/unit/data/xmlValidator/defaultTypeValid_3.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 test one default type per pref section&lt;/specification&gt;
++		&lt;specification&gt;test use of default type&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+@@ -57,7 +57,7 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/displayNameInvalid_1.xml b/tests/unit/data/xmlValidator/displayNameInvalid_1.xml
+index 2851fa9..00f9f3c 100644
+--- a/tests/unit/data/xmlValidator/displayNameInvalid_1.xml
++++ b/tests/unit/data/xmlValidator/displayNameInvalid_1.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test profiles, no profile specified&lt;/specification&gt;
++        &lt;specification&gt;test display name value&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -24,7 +24,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/displayNameValid_1.xml b/tests/unit/data/xmlValidator/displayNameValid_1.xml
+index eb5e72a..b4ae705 100644
+--- a/tests/unit/data/xmlValidator/displayNameValid_1.xml
++++ b/tests/unit/data/xmlValidator/displayNameValid_1.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test profiles, no profile specified&lt;/specification&gt;
++        &lt;specification&gt;test displayname value&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -24,7 +24,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/ec2RegionInvalid_1.xml b/tests/unit/data/xmlValidator/ec2RegionInvalid_1.xml
+index 00b984b..a01e737 100644
+--- a/tests/unit/data/xmlValidator/ec2RegionInvalid_1.xml
++++ b/tests/unit/data/xmlValidator/ec2RegionInvalid_1.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 ec2 guest system&lt;/specification&gt;
++		&lt;specification&gt;test ec2region specification (same region 2x)&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+diff --git a/tests/unit/data/xmlValidator/ec2RegionInvalid_2.xml b/tests/unit/data/xmlValidator/ec2RegionInvalid_2.xml
+index f995c80..97bd94b 100644
+--- a/tests/unit/data/xmlValidator/ec2RegionInvalid_2.xml
++++ b/tests/unit/data/xmlValidator/ec2RegionInvalid_2.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 ec2 guest system&lt;/specification&gt;
++		&lt;specification&gt;test ec2region specification&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+diff --git a/tests/unit/data/xmlValidator/ec2RegionValid_1.xml b/tests/unit/data/xmlValidator/ec2RegionValid_1.xml
+index bae1cb2..f28e671 100644
+--- a/tests/unit/data/xmlValidator/ec2RegionValid_1.xml
++++ b/tests/unit/data/xmlValidator/ec2RegionValid_1.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 ec2 guest system&lt;/specification&gt;
++		&lt;specification&gt;test ec2region specification&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+diff --git a/tests/unit/data/xmlValidator/ec2RegionValid_2.xml b/tests/unit/data/xmlValidator/ec2RegionValid_2.xml
+index 67e308a..ca2e927 100644
+--- a/tests/unit/data/xmlValidator/ec2RegionValid_2.xml
++++ b/tests/unit/data/xmlValidator/ec2RegionValid_2.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 ec2 guest system&lt;/specification&gt;
++		&lt;specification&gt;test ec2 region specification&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+diff --git a/tests/unit/data/xmlValidator/genericValid.xml b/tests/unit/data/xmlValidator/genericValid.xml
+index 437c4fe..5241641 100644
+--- a/tests/unit/data/xmlValidator/genericValid.xml
++++ b/tests/unit/data/xmlValidator/genericValid.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;Test configuration of multiple NICs&lt;/specification&gt;
++        &lt;specification&gt;Generic valid configuration file&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;vmx&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+@@ -24,7 +24,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/improperRevision.xml b/tests/unit/data/xmlValidator/improperRevision.xml
+index a27a534..81ee2f3 100644
+--- a/tests/unit/data/xmlValidator/improperRevision.xml
++++ b/tests/unit/data/xmlValidator/improperRevision.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;Test configuration of multiple NICs&lt;/specification&gt;
++        &lt;specification&gt;test revision version mismatch&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;vmx&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+@@ -24,7 +24,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/missingFilesysAttrInvalid_1.xml b/tests/unit/data/xmlValidator/missingFilesysAttrInvalid_1.xml
+index 1dce4ea..3480c3e 100644
+--- a/tests/unit/data/xmlValidator/missingFilesysAttrInvalid_1.xml
++++ b/tests/unit/data/xmlValidator/missingFilesysAttrInvalid_1.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem test missing filesystem attr&lt;/specification&gt;
++        &lt;specification&gt;test missing filesystem attr&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -24,7 +24,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/missingFilesysAttrInvalid_2.xml b/tests/unit/data/xmlValidator/missingFilesysAttrInvalid_2.xml
+index 72c3c3e..ebfffd4 100644
+--- a/tests/unit/data/xmlValidator/missingFilesysAttrInvalid_2.xml
++++ b/tests/unit/data/xmlValidator/missingFilesysAttrInvalid_2.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem test missing filesystem attr&lt;/specification&gt;
++        &lt;specification&gt;test missing filesystem attr&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -26,7 +26,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/missingFilesysAttrValid_1.xml b/tests/unit/data/xmlValidator/missingFilesysAttrValid_1.xml
+index 8a0e92d..4068529 100644
+--- a/tests/unit/data/xmlValidator/missingFilesysAttrValid_1.xml
++++ b/tests/unit/data/xmlValidator/missingFilesysAttrValid_1.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem proper use of filesystem attr&lt;/specification&gt;
++        &lt;specification&gt;test proper use of filesystem attr&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -24,7 +24,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/oemPostDumpInvalid_1.xml b/tests/unit/data/xmlValidator/oemPostDumpInvalid_1.xml
+index b1f1300..f1b1c88 100644
+--- a/tests/unit/data/xmlValidator/oemPostDumpInvalid_1.xml
++++ b/tests/unit/data/xmlValidator/oemPostDumpInvalid_1.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test xml verification of post dump spec&lt;/specification&gt;
++        &lt;specification&gt;test xml verification of post dump spec&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/oemPostDumpInvalid_10.xml b/tests/unit/data/xmlValidator/oemPostDumpInvalid_10.xml
+index 9f6973a..f63fb77 100644
+--- a/tests/unit/data/xmlValidator/oemPostDumpInvalid_10.xml
++++ b/tests/unit/data/xmlValidator/oemPostDumpInvalid_10.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test xml verification of post dump spec&lt;/specification&gt;
++        &lt;specification&gt;test xml verification of post dump spec&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/oemPostDumpInvalid_2.xml b/tests/unit/data/xmlValidator/oemPostDumpInvalid_2.xml
+index 2c71b46..1bd0031 100644
+--- a/tests/unit/data/xmlValidator/oemPostDumpInvalid_2.xml
++++ b/tests/unit/data/xmlValidator/oemPostDumpInvalid_2.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test xml verification of post dump spec&lt;/specification&gt;
++        &lt;specification&gt;test xml verification of post dump spec&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/oemPostDumpInvalid_3.xml b/tests/unit/data/xmlValidator/oemPostDumpInvalid_3.xml
+index fb9cb9f..941b435 100644
+--- a/tests/unit/data/xmlValidator/oemPostDumpInvalid_3.xml
++++ b/tests/unit/data/xmlValidator/oemPostDumpInvalid_3.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test xml verification of post dump spec&lt;/specification&gt;
++        &lt;specification&gt;test xml verification of post dump spec&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/oemPostDumpInvalid_4.xml b/tests/unit/data/xmlValidator/oemPostDumpInvalid_4.xml
+index e5b2a8e..7a9b679 100644
+--- a/tests/unit/data/xmlValidator/oemPostDumpInvalid_4.xml
++++ b/tests/unit/data/xmlValidator/oemPostDumpInvalid_4.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test xml verification of post dump spec&lt;/specification&gt;
++        &lt;specification&gt;test xml verification of post dump spec&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/oemPostDumpInvalid_5.xml b/tests/unit/data/xmlValidator/oemPostDumpInvalid_5.xml
+index 2c6d5e4..d93514e 100644
+--- a/tests/unit/data/xmlValidator/oemPostDumpInvalid_5.xml
++++ b/tests/unit/data/xmlValidator/oemPostDumpInvalid_5.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test xml verification of post dump spec&lt;/specification&gt;
++        &lt;specification&gt;test xml verification of post dump spec&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/oemPostDumpInvalid_6.xml b/tests/unit/data/xmlValidator/oemPostDumpInvalid_6.xml
+index 36b762d..f48c2b3 100644
+--- a/tests/unit/data/xmlValidator/oemPostDumpInvalid_6.xml
++++ b/tests/unit/data/xmlValidator/oemPostDumpInvalid_6.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test xml verification of post dump spec&lt;/specification&gt;
++        &lt;specification&gt;test xml verification of post dump spec&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/oemPostDumpInvalid_7.xml b/tests/unit/data/xmlValidator/oemPostDumpInvalid_7.xml
+index 6b8d642..4cfe43c 100644
+--- a/tests/unit/data/xmlValidator/oemPostDumpInvalid_7.xml
++++ b/tests/unit/data/xmlValidator/oemPostDumpInvalid_7.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test xml verification of post dump spec&lt;/specification&gt;
++        &lt;specification&gt;test xml verification of post dump spec&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/oemPostDumpInvalid_8.xml b/tests/unit/data/xmlValidator/oemPostDumpInvalid_8.xml
+index 385210b..a0c339c 100644
+--- a/tests/unit/data/xmlValidator/oemPostDumpInvalid_8.xml
++++ b/tests/unit/data/xmlValidator/oemPostDumpInvalid_8.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test xml verification of post dump spec&lt;/specification&gt;
++        &lt;specification&gt;test xml verification of post dump spec&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/oemPostDumpInvalid_9.xml b/tests/unit/data/xmlValidator/oemPostDumpInvalid_9.xml
+index c20f582..0134e99 100644
+--- a/tests/unit/data/xmlValidator/oemPostDumpInvalid_9.xml
++++ b/tests/unit/data/xmlValidator/oemPostDumpInvalid_9.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test xml verification of post dump spec&lt;/specification&gt;
++        &lt;specification&gt;test xml verification of post dump spec&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/oemPostDumpValid_1.xml b/tests/unit/data/xmlValidator/oemPostDumpValid_1.xml
+index 7aa7daa..5c9401f 100644
+--- a/tests/unit/data/xmlValidator/oemPostDumpValid_1.xml
++++ b/tests/unit/data/xmlValidator/oemPostDumpValid_1.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test xml verification of post dump spec&lt;/specification&gt;
++        &lt;specification&gt;test xml verification of post dump spec&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -24,7 +24,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/oemPostDumpValid_2.xml b/tests/unit/data/xmlValidator/oemPostDumpValid_2.xml
+index 29a27f0..f1ae5e9 100644
+--- a/tests/unit/data/xmlValidator/oemPostDumpValid_2.xml
++++ b/tests/unit/data/xmlValidator/oemPostDumpValid_2.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test xml verification of post dump spec&lt;/specification&gt;
++        &lt;specification&gt;test xml verification of post dump spec&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -26,7 +26,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/oemPostDumpValid_3.xml b/tests/unit/data/xmlValidator/oemPostDumpValid_3.xml
+index 96eb78a..8decb63 100644
+--- a/tests/unit/data/xmlValidator/oemPostDumpValid_3.xml
++++ b/tests/unit/data/xmlValidator/oemPostDumpValid_3.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test xml verification of post dump spec&lt;/specification&gt;
++        &lt;specification&gt;test xml verification of post dump spec&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -26,7 +26,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/oemPostDumpValid_4.xml b/tests/unit/data/xmlValidator/oemPostDumpValid_4.xml
+index 979f1fd..eaec2b0 100644
+--- a/tests/unit/data/xmlValidator/oemPostDumpValid_4.xml
++++ b/tests/unit/data/xmlValidator/oemPostDumpValid_4.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to  xml verification of post dum spec&lt;/specification&gt;
++        &lt;specification&gt;xml verification of post dump spec&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/oemPostDumpValid_5.xml b/tests/unit/data/xmlValidator/oemPostDumpValid_5.xml
+index b99ee77..77c103c 100644
+--- a/tests/unit/data/xmlValidator/oemPostDumpValid_5.xml
++++ b/tests/unit/data/xmlValidator/oemPostDumpValid_5.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem to test xml verification of post dum spec&lt;/specification&gt;
++        &lt;specification&gt;test xml verification of post dump spec&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/doc/examples/suse-11.3/suse-min-gnome/config.xml b/tests/unit/data/xmlValidator/patternTattrConsInvalid_1.xml
+similarity index 54%
+copy from doc/examples/suse-11.3/suse-min-gnome/config.xml
+copy to tests/unit/data/xmlValidator/patternTattrConsInvalid_1.xml
+index a361c33..ecd3503 100644
+--- a/doc/examples/suse-11.3/suse-min-gnome/config.xml
++++ b/tests/unit/data/xmlValidator/patternTattrConsInvalid_1.xml
+@@ -1,18 +1,20 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.3-gnome-demo&quot;&gt;
++&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-xml-validator-test&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 Appliance using GNOME&lt;/specification&gt;
++		&lt;specification&gt;test patternType usage consistency, no default packages section, diff attribute values reuse profiles&lt;/specification&gt;
+ 	&lt;/description&gt;
++	&lt;profiles&gt;
++		&lt;profile name=&quot;my-first&quot; description=&quot;a first test profile&quot;/&gt;
++		&lt;profile name=&quot;my-second&quot; description=&quot;a second test profile&quot;/&gt;
++	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+ 		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+ 			&lt;machine memory=&quot;1024&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+-		&lt;type image=&quot;iso&quot; boot=&quot;isoboot/suse-11.3&quot; flags=&quot;unified&quot;/&gt;
+ 		&lt;version&gt;1.0.1&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -29,38 +31,25 @@
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+ 		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+-		&lt;package name=&quot;bootsplash&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-first&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;MozillaFirefox&quot;/&gt;
+-		&lt;package name=&quot;gdm&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;gnome-applets&quot;/&gt;
++		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+-		&lt;package name=&quot;iputils&quot;/&gt;
++		&lt;package name=&quot;vim&quot;/&gt;
++		&lt;opensusePattern name=&quot;base&quot;/&gt;
++	&lt;/packages&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-second&quot; patternType=&quot;plusRecommended&quot;&gt;
++		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
++		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+-		&lt;package name=&quot;python&quot;/&gt;
+-		&lt;package name=&quot;perl&quot;/&gt;
+-		&lt;package name=&quot;preload&quot;/&gt;
+-		&lt;package name=&quot;tomboy&quot;/&gt;
++		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xterm&quot;/&gt;
+-		&lt;package name=&quot;icewm&quot;/&gt;
+-		&lt;package name=&quot;gnome-desktop&quot;/&gt;
+-		&lt;package name=&quot;gnome-session&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-server&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video-intel-legacy&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video-nouveau&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video-unichrome&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video-radeonhd&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-virtualbox-ose&quot;/&gt;
+-		&lt;package name=&quot;xkeyboard-config&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-input&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+-		&lt;opensusePattern name=&quot;x11&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;vmx&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-first,my-second&quot;&gt;
++		&lt;package name=&quot;yast2&quot;/&gt;
++	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/doc/examples/suse-11.3/suse-min-gnome/config.xml b/tests/unit/data/xmlValidator/patternTattrConsInvalid_2.xml
+similarity index 54%
+copy from doc/examples/suse-11.3/suse-min-gnome/config.xml
+copy to tests/unit/data/xmlValidator/patternTattrConsInvalid_2.xml
+index a361c33..b40fc12 100644
+--- a/doc/examples/suse-11.3/suse-min-gnome/config.xml
++++ b/tests/unit/data/xmlValidator/patternTattrConsInvalid_2.xml
+@@ -1,18 +1,20 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.3-gnome-demo&quot;&gt;
++&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-xml-validator-test&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 Appliance using GNOME&lt;/specification&gt;
++		&lt;specification&gt;test patternType usage consistency, no default packages section, diff attribute values reuse profiles&lt;/specification&gt;
+ 	&lt;/description&gt;
++	&lt;profiles&gt;
++		&lt;profile name=&quot;my-first&quot; description=&quot;a first test profile&quot;/&gt;
++		&lt;profile name=&quot;my-second&quot; description=&quot;a second test profile&quot;/&gt;
++	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+ 		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+ 			&lt;machine memory=&quot;1024&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+-		&lt;type image=&quot;iso&quot; boot=&quot;isoboot/suse-11.3&quot; flags=&quot;unified&quot;/&gt;
+ 		&lt;version&gt;1.0.1&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -29,38 +31,25 @@
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+ 		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+-		&lt;package name=&quot;bootsplash&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-first&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;MozillaFirefox&quot;/&gt;
+-		&lt;package name=&quot;gdm&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;gnome-applets&quot;/&gt;
++		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+-		&lt;package name=&quot;iputils&quot;/&gt;
++		&lt;package name=&quot;vim&quot;/&gt;
++		&lt;opensusePattern name=&quot;base&quot;/&gt;
++	&lt;/packages&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-second&quot;&gt;
++		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
++		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+-		&lt;package name=&quot;python&quot;/&gt;
+-		&lt;package name=&quot;perl&quot;/&gt;
+-		&lt;package name=&quot;preload&quot;/&gt;
+-		&lt;package name=&quot;tomboy&quot;/&gt;
++		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xterm&quot;/&gt;
+-		&lt;package name=&quot;icewm&quot;/&gt;
+-		&lt;package name=&quot;gnome-desktop&quot;/&gt;
+-		&lt;package name=&quot;gnome-session&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-server&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video-intel-legacy&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video-nouveau&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video-unichrome&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video-radeonhd&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-virtualbox-ose&quot;/&gt;
+-		&lt;package name=&quot;xkeyboard-config&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-input&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+-		&lt;opensusePattern name=&quot;x11&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;vmx&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-first,my-second&quot; patternType=&quot;plusRecommended&quot;&gt;
++		&lt;package name=&quot;yast2&quot;/&gt;
++	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/doc/examples/suse-11.2/suse-min-gnome/config.xml b/tests/unit/data/xmlValidator/patternTattrConsInvalid_3.xml
+similarity index 58%
+copy from doc/examples/suse-11.2/suse-min-gnome/config.xml
+copy to tests/unit/data/xmlValidator/patternTattrConsInvalid_3.xml
+index a5ef417..3c3b430 100644
+--- a/doc/examples/suse-11.2/suse-min-gnome/config.xml
++++ b/tests/unit/data/xmlValidator/patternTattrConsInvalid_3.xml
+@@ -1,18 +1,20 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.2-gnome-demo&quot;&gt;
++&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-xml-validator-test&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.2 Appliance using GNOME&lt;/specification&gt;
++		&lt;specification&gt;test patternType usage consistency&lt;/specification&gt;
+ 	&lt;/description&gt;
++	&lt;profiles&gt;
++		&lt;profile name=&quot;my-first&quot; description=&quot;a first test profile&quot;/&gt;
++		&lt;profile name=&quot;my-second&quot; description=&quot;a second test profile&quot;/&gt;
++	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+-		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.2&quot; format=&quot;vmdk&quot;&gt;
++		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+ 			&lt;machine memory=&quot;1024&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+-		&lt;type image=&quot;iso&quot; boot=&quot;isoboot/suse-11.2&quot; flags=&quot;unified&quot;/&gt;
+ 		&lt;version&gt;1.0.1&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -27,27 +29,24 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="opensuse://11.2/repo/oss/">opensuse://11.2/repo/oss/</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+-		&lt;package name=&quot;bootsplash&quot;/&gt;
++	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;firefox&quot;/&gt;
+-		&lt;package name=&quot;gdm&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;gnome-applets&quot;/&gt;
++		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+-		&lt;package name=&quot;iputils&quot;/&gt;
++		&lt;package name=&quot;vim&quot;/&gt;
++		&lt;opensusePattern name=&quot;base&quot;/&gt;
++	&lt;/packages&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-second&quot; patternType=&quot;plusRecommended&quot;&gt;
++		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
++		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+-		&lt;package name=&quot;python&quot;/&gt;
+-		&lt;package name=&quot;perl&quot;/&gt;
+-		&lt;package name=&quot;preload&quot;/&gt;
+-		&lt;package name=&quot;tomboy&quot;/&gt;
++		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-server&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;vmx&quot;/&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/doc/examples/suse-11.2/suse-min-gnome/config.xml b/tests/unit/data/xmlValidator/patternTattrConsInvalid_4.xml
+similarity index 61%
+copy from doc/examples/suse-11.2/suse-min-gnome/config.xml
+copy to tests/unit/data/xmlValidator/patternTattrConsInvalid_4.xml
+index a5ef417..b49967c 100644
+--- a/doc/examples/suse-11.2/suse-min-gnome/config.xml
++++ b/tests/unit/data/xmlValidator/patternTattrConsInvalid_4.xml
+@@ -1,18 +1,20 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.2-gnome-demo&quot;&gt;
++&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-xml-validator-test&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.2 Appliance using GNOME&lt;/specification&gt;
++		&lt;specification&gt;test patternType usage consistency&lt;/specification&gt;
+ 	&lt;/description&gt;
++	&lt;profiles&gt;
++		&lt;profile name=&quot;my-first&quot; description=&quot;a first test profile&quot;/&gt;
++		&lt;profile name=&quot;my-second&quot; description=&quot;a second test profile&quot;/&gt;
++	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+-		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.2&quot; format=&quot;vmdk&quot;&gt;
++		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+ 			&lt;machine memory=&quot;1024&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+-		&lt;type image=&quot;iso&quot; boot=&quot;isoboot/suse-11.2&quot; flags=&quot;unified&quot;/&gt;
+ 		&lt;version&gt;1.0.1&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -27,27 +29,24 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="opensuse://11.2/repo/oss/">opensuse://11.2/repo/oss/</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+-		&lt;package name=&quot;bootsplash&quot;/&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;firefox&quot;/&gt;
+-		&lt;package name=&quot;gdm&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;gnome-applets&quot;/&gt;
++		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+-		&lt;package name=&quot;iputils&quot;/&gt;
++		&lt;package name=&quot;vim&quot;/&gt;
++		&lt;opensusePattern name=&quot;base&quot;/&gt;
++	&lt;/packages&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-first&quot;&gt;
++		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
++		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+-		&lt;package name=&quot;python&quot;/&gt;
+-		&lt;package name=&quot;perl&quot;/&gt;
+-		&lt;package name=&quot;preload&quot;/&gt;
+-		&lt;package name=&quot;tomboy&quot;/&gt;
++		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-server&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;vmx&quot;/&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/doc/examples/suse-11.2/suse-min-gnome/config.xml b/tests/unit/data/xmlValidator/patternTattrConsValid_1.xml
+similarity index 55%
+copy from doc/examples/suse-11.2/suse-min-gnome/config.xml
+copy to tests/unit/data/xmlValidator/patternTattrConsValid_1.xml
+index a5ef417..a416d47 100644
+--- a/doc/examples/suse-11.2/suse-min-gnome/config.xml
++++ b/tests/unit/data/xmlValidator/patternTattrConsValid_1.xml
+@@ -1,18 +1,20 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.2-gnome-demo&quot;&gt;
++&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-xml-validator-test&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.2 Appliance using GNOME&lt;/specification&gt;
++		&lt;specification&gt;test patternType usage consistency, no default packages section, different attribute values&lt;/specification&gt;
+ 	&lt;/description&gt;
++	&lt;profiles&gt;
++		&lt;profile name=&quot;my-first&quot; description=&quot;a first test profile&quot;/&gt;
++		&lt;profile name=&quot;my-second&quot; description=&quot;a second test profile&quot;/&gt;
++	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+-		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.2&quot; format=&quot;vmdk&quot;&gt;
++		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+ 			&lt;machine memory=&quot;1024&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+-		&lt;type image=&quot;iso&quot; boot=&quot;isoboot/suse-11.2&quot; flags=&quot;unified&quot;/&gt;
+ 		&lt;version&gt;1.0.1&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -27,27 +29,24 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="opensuse://11.2/repo/oss/">opensuse://11.2/repo/oss/</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+-		&lt;package name=&quot;bootsplash&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-first&quot; patternType=&quot;plusRecommended&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;firefox&quot;/&gt;
+-		&lt;package name=&quot;gdm&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;gnome-applets&quot;/&gt;
++		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+-		&lt;package name=&quot;iputils&quot;/&gt;
++		&lt;package name=&quot;vim&quot;/&gt;
++		&lt;opensusePattern name=&quot;base&quot;/&gt;
++	&lt;/packages&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-second&quot; patternType=&quot;onlyRequired&quot;&gt;
++		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
++		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+-		&lt;package name=&quot;python&quot;/&gt;
+-		&lt;package name=&quot;perl&quot;/&gt;
+-		&lt;package name=&quot;preload&quot;/&gt;
+-		&lt;package name=&quot;tomboy&quot;/&gt;
++		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-server&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;vmx&quot;/&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/doc/examples/suse-11.3/suse-min-gnome/config.xml b/tests/unit/data/xmlValidator/patternTattrConsValid_2.xml
+similarity index 54%
+copy from doc/examples/suse-11.3/suse-min-gnome/config.xml
+copy to tests/unit/data/xmlValidator/patternTattrConsValid_2.xml
+index a361c33..b51b02d 100644
+--- a/doc/examples/suse-11.3/suse-min-gnome/config.xml
++++ b/tests/unit/data/xmlValidator/patternTattrConsValid_2.xml
+@@ -1,18 +1,20 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.3-gnome-demo&quot;&gt;
++&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-xml-validator-test&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 Appliance using GNOME&lt;/specification&gt;
++		&lt;specification&gt;test patternType usage consistency, no default packages section, same attribute values reuse profiles&lt;/specification&gt;
+ 	&lt;/description&gt;
++	&lt;profiles&gt;
++		&lt;profile name=&quot;my-first&quot; description=&quot;a first test profile&quot;/&gt;
++		&lt;profile name=&quot;my-second&quot; description=&quot;a second test profile&quot;/&gt;
++	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+ 		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+ 			&lt;machine memory=&quot;1024&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+-		&lt;type image=&quot;iso&quot; boot=&quot;isoboot/suse-11.3&quot; flags=&quot;unified&quot;/&gt;
+ 		&lt;version&gt;1.0.1&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -29,38 +31,25 @@
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+ 		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+-		&lt;package name=&quot;bootsplash&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-first&quot; patternType=&quot;plusRecommended&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;MozillaFirefox&quot;/&gt;
+-		&lt;package name=&quot;gdm&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;gnome-applets&quot;/&gt;
++		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+-		&lt;package name=&quot;iputils&quot;/&gt;
++		&lt;package name=&quot;vim&quot;/&gt;
++		&lt;opensusePattern name=&quot;base&quot;/&gt;
++	&lt;/packages&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-second&quot; patternType=&quot;plusRecommended&quot;&gt;
++		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
++		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+-		&lt;package name=&quot;python&quot;/&gt;
+-		&lt;package name=&quot;perl&quot;/&gt;
+-		&lt;package name=&quot;preload&quot;/&gt;
+-		&lt;package name=&quot;tomboy&quot;/&gt;
++		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xterm&quot;/&gt;
+-		&lt;package name=&quot;icewm&quot;/&gt;
+-		&lt;package name=&quot;gnome-desktop&quot;/&gt;
+-		&lt;package name=&quot;gnome-session&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-server&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video-intel-legacy&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video-nouveau&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video-unichrome&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video-radeonhd&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-virtualbox-ose&quot;/&gt;
+-		&lt;package name=&quot;xkeyboard-config&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-input&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+-		&lt;opensusePattern name=&quot;x11&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;vmx&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-first,my-second&quot; patternType=&quot;plusRecommended&quot;&gt;
++		&lt;package name=&quot;yast2&quot;/&gt;
++	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/doc/examples/suse-11.3/suse-min-gnome/config.xml b/tests/unit/data/xmlValidator/patternTattrConsValid_3.xml
+similarity index 54%
+copy from doc/examples/suse-11.3/suse-min-gnome/config.xml
+copy to tests/unit/data/xmlValidator/patternTattrConsValid_3.xml
+index a361c33..4777f61 100644
+--- a/doc/examples/suse-11.3/suse-min-gnome/config.xml
++++ b/tests/unit/data/xmlValidator/patternTattrConsValid_3.xml
+@@ -1,18 +1,20 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.3-gnome-demo&quot;&gt;
++&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-xml-validator-test&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 Appliance using GNOME&lt;/specification&gt;
++		&lt;specification&gt;test patternType usage consistency, no default packages section, same attribute values (default) reuse profiles&lt;/specification&gt;
+ 	&lt;/description&gt;
++	&lt;profiles&gt;
++		&lt;profile name=&quot;my-first&quot; description=&quot;a first test profile&quot;/&gt;
++		&lt;profile name=&quot;my-second&quot; description=&quot;a second test profile&quot;/&gt;
++	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+ 		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+ 			&lt;machine memory=&quot;1024&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+-		&lt;type image=&quot;iso&quot; boot=&quot;isoboot/suse-11.3&quot; flags=&quot;unified&quot;/&gt;
+ 		&lt;version&gt;1.0.1&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -29,38 +31,25 @@
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+ 		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+-		&lt;package name=&quot;bootsplash&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-first&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;MozillaFirefox&quot;/&gt;
+-		&lt;package name=&quot;gdm&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;gnome-applets&quot;/&gt;
++		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+-		&lt;package name=&quot;iputils&quot;/&gt;
++		&lt;package name=&quot;vim&quot;/&gt;
++		&lt;opensusePattern name=&quot;base&quot;/&gt;
++	&lt;/packages&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-second&quot;&gt;
++		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
++		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+-		&lt;package name=&quot;python&quot;/&gt;
+-		&lt;package name=&quot;perl&quot;/&gt;
+-		&lt;package name=&quot;preload&quot;/&gt;
+-		&lt;package name=&quot;tomboy&quot;/&gt;
++		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xterm&quot;/&gt;
+-		&lt;package name=&quot;icewm&quot;/&gt;
+-		&lt;package name=&quot;gnome-desktop&quot;/&gt;
+-		&lt;package name=&quot;gnome-session&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-server&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video-intel-legacy&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video-nouveau&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video-unichrome&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-video-radeonhd&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-virtualbox-ose&quot;/&gt;
+-		&lt;package name=&quot;xkeyboard-config&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-driver-input&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+-		&lt;opensusePattern name=&quot;x11&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;vmx&quot;/&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-first,my-second&quot;&gt;
++		&lt;package name=&quot;yast2&quot;/&gt;
++	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/doc/examples/suse-11.2/suse-min-gnome/config.xml b/tests/unit/data/xmlValidator/patternTattrConsValid_4.xml
+similarity index 59%
+copy from doc/examples/suse-11.2/suse-min-gnome/config.xml
+copy to tests/unit/data/xmlValidator/patternTattrConsValid_4.xml
+index a5ef417..e61810c 100644
+--- a/doc/examples/suse-11.2/suse-min-gnome/config.xml
++++ b/tests/unit/data/xmlValidator/patternTattrConsValid_4.xml
+@@ -1,18 +1,20 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.2-gnome-demo&quot;&gt;
++&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-xml-validator-test&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.2 Appliance using GNOME&lt;/specification&gt;
++		&lt;specification&gt;test patternType usage consistency&lt;/specification&gt;
+ 	&lt;/description&gt;
++	&lt;profiles&gt;
++		&lt;profile name=&quot;my-first&quot; description=&quot;a first test profile&quot;/&gt;
++		&lt;profile name=&quot;my-second&quot; description=&quot;a second test profile&quot;/&gt;
++	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+-		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-11.2&quot; format=&quot;vmdk&quot;&gt;
++		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+ 			&lt;machine memory=&quot;1024&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+-		&lt;type image=&quot;iso&quot; boot=&quot;isoboot/suse-11.2&quot; flags=&quot;unified&quot;/&gt;
+ 		&lt;version&gt;1.0.1&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -27,27 +29,24 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="opensuse://11.2/repo/oss/">opensuse://11.2/repo/oss/</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+-		&lt;package name=&quot;bootsplash&quot;/&gt;
++	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;firefox&quot;/&gt;
+-		&lt;package name=&quot;gdm&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;gnome-applets&quot;/&gt;
++		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+-		&lt;package name=&quot;iputils&quot;/&gt;
++		&lt;package name=&quot;vim&quot;/&gt;
++		&lt;opensusePattern name=&quot;base&quot;/&gt;
++	&lt;/packages&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;my-second&quot;&gt;
++		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
++		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+-		&lt;package name=&quot;python&quot;/&gt;
+-		&lt;package name=&quot;perl&quot;/&gt;
+-		&lt;package name=&quot;preload&quot;/&gt;
+-		&lt;package name=&quot;tomboy&quot;/&gt;
++		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;xorg-x11-server&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;vmx&quot;/&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/patternTattrUseInvalid_1.xml b/tests/unit/data/xmlValidator/patternTattrUseInvalid_1.xml
+index d009f20..839f81b 100644
+--- a/tests/unit/data/xmlValidator/patternTattrUseInvalid_1.xml
++++ b/tests/unit/data/xmlValidator/patternTattrUseInvalid_1.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem test default type setting&lt;/specification&gt;
++        &lt;specification&gt;test use of patternType attribute&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/patternTattrUseInvalid_2.xml b/tests/unit/data/xmlValidator/patternTattrUseInvalid_2.xml
+index e300d58..99ff9be 100644
+--- a/tests/unit/data/xmlValidator/patternTattrUseInvalid_2.xml
++++ b/tests/unit/data/xmlValidator/patternTattrUseInvalid_2.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem test default type setting&lt;/specification&gt;
++        &lt;specification&gt;test use of patternType attribute&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/patternTattrUseInvalid_3.xml b/tests/unit/data/xmlValidator/patternTattrUseInvalid_3.xml
+index 70e5960..49ce6c3 100644
+--- a/tests/unit/data/xmlValidator/patternTattrUseInvalid_3.xml
++++ b/tests/unit/data/xmlValidator/patternTattrUseInvalid_3.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem test default type setting&lt;/specification&gt;
++        &lt;specification&gt;test use of paternType attribute&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/patternTattrUseInvalid_4.xml b/tests/unit/data/xmlValidator/patternTattrUseInvalid_4.xml
+index 5e7189b..b90673d 100644
+--- a/tests/unit/data/xmlValidator/patternTattrUseInvalid_4.xml
++++ b/tests/unit/data/xmlValidator/patternTattrUseInvalid_4.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem test default type setting&lt;/specification&gt;
++        &lt;specification&gt;test use of patternType attribute&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/patternTattrUseInvalid_5.xml b/tests/unit/data/xmlValidator/patternTattrUseInvalid_5.xml
+index 7b7258e..411caff 100644
+--- a/tests/unit/data/xmlValidator/patternTattrUseInvalid_5.xml
++++ b/tests/unit/data/xmlValidator/patternTattrUseInvalid_5.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem test default type setting&lt;/specification&gt;
++        &lt;specification&gt;test use of patternType attribute&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/patternTattrUseInvalid_6.xml b/tests/unit/data/xmlValidator/patternTattrUseInvalid_6.xml
+index 2308f0e..2e2351d 100644
+--- a/tests/unit/data/xmlValidator/patternTattrUseInvalid_6.xml
++++ b/tests/unit/data/xmlValidator/patternTattrUseInvalid_6.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem test default type setting&lt;/specification&gt;
++        &lt;specification&gt;test use of patternType attribute&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/patternTattrUseInvalid_7.xml b/tests/unit/data/xmlValidator/patternTattrUseInvalid_7.xml
+index 2ffecba..41718d6 100644
+--- a/tests/unit/data/xmlValidator/patternTattrUseInvalid_7.xml
++++ b/tests/unit/data/xmlValidator/patternTattrUseInvalid_7.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem test default type setting&lt;/specification&gt;
++        &lt;specification&gt;test use of patternType attribute use&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/patternTattrUseValid_1.xml b/tests/unit/data/xmlValidator/patternTattrUseValid_1.xml
+index 4b73f24..0c1c5fd 100644
+--- a/tests/unit/data/xmlValidator/patternTattrUseValid_1.xml
++++ b/tests/unit/data/xmlValidator/patternTattrUseValid_1.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem test default type setting&lt;/specification&gt;
++        &lt;specification&gt;test use of patternType attribute&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/patternTattrUseValid_2.xml b/tests/unit/data/xmlValidator/patternTattrUseValid_2.xml
+index bcc84f2..486df12 100644
+--- a/tests/unit/data/xmlValidator/patternTattrUseValid_2.xml
++++ b/tests/unit/data/xmlValidator/patternTattrUseValid_2.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem test default type setting&lt;/specification&gt;
++        &lt;specification&gt;test use of patternType attribute&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/patternTattrUseValid_3.xml b/tests/unit/data/xmlValidator/patternTattrUseValid_3.xml
+index 969c9d8..e32b8a7 100644
+--- a/tests/unit/data/xmlValidator/patternTattrUseValid_3.xml
++++ b/tests/unit/data/xmlValidator/patternTattrUseValid_3.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem test default type setting&lt;/specification&gt;
++        &lt;specification&gt;test use of patternType attribute&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -25,7 +25,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/preferenceUniqueInvalid_1.xml b/tests/unit/data/xmlValidator/preferenceUniqueInvalid_1.xml
+index bc61c69..d0f8a6d 100644
+--- a/tests/unit/data/xmlValidator/preferenceUniqueInvalid_1.xml
++++ b/tests/unit/data/xmlValidator/preferenceUniqueInvalid_1.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 oem test preferences consistency, two non profile reference sections&lt;/specification&gt;
++        &lt;specification&gt;test preferences consistency, two non profile reference sections&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -26,7 +26,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/preferenceUniqueInvalid_2.xml b/tests/unit/data/xmlValidator/preferenceUniqueInvalid_2.xml
+index d7323d1..3157729 100644
+--- a/tests/unit/data/xmlValidator/preferenceUniqueInvalid_2.xml
++++ b/tests/unit/data/xmlValidator/preferenceUniqueInvalid_2.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 test preferences consistency, ref same profile twice&lt;/specification&gt;
++		&lt;specification&gt;test preferences consistency, ref same profile twice&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+@@ -50,7 +50,7 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/preferenceUniqueValid_1.xml b/tests/unit/data/xmlValidator/preferenceUniqueValid_1.xml
+index 5719cc4..d6d6b04 100644
+--- a/tests/unit/data/xmlValidator/preferenceUniqueValid_1.xml
++++ b/tests/unit/data/xmlValidator/preferenceUniqueValid_1.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 xen guest system&lt;/specification&gt;
++		&lt;specification&gt;test preference section uniqueness&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+@@ -50,7 +50,7 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/profileReferenceExistInvalid_1.xml b/tests/unit/data/xmlValidator/profileReferenceExistInvalid_1.xml
+index 0946c70..6e8aff9 100644
+--- a/tests/unit/data/xmlValidator/profileReferenceExistInvalid_1.xml
++++ b/tests/unit/data/xmlValidator/profileReferenceExistInvalid_1.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 test profile cross references&lt;/specification&gt;
++		&lt;specification&gt;test profile cross references&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+         &lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
+@@ -46,7 +46,7 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/profileReferenceExistInvalid_2.xml b/tests/unit/data/xmlValidator/profileReferenceExistInvalid_2.xml
+index f5e5926..119b743 100644
+--- a/tests/unit/data/xmlValidator/profileReferenceExistInvalid_2.xml
++++ b/tests/unit/data/xmlValidator/profileReferenceExistInvalid_2.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 test profile cross references&lt;/specification&gt;
++		&lt;specification&gt;test profile cross references&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+         &lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
+@@ -24,7 +24,7 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;ola&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/profileReferenceExistInvalid_3.xml b/tests/unit/data/xmlValidator/profileReferenceExistInvalid_3.xml
+index d43d667..163c1b5 100644
+--- a/tests/unit/data/xmlValidator/profileReferenceExistInvalid_3.xml
++++ b/tests/unit/data/xmlValidator/profileReferenceExistInvalid_3.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 test profile cross references&lt;/specification&gt;
++		&lt;specification&gt;test profile cross references&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+         &lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
+@@ -24,7 +24,7 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot; profiles=&quot;ola&quot;&gt;
+-		&lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;ola&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/profileReferenceExistInvalid_4.xml b/tests/unit/data/xmlValidator/profileReferenceExistInvalid_4.xml
+index e933453..a3a26cd 100644
+--- a/tests/unit/data/xmlValidator/profileReferenceExistInvalid_4.xml
++++ b/tests/unit/data/xmlValidator/profileReferenceExistInvalid_4.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 test profile cross references&lt;/specification&gt;
++		&lt;specification&gt;test profile cross references&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+         &lt;type primary=&quot;true&quot; image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt; 
+@@ -24,7 +24,7 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot; profiles=&quot;ola&quot;&gt;
+-		&lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+     &lt;drivers profiles=&quot;ola&quot; type=&quot;drivers&quot;&gt;
+         &lt;file name=&quot;myDriver&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/profileReferenceExistValid_1.xml b/tests/unit/data/xmlValidator/profileReferenceExistValid_1.xml
+index 437c4fe..cf43b4b 100644
+--- a/tests/unit/data/xmlValidator/profileReferenceExistValid_1.xml
++++ b/tests/unit/data/xmlValidator/profileReferenceExistValid_1.xml
+@@ -3,8 +3,11 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;Test configuration of multiple NICs&lt;/specification&gt;
++        &lt;specification&gt;test profiles reference&lt;/specification&gt;
+     &lt;/description&gt;
++    &lt;profiles&gt;
++        &lt;profile name=&quot;ola&quot; description=&quot;a test profile&quot;/&gt;
++    &lt;/profiles&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;vmx&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+             &lt;machine memory=&quot;512&quot;&gt;
+@@ -24,7 +27,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+@@ -34,6 +37,9 @@
+         &lt;package name=&quot;vim&quot;/&gt;
+         &lt;opensusePattern name=&quot;base&quot;/&gt;
+     &lt;/packages&gt;
++    &lt;packages type=&quot;image&quot; profiles=&quot;ola&quot;&gt;
++        &lt;package name=&quot;yast2&quot;/&gt;
++    &lt;/packages&gt;
+     &lt;packages type=&quot;bootstrap&quot;&gt;
+         &lt;package name=&quot;filesystem&quot;/&gt;
+         &lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/typeUniqueInvalid_1.xml b/tests/unit/data/xmlValidator/typeUniqueInvalid_1.xml
+index d0c2ca2..77d1c7e 100644
+--- a/tests/unit/data/xmlValidator/typeUniqueInvalid_1.xml
++++ b/tests/unit/data/xmlValidator/typeUniqueInvalid_1.xml
+@@ -3,7 +3,7 @@
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 test multiple same type settings&lt;/specification&gt;
++		&lt;specification&gt;test multiple same type settings&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;xenFlavour&quot; description=&quot;VMX with Xen kernel&quot; import=&quot;true&quot;/&gt;
+@@ -52,7 +52,7 @@
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+ 	&lt;repository type=&quot;yast2&quot;&gt;
+-		&lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/typeUniqueInvalid_2.xml b/tests/unit/data/xmlValidator/typeUniqueInvalid_2.xml
+index bbe3b76..61c3754 100644
+--- a/tests/unit/data/xmlValidator/typeUniqueInvalid_2.xml
++++ b/tests/unit/data/xmlValidator/typeUniqueInvalid_2.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 test multiple equal type settings&lt;/specification&gt;
++        &lt;specification&gt;test multiple equal type settings&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -26,7 +26,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/versionFormatInvalid_1.xml b/tests/unit/data/xmlValidator/versionFormatInvalid_1.xml
+index 6dfcfd1..c004536 100644
+--- a/tests/unit/data/xmlValidator/versionFormatInvalid_1.xml
++++ b/tests/unit/data/xmlValidator/versionFormatInvalid_1.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 test validation of version value&lt;/specification&gt;
++        &lt;specification&gt;test validation of version value&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -24,7 +24,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/xmlValidator/versionFormatInvalid_2.xml b/tests/unit/data/xmlValidator/versionFormatInvalid_2.xml
+index 39638da..7ef6b26 100644
+--- a/tests/unit/data/xmlValidator/versionFormatInvalid_2.xml
++++ b/tests/unit/data/xmlValidator/versionFormatInvalid_2.xml
+@@ -3,7 +3,7 @@
+     &lt;description type=&quot;system&quot;&gt;
+         &lt;author&gt;Robert Schweikert&lt;/author&gt;
+         &lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-        &lt;specification&gt;openSUSE 11.3 test validation of version value&lt;/specification&gt;
++        &lt;specification&gt;test validation of version value&lt;/specification&gt;
+     &lt;/description&gt;
+     &lt;preferences&gt;
+         &lt;type image=&quot;oem&quot; filesystem=&quot;ext4&quot; boot=&quot;oemboot/suse-11.3&quot; installiso=&quot;true&quot; installboot=&quot;install&quot;&gt;
+@@ -24,7 +24,7 @@
+         &lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+     &lt;/users&gt;
+     &lt;repository type=&quot;yast2&quot;&gt;
+-        &lt;source path=&quot;<A HREF="iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso">iso:///opt/isos/openSUSE-11.3-DVD-x86_64.iso</A>&quot;/&gt;
++        &lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+     &lt;/repository&gt;
+     &lt;packages type=&quot;image&quot; patternType=&quot;plusRecommended&quot;&gt;
+         &lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/lib/Test/xmlValidator.pm b/tests/unit/lib/Test/xmlValidator.pm
+index 0ee650e..e59f1a5 100644
+--- a/tests/unit/lib/Test/xmlValidator.pm
++++ b/tests/unit/lib/Test/xmlValidator.pm
+@@ -357,6 +357,53 @@ sub test_oemPostDump {
+ }
+ 
+ #==========================================
++# test_patternTattrConsistent
++#------------------------------------------
++sub test_patternTattrConsistent {
++	# ...
++	# Test that the patternType attribute consistency criteria is
++	# properly enforced.
++	# ---
++	my $this = shift;
++	my @invalidConfigs = $this -&gt; __getInvalidFiles('patternTattrCons');
++	for my $iConfFile (@invalidConfigs) {
++		my $validator = $this -&gt; __getValidator($iConfFile);
++		$validator -&gt; validate();
++		my $kiwi = $this -&gt; {kiwi};
++		my $msg = $kiwi -&gt; getMessage();
++		my $expectedMsg;
++		if ($iConfFile =~ /patternTattrConsInvalid_1.xml/) {
++			$expectedMsg = 'Conflicting patternType attribute values for '
++			. '&quot;my-second&quot; profile found.';
++		} elsif ($iConfFile =~ /patternTattrConsInvalid_2.xml/) {
++			$expectedMsg = 'Conflicting patternType attribute values for '
++			. '&quot;my-first&quot; profile found.';
++		} elsif ($iConfFile =~ /patternTattrConsInvalid_3.xml/) {
++			$expectedMsg = 'The specified value &quot;plusRecommended&quot; for the '
++			. 'patternType attribute differs from the specified default '
++			. 'value: &quot;onlyRequired&quot;.';
++		} elsif ($iConfFile =~ /patternTattrConsInvalid_4.xml/) {
++			$expectedMsg = 'The patternType attribute was omitted, but the '
++			. 'base &lt;packages&gt; specification requires &quot;plusRecommended&quot; '
++			. 'the values must match.';
++		} else {
++			# Force a test failure, there is no generic message in this test
++			# stream
++			$expectedMsg = 'ola';
++		}
++		$this -&gt; assert_str_equals($expectedMsg, $msg);
++		my $msgT = $kiwi -&gt; getMessageType();
++		$this -&gt; assert_str_equals('error', $msgT);
++		my $state = $kiwi -&gt; getState();
++		$this -&gt; assert_str_equals('failed', $state);
++		# Test this condition last to get potential error messages
++		$this -&gt; assert_not_null($validator);
++	}
++	my @validConfigs = $this -&gt; __getValidFiles('patternTattrCons');
++	$this -&gt; __verifyValid(@validConfigs);
++}
++
++#==========================================
+ # test_patternTattrUse
+ #------------------------------------------
+ sub test_patternTattrUse {
+@@ -435,13 +482,13 @@ sub test_profileReferenceExist {
+ 		$validator -&gt; validate();
+ 		my $kiwi = $this -&gt; {kiwi};
+ 		my $msg = $kiwi -&gt; getMessage();
+-		my $expectedMsg = 'Found reference to profile ';
++		my $expectedMsg = 'Found reference to profile &quot;';
+ 		if ($iConfFile =~ /profileReferenceExistInvalid_(1|2).xml/) {
+ 			$expectedMsg .= 'ec2Flavour';
+ 		} elsif ($iConfFile =~ /profileReferenceExistInvalid_(3|4).xml/) {
+ 			$expectedMsg .= 'ola';
+ 		}
+-		$expectedMsg .= ' but this profile does not exist.';
++		$expectedMsg .= '&quot; but this profile is not defined.';
+ 		$this -&gt; assert_str_equals($expectedMsg, $msg);
+ 		my $msgT = $kiwi -&gt; getMessageType();
+ 		$this -&gt; assert_str_equals('error', $msgT);
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003080.html">[Kiwi-devel] Error message improvement
+</A></li>
+	<LI>Next message: <A HREF="003081.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7567260b8b813bdd3aac49f94dced45458bd48b2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3083">[ date ]</a>
+              <a href="thread.html#3083">[ thread ]</a>
+              <a href="subject.html#3083">[ subject ]</a>
+              <a href="author.html#3083">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

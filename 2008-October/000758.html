@@ -1,0 +1,300 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1666 - in kiwi-head: . modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1666%20-%20in%20kiwi-head%3A%20.%20modules&In-Reply-To=%3C200810221718.m9MHIEmn001469%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000757.html">
+   <LINK REL="Next"  HREF="000759.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1666 - in kiwi-head: . modules</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1666%20-%20in%20kiwi-head%3A%20.%20modules&In-Reply-To=%3C200810221718.m9MHIEmn001469%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1666 - in kiwi-head: . modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Wed Oct 22 19:18:14 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000757.html">[Kiwi-devel] r1665 - in kiwi-head: . modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000759.html">[Kiwi-devel] r1667 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#758">[ date ]</a>
+              <a href="thread.html#758">[ thread ]</a>
+              <a href="subject.html#758">[ subject ]</a>
+              <a href="author.html#758">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2008-10-22 19:18:11 +0200 (Wed, 22 Oct 2008)
+New Revision: 1666
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWICollect.pm
+Log:
+- added option &quot;-v|--verbose&quot; (can be used mutliple times)
+  effect: verbosity is parameter to KIWICollect and triggers debug
+  output, and from debuglevel 2 (-v -v) the messages written to
+  collect.log are written to the &quot;normal&quot; logger instead
+- added some debug-only outputs
+- added code to create &quot;build&quot; file
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-10-22 14:05:47 UTC (rev 1665)
++++ kiwi-head/kiwi.pl	2008-10-22 17:18:11 UTC (rev 1666)
+@@ -55,6 +55,7 @@
+ our $ConfigStatus  = 0;
+ our $TL            = 1;
+ our $BT;
++our $Verbosity     = 0; # control the verbosity level
+ #============================================
+ # Read $HOME/.kiwirc
+ #--------------------------------------------
+@@ -1089,6 +1090,7 @@
+ 	#------------------------------------------
+ 	my $result = GetOptions(
+ 		&quot;version&quot;               =&gt; \&amp;version,
++		&quot;v|verbose+&quot;            =&gt; \$Verbosity,
+ 		&quot;logfile=s&quot;             =&gt; \$LogFile,
+ 		&quot;prepare|p=s&quot;           =&gt; \$Prepare,
+ 		&quot;add-profile=s&quot;         =&gt; \@Profiles,
+@@ -2022,7 +2024,7 @@
+ 	#==========================================
+ 	# Create object...
+ 	#----------------------------------------
+-	my $collect = new KIWICollect ( $kiwi, $xml, $root );
++	my $collect = new KIWICollect ( $kiwi, $xml, $root, $Verbosity );
+ 	if (! defined( $collect) ) {
+ 		$kiwi -&gt; error( &quot;Unable to create KIWICollect module.&quot; );
+ 		$kiwi -&gt; failed ();
+
+Modified: kiwi-head/modules/KIWICollect.pm
+===================================================================
+--- kiwi-head/modules/KIWICollect.pm	2008-10-22 14:05:47 UTC (rev 1665)
++++ kiwi-head/modules/KIWICollect.pm	2008-10-22 17:18:11 UTC (rev 1666)
+@@ -80,7 +80,6 @@
+   my $this  = {
+     m_metacreator   =&gt; undef, # object handling the various metadata types
+     m_archlist	    =&gt; undef,
+-    m_srclist	    =&gt; undef,
+     m_basedir	    =&gt; undef,
+     m_repos	    =&gt; undef,
+     m_xml	    =&gt; undef,
+@@ -118,10 +117,15 @@
+ 
+   # create second logger object to log only the data relevant
+   # for repository creation:
+-  $this-&gt;{m_logger} = new KIWILog(&quot;tiny&quot;);
+-  $this-&gt;{m_logger}-&gt;setLogHumanReadable();
+-  $this-&gt;{m_logger}-&gt;setLogFile(&quot;$this-&gt;{m_basedir}/collect.log&quot;);
+-  $this-&gt;{m_kiwi}-&gt;info(&quot;Logging repository specific data to file $this-&gt;{m_basedir}/collect.log&quot;);
++  if($this-&gt;{m_debug} &gt;= 2) {
++    $this-&gt;{m_logger} = $this-&gt;{m_kiwi};
++  }
++  else {
++    $this-&gt;{m_logger} = new KIWILog(&quot;tiny&quot;);
++    $this-&gt;{m_logger}-&gt;setLogHumanReadable();
++    $this-&gt;{m_logger}-&gt;setLogFile(&quot;$this-&gt;{m_basedir}/collect.log&quot;);
++    $this-&gt;{m_kiwi}-&gt;info(&quot;Logging repository specific data to file $this-&gt;{m_basedir}/collect.log&quot;);
++  }
+ 
+   $this-&gt;{m_util} = new KIWIUtil($this-&gt;{m_logger});
+   if(!$this-&gt;{m_util}) {
+@@ -284,12 +288,13 @@
+   $this-&gt;{m_kiwi}-&gt;info(&quot;KIWICollect::Init: querying instsource package list&quot;);
+   %{$this-&gt;{m_packages}}      = $this-&gt;{m_xml}-&gt;getInstSourcePackageList();
+   # this list may be empty!
+-  $this-&gt;{m_kiwi}-&gt;info(&quot;KIWICollect::Init: queried package list. See packages.dump.pl&quot;);
+-  #if($this-&gt;{m_debug}) {
++  $this-&gt;{m_kiwi}-&gt;info(&quot;KIWICollect::Init: queried package list.&quot;);
++  if($this-&gt;{m_debug}) {
++    $this-&gt;{m_kiwi}-&gt;info(&quot;See packages.dump.pl&quot;);
+     open(DUMP, &quot;&gt;&quot;, &quot;$this-&gt;{m_basedir}/packages.dump.pl&quot;);
+     print DUMP Dumper($this-&gt;{m_packages});
+     close(DUMP);
+-  #}
++  }
+ 
+   ## architectures information (hash with name|desrc|next, next may be 0 which means &quot;no fallback&quot;)
+   # this element is mandatory. Empty = Error
+@@ -302,12 +307,13 @@
+     return undef;
+   }
+   else {
+-    $this-&gt;{m_kiwi}-&gt;info(&quot;KIWICollect::Init: queried archlist. See archlist.dump.pl&quot;);
+-    #if($this-&gt;{m_debug}) {
++    $this-&gt;{m_kiwi}-&gt;info(&quot;KIWICollect::Init: queried archlist.&quot;);
++    if($this-&gt;{m_debug}) {
++      $this-&gt;{m_kiwi}-&gt;info(&quot;See archlist.dump.pl&quot;);
+       open(DUMP, &quot;&gt;&quot;, &quot;$this-&gt;{m_basedir}/archlist.dump.pl&quot;);
+       print DUMP $this-&gt;{m_archlist}-&gt;dumpList();
+       close(DUMP);
+-    #}
++    }
+   }
+ 
+   #cleanup the wasted memory in KIWIXML:
+@@ -321,16 +327,15 @@
+     return undef;
+   }
+   else {
+-    $this-&gt;{m_kiwi}-&gt;info(&quot;KIWICollect::Init: retrieved repository list. See repos.dump.pl&quot;);
+-    #if($this-&gt;{m_debug}) {
++    $this-&gt;{m_kiwi}-&gt;info(&quot;KIWICollect::Init: retrieved repository list.&quot;);
++    if($this-&gt;{m_debug}) {
++      $this-&gt;{m_kiwi}-&gt;info(&quot;See repos.dump.pl&quot;);
+       open(DUMP, &quot;&gt;&quot;, &quot;$this-&gt;{m_basedir}/repos.dump.pl&quot;);
+       print DUMP Dumper($this-&gt;{m_repos});
+       close(DUMP);
+-    #}
++    }
+   }
+ 
+-  #@{$this-&gt;{m_srclist}}	      = keys %{$this-&gt;{m_repos}}; # do we really need this optimisation?
+-
+   ## package list (metapackages with extra effort by scripts)
+   # mandatory. Empty = Error
+   %{$this-&gt;{m_metapackages}}  = $this-&gt;{m_xml}-&gt;getInstSourceMetaPackageList();
+@@ -339,12 +344,13 @@
+     return undef;
+   }
+   else {
+-    $this-&gt;{m_kiwi}-&gt;info(&quot;KIWICollect::Init: retrieved metapackage list. See metapackages.dump.pl&quot;);
+-    #if($this-&gt;{m_debug}) {
++    $this-&gt;{m_kiwi}-&gt;info(&quot;KIWICollect::Init: retrieved metapackage list.&quot;);
++    if($this-&gt;{m_debug}) {
++      $this-&gt;{m_kiwi}-&gt;info(&quot;See metapackages.dump.pl&quot;);
+       open(DUMP, &quot;&gt;&quot;, &quot;$this-&gt;{m_basedir}/metapackages.dump.pl&quot;);
+       print DUMP Dumper($this-&gt;{m_metapackages});
+       close(DUMP);
+-    #}
++    }
+   }
+ 
+   ## metafiles: different handling
+@@ -354,12 +360,13 @@
+     $this-&gt;{m_kiwi}-&gt;info(&quot;KIWICollect::Init: getInstSourceMetaPackageList returned empty hash, no metafiles specified.&quot;);
+   }
+   else {
+-    $this-&gt;{m_kiwi}-&gt;info(&quot;KIWICollect::Init: retrieved metafile list. See metafiles.dump.pl&quot;);
+-    #if($this-&gt;{m_debug}) {
++    $this-&gt;{m_kiwi}-&gt;info(&quot;KIWICollect::Init: retrieved metafile list.&quot;);
++    if($this-&gt;{m_debug}) {
++      $this-&gt;{m_kiwi}-&gt;info(&quot;See metafiles.dump.pl&quot;);
+       open(DUMP, &quot;&gt;&quot;, &quot;$this-&gt;{m_basedir}/metafiles.dump.pl&quot;);
+       print DUMP Dumper($this-&gt;{m_metafiles});
+       close(DUMP);
+-    #}
++    }
+   }
+ 
+   ## info about requirements for chroot env to run metadata scripts
+@@ -369,10 +376,13 @@
+     $this-&gt;{m_kiwi}-&gt;info(&quot;KIWICollect::Init: chroot list is empty hash, no chroot requirements specified&quot;);
+   }
+   else {
+-  #if($this-&gt;{m_debug}) {
+-    open(DUMP, &quot;&gt;&quot;, &quot;$this-&gt;{m_basedir}/chroot.dump.pl&quot;);
+-    print DUMP Dumper($this-&gt;{m_chroot});
+-    close(DUMP);
++    $this-&gt;{m_kiwi}-&gt;info(&quot;KIWICollect::Init: retrieved chroot list.&quot;);
++    if($this-&gt;{m_debug}) {
++      $this-&gt;{m_kiwi}-&gt;info(&quot;See chroot.dump.pl&quot;);
++      open(DUMP, &quot;&gt;&quot;, &quot;$this-&gt;{m_basedir}/chroot.dump.pl&quot;);
++      print DUMP Dumper($this-&gt;{m_chroot});
++      close(DUMP);
++    }
+   }
+ 
+   my ($iadded, $vadded, $oadded);
+@@ -440,8 +450,6 @@
+       $curdir .= &quot;$part/&quot;;
+       $this-&gt;{m_dirlist}-&gt;{&quot;$curdir&quot;} = 1;
+     }
+-    #$this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/script&quot;} = 1; # who needs that?
+-    #$this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/temp&quot;} = 1;	# who needs that?
+     $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/media.$n&quot;} = 1;
+     $this-&gt;{m_basesubdir}-&gt;{$n} = &quot;$dirbase&quot;;
+     $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_basesubdir}-&gt;{$n}&quot;} = 1;
+@@ -452,18 +460,25 @@
+   $this-&gt;{m_basesubdir}-&gt;{'0'} = &quot;$this-&gt;{m_united}/&quot;.$mediumname.&quot;0&quot;;
+   $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_united}/&quot;.$mediumname.&quot;0/temp&quot;} = 1;
+   
+-  $this-&gt;createDirectoryStructure();
++  my $dircreate = $this-&gt;createDirectoryStructure();
++  if(not defined($dircreate)) {
++    $this-&gt;{m_kiwi}-&gt;error(&quot;KIWICollect::Init: calling createDirectoryStructure failed&quot;);
++    return undef;
++  }
+ 
+   # for debugging:
+   if($this-&gt;{m_debug}) {
++    $this-&gt;{m_kiwi}-&gt;info(&quot;Debug: dumping packages lsit to &lt;packagelist.txt&gt;&quot;);
+     $this-&gt;dumpPackageList(&quot;$this-&gt;{m_basedir}/packagelist.txt&quot;);
+   }
+ 
++  $this-&gt;{m_kiwi}-&gt;info(&quot;KIWICollect::Init: create LWP module&quot;);
+   $this-&gt;{m_browser} = new LWP::UserAgent;
+ 
+   ## create the metadata handler and load (+verify) all available plugins:
+   # the required variables are MEDIUM_NAME, PLUGIN_DIR, INI_DIR
+   # should be set by now.
++  $this-&gt;{m_kiwi}-&gt;info(&quot;KIWICollect::Init: create KIWIRepoMetaHandler module&quot;);
+   $this-&gt;{m_metacreator} = new KIWIRepoMetaHandler($this);
+   $this-&gt;{m_metacreator}-&gt;baseurl($this-&gt;{m_united});
+   $this-&gt;{m_metacreator}-&gt;mediaName($this-&gt;{m_proddata}-&gt;getVar('MEDIUM_NAME'));
+@@ -859,7 +874,6 @@
+     $this-&gt;{m_logger}-&gt;info(&quot;[I] expand dir lists for all repositories&quot;);
+   }
+   foreach my $r(keys(%{$this-&gt;{m_repos}})) {
+-  #foreach my $r(@{$this-&gt;{m_srclist}}) {
+     my $tmp_ref = \%{$this-&gt;{m_repos}-&gt;{$r}-&gt;{'srcdirs'}};
+     foreach my $dir(keys(%{$this-&gt;{m_repos}-&gt;{$r}-&gt;{'srcdirs'}})) {
+       # directories are scanned during Init()
+@@ -1814,7 +1828,7 @@
+ 	$this-&gt;{m_logger}-&gt;error(&quot;[E] Cannot create file &lt;$bfile&gt;!&quot;);
+ 	return undef;
+       }
+-      print BUILD $this-&gt;{m_proddata}-&gt;getVar(&quot;BUILD_ID&quot;);
++      print BUILD $this-&gt;{m_proddata}-&gt;getVar(&quot;BUILD_ID&quot;).&quot;\n&quot;;
+       close(BUILD);
+     }
+   }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000757.html">[Kiwi-devel] r1665 - in kiwi-head: . modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000759.html">[Kiwi-devel] r1667 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#758">[ date ]</a>
+              <a href="thread.html#758">[ thread ]</a>
+              <a href="subject.html#758">[ subject ]</a>
+              <a href="author.html#758">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

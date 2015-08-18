@@ -1,0 +1,356 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4f77e17561f018ce171ebe6fd8441359ee5a0269
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204f77e17561f018ce171ebe6fd8441359ee5a0269&In-Reply-To=%3C200909010953.n819rTIJ023370%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="001433.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4f77e17561f018ce171ebe6fd8441359ee5a0269</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204f77e17561f018ce171ebe6fd8441359ee5a0269&In-Reply-To=%3C200909010953.n819rTIJ023370%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4f77e17561f018ce171ebe6fd8441359ee5a0269">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Sep  1 11:53:29 CEST 2009</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="001433.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ac07c96c2b429ac4bc41e2141792c10d65701869
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1432">[ date ]</a>
+              <a href="thread.html#1432">[ thread ]</a>
+              <a href="subject.html#1432">[ subject ]</a>
+              <a href="author.html#1432">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  4f77e17561f018ce171ebe6fd8441359ee5a0269 (commit)
+      from  45d31bc8e03f3e74a4e3d83dae6360fd8025732b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 4f77e17561f018ce171ebe6fd8441359ee5a0269
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Sep 1 11:53:10 2009 +0200
+
+    - added option --grub-chainload which allows the virtual
+      disk based images to chainload grub from partition one.
+      This is required for some preload processes (bnc #529850)
+    - changed filesystem detection by using blkid instead
+      of a raw dump + file call. Related to (bnc #529850)
+    - disabled partition table re-write for hybrid ISO's
+      also see the comment in KIWIIsoLinux.pm
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index aea4169..eba52f9 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -202,6 +202,7 @@ our $CheckKernel;           # check for kernel matches in boot and system image
+ our $Clone;                 # clone existing image description
+ our $LVM;                   # use LVM partition setup for virtual disk
+ our $Debug;                 # activates the internal stack trace output
++our $GrubChainload;         # install grub loader in first partition not MBR
+ our $kiwi;                  # global logging handler object
+ 
+ #============================================
+@@ -1322,6 +1323,7 @@ sub init {
+ 		&quot;check-kernel&quot;          =&gt; \$CheckKernel,
+ 		&quot;clone|o=s&quot;             =&gt; \$Clone,
+ 		&quot;lvm&quot;                   =&gt; \$LVM,
++		&quot;grub-chainload&quot;        =&gt; \$GrubChainload,
+ 		&quot;debug&quot;                 =&gt; \$Debug,
+ 		&quot;help|h&quot;                =&gt; \&amp;usage,
+ 		&quot;&lt;&gt;&quot;                    =&gt; \&amp;usage
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index fdc91d0..1e92e8a 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -377,6 +377,7 @@ sub new {
+ 	$this-&gt;{xengz}     = $xengz;
+ 	$this-&gt;{arch}      = $arch;
+ 	$this-&gt;{ptool}     = $main::Partitioner;
++	$this-&gt;{chainload} = $main::GrubChainload;
+ 	$this-&gt;{lvm}       = $lvm;
+ 	$this-&gt;{vga}       = $vga;
+ 	$this-&gt;{xml}       = $xml;
+@@ -3858,6 +3859,7 @@ sub installBootLoader {
+ 	my $kiwi     = $this-&gt;{kiwi};
+ 	my $tmpdir   = $this-&gt;{tmpdir};
+ 	my $bootpart = $this-&gt;{bootpart};
++	my $chainload= $this-&gt;{chainload};
+ 	my $result;
+ 	my $status;
+ 	#==========================================
+@@ -3898,7 +3900,11 @@ sub installBootLoader {
+ 		}
+ 		print FD &quot;device (hd0) $diskname\n&quot;;
+ 		print FD &quot;root (hd0,$bootpart)\n&quot;;
+-		print FD &quot;setup (hd0)\n&quot;;
++		if ($chainload) {
++			print FD &quot;setup (hd0,0)\n&quot;;
++		} else {
++			print FD &quot;setup (hd0)\n&quot;;
++		}
+ 		print FD &quot;quit\n&quot;;
+ 		close FD;
+ 		my $glog;
+@@ -3922,6 +3928,27 @@ sub installBootLoader {
+ 			$kiwi -&gt; failed ();
+ 			return undef;
+ 		}
++		if ($chainload) {
++			# /.../
++			# chainload grub with master-boot-code
++			# zero out sectors between 0x200 - 0x3f0 for preload process
++			# ---
++			my $mbr = &quot;/usr/lib/boot/master-boot-code&quot;;
++			my $opt = &quot;conv=notrunc&quot;;
++			$status = qxx (
++				&quot;dd if=$mbr of=$diskname bs=1 count=446 $opt 2&gt;&amp;1&quot;
++			);
++			$result= $? &gt;&gt; 8;
++			if ($result != 0) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;Couldn't install master boot code: $status&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			$status = qxx (
++				&quot;dd if=/dev/zero of=$diskname bs=1 count=496 seek=512 $opt 2&gt;&amp;1&quot;
++			);
++		}
+ 		$kiwi -&gt; done();
+ 	}
+ 	#==========================================
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index a10d93e..c26c929 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -945,7 +945,7 @@ function suseStripInitrd {
+ 		ldd driveready checkmedia splashy bzip2 hexdump vgremove
+ 		pvchange pvresize pvscan vgscan vgchange vgextend vgdisplay
+ 		lvchange lvresize lvextend lvcreate grub dcounter tty
+-		dmsetup dialog awk gawk clicfs cryptsetup clear
++		dmsetup dialog awk gawk clicfs cryptsetup clear blkid
+ 	&quot;
+ 	tools=&quot;$tools $@&quot;
+ 	for path in /sbin /usr/sbin /usr/bin /bin;do
+diff --git a/modules/KIWIIsoLinux.pm b/modules/KIWIIsoLinux.pm
+index c94caa0..eb92472 100644
+--- a/modules/KIWIIsoLinux.pm
++++ b/modules/KIWIIsoLinux.pm
+@@ -574,29 +574,35 @@ sub createHybrid {
+ 	#==========================================
+ 	# Make it DOS compatible
+ 	#------------------------------------------
+-	my @commands = (&quot;d&quot;,&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;.&quot;,&quot;a&quot;,&quot;1&quot;,&quot;w&quot;,&quot;q&quot;);
+-	$loop = qxx (&quot;/sbin/losetup -s -f $iso 2&gt;&amp;1&quot;); chomp $loop;
+-	$code = $? &gt;&gt; 8;
+-	if ($code != 0) {
+-		$kiwi -&gt; error  (&quot;Failed to loop bind iso file: $loop&quot;);
+-		$kiwi -&gt; failed ();
+-		return undef;
+-	}
+-	if (! open ($FD,&quot;|/sbin/fdisk $loop &amp;&gt; /dev/null&quot;)) {
+-		$kiwi -&gt; error  (&quot;Failed to call fdisk&quot;);
+-		$kiwi -&gt; failed ();
+-		qxx (&quot;losetup -d $loop&quot;);
+-		return undef;
+-	}
+-	foreach my $cmd (@commands) {
+-		if ($cmd eq &quot;.&quot;) {
+-			print $FD &quot;\n&quot;;
+-		} else {
+-			print $FD &quot;$cmd\n&quot;;
+-		}
+-	}
+-	close $FD;
+-	qxx (&quot;losetup -d $loop&quot;);
++	# /.../
++	# Doing this will break the hybrid, the partition
++	# can't be mounted after that call. I'm pretty sure
++	# this is a bug in isohybrid not creating a compatible
++	# partition table
++	# ----
++	#my @commands = (&quot;d&quot;,&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;.&quot;,&quot;a&quot;,&quot;1&quot;,&quot;w&quot;,&quot;q&quot;);
++	#$loop = qxx (&quot;/sbin/losetup -s -f $iso 2&gt;&amp;1&quot;); chomp $loop;
++	#$code = $? &gt;&gt; 8;
++	#if ($code != 0) {
++	#	$kiwi -&gt; error  (&quot;Failed to loop bind iso file: $loop&quot;);
++	#	$kiwi -&gt; failed ();
++	#	return undef;
++	#}
++	#if (! open ($FD,&quot;|/sbin/fdisk $loop &amp;&gt; /dev/null&quot;)) {
++	#	$kiwi -&gt; error  (&quot;Failed to call fdisk&quot;);
++	#	$kiwi -&gt; failed ();
++	#	qxx (&quot;losetup -d $loop&quot;);
++	#	return undef;
++	#}
++	#foreach my $cmd (@commands) {
++	#	if ($cmd eq &quot;.&quot;) {
++	#		print $FD &quot;\n&quot;;
++	#	} else {
++	#		print $FD &quot;$cmd\n&quot;;
++	#	}
++	#}
++	#close $FD;
++	#qxx (&quot;losetup -d $loop&quot;);
+ 	return $this;
+ }
+ 
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 08f1b90..e04a15b 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -1607,9 +1607,9 @@ function kernelCheck {
+ 	fi
+ }
+ #======================================
+-# identifyFileSystem
++# probeFileSystem
+ #--------------------------------------
+-function identifyFileSystem {
++function probeFileSystem {
+ 	# /.../
+ 	# probe for the filesystem type. The function will
+ 	# read 128 kB of the given device and check the
+@@ -1617,48 +1617,23 @@ function identifyFileSystem {
+ 	# filesystem
+ 	# ----
+ 	FSTYPE=unknown
+-	if [ ! -z &quot;$2&quot; ];then
+-		# leave a gap of 512 byte to skip a possible bootloader
+-		dd if=$1 of=/tmp/filesystem-$$ bs=128k count=1 seek=4 skip=4 &gt;/dev/null
+-	else
+-		# read the first 128 byte to check the fs
+-		dd if=$1 of=/tmp/filesystem-$$ bs=128k count=1 &gt;/dev/null
+-	fi
+-	data=$(file /tmp/filesystem-$$)
+-	case $data in
+-		*ext4*)     FSTYPE=ext4 ;;
+-		*ext3*)     FSTYPE=ext3 ;;
+-		*ext2*)     FSTYPE=ext2 ;;
+-		*ReiserFS*) FSTYPE=reiserfs ;;
+-		*Squashfs*) FSTYPE=squashfs ;;
+-		*LUKS*)     FSTYPE=luks ;;
++	FSTYPE=$(blkid $1 -s TYPE -o value)
++	case $FSTYPE in
++		ext4)     FSTYPE=ext4 ;;
++		ext3)     FSTYPE=ext3 ;;
++		ext2)     FSTYPE=ext2 ;;
++		reiserfs) FSTYPE=reiserfs ;;
++		squashfs) FSTYPE=squashfs ;;
++		luks)     FSTYPE=luks ;;
++		vfat)     FSTYPE=vfat ;;
++		clicfs)   FSTYPE=clicfs ;;
+ 		*)
+ 			FSTYPE=unknown
+ 		;;
+ 	esac
+-	if [ $FSTYPE = &quot;unknown&quot; ];then
+-		if grep -q mkdosfs /tmp/filesystem-$$;then
+-			FSTYPE=vfat
+-		fi
+-	fi
+-	if [ $FSTYPE = &quot;unknown&quot; ];then
+-		if grep -q ^CLIC /tmp/filesystem-$$;then
+-			FSTYPE=clicfs
+-		fi
+-	fi
+-	rm -f /tmp/filesystem-$$
+ 	export FSTYPE
+ }
+ #======================================
+-# probeFileSystem
+-#--------------------------------------
+-function probeFileSystem {
+-	identifyFileSystem $1
+-	if [ $FSTYPE = &quot;unknown&quot; ];then
+-		identifyFileSystem $1 &quot;after-boot-record&quot;
+-	fi
+-}
+-#======================================
+ # getSystemIntegrity
+ #--------------------------------------
+ function getSystemIntegrity {
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 6ae02c1..09bef10 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,15 @@
+ -------------------------------------------------------------------
++Tue Sep  1 10:45:30 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- added option --grub-chainload which allows the virtual
++  disk based images to chainload grub from partition one.
++  This is required for some preload processes (bnc #529850)
++- changed filesystem detection by using blkid instead
++  of a raw dump + file call. Related to (bnc #529850)
++- disabled partition table re-write for hybrid ISO's
++  also see the comment in KIWIIsoLinux.pm
++
++-------------------------------------------------------------------
+ Fri Aug 28 12:38:12 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed partition size check which failed if oem-systemsize
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index eb80815..cf9307b 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -40,6 +40,7 @@ Requires:       perl = %{perl_version}
+ Requires:       perl-XML-LibXML perl-libwww-perl screen coreutils
+ Requires:       perl-XML-LibXML-Common perl-XML-SAX perl-Config-IniFiles
+ Requires:       kiwi-tools libxslt checkmedia
++Requires:       master-boot-code
+ %if %{suse_version} &gt; 1030
+ Requires:       satsolver-tools = %{sattools_version}
+ %endif
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="001433.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ac07c96c2b429ac4bc41e2141792c10d65701869
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1432">[ date ]</a>
+              <a href="thread.html#1432">[ thread ]</a>
+              <a href="subject.html#1432">[ subject ]</a>
+              <a href="author.html#1432">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

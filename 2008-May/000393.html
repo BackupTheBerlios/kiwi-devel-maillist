@@ -1,0 +1,808 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1301 - in kiwi-head: . rpm	system/boot/netboot system/boot/oemboot system/boot/vmxboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1301%20-%20in%20kiwi-head%3A%20.%20rpm%0A%09system/boot/netboot%20system/boot/oemboot%20system/boot/vmxboot&In-Reply-To=%3C200805301436.m4UEaim5006764%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000392.html">
+   <LINK REL="Next"  HREF="000394.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1301 - in kiwi-head: . rpm	system/boot/netboot system/boot/oemboot system/boot/vmxboot</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1301%20-%20in%20kiwi-head%3A%20.%20rpm%0A%09system/boot/netboot%20system/boot/oemboot%20system/boot/vmxboot&In-Reply-To=%3C200805301436.m4UEaim5006764%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1301 - in kiwi-head: . rpm	system/boot/netboot system/boot/oemboot system/boot/vmxboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri May 30 16:36:44 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000392.html">[Kiwi-devel] [SVN:KIWI-Team] r1300 - in kiwi-head: rpm	system/boot/netboot
+</A></li>
+        <LI>Next message: <A HREF="000394.html">[Kiwi-devel] [SVN:KIWI-Team] r1302 - in kiwi-head: rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#393">[ date ]</a>
+              <a href="thread.html#393">[ thread ]</a>
+              <a href="subject.html#393">[ subject ]</a>
+              <a href="author.html#393">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: Fri May 30 16:36:27 2008
+New Revision: 1301
+
+Modified:
+   kiwi-head/Makefile
+   kiwi-head/modules/KIWIConfig.sh
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+   kiwi-head/system/boot/netboot/suse-linuxrc
+   kiwi-head/system/boot/netboot/suse-preinit
+   kiwi-head/system/boot/oemboot/README
+   kiwi-head/system/boot/oemboot/suse-linuxrc
+   kiwi-head/system/boot/oemboot/suse-preinit
+   kiwi-head/system/boot/vmxboot/suse-linuxrc
+   kiwi-head/system/boot/vmxboot/suse-preinit
+
+Log:
+
+- make kiwi build on all archs. This does _not_ mean it
+  has full functionality on other archs than ix86 and x86_64
+  Support for other archs is still work in progress !
+- fixed find command in baseSetupPlainTextGITRepository
+- create generic bootloader functions which calls specific
+  bootloader code according to the architecture. At the moment
+  only x*86 and x86_64 have code for it
+- fixed grub title setup if multiple kernels are installed
+
+
+
+Modified: kiwi-head/Makefile
+==============================================================================
+--- kiwi-head/Makefile	(original)
++++ kiwi-head/Makefile	Fri May 30 16:36:27 2008
+@@ -105,7 +105,8 @@
+ 	#============================================
+ 	# Install TFTP netboot structure and loader
+ 	#--------------------------------------------
+-	install -m 755 ${syslinux}/pxelinux.0     ${TFTPBOOT}/pxelinux.0
++	test -f ${syslinux}/pxelinux.0 &amp;&amp; \
++		install -m 755 ${syslinux}/pxelinux.0 ${TFTPBOOT}/pxelinux.0|| /bin/true
+ 	test -f ${syslinux}/mboot.c32 &amp;&amp; \
+ 		install -m 755 ${syslinux}/mboot.c32  ${TFTPBOOT}/mboot.c32 || /bin/true
+ 	install -m 644 pxeboot/README             ${TFTPBOOT}
+
+Modified: kiwi-head/modules/KIWIConfig.sh
+==============================================================================
+--- kiwi-head/modules/KIWIConfig.sh	(original)
++++ kiwi-head/modules/KIWIConfig.sh	Fri May 30 16:36:27 2008
+@@ -429,14 +429,15 @@
+ 		/sys /dev /var/log /home /media /var/run /var/tmp /tmp /var/lock
+ 		/image /var/spool /var/cache /var/lib /boot /root /var/adm
+ 		/usr/share/doc /base-system /usr/lib /usr/lib64 /usr/bin /usr/sbin
+-		/usr/share/man /proc /bin /sbin /lib /lib64 /.git
++		/usr/share/man /proc /bin /sbin /lib /lib64 /opt
++		/usr/share/X11 /.git
+ 	&quot;
+ 	#======================================
+ 	# files to ignore
+ 	#--------------------------------------
+ 	local files=&quot;
+-		/etc/Image* *.lock /etc/resolv.conf *.gif *.png
+-		*.jpg *.eps *.ps
++		./etc/Image* *.lock ./etc/resolv.conf *.gif *.png
++		*.jpg *.eps *.ps *.la *.so */lib */lib64 */doc */zoneinfo
+ 	&quot;
+ 	#======================================
+ 	# creae .gitignore and find list
+@@ -444,9 +445,9 @@
+ 	for entry in $files;do
+ 		echo $entry &gt;&gt; .gitignore
+ 		if [ -z &quot;$ignore&quot; ];then
+-			ignore=&quot;-name $entry&quot;
++			ignore=&quot;-wholename $entry&quot;
+ 		else
+-			ignore=&quot;$ignore -or -name $entry&quot;
++			ignore=&quot;$ignore -or -wholename $entry&quot;
+ 		fi
+ 	done
+ 	for entry in $dirs;do
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+==============================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	(original)
++++ kiwi-head/modules/KIWILinuxRC.sh	Fri May 30 16:36:27 2008
+@@ -337,7 +337,26 @@
+ 	fi
+ }
+ #======================================
+-# installGrub
++# installBootLoader
++#--------------------------------------
++function installBootLoader {
++	# /.../
++	# generic function to install the boot loader.
++	# The selection of the bootloader happens according to
++	# the architecture of the system
++	# ----
++	local arch=`uname -m`
++	case $arch in
++		i*86)   installBootLoaderGrub ;;
++		x86_64) installBootLoaderGrub ;;
++		*)
++		systemException \
++			&quot;*** boot loader setup for $arch not implemented ***&quot; \
++		&quot;reboot&quot;
++	esac
++}
++#======================================
++# installBootLoaderGrub
+ #--------------------------------------
+ function installBootLoaderGrub {
+ 	# /.../
+@@ -363,7 +382,7 @@
+ 	# call mkinitrd on suse systems to create the distro initrd
+ 	# based on /etc/sysconfig/kernel
+ 	# ----
+-	grubOK=1
++	bootLoaderOK=1
+ 	local umountProc=0
+ 	local umountSys=0
+ 	local systemMap=0
+@@ -385,7 +404,7 @@
+ 		if ! mkinitrd;then
+ 			Echo &quot;Can't create initrd&quot;
+ 			systemIntegrity=unknown
+-			grubOK=0
++			bootLoaderOK=0
+ 		fi
+ 		if [ -f /etc/init.d/boot.device-mapper ];then
+ 			/etc/init.d/boot.device-mapper stop
+@@ -400,7 +419,7 @@
+ 		Echo &quot;Image doesn't include kernel system map&quot;
+ 		Echo &quot;Can't create initrd&quot;
+ 		systemIntegrity=unknown
+-		grubOK=0
++		bootLoaderOK=0
+ 	fi
+ }
+ #======================================
+@@ -435,7 +454,56 @@
+ 	chroot . bash ./run_all.sh
+ }
+ #======================================
+-# installGrub
++# setupBootLoaderFiles
++#--------------------------------------
++function setupBootLoaderFiles {
++	# /.../
++	# generic function which returns the files used for a
++	# specific bootloader. The selection of the bootloader
++	# happens according to the architecture of the system
++	# ----
++	local arch=`uname -m`
++	case $arch in
++		i*86)    setupBootLoaderFilesGrub ;;
++		x86_64)  setupBootLoaderFilesGrub ;;
++		*)
++		systemException \
++			&quot;*** boot loader files for $arch not implemented ***&quot; \
++		&quot;reboot&quot;
++	esac
++}
++#======================================
++# setupBootLoaderFilesGrub
++#--------------------------------------
++function setupBootLoaderFilesGrub {
++	echo &quot;/boot/grub/menu.lst /etc/grub.conf&quot;
++}
++#======================================
++# setupBootLoader
++#--------------------------------------
++function setupBootLoader {
++	# /.../
++	# generic function to setup the boot loader configuration.
++	# The selection of the bootloader happens according to
++	# the architecture of the system
++	# ----
++	local arch=`uname -m`
++	local para=&quot;&quot;
++	while [ $# -gt 0 ];do
++		para=&quot;$para \&quot;$1\&quot;&quot;
++		shift
++	done
++	case $arch in
++		i*86)   eval setupBootLoaderGrub $para ;;
++		x86_64) eval setupBootLoaderGrub $para ;;
++		*)
++		systemException \
++			&quot;*** boot loader setup for $arch not implemented ***&quot; \
++		&quot;reboot&quot;
++	esac
++}
++#======================================
++# setupBootLoaderGrub
+ #--------------------------------------
+ function setupBootLoaderGrub {
+ 	# /.../
+@@ -452,6 +520,9 @@
+ 	local conf=$destsPrefix/etc/grub.conf
+ 	local dmap=$destsPrefix/boot/grub/device.map
+ 	local console=&quot;&quot;
++	local kname=&quot;&quot;
++	local kernel=&quot;&quot;
++	local initrd=&quot;&quot;
+ 	#======================================
+ 	# check for system image .profile
+ 	#--------------------------------------
+@@ -501,6 +572,7 @@
+ 	if [ -f /image/loader/message ] || [ -f /boot/message ];then
+ 		echo &quot;gfxmenu $gdev/boot/message&quot; &gt;&gt; $menu
+ 	fi
++	local count=1
+ 	IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
+ 		if test ! -z &quot;$i&quot;;then
+ 			#======================================
+@@ -508,10 +580,11 @@
+ 			#--------------------------------------
+ 			kernel=`echo $i | cut -f1 -d:`
+ 			initrd=`echo $i | cut -f2 -d:`
++			kname=${KERNEL_NAME[$count]}
+ 			if [ -z &quot;$name&quot; ];then
+-				echo &quot;title $kernel [ $gfix ]&quot;                 &gt;&gt; $menu
++				echo &quot;title $kname [ $gfix ]&quot;                   &gt;&gt; $menu
+ 			else
+-				echo &quot;title $name [ $gfix ]&quot;                   &gt;&gt; $menu
++				echo &quot;title $name-$kname [ $gfix ]&quot;             &gt;&gt; $menu
+ 			fi
+ 			if [ $kernel = &quot;vmlinuz-xen&quot; ];then
+ 				echo &quot; root $gdev&quot;                                &gt;&gt; $menu
+@@ -540,9 +613,9 @@
+ 			# create failsafe entry
+ 			#--------------------------------------
+ 			if [ -z &quot;$name&quot; ];then
+-				echo &quot;title Failsafe -- $kernel [ $gfix ]&quot;     &gt;&gt; $menu
++				echo &quot;title Failsafe -- $kname [ $gfix ]&quot;       &gt;&gt; $menu
+ 			else
+-				echo &quot;title Failsafe -- $name [ $gfix ]&quot;       &gt;&gt; $menu
++				echo &quot;title Failsafe -- $name-$kname [ $gfix ]&quot; &gt;&gt; $menu
+ 			fi
+ 			if [ $kernel = &quot;vmlinuz-xen&quot; ];then
+ 				echo &quot; root $gdev&quot;                                &gt;&gt; $menu
+@@ -572,9 +645,9 @@
+ 			#--------------------------------------
+ 			if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ 				if [ -z &quot;$name&quot; ];then
+-					echo &quot;title Recovery -- $kernel [ $gfix ]&quot; &gt;&gt; $menu
++					echo &quot;title Recovery [ $gfix ]&quot;             &gt;&gt; $menu
+ 				else
+-					echo &quot;title Recovery -- $name [ $gfix ]&quot;   &gt;&gt; $menu
++					echo &quot;title Recovery [ $gfix ]&quot;             &gt;&gt; $menu
+ 				fi
+ 				gdev_recovery=&quot;(hd0,3)&quot;
+ 				rdev_recovery=$OEM_RECOVERY
+@@ -598,6 +671,7 @@
+ 					echo &quot; initrd $gdev_recovery/boot/$initrd&quot;    &gt;&gt; $menu
+ 				fi
+ 			fi
++			count=`expr $count + 1`
+ 		fi
+ 	done
+ 	#======================================
+@@ -949,7 +1023,7 @@
+ function USBStickDevice {
+ 	stickFound=0
+ 	Echo -n &quot;Waiting for USB devices to settle...&quot;
+-	for redo in 1 2 3 4 5;do
++	for redo in 1 2 3 4 5 6 7 8 9 10;do
+ 		for device in /sys/bus/usb/drivers/usb-storage/*;do
+ 			if [ ! -L $device ];then
+ 				continue
+@@ -1001,7 +1075,7 @@
+ 			done
+ 		done
+ 		echo -n .
+-		sleep 2
++		sleep 3
+ 	done
+ 	echo .
+ }
+@@ -1710,6 +1784,7 @@
+ 	# ----
+ 	prefix=$1
+ 	KERNEL_LIST=&quot;&quot;
++	KERNEL_NAME=&quot;&quot;
+ 	kcount=0
+ 	for i in $prefix/lib/modules/*;do
+ 		if [ ! -d $i ];then
+@@ -1720,6 +1795,7 @@
+ 			continue
+ 		fi
+ 		KERNEL_PAIR=&quot;&quot;
++		local kname=`basename $i`
+ 		for n in $prefix/boot/*;do
+ 			if [ ! -L $n ];then
+ 				continue
+@@ -1734,6 +1810,7 @@
+ 			fi
+ 			KERNEL_PAIR=$kernel:$initrd
+ 		done
++		KERNEL_NAME[$kcount]=$kname
+ 		if [ $kcount = 1 ];then
+ 			KERNEL_LIST=$KERNEL_PAIR
+ 		elif [ $kcount -gt 1 ];then
+@@ -1750,9 +1827,11 @@
+ 			# gets added
+ 			# ----
+ 			KERNEL_LIST=&quot;vmlinuz:initrd&quot;
++			KERNEL_NAME[1]=vmlinuz
+ 		fi
+ 	fi
+ 	export KERNEL_LIST
++	export KERNEL_NAME
+ }
+ #======================================
+ # validateSize
+
+Modified: kiwi-head/rpm/kiwi.changes
+==============================================================================
+--- kiwi-head/rpm/kiwi.changes	(original)
++++ kiwi-head/rpm/kiwi.changes	Fri May 30 16:36:27 2008
+@@ -1,4 +1,16 @@
+ -------------------------------------------------------------------
++Fri May 30 11:23:39 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- make kiwi build on all archs. This does _not_ mean it
++  has full functionality on other archs than ix86 and x86_64
++  Support for other archs is still work in progress !
++- fixed find command in baseSetupPlainTextGITRepository 
++- create generic bootloader functions which calls specific
++  bootloader code according to the architecture. At the moment
++  only x*86 and x86_64 have code for it
++- fixed grub title setup if multiple kernels are installed
++
++-------------------------------------------------------------------
+ Thu May 29 17:07:35 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - make NFSROOT work together with UNIONFS_CONFIG. The read-only
+
+Modified: kiwi-head/rpm/kiwi.spec
+==============================================================================
+--- kiwi-head/rpm/kiwi.spec	(original)
++++ kiwi-head/rpm/kiwi.spec	Fri May 30 16:36:27 2008
+@@ -49,7 +49,6 @@
+ Source:         %{name}.tar.bz2
+ Source1:        %{name}-rpmlintrc
+ BuildRoot:      %{_tmppath}/%{name}-%{version}-build
+-ExcludeArch:    ia64 ppc64 s390x s390 ppc
+ Recommends:     smart zypper
+ 
+ %description
+@@ -63,6 +62,7 @@
+ --------
+     Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+ 
++%ifarch %ix86 x86_64
+ %package -n kiwi-pxeboot
+ License:        GPL v2 or later
+ Requires:       syslinux
+@@ -74,11 +74,10 @@
+ %description -n kiwi-pxeboot
+ PXE basic directory structure and pre-build boot images
+ 
+-
+-
+ Authors:
+ --------
+     Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
++%endif
+ 
+ %package -n kiwi-tools
+ License:        GPL v2 or later
+@@ -97,6 +96,7 @@
+ --------
+     Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+ 
++%ifarch %ix86 x86_64
+ %package -n kiwi-pxeboot-prebuild
+ License:        GPL v2 only
+ Requires:       syslinux
+@@ -108,12 +108,12 @@
+ %description -n kiwi-pxeboot-prebuild
+ This package contains the OpenSuSE - KIWI TFTP prebuild boot images
+ 
+-
+-
+ Authors:
+ --------
+     Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
++%endif
+ 
++%ifarch %ix86 x86_64
+ %package -n kiwi-desc-isoboot
+ License:        GPL v2 or later
+ Requires:       kiwi syslinux mkisofs
+@@ -125,8 +125,6 @@
+ %description -n kiwi-desc-isoboot
+ kiwi boot (initrd) image for activating system images on ISO media
+ 
+-
+-
+ Authors:
+ --------
+     Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+@@ -142,8 +140,6 @@
+ %description -n kiwi-desc-usbboot
+ kiwi boot (initrd) image for activating system images on USB stick
+ 
+-
+-
+ Authors:
+ --------
+     Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+@@ -159,8 +155,6 @@
+ %description -n kiwi-desc-vmxboot
+ kiwi boot (initrd) image for activating system images on virtual disk
+ 
+-
+-
+ Authors:
+ --------
+     Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+@@ -176,8 +170,6 @@
+ %description -n kiwi-desc-netboot
+ kiwi boot (initrd) image for activating system images via TFTP
+ 
+-
+-
+ Authors:
+ --------
+     Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+@@ -193,8 +185,6 @@
+ %description -n kiwi-desc-xenboot
+ kiwi boot (initrd) image for activating a Xen image by xm
+ 
+-
+-
+ Authors:
+ --------
+     Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+@@ -211,8 +201,7 @@
+ This package contains the OpenSuSE - KIWI image descriptions. Each
+ image description exists in a single directory and contains an oemboot
+ image description
+-
+-
++%endif
+ 
+ %package -n kiwi-doc
+ License:        LGPL v2.0 or later
+@@ -223,8 +212,6 @@
+ This package contains the documentation and manual pages for the KIWI
+ Image System
+ 
+-
+-
+ Authors:
+ --------
+     Thomas Schraitle
+@@ -262,8 +249,9 @@
+ test -e /.buildenv || export K_USER=-1 # no buildenv, no boot image build
+ test -e /.buildenv &amp;&amp; . /.buildenv
+ make buildroot=$RPM_BUILD_ROOT CFLAGS=&quot;$RPM_OPT_FLAGS&quot;
++%ifarch %ix86 x86_64
+ if [ &quot;$UID&quot; = &quot;$K_USER&quot; ];then
+-	# prepare and create boot images...
++	# prepare and create prebuilt PXE boot images...
+ 	(cd tools/dbuslock &amp;&amp; make install)
+ 	mkdir -p $RPM_BUILD_ROOT/srv/tftpboot/pxelinux.cfg
+ 	mkdir -p $RPM_BUILD_ROOT/srv/tftpboot/boot
+@@ -337,6 +325,7 @@
+ 	echo &quot;cannot build prebuild images without root privileges&quot;
+ 	true
+ fi
++%endif
+ #install
+ cd $RPM_BUILD_DIR/kiwi
+ mkdir -p $RPM_BUILD_ROOT/etc/permissions.d
+@@ -347,10 +336,18 @@
+      man_prefix=$RPM_BUILD_ROOT/%{_mandir} \
+      install
+ touch kiwi.loader
++%ifarch %ix86 x86_64
+ if [ ! &quot;$UID&quot; = &quot;$K_USER&quot; ];then
+ 	install -m 644 pxeboot/pxelinux.0.config \
+ 		$RPM_BUILD_ROOT/srv/tftpboot/pxelinux.cfg/default
+ fi
++%else
++	# no boot image descriptions for non x86 archs
++	rm -rf $RPM_BUILD_ROOT/%{_datadir}/kiwi/image/*
++	# no PXE boot setup for non x86 archs
++	rm -rf $RPM_BUILD_ROOT/srv/tftpboot
++	rm -rf $RPM_BUILD_ROOT/etc/permissions.d/kiwi
++%endif
+ test -f $RPM_BUILD_ROOT/srv/tftpboot/pxelinux.0 &amp;&amp; \
+ 	echo /srv/tftpboot/pxelinux.0 &gt; kiwi.loader
+ test -f $RPM_BUILD_ROOT/srv/tftpboot/mboot.c32 &amp;&amp; \
+@@ -423,7 +420,7 @@
+ #=================================================
+ # KIWI-pxeboot files...  
+ # ------------------------------------------------
+-
++%ifarch %ix86 x86_64
+ %files -n kiwi-pxeboot -f kiwi.loader
+ %defattr(-, root, root)
+ %doc /srv/tftpboot/README
+@@ -435,14 +432,16 @@
+ %dir /srv/tftpboot/upload
+ %dir /srv/tftpboot/boot
+ /srv/tftpboot/pxelinux.cfg/default
++%endif
+ #=================================================
+ # KIWI-pxeboot-prebuild files...  
+ # ------------------------------------------------
+-
++%ifarch %ix86 x86_64
+ %files -n kiwi-pxeboot-prebuild
+ %defattr(-, root, root)
+ %doc /srv/tftpboot/README.prebuild
+ /srv/tftpboot/boot
++%endif
+ #=================================================
+ # KIWI-tools files...  
+ # ------------------------------------------------
+@@ -454,7 +453,7 @@
+ #=================================================
+ # KIWI-desc-*...
+ # ------------------------------------------------
+-
++%ifarch %ix86 x86_64
+ %files -n kiwi-desc-isoboot
+ %defattr(-, root, root)
+ %dir %{_datadir}/kiwi/image/isoboot
+@@ -490,3 +489,4 @@
+ %dir %{_datadir}/kiwi/image/oemboot
+ %doc %{_datadir}/kiwi/image/oemboot/README
+ %{_datadir}/kiwi/image/oemboot/suse*
++%endif
+
+Modified: kiwi-head/system/boot/netboot/suse-linuxrc
+==============================================================================
+--- kiwi-head/system/boot/netboot/suse-linuxrc	(original)
++++ kiwi-head/system/boot/netboot/suse-linuxrc	Fri May 30 16:36:27 2008
+@@ -639,8 +639,9 @@
+ 	if test ! -z &quot;$UNIONFS_CONFIG&quot; &amp;&amp; test $systemIntegrity = &quot;clean&quot;;then
+ 		# /.../
+ 		# have to do this so that /boot gets copied to the
+-		# ext2 partition, which is necessary for grub to find
+-		# the stuff in there (it can't read squashfs or cromfs)
++		# ext2 partition, which is necessary for the bootloader to
++		# be able to find the data in there (it can't read squashfs
++		# or cromfs)
+ 		# ----
+ 		cp -a /mnt/boot /dev/shm/boot2
+ 		rm -rf /mnt/boot
+@@ -662,10 +663,10 @@
+ 			if ! test -z $COMBINED_IMAGE; then
+ 				gnum=`echo $imageNextRootDevice | sed -e &quot;s/.*\([0-9]\)/\1/&quot;`
+ 				gnum=`expr $gnum - 1`
+-				setupBootLoaderGrub \
++				setupBootLoader \
+ 					/mnt /config $gnum $imageNextRootDevice NET ${DISK}1
+ 			else
+-				setupBootLoaderGrub /mnt /config 1 ${DISK}2 NET ${DISK}1
++				setupBootLoader /mnt /config 1 ${DISK}2 NET ${DISK}1
+ 			fi
+ 			setupKernelModules /config
+ 		fi
+
+Modified: kiwi-head/system/boot/netboot/suse-preinit
+==============================================================================
+--- kiwi-head/system/boot/netboot/suse-preinit	(original)
++++ kiwi-head/system/boot/netboot/suse-preinit	Fri May 30 16:36:27 2008
+@@ -58,7 +58,7 @@
+ #--------------------------------------
+ if test ! -z $DISK;then
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+-		installBootLoaderGrub
++		installBootLoader
+ 		echo &quot;alias eth0 $networkModule&quot; &gt;&gt; /etc/modules.conf
+ 	fi
+ fi
+
+Modified: kiwi-head/system/boot/oemboot/README
+==============================================================================
+--- kiwi-head/system/boot/oemboot/README	(original)
++++ kiwi-head/system/boot/oemboot/README	Fri May 30 16:36:27 2008
+@@ -5,8 +5,8 @@
+ # the boot manager, the oemboot boot image and the real OEM system
+ # image. Once this image has been deployed onto a real disk some
+ # actions have to take place, like repartitioning of the disk
+-# creating standard initrd, setting up grub, etc... All this is
+-# done within the oemboot image
++# creating standard initrd, setting up the bootloader, etc...
++# All this is done within the oemboot image
+ #
+ # Note:
+ # Do not use this boot image with another image type then vmx or oem !
+
+Modified: kiwi-head/system/boot/oemboot/suse-linuxrc
+==============================================================================
+--- kiwi-head/system/boot/oemboot/suse-linuxrc	(original)
++++ kiwi-head/system/boot/oemboot/suse-linuxrc	Fri May 30 16:36:27 2008
+@@ -788,7 +788,7 @@
+ 					systemException &quot;Failed to copy recovery kernel&quot; &quot;reboot&quot;
+ 				fi
+ 				if ! cp /reco-root/boot/message /reco-save/boot;then
+-					systemException &quot;Failed to copy grub message file&quot; &quot;reboot&quot;
++					systemException &quot;Failed to copy message file&quot; &quot;reboot&quot;
+ 				fi
+ 				umount /reco-save &amp;&amp; rmdir /reco-save
+ 				umount /reco-root &amp;&amp; rmdir /reco-root
+@@ -966,7 +966,7 @@
+ 		fi
+ 	fi
+ 	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+-		Echo &quot;Creating grub configuration&quot;
++		Echo &quot;Creating boot loader configuration&quot;
+ 		if [ -z &quot;$OEM_BOOT_TITLE&quot; ];then
+ 			export OEM_BOOT_TITLE=&quot;OEM&quot;
+ 		fi
+@@ -974,10 +974,10 @@
+ 			OEM_RECOVERY=${deviceDisk}4
+ 		fi
+ 		if [ $HAVE_SWAP -eq 1 ];then
+-			setupBootLoaderGrub \
++			setupBootLoader \
+ 				/mnt /config 1 ${deviceDisk}2 $OEM_BOOT_TITLE $deviceSwap
+ 		else
+-			setupBootLoaderGrub \
++			setupBootLoader \
+ 				/mnt /config 0 ${deviceDisk}1 $OEM_BOOT_TITLE
+ 		fi
+ 	fi
+@@ -1004,17 +1004,15 @@
+ 	if ! mount $deviceRecovery /reco-save &gt;/dev/null;then
+ 		systemException &quot;Failed to mount recovery device&quot; &quot;reboot&quot;
+ 	fi
+-	mkdir -p /reco-save/boot/grub
+-	if ! cp /mnt/boot/grub/menu.lst /reco-save/boot/grub;then
+-		systemException &quot;Failed to copy recovery menu.lst&quot; &quot;reboot&quot;
+-	fi
+-	mkdir -p /reco-save/etc
+-	if ! cp /mnt/etc/grub.conf /reco-save/etc;then
+-		systemException &quot;Failed to copy recovery grub.conf&quot; &quot;reboot&quot;
+-	fi
+ 	if ! cp /mnt/etc/fstab /reco-save/etc;then
+ 		systemException &quot;Failed to copy recovery fstab&quot; &quot;reboot&quot;
+ 	fi
++	for i in `setupBootLoaderFiles`;do
++		bootdir=`dirname $i` &amp;&amp; mkdir -p /reco-save/$bootdir
++		if ! cp /mnt/$i /reco-save/$i;then
++			systemException &quot;Failed to copy recovery $i&quot; &quot;reboot&quot;
++		fi
++	done
+ 	umount /reco-save &amp;&amp; rmdir /reco-save
+ fi
+ 
+
+Modified: kiwi-head/system/boot/oemboot/suse-preinit
+==============================================================================
+--- kiwi-head/system/boot/oemboot/suse-preinit	(original)
++++ kiwi-head/system/boot/oemboot/suse-preinit	Fri May 30 16:36:27 2008
+@@ -53,7 +53,7 @@
+ 	rm -f vmlinuz &amp;&amp; ln -s linux.vmx  vmlinuz
+ 	rm -f initrd  &amp;&amp; ln -s initrd.vmx initrd
+ 	popd &amp;&gt;/dev/null
+-	grubOK=1
++	bootLoaderOK=1
+ elif [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+ 	#======================================
+ 	# use distro initrd via mkinitrd
+@@ -63,7 +63,7 @@
+ 	#======================================
+ 	# use kiwi initrd from RW partition
+ 	#--------------------------------------
+-	if [ -d /read-write/boot/grub ];then
++	if [ -d /read-write/boot ];then
+ 		rm -rf /boot &amp;&amp; ln -s /read-write/boot /boot
+ 	fi
+ 	pushd /boot &amp;&gt;/dev/null
+@@ -72,23 +72,23 @@
+ 	popd &amp;&gt;/dev/null
+ 	kernelList /
+ 	if [ ! -z &quot;$COMBINED_IMAGE&quot; ];then
+-		Echo &quot;Creating grub configuration for split system&quot;
++		Echo &quot;Creating bootloader configuration: [ split system ]&quot;
+ 	else
+-		Echo &quot;Creating grub configuration for unified system&quot;
++		Echo &quot;Creating bootloader configuration: [ unified system ]&quot;
+ 	fi
+ 	if [ $HAVE_SWAP -eq 1 ];then
+-		setupBootLoaderGrub / / 1 ${deviceDisk}2 $OEM_BOOT_TITLE $deviceSwap
++		setupBootLoader / / 1 ${deviceDisk}2 $OEM_BOOT_TITLE $deviceSwap
+ 	else
+-		setupBootLoaderGrub / / 1 ${deviceDisk}2 $OEM_BOOT_TITLE
++		setupBootLoader / / 1 ${deviceDisk}2 $OEM_BOOT_TITLE
+ 	fi
+-	grubOK=1
++	bootLoaderOK=1
+ fi
+ 
+ #======================================
+ # 6) Install boot loader if ok
+ #--------------------------------------
+-if [ $grubOK = 1 ];then
+-	installBootLoaderGrub
++if [ $bootLoaderOK = 1 ];then
++	installBootLoader
+ fi
+ 
+ #======================================
+
+Modified: kiwi-head/system/boot/vmxboot/suse-linuxrc
+==============================================================================
+--- kiwi-head/system/boot/vmxboot/suse-linuxrc	(original)
++++ kiwi-head/system/boot/vmxboot/suse-linuxrc	Fri May 30 16:36:27 2008
+@@ -188,10 +188,10 @@
+ 	setupDefaultFstab /config
+ 	updateRootDeviceFstab /config $imageRootDevice
+ 	if [ -z &quot;$UNIONFS_CONFIG&quot; ]; then
+-		setupBootLoaderGrub /mnt /config 0 $imageRootDevice VMX
++		setupBootLoader /mnt /config 0 $imageRootDevice VMX
+ 	else
+ 		export KIWI_INITRD_PARAMS=&quot;UNIONFS_CONFIG=\&quot;$UNIONFS_CONFIG\&quot;&quot;
+-		setupBootLoaderGrub /mnt /config 1 $imageRootDevice VMX
++		setupBootLoader /mnt /config 1 $imageRootDevice VMX
+ 	fi
+ 	setupKernelModules /config
+ fi
+
+Modified: kiwi-head/system/boot/vmxboot/suse-preinit
+==============================================================================
+--- kiwi-head/system/boot/vmxboot/suse-preinit	(original)
++++ kiwi-head/system/boot/vmxboot/suse-preinit	Fri May 30 16:36:27 2008
+@@ -65,8 +65,8 @@
+ #======================================
+ # 7) Install boot loader on diskful
+ #--------------------------------------
+-if [ $grubOK = 1 ];then
+-	installBootLoaderGrub
++if [ $bootLoaderOK = 1 ];then
++	installBootLoader
+ fi
+ 
+ #======================================
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000392.html">[Kiwi-devel] [SVN:KIWI-Team] r1300 - in kiwi-head: rpm	system/boot/netboot
+</A></li>
+	<LI>Next message: <A HREF="000394.html">[Kiwi-devel] [SVN:KIWI-Team] r1302 - in kiwi-head: rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#393">[ date ]</a>
+              <a href="thread.html#393">[ thread ]</a>
+              <a href="subject.html#393">[ subject ]</a>
+              <a href="author.html#393">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,134 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] patternType attribute
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20patternType%20attribute&In-Reply-To=%3C4D5EFE65.2080909%40novell.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003085.html">
+   <LINK REL="Next"  HREF="003080.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] patternType attribute</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20patternType%20attribute&In-Reply-To=%3C4D5EFE65.2080909%40novell.com%3E"
+       TITLE="[Kiwi-devel] patternType attribute">rschweikert at novell.com
+       </A><BR>
+    <I>Sat Feb 19 00:19:01 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003085.html">[Kiwi-devel] Some unit test changes
+</A></li>
+        <LI>Next message: <A HREF="003080.html">[Kiwi-devel] Error message improvement
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3079">[ date ]</a>
+              <a href="thread.html#3079">[ thread ]</a>
+              <a href="subject.html#3079">[ subject ]</a>
+              <a href="author.html#3079">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi,
+
+So here is the patch promised earlier. This patch checks for a
+consistent setting of the patternType attribute value.
+
+There is still one loophole :( for the case shown in
+patternTattrConsValid_1.xml
+
+The problem is that this case is valid as long as the user only builds
+one of the profiles. One only gets in trouble if this case is built
+using --add-profile=my-first,my-second. This means the error can only be
+detected at runtime, after we know what profiles are being built.
+
+The validator at this point is strictly a static checker, thus it cannot
+cover this case.
+
+All other cases of inconsistent use for the value of the patternType
+attribute should now be caught during validation.
+
+The attached patch also includes new unit tests for the validation.
+
+While working on this I also realized that we do not have a check
+asserting that names for profiles do not contain whitespace and that
+references to profiles do not contain whitespace either. I will put this
+on my TODO list. We need to avoid the following cases:
+
+&lt;profile name=&quot;a&quot;.../&gt;
+&lt;profile name=&quot;b&quot;.../&gt;
+&lt;...profiles=&quot;a, b&quot;...&gt;
+
+Since for profile processing we split at commas we would end up with a
+reference to the profile name &quot; b&quot;, but this does not exist (although
+this error will be trapped during validation, but the error will not be
+obvious). On the other hand
+
+&lt;profile name=&quot;a&quot;.../&gt;
+&lt;profile name=&quot;b c&quot;.../&gt;
+&lt;...profiles=&quot;a,b c&quot;...&gt;
+
+Would be valid and would not trip up the logic in the code today. But it
+would require us to implement a strip routine and call it during
+processing of profile names to catch the leading/trailing whitespace
+problem. The only other way to treat this consistently is by not
+allowing whitespace in the names, I think that is an acceptable
+restriction. Thoughts?
+
+I am going to think about closing the runtime loophole. This could be
+done by adding a validateRuntimeConditions() method to the existing
+validator or by creating a separate object that only does runtime
+checking. Input on this decision is appreciated.
+
+Thanks,
+Robert
+
+P.S. I formatted the unittest XML files with tabs, I think this is the
+preferred formatting??
+
+-- 
+Robert Schweikert                           MAY THE SOURCE BE WITH YOU
+Novell-IBM Software Integration Center                LINUX
+Tech Lead
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at ca.ibm.com</A>
+781-464-8147
+
+Novell
+Making IT Work As One
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: 0002-patternType-attribut-value-consistency-check-and-uni.patch
+Type: text/x-patch
+Size: 27678 bytes
+Desc: not available
+URL: &lt;<A HREF="https://lists.berlios.de/pipermail/kiwi-devel/attachments/20110218/1b4d6df1/attachment.bin">https://lists.berlios.de/pipermail/kiwi-devel/attachments/20110218/1b4d6df1/attachment.bin</A>&gt;
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003085.html">[Kiwi-devel] Some unit test changes
+</A></li>
+	<LI>Next message: <A HREF="003080.html">[Kiwi-devel] Error message improvement
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3079">[ date ]</a>
+              <a href="thread.html#3079">[ thread ]</a>
+              <a href="subject.html#3079">[ subject ]</a>
+              <a href="author.html#3079">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

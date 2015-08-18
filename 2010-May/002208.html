@@ -1,0 +1,1851 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1e2f9d8312fdd59588d752de1152983469752973
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%201e2f9d8312fdd59588d752de1152983469752973&In-Reply-To=%3C201005201641.o4KGfDSI028745%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002207.html">
+   <LINK REL="Next"  HREF="002209.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1e2f9d8312fdd59588d752de1152983469752973</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%201e2f9d8312fdd59588d752de1152983469752973&In-Reply-To=%3C201005201641.o4KGfDSI028745%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1e2f9d8312fdd59588d752de1152983469752973">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu May 20 18:41:13 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002207.html">[Kiwi-devel] sort enumerated attribute values
+</A></li>
+        <LI>Next message: <A HREF="002209.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c7a8b5dfcc09dfee8fb5959da670634919902777
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2208">[ date ]</a>
+              <a href="thread.html#2208">[ thread ]</a>
+              <a href="subject.html#2208">[ subject ]</a>
+              <a href="author.html#2208">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  1e2f9d8312fdd59588d752de1152983469752973 (commit)
+      from  42d3f0ab4682ba06d09d55e0aa97bf5d9332c572 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 1e2f9d8312fdd59588d752de1152983469752973
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu May 20 18:40:29 2010 +0200
+
+    - rewrote the oem partition code for better maintenance
+      and to support syslinux/extlinux bootloader (bnc #606651)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 3b7570e..c0b6d45 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -305,6 +305,7 @@ sub new {
+ 		} else {
+ 			# system is specified as a file...
+ 			$sizeBytes = -s $system;
++			$sizeBytes*= 1.1;
+ 		}
+ 		#==========================================
+ 		# Decide for a size prefer 1)cmdline 2)XML
+@@ -3780,8 +3781,15 @@ sub setupBootLoaderConfiguration {
+ 	my $xml      = $this-&gt;{xml};
+ 	my %type     = %{$xml-&gt;getImageTypeAndAttributes()};
+ 	my $cmdline  = $type{cmdline};
++	my $bloader  = &quot;grub&quot;;
+ 	my $title;
+ 	#==========================================
++	# setup boot loader type
++	#------------------------------------------
++	if ($type{bootloader}) {
++		$bloader = $type{bootloader};
++	}
++	#==========================================
+ 	# report additional cmdline options
+ 	#------------------------------------------
+ 	if ($cmdline) {
+@@ -3871,15 +3879,16 @@ sub setupBootLoaderConfiguration {
+ 		if ((! $isxen) || ($isxen &amp;&amp; $xendomain eq &quot;domU&quot;)) {
+ 			if ($type =~ /^KIWI CD/) {
+ 				print FD &quot; kernel (cd)/boot/linux vga=$vga splash=silent&quot;;
+-				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096 cdinst=1&quot;;
++				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096&quot;;
++				print FD &quot; cdinst=1 loader=$bloader&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+ 				print FD &quot; kernel /boot/linux.vmx vga=$vga&quot;;
+-				print FD &quot; loader=$loader splash=silent&quot;;
++				print FD &quot; loader=$bloader splash=silent&quot;;
+ 			} else {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+ 				print FD &quot; kernel /boot/linux vga=$vga&quot;;
+-				print FD &quot; loader=$loader splash=silent&quot;;
++				print FD &quot; loader=$bloader splash=silent&quot;;
+ 			}
+ 			print FD $cmdline;
+ 			if ($type =~ /^KIWI CD/) {
+@@ -3893,17 +3902,18 @@ sub setupBootLoaderConfiguration {
+ 			if ($type =~ /^KIWI CD/) {
+ 				print FD &quot; kernel (cd)/boot/xen.gz\n&quot;;
+ 				print FD &quot; module /boot/linux vga=$vga splash=silent&quot;;
+-				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096 cdinst=1&quot;;
++				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096&quot;;
++				print FD &quot; cdinst=1 loader=$bloader&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+ 				print FD &quot; kernel /boot/xen.gz.vmx\n&quot;;
+ 				print FD &quot; module /boot/linux.vmx vga=$vga&quot;;
+-				print FD &quot; loader=$loader splash=silent&quot;;
++				print FD &quot; loader=$bloader splash=silent&quot;;
+ 			} else {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+ 				print FD &quot; kernel /boot/xen.gz\n&quot;;
+ 				print FD &quot; module /boot/linux vga=$vga&quot;;
+-				print FD &quot; loader=$loader splash=silent&quot;;
++				print FD &quot; loader=$bloader splash=silent&quot;;
+ 			}
+ 			print FD $cmdline;
+ 			if ($type =~ /^KIWI CD/) {
+@@ -3922,15 +3932,16 @@ sub setupBootLoaderConfiguration {
+ 		if ((! $isxen) || ($isxen &amp;&amp; $xendomain eq &quot;domU&quot;)) {
+ 			if ($type =~ /^KIWI CD/) {
+ 				print FD &quot; kernel (cd)/boot/linux vga=$vga splash=silent&quot;;
+-				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096 cdinst=1&quot;;
++				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096&quot;;
++				print FD &quot; cdinst=1 loader=$bloader&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+ 				print FD &quot; kernel /boot/linux.vmx vga=$vga&quot;;
+-				print FD &quot; loader=$loader splash=silent&quot;;
++				print FD &quot; loader=$bloader splash=silent&quot;;
+ 			} else {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+ 				print FD &quot; kernel /boot/linux vga=$vga&quot;;
+-				print FD &quot; loader=$loader splash=silent&quot;;
++				print FD &quot; loader=$bloader splash=silent&quot;;
+ 			}
+ 			print FD &quot; ide=nodma apm=off acpi=off noresume selinux=0 nosmp&quot;;
+ 			print FD &quot; noapic maxcpus=0 edd=off&quot;;
+@@ -3946,17 +3957,18 @@ sub setupBootLoaderConfiguration {
+ 			if ($type =~ /^KIWI CD/) {
+ 				print FD &quot; kernel (cd)/boot/xen.gz\n&quot;;
+ 				print FD &quot; module (cd)/boot/linux vga=$vga splash=silent&quot;;
+-				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096 cdinst=1&quot;;
++				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096&quot;;
++				print FD &quot; cdinst=1 loader=$bloader&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+ 				print FD &quot; kernel /boot/xen.gz.vmx\n&quot;;
+ 				print FD &quot; module /boot/linux.vmx vga=$vga&quot;;
+-				print FD &quot; loader=$loader splash=silent&quot;;
++				print FD &quot; loader=$bloader splash=silent&quot;;
+ 			} else {
+ 				print FD &quot; root (hd0,$bootpart)\n&quot;;
+ 				print FD &quot; kernel /boot/xen.gz\n&quot;;
+ 				print FD &quot; module /boot/linux vga=$vga&quot;;
+-				print FD &quot; loader=$loader splash=silent&quot;;
++				print FD &quot; loader=$bloader splash=silent&quot;;
+ 			}
+ 			print FD &quot; ide=nodma apm=off acpi=off noresume selinux=0 nosmp&quot;;
+ 			print FD &quot; noapic maxcpus=0 edd=off&quot;;
+@@ -4030,11 +4042,11 @@ sub setupBootLoaderConfiguration {
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+ 				print FD &quot;KERNEL /boot/linux.vmx\n&quot;;
+ 				print FD &quot;APPEND initrd=/boot/initrd.vmx &quot;;
+-				print FD &quot;vga=$vga loader=$loader splash=silent&quot;;
++				print FD &quot;vga=$vga loader=$bloader splash=silent&quot;;
+ 			} else {
+ 				print FD &quot;KERNEL /boot/linux\n&quot;;
+ 				print FD &quot;APPEND initrd=/boot/initrd &quot;;
+-				print FD &quot;vga=$vga loader=$loader splash=silent&quot;;
++				print FD &quot;vga=$vga loader=$bloader splash=silent&quot;;
+ 			}
+ 		} else {
+ 			if ($type =~ /^KIWI CD/) {
+@@ -4064,11 +4076,11 @@ sub setupBootLoaderConfiguration {
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+ 				print FD &quot;KERNEL /boot/linux.vmx\n&quot;;
+ 				print FD &quot;APPEND initrd=/boot/initrd.vmx &quot;;
+-				print FD &quot;vga=$vga loader=$loader splash=silent&quot;;
++				print FD &quot;vga=$vga loader=$bloader splash=silent&quot;;
+ 			} else {
+ 				print FD &quot;KERNEL /boot/linux\n&quot;;
+ 				print FD &quot;APPEND initrd=/boot/initrd &quot;;
+-				print FD &quot;vga=$vga loader=$loader splash=silent&quot;;
++				print FD &quot;vga=$vga loader=$bloader splash=silent&quot;;
+ 			}
+ 			print FD &quot; ide=nodma apm=off acpi=off noresume selinux=0 nosmp&quot;;
+ 			print FD &quot; noapic maxcpus=0 edd=off&quot;;
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 5888847..2e344ba 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -2202,8 +2202,10 @@ sub createImageLiveCD {
+ 		print FD &quot;IMAGE=/dev/loop1;$namecd\n&quot;;
+ 	}
+ 	if (defined $gzip) {
+-		if ($gzip =~ /^(unified|dmsquash)/) {
++		if ($gzip =~ /^unified/) {
+ 			print FD &quot;UNIONFS_CONFIG=/dev/ram1,/dev/loop1,aufs\n&quot;;
++		} elsif ($gzip =~ /^dmsquash/) {
++			print FD &quot;UNIONFS_CONFIG=/dev/ram1,/dev/loop1,dmsquash\n&quot;;
+ 		} elsif ($gzip =~ /^clic/) {
+ 			print FD &quot;UNIONFS_CONFIG=/dev/ram1,/dev/loop1,clicfs\n&quot;;
+ 		} else {
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 5d6d752..289a005 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -540,9 +540,13 @@ function installBootLoader {
+ 		loader=&quot;grub&quot;
+ 	fi
+ 	case $arch-$loader in
+-		i*86-grub)   installBootLoaderGrub ;;
+-		x86_64-grub) installBootLoaderGrub ;;
+-		ppc*)        installBootLoaderLilo ;;
++		i*86-grub)       installBootLoaderGrub ;;
++		x86_64-grub)     installBootLoaderGrub ;;
++		ppc*)            installBootLoaderLilo ;;
++		i*86-syslinux)   installBootLoaderSyslinux ;;
++		x86_64-syslinux) installBootLoaderSyslinux ;;
++		i*86-extlinux)   installBootLoaderSyslinux ;;
++		x86_64-extlinux) installBootLoaderSyslinux ;;
+ 		*)
+ 		systemException \
+ 			&quot;*** boot loader install for $arch-$loader not implemented ***&quot; \
+@@ -572,6 +576,24 @@ function installBootLoaderRecovery {
+ 	esac
+ }
+ #======================================
++# installBootLoaderSyslinux
++#--------------------------------------
++function installBootLoaderSyslinux {
++	local syslmbr=/usr/share/syslinux/mbr.bin
++	if [ -e $syslmbr ];then
++		Echo &quot;Installing boot loader...&quot;
++		if [ $loader = &quot;syslinux&quot; ];then
++			syslinux $imageBootDevice
++		else
++			extlinux --install /boot/syslinux
++		fi
++		dd if=$syslmbr of=$imageDiskDevice bs=512 count=1 conv=notrunc
++	else
++		Echo &quot;Image doesn't have syslinux (mbr.bin) installed&quot;
++		Echo &quot;Can't install boot loader&quot;
++	fi
++}
++#======================================
+ # installBootLoaderGrub
+ #--------------------------------------
+ function installBootLoaderGrub {
+@@ -745,9 +767,13 @@ function setupBootLoaderFiles {
+ 		loader=&quot;grub&quot;
+ 	fi
+ 	case $arch-$loader in
+-		i*86-grub)    setupBootLoaderFilesGrub ;;
+-		x86_64-grub)  setupBootLoaderFilesGrub ;;
+-		ppc*)         setupBootLoaderFilesLilo ;;
++		i*86-grub)        setupBootLoaderFilesGrub ;;
++		x86_64-grub)      setupBootLoaderFilesGrub ;;
++		ppc*)             setupBootLoaderFilesLilo ;;
++		i*86-syslinux)    setupBootLoaderFilesSyslinux ;;
++		x86_64-syslinux)  setupBootLoaderFilesSyslinux ;;
++		i*86-extlinux)    setupBootLoaderFilesSyslinux ;;
++		x86_64-extlinux)  setupBootLoaderFilesSyslinux ;;
+ 		*)
+ 		systemException \
+ 			&quot;*** boot loader files for $arch-$loader not implemented ***&quot; \
+@@ -755,6 +781,16 @@ function setupBootLoaderFiles {
+ 	esac
+ }
+ #======================================
++# setupBootLoaderFilesSyslinux
++#--------------------------------------
++function setupBootLoaderFilesSyslinux {
++	if [ $loader = &quot;extlinux&quot; ];then
++		echo &quot;/boot/syslinux/extlinux.conf&quot;
++	else
++		echo &quot;/boot/syslinux/syslinux.cfg&quot;
++	fi
++}
++#======================================
+ # setupBootLoaderFilesGrub
+ #--------------------------------------
+ function setupBootLoaderFilesGrub {
+@@ -1242,20 +1278,6 @@ function setupBootLoaderGrub {
+ 		KIWI_BOOT_TIMEOUT=10;
+ 	fi
+ 	#======================================
+-	# check for UNIONFS_CONFIG
+-	#--------------------------------------
+-	if [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
+-		gnum=2
+-	elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+-		gnum=2
+-	elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
+-		:
+-	elif [ ! -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ $gnum -gt 0 ]; then
+-		rwDevice=`echo $UNIONFS_CONFIG | cut -d , -f 1`
+-		gnum=`echo $rwDevice | sed -e &quot;s/\/dev.*\([0-9]\)/\\1/&quot;`
+-		gnum=`expr $gnum - 1`
+-	fi
+-	#======================================
+ 	# create directory structure
+ 	#--------------------------------------
+ 	for dir in $menu $conf $dmap $sysb;do
+@@ -1508,20 +1530,6 @@ function setupBootLoaderLilo {
+ 		KIWI_BOOT_TIMEOUT=10;
+ 	fi
+ 	#======================================
+-	# check for UNIONFS_CONFIG
+-	#--------------------------------------
+-	if [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
+-		lnum=2
+-	elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+-		lnum=2
+-	elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
+-		:
+-	elif [ ! -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ $gnum -gt 0 ]; then
+-		rwDevice=`echo $UNIONFS_CONFIG | cut -d , -f 1`
+-		lnum=`echo $rwDevice | sed -e &quot;s/\/dev.*\([0-9]\)/\\1/&quot;`
+-		lnum=`expr $gnum - 1`
+-	fi
+-	#======================================
+ 	# setup lilo boot device
+ 	#--------------------------------------
+ 	rdisk=`echo $rdev | sed -e s&quot;@[0-9]@@g&quot;`
+@@ -4918,7 +4926,6 @@ function createPartitionerInput {
+ #--------------------------------------
+ function createFDiskInput {
+ 	local input=/part.input
+-	rm -f $input
+ 	for cmd in $*;do
+ 		if [ $cmd = &quot;.&quot; ];then
+ 			echo &gt;&gt; $input
+@@ -5080,6 +5087,8 @@ function createPartedInput {
+ 				partid=${pcmds[$index + 1]}
+ 				partid=$(($partid / 1))
+ 				cmdq=&quot;$cmdq rm $partid&quot;
++				partedWrite &quot;$disk&quot; &quot;$cmdq&quot;
++				cmdq=&quot;&quot;
+ 				;;
+ 			#======================================
+ 			# create new partition
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index c407c36..e0eec51 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,8 +1,16 @@
+ -------------------------------------------------------------------
++Tue May 18 16:00:05 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- rewrote the oem partition code for better maintenance
++  and to support syslinux/extlinux bootloader (bnc #606651)
++- use tar command to copy overlay files which is more
++  error prune than the cp command (bnc #476117)
++
++-------------------------------------------------------------------
+ Tue May 18 15:02:48 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ug at suse.de</A>
+ 
+ - keep an existing /etc/sysconfig/firstboot instead overwriting
+-  it with a generic version (bnc#604705)
++  it with a generic version (bnc #604705)
+ 
+ -------------------------------------------------------------------
+ Tue May 18 11:03:14 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index 04d3d02..41fdf61 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -22,7 +22,6 @@
+ export PATH=&quot;/sbin:/bin:/usr/sbin:/usr/bin&quot;
+ export IFS_ORIG=$IFS
+ export DEBUG=0
+-export bootid=1
+ export DOBACKUP=1
+ 
+ #======================================
+@@ -185,11 +184,6 @@ then
+ 	# ----
+ 	export LOCAL_BOOT=&quot;yes&quot;
+ fi
+-if [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
+-	systemException \
+-		&quot;syslinux boot not supported for OEM systems... abort&quot; \
+-	&quot;reboot&quot;
+-fi
+ #======================================
+ # 5) start boot shell
+ #--------------------------------------
+@@ -252,7 +246,6 @@ setupInitialDeviceNames
+ #--------------------------------------
+ if isFSTypeReadOnly;then
+ 	setupUnionFS $imageRWDevice $imageRODevice $unionFST
+-	bootid=2
+ fi
+ 
+ #======================================
+@@ -576,46 +569,62 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ]; then
+ 		#======================================
+ 		# DM use third partition as boot
+ 		#--------------------------------------
++		if [ -z &quot;$imageBootDevice&quot; ];then
++			export imageBootDevice=$(ddn $imageDiskDevice $bootid)
++		fi
+ 		mkdir /mnt/dmboot
+-		bootid=3
+-		export imageBootDevice=$(ddn $imageDiskDevice 3)
+ 		mount $imageBootDevice /mnt/dmboot
+ 		cp -a  /mnt/boot /mnt/dmboot
+-		test -f /tmp/linux.vmx  &amp;&amp; mv /tmp/linux.vmx  /mnt/dmboot/boot
+-		test -f /tmp/initrd.vmx &amp;&amp; mv /tmp/initrd.vmx /mnt/dmboot/boot
+-		test -f /tmp/mbrid &amp;&amp; mv /tmp/mbrid /mnt/dmboot/boot/grub
++		if [ -e /boot.tgz ];then
++			tar -xf /boot.tgz -C /mnt/dmboot
++		fi
+ 		rm -rf /mnt/boot
+ 		( cd /mnt &amp;&amp; ln -s dmboot/boot boot )
+ 	elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+ 		#======================================
+ 		# Clic use third partition as boot
+ 		#--------------------------------------
++		if [ -z &quot;$imageBootDevice&quot; ];then
++			export imageBootDevice=$(ddn $imageDiskDevice $bootid)
++		fi
+ 		mkdir /mnt/clicboot
+-		bootid=3
+-		export imageBootDevice=$(ddn $imageDiskDevice 3)
+ 		mount $imageBootDevice /mnt/clicboot
+ 		cp -a  /mnt/boot /mnt/clicboot
+-		test -f /tmp/linux.vmx  &amp;&amp; mv /tmp/linux.vmx  /mnt/clicboot/boot
+-		test -f /tmp/initrd.vmx &amp;&amp; mv /tmp/initrd.vmx /mnt/clicboot/boot
+-		test -f /tmp/mbrid &amp;&amp; mv /tmp/mbrid /mnt/clicboot/boot/grub
++		if [ -e /boot.tgz ];then
++			tar -xf /boot.tgz -C /mnt/clicboot
++		fi
+ 		rm -rf /mnt/boot
+ 		( cd /mnt &amp;&amp; ln -s clicboot/boot boot )
++	elif [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
++		#======================================
++		# syslinux / extlinux bootloader
++		#--------------------------------------
++		if [ -z &quot;$imageBootDevice&quot; ];then
++			imageBootDevice=$(ddn $imageDiskDevice $bootid)
++		fi
++		mkdir /mnt/syslboot
++		mount $imageBootDevice /mnt/syslboot
++		if [ -e /boot.tgz ];then
++			tar -xf /boot.tgz -C /mnt/syslboot
++		fi
++		if [ -z &quot;$UNIONFS_CONFIG&quot; ];then
++			cp -a /mnt/boot/* /mnt/syslboot/boot
++		fi
++		rm -rf /mnt/boot
++		( cd /mnt &amp;&amp; ln -s syslboot/boot boot )
+ 	elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
+ 		#======================================
+ 		# LUKS use second or third part as boot
+ 		#--------------------------------------
+-		mkdir -p /mnt/luksboot
+-		imageBootDevice=$(ddn $imageDiskDevice 2)
+-		bootid=2
+-		if isFSTypeReadOnly;then
+-			export imageBootDevice=$(ddn $imageDiskDevice 3)
+-			bootid=3
++		if [ -z &quot;$imageBootDevice&quot; ];then
++			imageBootDevice=$(ddn $imageDiskDevice $bootid)
+ 		fi
++		mkdir -p /mnt/luksboot
+ 		mount $imageBootDevice /mnt/luksboot
+ 		cp -a /mnt/boot /mnt/luksboot
+-		test -f /tmp/linux.vmx  &amp;&amp; mv /tmp/linux.vmx  /mnt/luksboot/boot
+-		test -f /tmp/initrd.vmx &amp;&amp; mv /tmp/initrd.vmx /mnt/luksboot/boot
+-		test -f /tmp/mbrid &amp;&amp; mv /tmp/mbrid /mnt/luksboot/boot/grub
++		if [ -e /boot.tgz ];then
++			tar -xf /boot.tgz -C /mnt/luksboot
++		fi
+ 		rm -rf /mnt/boot
+ 		( cd /mnt &amp;&amp; ln -s luksboot/boot boot )
+ 	fi
+@@ -638,6 +647,8 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 			pushd /mnt/dmboot/boot &gt;/dev/null
+ 		elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+ 			pushd /mnt/clicboot/boot &gt;/dev/null
++		elif [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
++			pushd /mnt/syslboot/boot &gt;/dev/null
+ 		elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
+ 			pushd /mnt/luksboot/boot &gt;/dev/null
+ 		elif [ &quot;$OEM_KIWI_INITRD&quot; = &quot;yes&quot; ];then
+@@ -680,6 +691,8 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 		updateDMBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+ 		updateClicBootDeviceFstab /config $imageBootDevice
++	elif [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
++		updateSyslinuxBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
+ 		updateLuksBootDeviceFstab /config $imageBootDevice
+ 	fi
+diff --git a/system/boot/ix86/oemboot/suse-preinit b/system/boot/ix86/oemboot/suse-preinit
+index 6d33aea..6e88962 100755
+--- a/system/boot/ix86/oemboot/suse-preinit
++++ b/system/boot/ix86/oemboot/suse-preinit
+@@ -67,14 +67,41 @@ else
+ fi
+ 
+ #======================================
+-# 7) Install boot loader if ok
++# 7) Check FAT requires on syslinux
++#--------------------------------------
++if [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
++	# /.../
++	# if syslinux is used we need to make sure that the
++	# filename on the boot partition is correct 8+3
++	# ----
++	count=1
++	IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
++		if test -z &quot;$i&quot;;then
++			continue
++		fi
++		kernel=`echo $i | cut -f1 -d:`
++		initrd=`echo $i | cut -f2 -d:`
++		mv /boot/$kernel /boot/linux.$count
++		mv /boot/$initrd /boot/initrd.$count
++		running=$(uname -r)
++		rlinux=vmlinuz-$running
++		rinitrd=initrd-$running
++		ln -s /boot/linux.$count  /boot/$rlinux
++		ln -s /boot/initrd.$count /boot/$rinitrd
++		count=`expr $count + 1`
++	done
++	IFS=$IFS_ORIG
++fi
++
++#======================================
++# 8) Install boot loader if ok
+ #--------------------------------------
+ if [ $bootLoaderOK = 1 ];then
+ 	installBootLoader
+ fi
+ 
+ #======================================
+-# 8) create /etc/ImagePackages
++# 9) create /etc/ImagePackages
+ #--------------------------------------
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	if [ -x /bin/rpm ];then
+@@ -84,7 +111,7 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ fi
+ 
+ #======================================
+-# 9) kill udev
++# 10) kill udev
+ #--------------------------------------
+ udevSystemStop
+ umountSystemFilesystems
+diff --git a/system/boot/ix86/oemboot/suse-repart b/system/boot/ix86/oemboot/suse-repart
+index 280d354..0ed5c4f 100755
+--- a/system/boot/ix86/oemboot/suse-repart
++++ b/system/boot/ix86/oemboot/suse-repart
+@@ -40,15 +40,17 @@ function OEMRepartInit {
+ 		if [ ! -f /reco-root/recovery.tar.gz ];then
+ 			systemException &quot;Can't find recovery archive&quot; &quot;reboot&quot;
+ 		fi
+-		recoBytes=`du --bytes /reco-root/recovery.tar.gz | cut -f1`
+-		recoMByte=`expr $recoBytes / 1048576`
+-		recoMByte=`expr $recoMByte \* 15 / 10`
++		recoBytes=$(du --bytes /reco-root/recovery.tar.gz | cut -f1)
++		recoMByte=$((recoBytes / 1048576))
++		recoMByte=$((recoMByte * 15 / 10))
+ 		recoID=83
+ 		if [ ! -z &quot;$OEM_RECOVERY_ID&quot; ];then
+ 			recoID=$OEM_RECOVERY_ID
+ 		fi
+ 		umount /reco-root &amp;&amp; rmdir /reco-root
+ 	fi
++	export input=/part.input
++	rm -f $input
+ }
+ 
+ #======================================
+@@ -57,71 +59,36 @@ function OEMRepartInit {
+ function OEMRepartStandard {
+ 	# /.../
+ 	# repartition disk with read/write root filesystem
+-	# ----
++	# Initial partition table layout is:
++	# =====================================
++	# p1: ( root )  +luks
++	# p2: [ boot ]
++	# -------------------------------------
+ 	#======================================
+-	# write new partition table
++	# check for boot partition
+ 	#--------------------------------------
+-	# /.../
+-	# Explanation of the partition commands used within the
+-	# here document below:
+-	# ----
+-	# d              # delete xda partition [ 1 ]
+-	# n              # create xda partition at same place than xda1
+-	# p              # primary
+-	# 2              # [ 2 ]
+-	# 1              # accept old xda1 start block for xda2
+-	# +10240M        # accept new root device size of 10GB
+-	# n              # create xda swap partition
+-	# p              # primary
+-	# 1              # [ 1 ]
+-	#                # accept start block
+-	# +&quot;$swapsize&quot;M  # accept new swapsize
+-	# n              # create xda3 home partition
+-	# p              # primary
+-	# 3              # [ 3 ]
+-	#                # accept start block
+-	#                # accept end block, complete disk
+-	# t              # change swap system id
+-	# 1              # [ 1 ]
+-	# 82             # Linux Swap
+-	# w              # write partition table
+-	# ----
+-	input=/part.input
+-	rm -f $input
+-	diskXMBytes=`partitionSize $imageDiskDevice`
+-	diskPMBytes=`partitionSize $(ddn $imageDiskDevice 1)`
+-	diskPMBytes=`expr $diskPMBytes / 1024`
+-	diskXMBytes=`expr $diskXMBytes / 1024`
+-	disk1MBytes=10240
+-	# /.../
+-	# set OEM_SYSTEMSIZE if available, else try to
+-	# use 10GB system size
+-	# ----
++	createBootDeviceData 2
++	#======================================
++	# setup initial boot device ID
++	#--------------------------------------
++	export bootid=1
++	if [ &quot;$haveBootPartition&quot; = &quot;yes&quot; ];then
++		bootid=2
++	fi
++	#======================================
++	# calculate partition sizes
++	#--------------------------------------
++	diskXMBytes=$(($(partitionSize $imageDiskDevice) / 1024))
++	diskPMBytes=$(($(partitionSize $(ddn $imageDiskDevice 1)) / 1024))
++	disk1MBytes=$((
++		diskXMBytes - swapsize - recoMByte - bootXMBytes
++	))
+ 	if [ ! -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+ 		disk1MBytes=$OEM_SYSTEMSIZE
+ 	fi
+-	# /.../
+-	# prevent /home and recovery partition if requested
+-	# system size is bigger than the whole disk
+-	# ----
+-	if [ $disk1MBytes -gt $diskXMBytes ];then
+-		export OEM_WITHOUTHOME=1
+-		unset OEM_SYSTEMSIZE
+-		unset OEM_RECOVERY
+-		recoMByte=0
+-	fi
+-	# /.../
+-	# recalculate system size if no /home partition
+-	# will be used. size is whole disk minus swap
+-	# minus recovery
+-	# ----
+-	if [ ! -z &quot;$OEM_WITHOUTHOME&quot; ] &amp;&amp; [ -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+-		disk1MBytes=`expr $diskXMBytes - $swapsize - $recoMByte`
+-	fi
+-	# /.../
+-	# check if requested system size is bigger than
+-	# the existing system partition
+-	# ----
++	#======================================
++	# check repart operation
++	#--------------------------------------
+ 	if [ $disk1MBytes -lt $diskPMBytes ];then
+ 		# /.../
+ 		# Requested system partition size is smaller than
+@@ -129,272 +96,71 @@ function OEMRepartStandard {
+ 		# ----
+ 		Echo &quot;Current system partition is bigger than requested size&quot;
+ 		Echo &quot;Disk won't be re-partitioned&quot;
+-		OEM_WITHOUTHOME=1
+-		DONT_PARTITION=1
+-		unset OEM_RECOVERY
+-	fi
+-	if [ -z &quot;$DONT_PARTITION&quot; ];then
+-		if [ ! -z &quot;$OEM_WITHOUTHOME&quot; ];then
+-			#======================================
+-			# -home
+-			#--------------------------------------
+-			if [ -z &quot;$OEM_WITHOUTSWAP&quot; ];then
+-				#======================================
+-				# -home +swap
+-				#--------------------------------------
+-				if [ -z &quot;$OEM_RECOVERY&quot; ];then
+-					#======================================
+-					# -home +swap -recovery
+-					#--------------------------------------
+-					if [ ! -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+-						createPartitionerInput \
+-							d n p 1 1 +&quot;$disk1MBytes&quot;M \
+-							n p 2 . +&quot;$swapsize&quot;M \
+-							t 2 82 w q
+-					else
+-						createPartitionerInput \
+-							d n p 1 1 +&quot;$disk1MBytes&quot;M \
+-							n p 2 . . \
+-							t 2 82 w q
+-					fi
+-					setupDeviceNames 1 2 no no 1 no
+-				else
+-					#======================================
+-					# -home +swap +recovery
+-					#--------------------------------------
+-					if [ ! -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+-						createPartitionerInput \
+-							d n p 1 1 +&quot;$disk1MBytes&quot;M \
+-							n p 2 . +&quot;$swapsize&quot;M \
+-							n p 3 . +&quot;$recoMByte&quot;M \
+-							t 3 $recoID \
+-							t 2 82 w q
+-					else
+-						createPartitionerInput \
+-							d n p 1 1 +&quot;$disk1MBytes&quot;M \
+-							n p 2 . +&quot;$swapsize&quot;M \
+-							n p 3 . . \
+-							t 2 82 w q
+-					fi
+-					setupDeviceNames 1 2 no 3 1 no
+-				fi
+-			else
+-				#======================================
+-				# -home -swap
+-				#--------------------------------------
+-				if [ -z &quot;$OEM_RECOVERY&quot; ];then
+-					#======================================
+-					# -home -swap -recovery
+-					#--------------------------------------
+-					if [ ! -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+-						createPartitionerInput \
+-							d n p 1 . +&quot;$disk1MBytes&quot;M w q
+-					else
+-						createPartitionerInput \
+-							d n p 1 . . w q
+-					fi
+-					setupDeviceNames 1 no no no 1 no
+-				else
+-					#======================================
+-					# -home -swap +recovery
+-					#--------------------------------------
+-					if [ ! -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+-						createPartitionerInput \
+-							d n p 1 1 +&quot;$disk1MBytes&quot;M \
+-							n p 2 . +&quot;$recoMByte&quot;M \
+-							t 2 $recoID w q
+-					else
+-						createPartitionerInput \
+-							d n p 1 1 +&quot;$disk1MBytes&quot;M \
+-							n p 2 . . w q
+-					fi
+-					setupDeviceNames 1 no no 2 1 no
+-				fi
+-			fi
+-		else
+-			#======================================
+-			# +home
+-			#--------------------------------------
+-			if [ -z &quot;$OEM_WITHOUTSWAP&quot; ];then
+-				#======================================
+-				# +home +swap
+-				#--------------------------------------
+-				if [ -z &quot;$OEM_RECOVERY&quot; ];then
+-					#======================================
+-					# +home +swap -recovery
+-					#--------------------------------------
+-					createPartitionerInput \
+-						d n p 1 1 +&quot;$disk1MBytes&quot;M \
+-						n p 2 . +&quot;$swapsize&quot;M \
+-						n p 3 . . \
+-						t 2 82 w q
+-					setupDeviceNames 1 2 3 no 1 no
+-				else
+-					#======================================
+-					# +home +swap +recovery
+-					#--------------------------------------
+-					createPartitionerInput \
+-						d n p 1 1 +&quot;$disk1MBytes&quot;M \
+-						n p 2 . +&quot;$swapsize&quot;M \
+-						n p 3 . +&quot;$recoMByte&quot;M \
+-						n p . . \
+-						t 3 $recoID \
+-						t 2 82 w q
+-					setupDeviceNames 1 2 4 3 1 no
+-				fi
+-			else
+-				#======================================
+-				# +home -swap
+-				#--------------------------------------
+-				if [ -z &quot;$OEM_RECOVERY&quot; ];then
+-					#======================================
+-					# +home -swap -recovery
+-					#--------------------------------------
+-					createPartitionerInput \
+-						d n p 1 1 +&quot;$disk1MBytes&quot;M \
+-						n p 2 . . w q
+-					setupDeviceNames 1 no 2 no 1 no
+-				else
+-					#======================================
+-					# +home -swap +recovery
+-					#--------------------------------------
+-					createPartitionerInput \
+-						d n p 1 1 +&quot;$disk1MBytes&quot;M \
+-						n p 2 . +&quot;$recoMByte&quot;M \
+-						t 2 $recoID \
+-						n p 3 . . w q
+-					setupDeviceNames 1 no 3 2 1 no
+-				fi
+-			fi
+-		fi
+-		callPartitioner $input
++		disableOEMParameters
++		disableRepart
+ 	fi
+ 	#======================================
+-	# post repart actions
++	# write new partition table
+ 	#--------------------------------------
+ 	if [ -z &quot;$DONT_PARTITION&quot; ];then
++		pID=1
++		bootParam=1
++		recoParam=no
++		swapParam=no
++		homeParam=no
+ 		#======================================
+-		# Activate boot partition
++		# clean/backup boot partition
+ 		#--------------------------------------
+-		activateBootPartition
+-	fi
+-}
+-
+-#======================================
+-# OEMRepartOverlayed
+-#--------------------------------------
+-function OEMRepartOverlayed {
+-	# /.../
+-	# repartition disk if overlay system via overlay filesystem
+-	# like aufs, unionfs is used
+-	# ---- 
+-	#====================================== 
+-	# no recovery support in union mode
+-	#--------------------------------------
+-	unset OEM_RECOVERY
+-	#====================================== 
+-	# no homepart support for union mode
+-	#--------------------------------------
+-	export OEM_WITHOUTHOME=1
+-	#====================================== 
+-	# check for DM squash setup
+-	#--------------------------------------
+-	if mount $(ddn $imageDiskDevice 1) /mnt &amp;&gt;/dev/null;then
+-		if [ -f /mnt/fsdata.ext3 ];then
+-			umount /mnt
+-			mount $(ddn $imageDiskDevice 3) /mnt
+-			cp /mnt/boot/linux.vmx  /tmp
+-			cp /mnt/boot/initrd.vmx /tmp
+-			cp /mnt/boot/grub/mbrid /tmp
+-			umount /mnt
+-			export haveDMSquash=yes
+-		else
+-			umount /mnt
++		if [ &quot;$haveBootPartition&quot; = &quot;yes&quot; ];then
++			createPartitionerInput \
++				d 2 w q
+ 		fi
+-	fi
+-	#====================================== 
+-	# check for Clic setup
+-	#--------------------------------------
+-	local unionFST=`echo $UNIONFS_CONFIG | cut -d , -f 3`
+-	if [ &quot;$unionFST&quot; = &quot;clicfs&quot; ];then
+-		mount $(ddn $imageDiskDevice 3) /mnt
+-		cp /mnt/boot/linux.vmx  /tmp
+-		cp /mnt/boot/initrd.vmx /tmp
+-		cp /mnt/boot/grub/mbrid /tmp
+-		umount /mnt
+-		export haveClicFS=yes
+-	fi
+-	#======================================
+-	# calculate end block - swapspace
+-	#--------------------------------------
+-	swapXMBytes=$swapsize
+-	bootXMBytes=0
+-	if [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ] || [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+-		bootXMBytes=60
+-	fi
+-	diskXMBytes=`partitionSize $imageDiskDevice`
+-	diskXMBytes=`expr $diskXMBytes / 1024`
+-	disk1MBytes=`partitionSize $(ddn $imageDiskDevice 1)`
+-	disk1MBytes=`expr $disk1MBytes / 1024`
+-	disk2MBytes=`expr $diskXMBytes - $disk1MBytes - $swapsize - $bootXMBytes`
+-	if [ $disk2MBytes -lt 100 ];then
+-		# /.../
+-		# Very small disk which we will not re-partition
+-		# ----
+-		Echo &quot;Disk is too small, will not re-partition it&quot;
+-		DONT_PARTITION=1
+-	fi
+-	if [ -z &quot;$DONT_PARTITION&quot; ];then
+ 		#======================================
+-		# write new partition table
++		# repart root partition
+ 		#--------------------------------------
+-		# /.../
+-		# Explanation of the partition commands used within the
+-		# here document below:
+-		# ----
+-		# d               # delete xda partition
+-		# 2               # [ 2 ]
+-		# n               # create xda partition at same place than xda2
+-		# p               # primary
+-		# 2               # [ 2 ]
+-		#                 # accept old xda2 start block
+-		# +&quot;disk2MBytes&quot;M # accept new RW device size
+-		# n               # create xda swap partition
+-		# p               # primary
+-		# 3               # [ 3 ]
+-		#                 # accept start block
+-		#                 # accept end block
+-		# t               # change swap system id
+-		# 3               # [ 3 ]
+-		# 82              # Linux Swap
+-		# w               # write partition table
+-		# ----
+-		input=/part.input
+-		rm -f $input
+-		if [ $swapsize = 0 ];then
+-			if [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ] || [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+-				createPartitionerInput \
+-					d 2 d 3 n p 2 . +&quot;$disk2MBytes&quot;M n p 3 . . w q
+-				setupDeviceNames 1 no no no 3 2
+-			else
+-				createPartitionerInput \
+-					d 2 n p 2 . . w q
+-				setupDeviceNames 1 no no no 2 2
+-			fi
+-		else
+-			if [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ] || [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+-				createPartitionerInput \
+-					d 2 d 3 n p 2 . +&quot;$disk2MBytes&quot;M \
+-					n p 3 . +&quot;$bootXMBytes&quot;M n p . . \
+-					t 4 82 w q
+-				setupDeviceNames 1 4 no no 3 2
+-			else
+-				createPartitionerInput \
+-					d 2 n p 2 . +&quot;$disk2MBytes&quot;M n p 3 . . \
+-					t 3 82 w q
+-				setupDeviceNames 1 3 no no 2 2
+-			fi
++		createPartitionerInput \
++			d n p $pID . +&quot;$disk1MBytes&quot;M w q
++		#======================================
++		# add swap partition
++		#--------------------------------------
++		if [ -z &quot;$OEM_WITHOUTSWAP&quot; ];then
++			pID=$((pID + 1))
++			createPartitionerInput \
++				n p $pID . +&quot;$swapsize&quot;M t 2 82 w q
++			swapParam=$pID
++		fi
++		#======================================
++		# add recovery partition
++		#--------------------------------------
++		if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
++			pID=$((pID + 1))
++			createPartitionerInput \
++				n p $pID . +&quot;$recoMByte&quot;M t $pID $recoID w q
++			recoParam=$pID
++		fi
++		#======================================
++		# add boot partition
++		#--------------------------------------
++		if [ ! -z &quot;$bootXMBytes&quot; ];then
++			pID=$((pID + 1))
++			createPartitionerInput \
++				n p $pID . +&quot;$bootXMBytes&quot;M t $pID $bootpartID w q
++			bootParam=$pID
++		fi
++		#======================================
++		# add home partition
++		#--------------------------------------
++		if [ -z &quot;$OEM_WITHOUTHOME&quot; ];then
++			pID=$((pID + 1))
++			createPartitionerInput \
++				n p $pID . . w q
++			homeParam=$pID
+ 		fi
++		#======================================
++		# setup new device names
++		#--------------------------------------
++		setupDeviceNames \
++			1 $swapParam $homeParam $recoParam $bootParam no
+ 		callPartitioner $input
+ 	fi
+ 	#======================================
+@@ -406,97 +172,124 @@ function OEMRepartOverlayed {
+ 		#--------------------------------------
+ 		activateBootPartition
+ 		#======================================
+-		# Create bootfs if DM squash setup
++		# Create boot filesystem if required
+ 		#--------------------------------------
+-		if [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ] || [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+-			if ! mke2fs -T ext2 -q $imageBootDevice &gt;/dev/null 2&gt;&amp;1;then
+-				systemException &quot;Failed to create Boot filesystem&quot; &quot;reboot&quot;
+-			fi
+-		fi
++		createBootDeviceFilesystem
+ 	fi
+ }
+ 
+ #======================================
+-# OEMRepartCombined
++# OEMRepartSplit
+ #--------------------------------------
+-function OEMRepartCombined {
++function OEMRepartSplit {
+ 	# /.../
+-	# repartition disk if split system is used
+-	# ----
++	# repartition disk for overlay systems with aufs, clicfs
++	# and friends and also systems of image type split.
++	# Initial partition table layout is:
++	# =====================================
++	# p1: ( compressed )
++	# p2: ( write area ) +luks
++	# p3: [ boot ]
++	# -------------------------------------
+ 	#====================================== 
+-	# no recovery support for combined mode
++	# no recovery support in union mode
+ 	#--------------------------------------
+ 	unset OEM_RECOVERY
+ 	#====================================== 
+-	# no homepart support for combined mode
++	# no homepart support for union mode
+ 	#--------------------------------------
+ 	export OEM_WITHOUTHOME=1
++	#======================================
++	# check for boot partition
++	#--------------------------------------
++	createBootDeviceData 3
++	#======================================
++	# setup initial boot device ID
++	#--------------------------------------
++	export bootid=2
++	if [ &quot;$haveBootPartition&quot; = &quot;yes&quot; ];then
++		bootid=3
++	fi
+ 	#====================================== 
+ 	# check for read-write partition
+ 	#--------------------------------------
+ 	if ! partitionSize $(ddn $imageDiskDevice 2) &amp;&gt;/dev/null;then
+-		Echo &quot;No read-write partition in this split image&quot;
+-		DONT_PARTITION=1
++		Echo &quot;No read-write partition in this split/overlay image&quot;
++		disableOEMParameters
++		disableRepart
+ 	fi
+-	#======================================
+-	# calculate new partition 3 size
+-	#--------------------------------------
+ 	if [ -z &quot;$DONT_PARTITION&quot; ];then
+-		swapXMBytes=$swapsize
+-		diskXMBytes=`partitionSize $imageDiskDevice`
+-		diskXMBytes=`expr $diskXMBytes / 1024`
+-		disk1MBytes=`partitionSize $(ddn $imageDiskDevice 1)`
+-		disk1MBytes=`expr $disk1MBytes / 1024`
+-		disk2MBytes=`partitionSize $(ddn $imageDiskDevice 2)`
+-		disk2MBytes=`expr $disk2MBytes / 1024`
+-		diskXLBytes=`expr $diskXMBytes - $disk1MBytes - $disk2MBytes`
+-		diskXABytes=`expr $diskXLBytes - $swapXMBytes`
+-		if [ $diskXABytes -lt 50 ];then
++		#======================================
++		# calculate partition sizes
++		#--------------------------------------
++		diskXMBytes=$(($(partitionSize $imageDiskDevice) / 1024))
++		disk1MBytes=$(($(partitionSize $(ddn $imageDiskDevice 1)) / 1024))
++		disk2MBytes=$(($(partitionSize $(ddn $imageDiskDevice 2)) / 1024))
++		diskRMBytes=$((
++			diskXMBytes - disk1MBytes - disk2MBytes - swapsize - bootXMBytes
++		))
++		disk2MBytes=$((disk2MBytes + diskRMBytes))
++		if [ ! -z &quot;$OEM_SYSTEMSIZE&quot; ];then
++			if [ $OEM_SYSTEMSIZE -le $disk2MBytes ];then
++				disk2MBytes=$OEM_SYSTEMSIZE
++			fi
++		fi
++		#======================================
++		# check repart operation
++		#--------------------------------------
++		if [ $diskRMBytes -lt 100 ];then
+ 			# /.../
+ 			# Very small disk which we will not re-partition
+ 			# ----
+ 			Echo &quot;Disk is too small, will not re-partition it&quot;
+-			DONT_PARTITION=1
+-		else
+-			disk2MBytes=`expr $disk2MBytes + $diskXABytes`
++			disableOEMParameters
++			disableRepart
+ 		fi
+ 	fi
++	#======================================
++	# write new partition table
++	#--------------------------------------
+ 	if [ -z &quot;$DONT_PARTITION&quot; ];then
++		pID=2
++		bootParam=2
++		recoParam=no
++		swapParam=no
++		homeParam=no
+ 		#======================================
+-		# write new partition table
++		# clean/backup boot partition
+ 		#--------------------------------------
+-		# /.../
+-		# Explanation of the partition commands used within the
+-		# here document below:
+-		# ----
+-		# d               # delete xda partition
+-		# 2               # [ 2 ]
+-		# n               # create xda partition at same place than xda2
+-		# p               # primary
+-		# 2               # [ 2 ]
+-		#                 # accept old xda3 start block
+-		# +&quot;disk2MBytes&quot;M # accept new RW device size of disk blocks - swap
+-		# n               # create xda swap partition
+-		# p               # primary
+-		# 3               # [ 3 ]
+-		#                 # accept start block
+-		#                 # accept end block
+-		# t               # change swap system id
+-		# 3               # [ 3 ]
+-		# 82              # Linux Swap
+-		# w               # write partition table
+-		# ----
+-		input=/part.input
+-		rm -f $input
+-		if [ $swapsize = 0 ];then
++		if [ &quot;$haveBootPartition&quot; = &quot;yes&quot; ];then
++			createPartitionerInput \
++				d 3 w q
++		fi
++		#======================================
++		# repart cow partition
++		#--------------------------------------
++		createPartitionerInput \
++			d $pID n p $pID . +&quot;$disk2MBytes&quot;M w q
++		#======================================
++		# add swap partition
++		#--------------------------------------
++		if [ ! $swapsize = 0 ];then
++			pID=$((pID + 1))
+ 			createPartitionerInput \
+-				d 2 n p 2 . . w q
+-			setupDeviceNames 1 no no no 2 2
+-		else
++				n p $pID . +&quot;$swapsize&quot;M t $pID 82 w q
++			swapParam=$pID
++		fi
++		#======================================
++		# add boot partition
++		#--------------------------------------
++		if [ &quot;$haveBootPartition&quot; = &quot;yes&quot; ];then
++			pID=$((pID + 1))
+ 			createPartitionerInput \
+-				d 2 n p 2 . +&quot;$disk2MBytes&quot;M n p 3 . . t 3 82 w q
+-			setupDeviceNames 1 3 no no 2 2
++				n p $pID . +&quot;$bootXMBytes&quot;M t $pID $bootpartID w q
++			bootParam=$pID
+ 		fi
++		#======================================
++		# setup new device names
++		#--------------------------------------
++		setupDeviceNames \
++			1 $swapParam $homeParam $recoParam $bootParam 2
+ 		callPartitioner $input
+ 	fi
+ 	#======================================
+@@ -507,6 +300,10 @@ function OEMRepartCombined {
+ 		# Activate boot partition
+ 		#--------------------------------------
+ 		activateBootPartition
++		#======================================
++		# Create boot filesystem if required
++		#--------------------------------------
++		createBootDeviceFilesystem
+ 	fi
+ }
+ 
+@@ -514,263 +311,105 @@ function OEMRepartCombined {
+ # OEMRepartLVM
+ #--------------------------------------
+ function OEMRepartLVM {
+-	#======================================
+-	# Variable setup...
+-	#--------------------------------------
+-	local VGFreeMBytes
+-	local VGNeedMBytes
+-	local VGSwapMBytes=0
+-	local VGSpareMBytes=100
+-	local VGSystemMBytes=10240
+-	local disk1MBytes=`partitionSize $(ddn $imageDiskDevice 1)`
+-	local disk1MBytes=`expr $disk1MBytes / 1024`
+-	local disk2MBytes=`partitionSize $(ddn $imageDiskDevice 2)`
+-	local disk2MBytes=`expr $disk2MBytes / 1024`
+-	local diskXMBytes=`partitionSize $imageDiskDevice`
+-	local diskXMBytes=`expr $diskXMBytes / 1024`
+-	local diskRMBytes=$(expr $recoMByte + $disk1MBytes + $disk2MBytes)
+-	if [ ! -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+-		VGSystemMBytes=$OEM_SYSTEMSIZE
+-	fi
+-	if [ -z &quot;$OEM_WITHOUTSWAP&quot; ];then
+-		VGSwapMBytes=$swapsize
+-	fi
+ 	# /.../
+-	# prevent recovery partition if current partitions plus
+-	# recovery is bigger than the whole disk
+-	# ----
+-	if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+-		if [ $diskRMBytes -gt $diskXMBytes ];then
+-			unset OEM_RECOVERY
+-		fi
+-	fi
++	# repartition disk if LVM partition plus boot partition
++	# is used. Initial partition table layout is:
++	# =====================================
++	# p1: ( LVM  )  +luks
++	# p2: ( boot )
++	# -------------------------------------
+ 	#======================================
+-	# Extend vgroup to max physical space
++	# setup initial boot device ID
+ 	#--------------------------------------
+-	vgchange -an
+-	input=/part.input
+-	rm -f $input
+-	if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+-		createPartitionerInput \
+-			n p 3 . +&quot;$recoMByte&quot;M \
+-			n p . . \
+-			t 3 $recoID \
+-			t 4 8e w
+-		extendID=4
+-	else
+-		createPartitionerInput \
+-			n p 3 . . t 3 8e w
+-		extendID=3
+-	fi
+-	callPartitioner $input
+-	waitForStorageDevice $(ddn $imageDiskDevice $extendID)
+-	dd if=/dev/zero of=$(ddn $imageDiskDevice $extendID) bs=1024 count=5
+-	vgchange -an
++	export bootid=2
+ 	#======================================
+-	# Set boot id
+-	#--------------------------------------
+-	bootid=2
+-	activateBootPartition
+-	vgchange -a y $VGROUP
+-	pvcreate $(ddn $imageDiskDevice $extendID)
+-	vgextend $VGROUP $(ddn $imageDiskDevice $extendID)
+-	VGFreeMBytes=`vgdisplay --short --unit B $VGROUP|cut -f2 -d/ | cut -f1 -dB`
+-	VGFreeMBytes=`expr $VGFreeMBytes / 1000`
+-	VGFreeMBytes=`expr $VGFreeMBytes / 1000`
+-	VGNeedMBytes=`expr $VGSwapMBytes + $VGSystemMBytes`
+-	VGNeedMBytes=`expr $VGNeedMBytes + $VGSpareMBytes`
++	# calculate partition sizes
++	#--------------------------------------
++	local extendID
++	local VOverHeadMB=300
++	local diskXMBytes=$(($(partitionSize $imageDiskDevice) / 1024))
++	local disk1MBytes=$(($(partitionSize $(ddn $imageDiskDevice 1)) / 1024))
++	local disk2MBytes=$(($(partitionSize $(ddn $imageDiskDevice 2)) / 1024))
++	if [ ! -z &quot;$OEM_SYSTEMSIZE&quot; ];then
++		disk1MBytes=$OEM_SYSTEMSIZE
++	fi
++	local diskRMBytes=$((
++		recoMByte + disk1MBytes + disk2MBytes + swapsize + VOverHeadMB
++	))
+ 	#======================================
+-	# Check if we have enough space left
++	# check repart operation
+ 	#--------------------------------------
+-	if [ $VGNeedMBytes -gt $VGFreeMBytes ];then
+-		Echo &quot;Not enough space left, will not extend logical volumes&quot;
+-		export OEM_WITHOUTHOME=1
+-		export OEM_WITHOUTSWAP=1
+-		DONT_PARTITION=1
++	if [ $diskRMBytes -gt $diskXMBytes ];then
++		Echo &quot;Disk is too small, will not re-partition it&quot;
++		disableOEMParameters
++		disableRepart
+ 	fi
+ 	#======================================
+-	# Setup logical volumes for free space
++	# write new partition table
+ 	#--------------------------------------
+ 	if [ -z &quot;$DONT_PARTITION&quot; ];then
++		pID=3
++		bootParam=2
++		recoParam=no
++		swapParam=no
++		homeParam=no
++		vgchange -an
+ 		#======================================
+-		# Setup recovery device name
++		# add recovery partition
+ 		#--------------------------------------
+ 		if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+-			export imageRecoveryDevice=$(ddn $imageDiskDevice 3)
+-			export recoid=3
++			createPartitionerInput \
++				n p $pID . +&quot;$recoMByte&quot;M t $pID $recoID w q
++			recoParam=$pID
++			pID=$((pID + 1))
+ 		fi
+ 		#======================================
++		# add rest space LVM partition
++		#--------------------------------------
++		createPartitionerInput \
++			n p $pID . . t $pID 8e w q
++		extendID=$pID
++		#======================================
++		# setup new device names
++		#--------------------------------------
++		setupDeviceNames \
++			1 $swapParam $homeParam $recoParam $bootParam yes $VGROUP
++		callPartitioner $input
++		waitForStorageDevice $(ddn $imageDiskDevice $extendID)
++		dd if=/dev/zero of=$(ddn $imageDiskDevice $extendID) bs=1024 count=5
++		vgchange -an
++		activateBootPartition
++		#======================================
++		# extend volume group with rest space
++		#--------------------------------------
++		vgchange -a y $VGROUP
++		pvcreate $(ddn $imageDiskDevice $extendID)
++		vgextend $VGROUP $(ddn $imageDiskDevice $extendID)
++		#======================================
+ 		# Extend LVRoot to requested size
+ 		#--------------------------------------
+-		lvextend --size $VGSystemMBytes&quot;M&quot; /dev/$VGROUP/LVRoot
++		lvextend --size $disk1MBytes&quot;M&quot; /dev/$VGROUP/LVRoot
+ 		#======================================
+ 		# Add LVSwap if requested.
+ 		#--------------------------------------
+ 		if [ -z &quot;$OEM_WITHOUTSWAP&quot; ];then
+-			lvcreate --size $VGSwapMBytes&quot;M&quot; -n LVSwap $VGROUP
+-			export imageSwapDevice=/dev/$VGROUP/LVSwap
++			lvcreate --size $swapsize&quot;M&quot; -n LVSwap $VGROUP
++			swapParam=yes
+ 		fi
+ 		#======================================
+ 		# Add LVHome if requested
+ 		#--------------------------------------
+ 		if [ -z &quot;$OEM_WITHOUTHOME&quot; ];then
+ 			lvcreate -l 100%FREE -n LVHome $VGROUP
+-			export imageHomeDevice=/dev/$VGROUP/LVHome
++			homeParam=yes
+ 		elif [ -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+ 			lvextend -l 100%FREE /dev/$VGROUP/LVRoot
+ 		fi
+-	fi
+-}
+-
+-#======================================
+-# OEMRepartLuks
+-#--------------------------------------
+-function OEMRepartLuks {
+-	#====================================== 
+-	# no recovery support for LUKS mode
+-	#--------------------------------------
+-	unset OEM_RECOVERY
+-	#====================================== 
+-	# no homepart support for LUKS mode
+-	#--------------------------------------
+-	export OEM_WITHOUTHOME=1
+-	#====================================== 
+-	# Store kiwi kernel and initrd
+-	#--------------------------------------
+-	if isFSTypeReadOnly;then
+-		mount $(ddn $imageDiskDevice 3) /mnt
+-		cp /mnt/boot/linux.vmx  /tmp
+-		cp /mnt/boot/initrd.vmx /tmp
+-		cp /mnt/boot/grub/mbrid /tmp
+-		umount /mnt
+-	fi
+-	#======================================
+-	# calculate end block - swapspace
+-	#--------------------------------------
+-	bootXMBytes=60
+-	swapXMBytes=$swapsize
+-	diskXMBytes=`partitionSize $imageDiskDevice`
+-	diskXMBytes=`expr $diskXMBytes / 1024`
+-	disk1MBytes=`partitionSize $(ddn $imageDiskDevice 1)`
+-	disk1MBytes=`expr $disk1MBytes / 1024`
+-	disk2MBytes=`expr $diskXMBytes - $disk1MBytes - $swapsize - $bootXMBytes`
+-	if ! isFSTypeReadOnly;then
+-		disk1MBytes=`expr $diskXMBytes - $swapsize - $bootXMBytes`
+-		disk2MBytes=$disk1MBytes
+-	fi
+-	if [ ! -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+-		if ! isFSTypeReadOnly &amp;&amp; [ $OEM_SYSTEMSIZE -lt $disk1MBytes ];then
+-			disk1MBytes=$OEM_SYSTEMSIZE
+-			disk2MBytes=$disk1MBytes
+-		fi
+-	fi
+-	if [ $disk2MBytes -lt 100 ];then
+-		# /.../
+-		# Very small disk which we will not re-partition
+-		# ----
+-		Echo &quot;Disk is too small, will not re-partition it&quot;
+-		DONT_PARTITION=1
+-	fi
+-	if [ -z &quot;$DONT_PARTITION&quot; ];then
+-		#======================================
+-		# write new partition table
+-		#--------------------------------------
+-		# /.../
+-		# Explanation of the partition commands used within the
+-		# here document below:
+-		# ----
+-		# d               # delete xda partition
+-		# 2               # [ 2 ]
+-		# d               # delete xda partition
+-		# n               # create xda partition at same place than xda1
+-		# p               # primary
+-		# 1               # [ 1 ]
+-		#                 # accept old xda1 start block
+-		# +&quot;disk1MBytes&quot;M # accept new root device size - swap - boot
+-		# n               # create xda boot partition
+-		# p               # primary
+-		# 2               # [ 2 ]
+-		#                 # accept start block
+-		# +&quot;bootXMBytes&quot;M # accept bootMBytes for boot
+-		# n               # create xda swap partition
+-		# p               # primary
+-		# 3               # [ 3 ]
+-		#                 # accept start block
+-		#                 # accept end block
+-		# t               # change swap system id
+-		# 3               # [ 3 ]
+-		# 82              # Linux Swap
+-		# w               # write partition table
+-		# ----
+-		input=/part.input
+-		rm -f $input
+-		if [ $swapsize = 0 ];then
+-			if isFSTypeReadOnly;then
+-				createPartitionerInput \
+-					d 2 d 3 n p 2 . +&quot;$disk2MBytes&quot;M n p 3 . . w q
+-				setupDeviceNames 1 no no no 3 2
+-			else
+-				if [ ! -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+-					createPartitionerInput \
+-						d 2 d n p 1 . +&quot;$disk1MBytes&quot;M \
+-						n p 2 . +&quot;$bootXMBytes&quot;M w q
+-				else
+-					createPartitionerInput \
+-						d 2 d n p 1 . +&quot;$disk1MBytes&quot;M n p 2 . . w q
+-				fi
+-				setupDeviceNames 1 no no no 2 no
+-			fi
+-		else
+-			if isFSTypeReadOnly;then
+-				createPartitionerInput \
+-					d 2 d 3 n p 2 . +&quot;$disk2MBytes&quot;M \
+-					n p 3 . +&quot;$bootXMBytes&quot;M \
+-					n p . . \
+-					t 4 82 w q
+-				setupDeviceNames 1 4 no no 3 2
+-			else
+-				if [ ! -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+-					createPartitionerInput \
+-						d 2 d n p 1 . +&quot;$disk1MBytes&quot;M \
+-						n p 2 . +&quot;$bootXMBytes&quot;M \
+-						n p 3 . +&quot;$swapsize&quot;M \
+-						t 3 82 w q
+-				else
+-					createPartitionerInput \
+-						d 2 d n p 1 . +&quot;$disk1MBytes&quot;M \
+-						n p 2 . +&quot;$bootXMBytes&quot;M \
+-						n p 3 . . \
+-						t 3 82 w q
+-				fi
+-				setupDeviceNames 1 3 no no 2 no
+-			fi
+-		fi
+-		luksClose
+-		callPartitioner $input
+-	fi
+-	#======================================
+-	# post repart actions
+-	#--------------------------------------
+-	if [ -z &quot;$DONT_PARTITION&quot; ];then
+-		#======================================
+-		# Activate boot partition
+-		#--------------------------------------     
+-		activateBootPartition
+-		#======================================
+-		# LUKS Maps
+-		#--------------------------------------
+-		export imageRootDevice=$(luksOpen $imageRootDevice)
+-		if isFSTypeReadOnly;then
+-			export imageIOWRDevice=$(luksOpen $imageIOWRDevice luksReadWrite)
+-			export imageRWDevice=$imageIOWRDevice
+-			export imageRODevice=$imageRootDevice
+-		fi
+ 		#======================================
+-		# Create boot filesystem
++		# setup new device names
+ 		#--------------------------------------
+-		if ! mke2fs -T ext2 -q $imageBootDevice &gt;/dev/null 2&gt;&amp;1;then
+-			systemException &quot;Failed to create Boot filesystem&quot; &quot;reboot&quot;
+-		fi
++		setupDeviceNames \
++			1 $swapParam $homeParam $recoParam $bootParam yes $VGROUP
+ 	fi
+ }
+ 
+@@ -778,6 +417,10 @@ function OEMRepartLuks {
+ # OEMPartitionInstall
+ #--------------------------------------
+ function OEMPartitionInstall {
++	# /.../
++	# don't repart the disk but prepare it for use with
++	# the existing partition table
++	# ----
+ 	#======================================
+ 	# no recovery support for part install
+ 	#--------------------------------------
+@@ -798,14 +441,7 @@ function OEMPartitionInstall {
+ 		# setup LVM device names
+ 		#--------------------------------------
+ 		export haveLVM=yes
+-		if [ -e /dev/$VGROUP/LVComp ];then
+-			export imageRootDevice=/dev/$VGROUP/LVComp
+-		else
+-			export imageRootDevice=/dev/$VGROUP/LVRoot
+-		fi
+-		export imageRWDevice=/dev/$VGROUP/LVRoot
+-		export imageRODevice=/dev/$VGROUP/LVComp
+-		export imageIOWRDevice=$imageRWDevice
++		setupDeviceNames 1 no no no no yes $VGROUP
+ 		#======================================
+ 		# resize LV's
+ 		#--------------------------------------
+@@ -834,6 +470,14 @@ function OEMRepart {
+ 		return
+ 	fi
+ 	#======================================
++	# check for luks extension
++	#--------------------------------------
++	if [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
++		unset  OEM_RECOVERY
++		export OEM_WITHOUTHOME=1
++		luksClose
++	fi
++	#======================================
+ 	# Initialize
+ 	#--------------------------------------
+ 	OEMRepartInit
+@@ -844,17 +488,19 @@ function OEMRepart {
+ 		OEMPartitionInstall
+ 	elif [ ! -z &quot;$haveLVM&quot; ];then
+ 		OEMRepartLVM
+-	elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
+-		OEMRepartLuks
+-	elif [ ! -z &quot;$COMBINED_IMAGE&quot; ];then
+-		OEMRepartCombined
+ 	elif isFSTypeReadOnly;then
+-		OEMRepartOverlayed
++		OEMRepartSplit
+ 	else
+ 		OEMRepartStandard
+ 	fi
+ 	sleep 1
+ 	#======================================
++	# setup luks maps
++	#--------------------------------------
++	if [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
++		createLuksMaps
++	fi
++	#======================================
+ 	# find fstype for root partition
+ 	#--------------------------------------
+ 	probeFileSystem $imageRootDevice
+@@ -943,7 +589,6 @@ function activateBootPartition {
+ 	# /.../
+ 	# set boot flag to current value of $bootid
+ 	# ----
+-	local input=/part.input
+ 	Echo &quot;Set boot flag to partition ID: $bootid [ $imageDiskDevice ]&quot;
+ 	parted -m $imageDiskDevice set $bootid boot on
+ 	if test $? != 0; then
+@@ -968,43 +613,171 @@ function setupDeviceNames {
+ 	local recoID=$4
+ 	local bootID=$5
+ 	local iorwID=$6
+-	#======================================
+-	# set root device name
+-	#--------------------------------------
+-	export imageRootDevice=$(ddn $imageDiskDevice $rootID)
+-	#======================================
+-	# set swap device name
+-	#--------------------------------------
+-	if [ ! $swapID = &quot;no&quot; ];then
+-		export imageSwapDevice=$(ddn $imageDiskDevice $swapID)
++	local vgroup=$7
++	if [ -z &quot;$vgroup&quot; ];then
++		#======================================
++		# set root device name
++		#--------------------------------------
++		export imageRootDevice=$(ddn $imageDiskDevice $rootID)
++		#======================================
++		# set swap device name
++		#--------------------------------------
++		if [ ! $swapID = &quot;no&quot; ];then
++			export imageSwapDevice=$(ddn $imageDiskDevice $swapID)
++		fi
++		#======================================
++		# set home device name
++		#--------------------------------------
++		if [ ! $homeID = &quot;no&quot; ];then
++			export imageHomeDevice=$(ddn $imageDiskDevice $homeID)
++		fi
++		#======================================
++		# set recovery device name
++		#--------------------------------------
++		if [ ! $recoID = &quot;no&quot; ];then
++			export imageRecoveryDevice=$(ddn $imageDiskDevice $recoID)
++			export recoid=$recoID
++		fi
++		#======================================
++		# set read-write device name
++		#--------------------------------------
++		if [ ! $iorwID = &quot;no&quot; ];then
++			export imageIOWRDevice=$(ddn $imageDiskDevice $iorwID)
++			export imageRWDevice=$imageIOWRDevice
++			export imageRODevice=$imageRootDevice
++		fi
++		#======================================
++		# set boot device name
++		#--------------------------------------
++		export imageBootDevice=$(ddn $imageDiskDevice $bootID)
++		#======================================
++		# set boot partition id
++		#--------------------------------------
++		export bootid=$bootID
++	else
++		#======================================
++		# set LVM root device name
++		#--------------------------------------
++		export imageRootDevice=/dev/$vgroup/LVRoot
++		#======================================
++		# set LVM swap device name
++		#--------------------------------------
++		if [ ! $swapID = &quot;no&quot; ];then
++			export imageSwapDevice=/dev/$vgroup/LVSwap
++		fi
++		#======================================
++		# set LVM recovery device name
++		#--------------------------------------
++		if [ ! $recoID = &quot;no&quot; ];then
++			export imageRecoveryDevice=$(ddn $imageDiskDevice $recoID)
++			export recoid=$recoID
++		fi
++		#======================================
++		# set LVM read-write device name
++		#--------------------------------------
++		if [ ! $iorwID = &quot;no&quot; ];then
++			if [ -e /dev/$vgroup/LVComp ];then
++				export imageRootDevice=/dev/$vgroup/LVComp
++			fi
++			export imageIOWRDevice=/dev/$vgroup/LVRoot
++			export imageRWDevice=$imageIOWRDevice
++			export imageRODevice=/dev/$vgroup/LVComp
++		fi
++		#======================================
++		# set LVM boot device name
++		#--------------------------------------
++		export imageBootDevice=$(ddn $imageDiskDevice $bootID)
++		#======================================
++		# set LVM boot partition id
++		#--------------------------------------
++		export bootid=$bootID
+ 	fi
+-	#======================================
+-	# set home device name
+-	#--------------------------------------
+-	if [ ! $homeID = &quot;no&quot; ];then
+-		export imageHomeDevice=$(ddn $imageDiskDevice $homeID)
++}
++
++#======================================
++# createBootDeviceData
++#--------------------------------------
++function createBootDeviceData {
++	local bootPart=$1
++	if partitionSize $(ddn $imageDiskDevice $bootPart) &amp;&gt;/dev/null;then
++		#======================================
++		# Variable setup
++		#--------------------------------------
++		export haveBootPartition=yes
++		export bootXMBytes=60
++		export bootpartID=83
++		if [ &quot;$loader&quot; = &quot;syslinux&quot; ];then
++			bootpartID=6
++		fi
++		#======================================
++		# Store contents in RAM
++		#--------------------------------------
++		mount $(ddn $imageDiskDevice $bootPart) /mnt
++		tar -czf /boot.tgz -C /mnt .
++		umount /mnt
++		#====================================== 
++		# deactivate unsupported features
++		#--------------------------------------
++		unset OEM_RECOVERY
+ 	fi
+-	#======================================
+-	# set recovery device name
++	#====================================== 
++	# check for overlay type
+ 	#--------------------------------------
+-	if [ ! $recoID = &quot;no&quot; ];then
+-		export imageRecoveryDevice=$(ddn $imageDiskDevice $recoID)
+-		export recoid=$recoID
++	local unionFST=`echo $UNIONFS_CONFIG | cut -d , -f 3`
++	if [ &quot;$unionFST&quot; = &quot;dmsquash&quot; ];then
++		export haveDMSquash=yes
+ 	fi
+-	#======================================
+-	# set read-write device name
+-	#--------------------------------------
+-	if [ ! $iorwID = &quot;no&quot; ];then
+-		export imageIOWRDevice=$(ddn $imageDiskDevice $iorwID)
++	if [ &quot;$unionFST&quot; = &quot;clicfs&quot; ];then
++		export haveClicFS=yes
++	fi
++	sleep 1
++}
++
++#======================================
++# createBootDeviceFilesystem
++#--------------------------------------
++function createBootDeviceFilesystem {
++	if [ ! &quot;$haveBootPartition&quot; = &quot;yes&quot; ];then
++		return
++	fi
++	if [ &quot;$loader&quot; = &quot;syslinux&quot; ];then
++		mkdosfs $imageBootDevice &gt;/dev/null 2&gt;&amp;1
++	else
++		mke2fs -q $imageBootDevice &gt;/dev/null 2&gt;&amp;1
++	fi
++	if [ ! $? = 0 ];then
++		systemException \
++			&quot;Failed to create Boot filesystem&quot; \
++		&quot;reboot&quot;
++	fi
++}
++
++#======================================
++# createLuksMaps
++#--------------------------------------
++function createLuksMaps {
++	export imageRootDevice=$(luksOpen $imageRootDevice)
++	if isFSTypeReadOnly;then
++		export imageIOWRDevice=$(luksOpen $imageIOWRDevice luksReadWrite)
+ 		export imageRWDevice=$imageIOWRDevice
+ 		export imageRODevice=$imageRootDevice
+ 	fi
+-	#======================================
+-	# set boot device name
+-	#--------------------------------------
+-	export imageBootDevice=$(ddn $imageDiskDevice $bootID)
+-	#======================================
+-	# set boot partition id
+-	#--------------------------------------
+-	export bootid=$bootID
+ }
++
++#======================================
++# disableOEMParameters
++#--------------------------------------
++function disableOEMParameters {
++	export OEM_WITHOUTHOME=1
++	export OEM_WITHOUTSWAP=1
++	unset OEM_RECOVERY
++	unset OEM_SYSTEMSIZE
++}
++
++#======================================
++# disableRepart
++#--------------------------------------
++function disableRepart {
++	DONT_PARTITION=1
++}
++
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002207.html">[Kiwi-devel] sort enumerated attribute values
+</A></li>
+	<LI>Next message: <A HREF="002209.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c7a8b5dfcc09dfee8fb5959da670634919902777
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2208">[ date ]</a>
+              <a href="thread.html#2208">[ thread ]</a>
+              <a href="subject.html#2208">[ subject ]</a>
+              <a href="author.html#2208">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

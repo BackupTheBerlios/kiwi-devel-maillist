@@ -1,0 +1,714 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [PATCH] create ec2config element and remove ec2* attributes on type element
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BPATCH%5D%20create%20ec2config%20element%20and%20remove%20ec2%2A%20attributes%20on%20type%20element&In-Reply-To=%3Cmailman.10.1331734620.4461.kiwi-devel%40lists.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001864.html">
+   <LINK REL="Next"  HREF="001866.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[PATCH] create ec2config element and remove ec2* attributes on type element</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BPATCH%5D%20create%20ec2config%20element%20and%20remove%20ec2%2A%20attributes%20on%20type%20element&In-Reply-To=%3Cmailman.10.1331734620.4461.kiwi-devel%40lists.berlios.de%3E"
+       TITLE="[PATCH] create ec2config element and remove ec2* attributes on type element">rschweikert at novell.com
+       </A><BR>
+    <I>Sat Feb  6 01:06:14 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001864.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8e26442a629b0bf29074ce3353ec4ebe070d70ec
+</A></li>
+        <LI>Next message: <A HREF="001866.html">[Kiwi-devel] Creating ec2config element
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1867">[ date ]</a>
+              <a href="thread.html#1867">[ thread ]</a>
+              <a href="subject.html#1867">[ subject ]</a>
+              <a href="author.html#1867">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>---
+ doc/LaTex/description.tex |  258 +++++++++++++++++++++++++++------------------
+ modules/KIWIImage.pm      |    2 +-
+ modules/KIWISchema.rnc    |   90 ++++++++++++----
+ modules/KIWIXML.pm        |   34 ++++++-
+ xsl/convert41to42.xsl     |   90 ++++++++++++++++
+ xsl/master.xsl            |    7 +-
+ 6 files changed, 353 insertions(+), 128 deletions(-)
+ create mode 100644 xsl/convert41to42.xsl
+
+diff --git a/doc/LaTex/description.tex b/doc/LaTex/description.tex
+index 46a2702..2829c1c 100644
+--- a/doc/LaTex/description.tex
++++ b/doc/LaTex/description.tex
+@@ -191,8 +191,8 @@ assumed to be present for all profiles.
+ \hspace*{1cm}&lt;version&gt;1.1.2&lt;/version&gt;\\
+ \hspace*{1cm}&lt;packagemanager&gt;smart&lt;/packagemanager&gt;\\
+ \hspace*{1cm}&lt;type image=&quot;name&quot; ...&gt;\\
+-\hspace*{2cm}&lt;vmwareconfig|xenconfig|size|pxedeploy|\\
+-\hspace*{2cm} split|oemconfig|lvmvolumes&gt;\\
++\hspace*{2cm}&lt;ec2config|lvmvolumes|oemconfig|pxedeploy|size|split|\\
++\hspace*{2cm} vmwareconfig|xenconfig&gt;\\
+ \hspace*{1cm}&lt;/type&gt;\\
+ &lt;/preferences&gt;
+ \end{Command}
+@@ -216,109 +216,150 @@ changes to the image description the following rules should apply:
+ By default kiwi use the \textbf{smart} packagemanager but it is also possible
+ to use the SUSE packagemanager called \textbf{zypper}. 
+ 
+-Normally one preferences section is enough but it's possible to share
+-data between different namespaces, so called profiles. According to this
+-it's possible to have for example two preferences sections whereas one
+-contains specific oem options and the other doesn't. This allows to
+-add specific type based information while building the image.
+-
+-At least one type section must be set to be able to build an image from
+-this description. Multiple type sections are allowed whereas you can specify
+-with the boolean attribute named \textbf{primary} which should be the primary
+-image if no type is requested on creation. The following list
+-describes the possible types and their attributes:
++In general the specification of one &lt;preferences&gt; section is sufficient.
++However, it's possible to specify multiple &lt;preferences&gt; sections and
++distinquish between the sections via the \textbf{profiles} attribute. Data
++may also be shared between different profiles. Using profiles it is possible
++to, for example, configure specific preferences for OEM image generation. 
++Activation of a given &lt;preferences&gt; during image generation is triggered by
++the use of the $--$add-profile command line argument.
++
++For each &lt;preferences&gt; block at least one \textbf{type} element must be
++defined. It is possible to specify multiple &lt;type&gt; elements in any 
++&lt;preferences&gt; block. To set a given &lt;type&gt; description as the default image
++use the boolean attribute \textbf{primary} and set its value to \textbf{true}.
++The image type to be created is determined by the value of the \textbf{image}
++attribute. The following list describes the supported types and possible
++values of the image attribute:
+ 
+ \begin{itemize}
+-\item \textbf{image=''usb''}\\
+-      Use this type to create a USB stick system along with the
+-      attributes \textbf{filesystem} and \textbf{boot=''usbboot/suse-*''}
+-      In addition to that type you can specify which bootloader to use.
+-      The optional attribute \textbf{bootloader} is used to setup
+-      either grub or syslinux as bootloader types. Setting the bootloader
+-      also works for vmx images but not for oem images. In case of an
+-      oem image only the distribution supported bootloader (grub) is
+-      allowed. The optional \textbf{lvm} attribute allows you to
+-      activate LVM support and place the root filesystem into logical
+-      volumes of the volume group specified by the lvmgroup attribute.
+-      If no lvmgroup is set the default group name kiwiVG applies.
+-\item \textbf{image=''vmx''}\\
+-      Use this type to create a virtual disk system along with the
+-      attributes \textbf{filesystem}, \textbf{boot=''vmxboot/suse-*''} and
+-      optionally \textbf{format}. The format attribute spcifies one of
+-      the qemu supported virtualization formats, for example vmdk or qcow2.
+-      The optional attribute \textbf{vga} can be specified to configure the
+-      kernel framebuffer mode. Detailed information about the possible
+-      values can be found in /usr/src/linux/Documentation/fb/vesafb.txt.
+-      The vga attribute also works for the image types usb and oem.
+-      The optional \textbf{lvm} attribute allows you to
+-      activate LVM support and place the root filesystem into logical
+-      volumes of the volume group specified by the lvmgroup attribute.
+-      If no lvmgroup is set the default group name kiwiVG applies.
+-\item \textbf{image=''oem''}\\
+-      Use this type to create a preload virtual disk system along with
+-      the attributes \textbf{filesystem}, \textbf{boot=''oemboot/suse-*''} and
+-      optionally \textbf{format}. If the format attribute is set to
+-      ''iso'' or ''usb'' KIWI will additionally create an installation
+-      media suitable for a CD/DVD or an USB stick. This installation media
+-      takes over the task of deploying the preload system onto the
+-      storage devices which it detects at boot time. If the optional
+-      \textbf{lvm} attribute is set the root filesystem of the oem system is 
+-      placed into logical volumes of the volume group specified by the
+-      lvmgroup attribute. If no lvmgroup is set the default group name
+-      kiwiVG applies.
+-\item \textbf{image=''pxe''}\\
+-      Use this type to create a network boot image along with the
+-      attributes \textbf{filesystem} and \textbf{boot=''netboot/suse-*''}
+-      Additionally the attribute \textbf{compressed} specifies whether
+-      the image file should be compressed or not. This is not the filesystem
+-      compression just the image file compression most often used to
+-      transfer the compressed version over to the boot server.
++\item \textbf{image=''cpio''}\\
++      Use the cpio image type to specify the generation os a boot image
++      (intrd). When generating a boot image it is possible to specify a
++      specific boot profile and boot kernel using the optional
++      \textbf{bootprofile=''default''} and \textbf{bootkernel=''std''}
++      attributes.
++      
++      A boot image should group the various supported kernels into profiles. 
++      If the user chooses not to us the profiles supplied by Kiwi it is
++      required that one profile named \textbf{std} be created. This profile
++      will be used if no other bootkernel is specified. Further it is 
++      required to create a  profile named \textbf{default}. This profile is
++      used when no bootprofile is specified.
++
++      It is recommended that special configurations that omit drivers, use
++      special drivers and/or special packages be specified as profiles.
++
++
++      The bootprofile and bootkernel attribute are respected within the 
++      definition of a system image. Us the attribute and value 
++      \textbf{type=&quot;system&quot;} of the &lt;description&gt; element to specify the
++      creation of a system image. The values of the bootprofile and 
++      bootkernel attributes are used by Kiwi when generating the boot image.
++\item \textbf{image=''ec2''}\\
++      Setting the image attribute value to ec2 causes the generation of
++      an Amazon Machine Image (AMI) for the AWS (Amazon Web Services) 
++      Elastic Compute Cloud (EC2). The AMI is an image comparable to
++      a VMware or Xen guest image. It can be transferred to the AWS 
++      Simple Storage Service and used within the AWS infrastructure.
++      Configuration of the AMI is accomplished with the optional
++      \textbf{ec2config} element, specified as a child of the &lt;type&gt;
++      element.
+ \item \textbf{image=''iso''}\\
+-      Use this type to create a live system on CD or DVD along with
+-      the attributes \textbf{boot=''isoboot/suse-*''} and optionally
+-      \textbf{flags}. If no flags are specified the filesystem will not
+-      be compressed and no union filesystem is used. Allowed flags are:
++      Specify the key-value pair image=iso to generate a live system suitable
++      for deployment on optical media (CD or DVD). Use the 
++      \textbf{boot=''isoboot/suse-*''} attribute when generating this image
++      type to select the apropriate boot image for optical media. In 
++      addition the optional \textbf{flags} attribute may be set to the
++      following values with the effects described below:
+       \begin{itemize}
+-      \item \textbf{unified}: Compress filesystem with squashfs and
+-            mount the system read-write with an aufs based overlay mount
+-      \item \textbf{compressed}: Compress filesystem with squashfs and
+-            use a link list to mount the system read-write. An additional
+-            split section controls the read-write information 
+-      \item \textbf{dmsquash}: Creates an ext3 image file and puts that
+-            into a squashfs filesystem. On boot the root tree is mounted
+-            via a device mapper snapshot device to allow full write
+-            access over the complete tree.
+       \item \textbf{clic}: Creates a fuse based compressed read-only
+-            filesystem which allows write operations into a cow file
++            filesystem which allows write operations into a cow file.
++      \item \textbf{compressed}: Compressed filesystem with squashfs and
++            use a link list to mount the system read-write. An additional
++            split section controls the read-write information.
++      \item \textbf{dmsquash}: Creates an ext3 image file and encapsulates
++            this image file within a squashfs filesystem. On boot the root 
++            tree is mounted via a device mapper snapshot device to allow full 
++            write access over the complete tree.
++      \item \textbf{unified}: Compressed filesystem with squashfs mounted
++            with an aufs based overlay mount to allow read-write access.
+       \end{itemize}
+-      If no flags or the flags ''compressed''
+-      are set an additional \textbf{split} section is recommended.
+-\item \textbf{image=''xen''}\\
+-      Use this type to create a Xen enabled para-virtual gues image along
+-      with the attributes \textbf{filesystem} and
+-      \textbf{boot=''xenboot/suse-*''}
++      If the flags attribute is not used the filesystem will not be compressed
++      and no union filesystem is used. In this case it is recommended to
++      specify a \textbf{split} section as a child of this type element. The
++      specification of a split block is also recommended when flags=compressed
++      is used.
++\item \textbf{image=''oem''}\\
++      Use this type to create a virtual disk system suitable in a preload
++      setting. In addition specify the attributes \textbf{filesystem}, 
++      and \textbf{boot=''oemboot/suse-*''} to control the filesystem used
++      for the virtual and to specify the proper boot image. Using the optional
++      optional \textbf{format} attribute and setting the value to ''iso'' or 
++      ''usb'' will create self installing images suitable for optical media
++      or a USB stick, respectively. Booting from the media will deploy
++      the OEM preload image onto the selected storage device of the
++      system. It is also possible to configure the system to use logical
++      volumes. Use the optional \textbf{lvm} attribute and specify the
++      logical volume configuration with the \textbf{lvmvolumes} child
++      element. The default volume group name is kiwiVG. Further configuration
++      of the image is performed using the appropriate \textbf{*config} child
++      block.
++\item \textbf{image=''pxe''}\\
++      Creating a network boot image is supported by Kiwi with the image=pxe
++      type. When specifying the creation of a netwoork boot image use the
++      \textbf{filesystem} and \textbf{boot=''netboot/suse-*''} attributes 
++      to specify the filesystem of the image and the proper boot image. To
++      compress the image file set the \textbf{compressed} boolean attribute
++      to true. This setting will compress the image file and has no influence
++      on the filesystem used within the image. The compression is often use to
++      support better transfer times when the pxe image is pushed to the 
++      boot server over a network connection. The pxe image layout is
++      controlled by using the \textbf{pxedeploy} child element.
+ \item \textbf{image=''split''}\\
+-      Use this type if you want to use one of the types
+-      \textbf{usb,vmx,oem or pxe} but as a split image. The split image
+-      support allows to create the image as split files wheras one part
+-      represents the read-write data and the other part represents the
+-      read-only data. Different filesystems can be assigned to each portion.
+-      According to this use this type together with the attributes
+-      \textbf{fsreadwrite}, \textbf{fsreadonly} and\\
+-      \textbf{boot=''usb|vmx|oem|netboot/suse-*''}
+-\item \textbf{image=''cpio''}\\
+-      Use this type if your image is a boot image (intrd). Along with
+-      this type the optional attributes \textbf{bootprofile=''default''} and/or
+-      \textbf{bootkernel=''std''} exists. A boot image should group 
+-      the different kernels it supports in profiles. It's mandatory to have
+-      one profile named \textbf{std} which is used if no other bootkernel
+-      is specified. Profiles which leaves only a subset of drivers or
+-      packages should also be grouped in profiles. It's mandatory to have
+-      one profile named \textbf{default} which is used if no other bootprofile
+-      is specified. Within the system image one can select the
+-      group by also specifying a bootprofile and/or bootkernel attribute.
+-      These information is passed automatically to kiwi when it builds
+-      the boot image.
++      The split image support allows the creation of an image as split
++      files. Using this technique one can assign different filesystems and
++      different read-write porperties to the different sections of the image.
++      The \textbf{oem,pxe,usb and vmx} types can be created as a split system
++      image. Use the \textbf{boot=''oem|netboot|usb|vmx/suse-*''} attribute
++      to select the underlying type of the split image. The attributes
++      \textbf{fsreadwrite}, \textbf{fsreadonly} are used to controll the
++      read-write properties of the filesystem specified as the attributes
++      value. Use the appropriate \textbf{*config} child block to specify
++      the properties of the underlying image. For example when building a 
++      OEM based split image use the \textbf{&lt;oemconfig&gt;} child section.
++\item \textbf{image=''usb''}\\
++      Use the usb value to create a USB stick image. Set the
++      \textbf{filesystem} attribute to the desired supported filesystem for
++      the image and use the \textbf{boot=''usbboot/suse-*''} attribute to
++      select the USB boot image for the system. For a USB image you may
++      also select GRUB or Syslinux as a bootloader by setting the
++      optional \textbf{bootloader} attribute to grub ot syslinux,
++      respectively. The USB image may also be created with LVM support.
++      The same rules as indicated for the OEM image apply.
++\item \textbf{image=''vmx''}\\
++      Creation of a virtual disk system is enabled with the vmx value of
++      the image attribute. Set the filesystem of the virtual disk with
++      the \textbf{filesystem} attribute and select the appropriate boot
++      image by setting \textbf{boot=''vmxboot/suse-*''}. The optional
++      \textbf{format} attribute is used to specify one of the virtualization
++      formats supported by qemu, such as vmdk (also the VMware format) or
++      qcow2. For the virtual disk image the optional \textbf{vga} attribute
++      may be used to configure the kernel framebuffer device. Acceptable
++      values can be found in the Linux kernel documentation for the
++      framebuffer device (Documentation/fb/vesafb.txt). Kiwi also supports
++      the selection of the booloader for the virtual disk according to
++      the rules indicated for the USB system. Last but not least
++      the virtual disk system may also be created with a LVM based layout by
++      using the \textbf{lvm} attribute. The previously indicated rules apply.
++      Use the \textbf{vmwareconfig} or \textbf{xenconfig} child elements
++      to specify appropriate configuration of the virtual disk system.
++\item \textbf{image=''xen''}\\
++      Use this type to create a Xen para-virtual guest image. The
++      \textbf{filesystem} and \textbf{boot=''xenboot/suse-*''} attributes
++      specify the filesystem type used and select the proper boot image,
++      respectively. Use the \textbf{xenconfig} child element to specify
++      configuration options of the Xen guest image.
+ \end{itemize}
+ 
+ All of the mentioned types can specify the \textbf{boot} attribute
+@@ -374,11 +415,24 @@ attributes:
+       already contains most of the image data.
+ \end{itemize}
+ 
+-Within the type section there are optional subsections to specify
+-additional information for this type. The following subsections are
+-possible:
++The &lt;type&gt; element may contain child elements to provide specific
++configuration information for the given type. The following lists the 
++supported child elements:
+ 
+ \begin{itemize}
++\item \textbf{ec2config}\\
++    The optional ec2config block is used to specify information relevant
++    only to AWS EC2 images. The following information can be provided:
++
++    \begin{Command}{12cm}
++    &lt;ec2config&gt;
++    \hspace*{1cm}&lt;ec2accountnr&gt;Your AWS account number&lt;/ec2accountnr&gt;
++    \hspace*{1cm}&lt;ec2certfile&gt;Path to the AWS cert-*.pem file&lt;/ec2certfile&gt;
++    \hspace*{1cm}&lt;ec2privatekeyfile&gt;Path to the AWS pk-*.pem file\\
++       &lt;/ec2privatekeyfile&gt;
++    &lt;/ec2config&gt;
++    \end{Command}
++
+ \item \textbf{size}\\
+     Specifies the size of the image with a numerical value in
+     Megabytes or Gigabytes. Use the ''unit'' attribute to assign the
+@@ -525,8 +579,6 @@ possible:
+       the DOM(x).
+ 	\end{itemize}
+ 
+-\newpage
+-
+ \item \textbf{pxedeploy}\\
+ 	The optional pxedeploy section is only useful if you build the \textbf{pxe}
+ 	image type. For this type an additional network boot infrastructure needs
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 6b901b9..6a1a0e8 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -460,7 +460,7 @@ sub createImageEC2 {
+ 	# Check AWS account information
+ 	#------------------------------------------
+ 	my $arch = qxx (&quot;uname -m&quot;); chomp ( $arch );
+-	my %type = %{$sxml-&gt;getImageTypeAndAttributes()};
++	my %type = %{$sxml-&gt;getEc2Config()};
+ 	my $pblt = $type{checkprebuilt};
+ 	if (! defined $type{AWSAccountNr}) {
+ 		$kiwi -&gt; error  (&quot;Missing AWS account number&quot;);
+diff --git a/modules/KIWISchema.rnc b/modules/KIWISchema.rnc
+index 8d68260..5e0ae57 100644
+--- a/modules/KIWISchema.rnc
++++ b/modules/KIWISchema.rnc
+@@ -26,7 +26,7 @@ db:info [
+ 	db:releaseinfo [
+ 		&quot;$Id: kiwi.rnc 2957 2008-01-11 12:53:39Z thomas-schraitle $&quot;
+ 	]
+-	db:releaseinfo [ &quot;RNC Schema Version 4.1&quot; ]
++	db:releaseinfo [ &quot;RNC Schema Version 4.2&quot; ]
+ 	db:pubdate [ &quot;START&quot; ]
+ 	db:pubdate [ &quot;2008-01-08&quot; ]
+ ]
+@@ -58,7 +58,7 @@ div {
+ 		attribute inherit { text }
+ 	k.image.schemaversion.attribute =
+ 		## The allowed Schema version (fixed value)
+-		attribute schemaversion { &quot;4.1&quot; }
++		attribute schemaversion { &quot;4.2&quot; }
+ 	k.image.kiwirevision.attribute =
+ 		## A kiwi SVN revision number which is known to build
+ 		## a working image from this description. If the kiwi SVN
+@@ -271,6 +271,46 @@ div {
+ }
+ 
+ #==========================================
++# common element &lt;ec2accountnr&gt;
++#
++div {
++    k.ec2accountnr.attlist = empty
++    k.ec2accountnr =
++        ## The user's EC2 user ID (Note: AWS account number, NOT Access Key ID)
++        element ec2accountnr {
++            k.ec2accountnr.attlist,
++            text
++        }
++}
++
++#==========================================
++# common element &lt;ec2certfile&gt;
++#
++div {
++    k.ec2certfile.attlist = empty
++    k.ec2certfile =
++        ## Path to the AWS user's PEM encoded RSA pubkey certificate file
++        ## cert-*.pem
++        element ec2certfile {
++            k.ec2certfile.attlist,
++            text
++        }
++}
++
++#==========================================
++# common element &lt;ec2privatekeyfile&gt;
++#
++div {
++    k.ec2privatekeyfile.attlist = empty
++    k.ec2privatekeyfile =
++        ## Path to the AWS user's PEM encoded RSA private key file pk-*.pem
++        element ec2privatekeyfile {
++            k.ec2privatekeyfile.attlist,
++            text
++        }
++}
++
++#==========================================
+ # common element &lt;file&gt;
+ #
+ div {
+@@ -1257,15 +1297,6 @@ div {
+ 		attribute fsreadwrite {
+ 			&quot;ext2&quot; | &quot;ext3&quot; | &quot;ext4&quot; | &quot;reiserfs&quot;
+ 		}
+-	k.type.ec2privatekeyfile.attribute =
+-		## AWS user's PEM encoded RSA private key file
+-		attribute ec2privatekeyfile { text }
+-	k.type.ec2certfile.attribute =
+-		## AWS user's PEM encoded RSA pubkey certificate file
+-		attribute ec2certfile { text }
+-	k.type.ec2accountnr.attribute =
+-		## The user's EC2 user ID (Note: AWS account number, NOT Access Key ID)
+-		attribute ec2accountnr { xsd:nonNegativeInteger }
+ 	k.type.format.attribute =
+ 		## Specifies the format of the virtual disk. This applies to the
+ 		## vmx/oem types only.
+@@ -1303,9 +1334,6 @@ div {
+ 		k.type.filesystem.attribute? &amp;
+ 		k.type.fsreadonly.attribute? &amp;
+ 		k.type.fsreadwrite.attribute? &amp;
+-		k.type.ec2privatekeyfile.attribute? &amp;
+-		k.type.ec2certfile.attribute? &amp;
+-		k.type.ec2accountnr.attribute? &amp;
+ 		k.type.baseroot.attribute? &amp;
+ 		k.type.format.attribute? &amp;
+ 		k.type.primary.attribute?
+@@ -1313,13 +1341,14 @@ div {
+ 		## The Image Type of the Logical Extend
+ 		element type { 
+ 			k.type.attlist &amp;
+-			k.size? &amp;
++            k.ec2config? &amp;
++			k.lvmvolumes? &amp;
+ 			k.oemconfig? &amp;
+-			k.vmwareconfig? &amp;
+-			k.xenconfig? &amp;
++			k.pxedeploy? &amp;
++			k.size? &amp;
+ 			k.split? &amp;
+-			k.lvmvolumes? &amp;
+-			k.pxedeploy?
++			k.vmwareconfig? &amp;
++			k.xenconfig?
+ 		}
+ }
+ 
+@@ -1866,6 +1895,27 @@ div {
+ }
+ 
+ #==========================================
++# main block: &lt;ec2config&gt;
++#
++div {
++    k.ec2config.attlist = empty
++    k.ec2config =
++        ## Specifies the AWS EC2 configuration section
++        [
++        db:para [
++            &quot;The ec2config element specifies the EC2 image\x{a}&quot;~
++			&quot;configuration options.&quot;
++		]
++		]
++		element ec2config {
++            k.ec2config.attlist &amp;
++            k.ec2accountnr? &amp;
++            k.ec2certfile? &amp;
++            k.ec2privatekeyfile?
++		}
++}
++
++#==========================================
+ # main block: &lt;repopackages&gt;
+ #
+ div {
+@@ -1890,7 +1940,7 @@ div {
+ div {
+ 	k.oemconfig.attlist = empty
+ 	k.oemconfig =
+-		## specifies the OEM configuration sections
++		## Specifies the OEM configuration section
+ 		[
+ 		db:para [
+ 			&quot;The oemconfig element specifies the OEM image\x{a}&quot;~
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index f33efee..7efdf38 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -758,9 +758,6 @@ sub getImageTypeAndAttributes {
+ 		$record{bootkernel}    = $node -&gt; getAttribute(&quot;bootkernel&quot;);
+ 		$record{filesystem}    = $node -&gt; getAttribute(&quot;filesystem&quot;);
+ 		$record{fsnocheck}     = $node -&gt; getAttribute(&quot;fsnocheck&quot;);
+-		$record{AWSAccountNr}  = $node -&gt; getAttribute(&quot;ec2accountnr&quot;);
+-		$record{EC2CertFile}   = $node -&gt; getAttribute(&quot;ec2certfile&quot;);
+-		$record{EC2PrivateKeyFile} = $node -&gt; getAttribute(&quot;ec2privatekeyfile&quot;);
+ 		$record{hybridpersistent}  = $node -&gt; getAttribute(&quot;hybridpersistent&quot;);
+ 		if ($record{type} eq &quot;split&quot;) {
+ 			my $filesystemRO = $node -&gt; getAttribute(&quot;fsreadonly&quot;);
+@@ -2425,6 +2422,37 @@ sub getPackageAttributes {
+ 	}
+ 	return %result;
+ }
++#==========================================
++# getEc2Config
++#------------------------------------------
++sub getEc2Config {
++	# ...
++	# Create a hash for the &lt;ec2config&gt;
++	# section if it exists
++	# ---
++	my $this = shift;
++	my $tnode= $this-&gt;{typeNode};
++	my $node = $tnode -&gt; getElementsByTagName (&quot;ec2config&quot;) -&gt; get_node(1);
++	my %result = ();
++    if (! defined $node) {
++		return %result;
++	}
++
++    my $awsacctno = $node -&gt; getElementsByTagName (&quot;ec2accountnr&quot;);
++    if ($awsacctno) {
++        $result{AWSAccountNr} = $awsacctno;
++    }
++    my $certfile = $node -&gt; getElementsByTagName (&quot;ec2certfile&quot;);
++    if ($certfile) {
++        $result{EC2CertFile} = $certfile;
++    }
++    my $privkeyfile = $node -&gt; getElementsByTagName (&quot;ec2privatekeyfile&quot;);
++    if ($privkeyfile) {
++        $result{EC2PrivateKeyFile} = $privkeyfile;
++    }
++
++    return %result;
++}
+ 
+ #==========================================
+ # getLVMVolumes
+diff --git a/xsl/convert41to42.xsl b/xsl/convert41to42.xsl
+new file mode 100644
+index 0000000..adcfc5b
+--- /dev/null
++++ b/xsl/convert41to42.xsl
+@@ -0,0 +1,90 @@
++&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
++&lt;xsl:stylesheet version=&quot;1.0&quot; xmlns:xsl=&quot;<A HREF="http://www.w3.org/1999/XSL/Transform">http://www.w3.org/1999/XSL/Transform</A>&quot;&gt;
++&lt;xsl:output method=&quot;xml&quot;
++    indent=&quot;yes&quot; omit-xml-declaration=&quot;no&quot; encoding=&quot;utf-8&quot;/&gt;
++
++
++&lt;!-- default rule --&gt;
++&lt;xsl:template match=&quot;*|processing-instruction()|comment()&quot; mode=&quot;conv41to42&quot;&gt;
++   	&lt;xsl:copy&gt;
++  	    &lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++           &lt;xsl:apply-templates mode=&quot;conv41to42&quot;/&gt;
++    &lt;/xsl:copy&gt;  
++&lt;/xsl:template&gt;
++
++&lt;!-- ec2 varaibles --&gt;
++&lt;xsl:variable name=&quot;ec2privatekey&quot; select=&quot;/image/preferences/type/@ec2privatekeyfile&quot;/&gt;
++&lt;xsl:variable name=&quot;ec2cert&quot; select=&quot;/image/preferences/type/@ec2certfile&quot;/&gt;
++&lt;xsl:variable name=&quot;ec2acct&quot; select=&quot;/image/preferences/type/@ec2accountnr&quot;/&gt;
++
++&lt;!-- update schema version and create new element ec2config --&gt;
++&lt;para xmlns=&quot;<A HREF="http://docbook.org/ns/docbook">http://docbook.org/ns/docbook</A>&quot;&gt;
++    Changed attribute &lt;tag class=&quot;attribute&quot;&gt;schemaversion&lt;/tag&gt;
++    to &lt;tag class=&quot;attribute&quot;&gt;schemaversion&lt;/tag&gt; from
++    &lt;literal&gt;4.1&lt;/literal&gt; to &lt;literal&gt;4.2&lt;/literal&gt;. Created new
++    &lt;tag class=&quot;element&quot;&gt;ec2config&lt;/tag&gt; element to collect 
++    &lt;tag class=&quot;attribute&quot;&gt;ec2*&lt;/tag&gt; attributes. The 
++    &lt;tag class=&quot;element&quot;&gt;ec2config&lt;/tag&gt; element is a child of the
++    &lt;tag class=&quot;element&quot;&gt;type&lt;/tag&gt; element.
++&lt;/para&gt;
++
++&lt;xsl:template match=&quot;image&quot; mode=&quot;conv41to42&quot;&gt;
++    &lt;image schemaversion=&quot;4.2&quot;&gt;
++        &lt;xsl:copy-of select=&quot;@*[local-name() != 'schemaversion']&quot;/&gt;
++        &lt;xsl:apply-templates mode=&quot;conv41to42&quot;/&gt;
++        
++    &lt;/image&gt;
++&lt;/xsl:template&gt;
++
++&lt;xsl:template match=&quot;preferences&quot; mode=&quot;conv41to42&quot;&gt;
++    &lt;preferences&gt;
++        &lt;xsl:copy-of select=&quot;@*&quot;/&gt;
++        &lt;xsl:apply-templates mode=&quot;conv41to42&quot;/&gt;
++    &lt;/preferences&gt;
++&lt;/xsl:template&gt;
++
++&lt;xsl:template match=&quot;type&quot; mode=&quot;conv41to42&quot;&gt;
++    &lt;xsl:choose&gt;
++        &lt;xsl:when test=&quot;@image='ec2'&quot;&gt;
++            &lt;type&gt;
++            &lt;xsl:for-each select=&quot;@*&quot;&gt;
++                &lt;xsl:choose&gt;
++                    &lt;xsl:when test=&quot;name()='ec2privatekeyfile'&quot;/&gt;
++                    &lt;xsl:when test=&quot;name()='ec2certfile'&quot;/&gt;
++                    &lt;xsl:when test=&quot;name()='ec2accountnr'&quot;/&gt;
++                    &lt;xsl:otherwise&gt;
++                        &lt;xsl:copy select=&quot;@&quot;/&gt;                  
++                    &lt;/xsl:otherwise&gt;
++                &lt;/xsl:choose&gt;
++            &lt;/xsl:for-each&gt;
++            &lt;xsl:if test=&quot;$ec2privatekey or $ec2cert or $ec2acct&quot;&gt;
++                &lt;ec2config&gt;
++                &lt;xsl:if test=&quot;$ec2privatekey&quot;&gt;
++                    &lt;ec2privatekeyfile&gt;
++                    &lt;xsl:value-of select=&quot;$ec2privatekey&quot;/&gt;
++                    &lt;/ec2privatekeyfile&gt;
++                &lt;/xsl:if&gt;
++
++                &lt;xsl:if test=&quot;$ec2cert&quot;&gt;
++                    &lt;ec2certfile&gt;
++                    &lt;xsl:value-of select=&quot;$ec2cert&quot;/&gt;
++                    &lt;/ec2certfile&gt;
++                &lt;/xsl:if&gt;
++
++                &lt;xsl:if test=&quot;$ec2acct&quot;&gt;
++                    &lt;ec2accountnr&gt;
++                    &lt;xsl:value-of select=&quot;$ec2acct&quot;/&gt;
++                    &lt;/ec2accountnr&gt;
++                &lt;/xsl:if&gt;
++                &lt;/ec2config&gt;
++            &lt;/xsl:if&gt;
++            &lt;xsl:copy-of select=&quot;current()/*&quot;/&gt;
++        &lt;/type&gt;
++    &lt;/xsl:when&gt;
++    &lt;xsl:otherwise&gt;
++      &lt;xsl:copy-of select=&quot;.&quot;/&gt;
++    &lt;/xsl:otherwise&gt;
++  &lt;/xsl:choose&gt;
++&lt;/xsl:template&gt;
++
++&lt;/xsl:stylesheet&gt;
+diff --git a/xsl/master.xsl b/xsl/master.xsl
+index 206dcae..55ff4a5 100644
+--- a/xsl/master.xsl
++++ b/xsl/master.xsl
+@@ -12,6 +12,7 @@
+ &lt;xsl:import href=&quot;convert37to38.xsl&quot;/&gt;
+ &lt;xsl:import href=&quot;convert38to39.xsl&quot;/&gt;
+ &lt;xsl:import href=&quot;convert39to41.xsl&quot;/&gt;
++&lt;xsl:import href=&quot;convert41to42.xsl&quot;/&gt;
+ &lt;xsl:import href=&quot;pretty.xsl&quot;/&gt;
+ 
+ 
+@@ -46,8 +47,12 @@
+         &lt;xsl:apply-templates select=&quot;exslt:node-set($v39)&quot; mode=&quot;conv39to41&quot;/&gt;
+     &lt;/xsl:variable&gt;
+ 
++    &lt;xsl:variable name=&quot;v42&quot;&gt;
++        &lt;xsl:apply-templates select=&quot;exslt:node-set($v41)&quot; mode=&quot;conv41to42&quot;/&gt;
++    &lt;/xsl:variable&gt;
++
+      &lt;xsl:apply-templates
+-		select=&quot;exslt:node-set($v41)&quot; mode=&quot;pretty&quot;
++		select=&quot;exslt:node-set($v42)&quot; mode=&quot;pretty&quot;
+      /&gt;
+      
+ &lt;/xsl:template&gt;
+-- 
+1.6.0.2
+
+
+--------------000200030705060003010805--
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001864.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8e26442a629b0bf29074ce3353ec4ebe070d70ec
+</A></li>
+	<LI>Next message: <A HREF="001866.html">[Kiwi-devel] Creating ec2config element
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1867">[ date ]</a>
+              <a href="thread.html#1867">[ thread ]</a>
+              <a href="subject.html#1867">[ subject ]</a>
+              <a href="author.html#1867">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

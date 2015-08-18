@@ -1,0 +1,687 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel]  A patch for Kiwi
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%20A%20patch%20for%20Kiwi&In-Reply-To=%3C49E5DB10020000270003B30D%40lucius.provo.novell.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001171.html">
+   <LINK REL="Next"  HREF="001173.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel]  A patch for Kiwi</H1>
+    <B>Jia Ju Zhang</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%20A%20patch%20for%20Kiwi&In-Reply-To=%3C49E5DB10020000270003B30D%40lucius.provo.novell.com%3E"
+       TITLE="[Kiwi-devel]  A patch for Kiwi">jjzhang at novell.com
+       </A><BR>
+    <I>Wed Apr 15 05:03:10 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001171.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4af2c0434bae97a12a2731ec298d6bc5c2418ea5
+</A></li>
+        <LI>Next message: <A HREF="001173.html">[Kiwi-devel] A patch for kiwi
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1172">[ date ]</a>
+              <a href="thread.html#1172">[ thread ]</a>
+              <a href="subject.html#1172">[ subject ]</a>
+              <a href="author.html#1172">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi Marcus,
+
+When I used kiwi to build a software appliance for SLE HAE 11, I felt a feature may need to add in our kiwi, 
+that is, OEM image should support repartition a reserved partition for other use. 
+For example, if the customer wants to use DRBD (RAID1 over Ethernet) and if the customer only has one hard 
+disk in his machine, because DRBD needs one hard disk or one partition to build the mirrored disk device, 
+the customer may need a reserved partition to serve as DRBD data partition, which located in the same hard 
+disk with the OS image.
+Above is the example for the server user, another example I can think of for the desktop user is the customer 
+may want to reserve a partition for later use, such as installing another OS, for me, I installed openSUSE11.1
+and SLES10-SP2 on my own laptop.
+
+Here is the patch which is against the kiwi packages in SLE11 GM. I don't know if it makes sense :) 
+(If the patch makes sense, I can regenerate a new patch based on the upstream source tree.)
+
+Thanks,
+Jiaju  
+
+
+--- a/system/boot/ix86/oemboot/suse-repart    2009-04-14 11:05:17.000000000 +0800
++++ b/system/boot/ix86/oemboot/suse-repart    2009-04-14 23:06:53.000000000 +0800
+@@ -96,6 +96,11 @@ function OEMRepartStandard {
+     if [ ! -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+         disk1MBytes=$OEM_SYSTEMSIZE
+     fi
++    if [ ! -z &quot;$OEM_RESERVESIZE&quot; ];then
++        reserveMByte=$OEM_RESERVESIZE
++    else
++        reserveMByte=0
++    fi
+     # /.../
+     # prevent /home and recovery partition if requested
+     # system size is bigger than the whole disk
+@@ -103,7 +108,13 @@ function OEMRepartStandard {
+     if [ $disk1MBytes -gt $diskXMBytes ];then
+         export OEM_WITHOUTHOME=1
+         unset OEM_RECOVERY
++        unset OEM_RESERVESIZE
+         recoMByte=0
++        reserveMByte=0
++    fi
++    if  [ $disk1MBytes -ge `expr $diskXMBytes - $swapsize - $recoMByte - $reserveMByte` ];then
++        unset OEM_RESERVESIZE
++        reserveMByte=0
+     fi
+     # /.../
+     # recalculate system size if no /home partition
+@@ -111,7 +122,7 @@ function OEMRepartStandard {
+     # minus recovery
+     # ----
+     if [ ! -z &quot;$OEM_WITHOUTHOME&quot; ];then
+-        disk1MBytes=`expr $diskXMBytes - $swapsize - $recoMByte`
++        disk1MBytes=`expr $diskXMBytes - $swapsize - $recoMByte - $reserveMByte`
+     fi
+     # /.../
+     # check if requested system size is bigger than
+@@ -127,6 +138,8 @@ function OEMRepartStandard {
+         OEM_WITHOUTHOME=1
+         DONT_PARTITION=1
+         unset OEM_RECOVERY
++        unset OEM_RESERVESIZE
++        reserveMByte=0
+     fi
+     if [ -z &quot;$DONT_PARTITION&quot; ];then
+         if [ ! -z &quot;$OEM_WITHOUTHOME&quot; ];then
+@@ -141,35 +154,80 @@ function OEMRepartStandard {
+                     #======================================
+                     # -home +swap -recovery
+                     #--------------------------------------
+-                    for cmd in \
+-                        d n p 2 1 +&quot;$disk1MBytes&quot;M \
+-                        n p 1 . . \
+-                        t 1 82 \
+-                        a 2 w q
+-                    do
+-                        if [ $cmd = &quot;.&quot; ];then
+-                            echo &gt;&gt; $input
+-                            continue
+-                        fi
+-                        echo $cmd &gt;&gt; $input
+-                    done
++                    if [ -z &quot;$OEM_RESERVESIZE&quot; ];then
++                        #======================================
++                        # -home +swap -recovery -reserve
++                        #--------------------------------------
++                        for cmd in \
++                            d n p 2 1 +&quot;$disk1MBytes&quot;M \
++                            n p 1 . . \
++                            t 1 82 \
++                            a 2 w q
++                        do
++                            if [ $cmd = &quot;.&quot; ];then
++                                echo &gt;&gt; $input
++                                continue
++                            fi
++                            echo $cmd &gt;&gt; $input
++                        done
++                    else
++                        #======================================
++                        # -home +swap -recovery +reserve
++                        #--------------------------------------
++                        for cmd in \
++                            d n p 2 1 +&quot;$disk1MBytes&quot;M \
++                            n p 3 . +&quot;$reserveMByte&quot;M \
++                            n p 1 . . \
++                            t 1 82 \
++                            a 2 w q 
++                        do
++                            if [ $cmd = &quot;.&quot; ];then
++                                echo &gt;&gt; $input
++                                continue
++                            fi
++                            echo $cmd &gt;&gt; $input
++                        done
++                            
++                    fi
+                 else
+                     #======================================
+                     # -home +swap +recovery
+                     #--------------------------------------
+-                    for cmd in \
+-                        d n p 2 1 +&quot;$disk1MBytes&quot;M \
+-                        n p 4 . +&quot;$recoMByte&quot;M \
+-                        n p 1 . . \
+-                        t 1 82 \
+-                        a 2 w q
+-                    do
+-                    if [ $cmd = &quot;.&quot; ];then
+-                        echo &gt;&gt; $input
+-                            continue
+-                        fi
+-                        echo $cmd &gt;&gt; $input
+-                    done
++                    if [ -z &quot;OEM_RESERVESIZE&quot; ];then
++                        #======================================
++                        # -home +swap +recovery -reserve
++                        #--------------------------------------
++                        for cmd in \
++                            d n p 2 1 +&quot;$disk1MBytes&quot;M \
++                            n p 4 . +&quot;$recoMByte&quot;M \
++                            n p 1 . . \
++                            t 1 82 \
++                            a 2 w q 
++                        do
++                            if [ $cmd = &quot;.&quot; ];then
++                                echo &gt;&gt; $input
++                                continue
++                            fi
++                            echo $cmd &gt;&gt; $input
++                        done
++                    else
++                        #======================================
++                        # -home +swap +recovery +reserve
++                        #--------------------------------------
++                        for cmd in \
++                            d n p 2 1 +&quot;$disk1MBytes&quot;M \
++                            n p 4 . +&quot;$recoMByte&quot;M \
++                            n p 3 . +&quot;$reserveMByte&quot;M \
++                            t 1 82 \
++                            a 2 w q 
++                        do
++                            if [ $cmd = &quot;.&quot; ];then
++                                echo &gt;&gt; $input
++                                continue
++                            fi
++                            echo $cmd &gt;&gt; $input
++                        done
++                    fi
+                 fi
+             else
+                 #======================================
+@@ -179,31 +237,72 @@ function OEMRepartStandard {
+                     #======================================
+                     # -home -swap -recovery
+                     #--------------------------------------
+-                    for cmd in \
+-                        d n p 2 . . \
+-                        a 2 w q
+-                    do
+-                        if [ $cmd = &quot;.&quot; ];then
+-                            echo &gt;&gt; $input
+-                            continue
+-                        fi
+-                        echo $cmd &gt;&gt; $input
+-                    done
++                    if [ -z &quot;$OEM_RESERVESIZE&quot; ];then
++                        #======================================
++                        # -home -swap -recovery -reserve
++                        #--------------------------------------
++                        for cmd in \
++                            d n p 2 . . \
++                            a 2 w q
++                        do
++                            if [ $cmd = &quot;.&quot; ];then
++                                echo &gt;&gt; $input
++                                continue
++                            fi
++                            echo $cmd &gt;&gt; $input
++                        done
++                    else
++                        #======================================
++                        # -home -swap -recovery +reserve
++                        #--------------------------------------
++                        for cmd in \
++                            d n p 2 1 +&quot;$disk1MBytes&quot;M \
++                            n p 3 . . \
++                            a 2 w q 
++                        do
++                            if [ $cmd = &quot;.&quot; ];then
++                                echo &gt;&gt; $input
++                                continue
++                            fi
++                            echo $cmd &gt;&gt; $input
++                        done
++                    fi
+                 else
+                     #======================================
+                     # -home -swap +recovery
+                     #--------------------------------------
+-                    for cmd in \
+-                        d n p 2 1 +&quot;$disk1MBytes&quot;M \
+-                        n p 4 . . \
+-                        a 2 w q
+-                    do
+-                        if [ $cmd = &quot;.&quot; ];then
+-                            echo &gt;&gt; $input
+-                            continue
+-                        fi
+-                        echo $cmd &gt;&gt; $input
+-                    done
++                    if [ -z &quot;$OEM_RESERVESIZE&quot; ];then
++                        #======================================
++                        # -home -swap +recovery -reserve
++                        #--------------------------------------
++                        for cmd in \
++                            d n p 2 1 +&quot;$disk1MBytes&quot;M \
++                            n p 4 . . \
++                            a 2 w q
++                        do
++                            if [ $cmd = &quot;.&quot; ];then
++                                echo &gt;&gt; $input
++                                continue
++                            fi
++                            echo $cmd &gt;&gt; $input
++                        done
++                    else
++                        #======================================
++                        # -home -swap +recovery +reserve
++                        #--------------------------------------
++                        for cmd in \
++                            d n p 2 1 +&quot;$disk1MBytes&quot;M \
++                            n p 4 . +&quot;$recoMByte&quot;M \
++                            n p 3 . . \
++                            a 2 w q 
++                        do
++                            if [ $cmd = &quot;.&quot; ];then
++                                echo &gt;&gt; $input
++                                continue
++                            fi
++                            echo $cmd &gt;&gt; $input
++                        done
++                    fi
+                 fi
+             fi
+         else
+@@ -218,37 +317,86 @@ function OEMRepartStandard {
+                     #======================================
+                     # +home +swap -recovery
+                     #--------------------------------------
+-                    for cmd in \
+-                        d n p 2 1 +&quot;$disk1MBytes&quot;M \
+-                        n p 1 . +&quot;$swapsize&quot;M \
+-                        n p 3 . . \
+-                        t 1 82 \
+-                        a 2 w q
+-                    do
+-                        if [ $cmd = &quot;.&quot; ];then
+-                            echo &gt;&gt; $input
+-                            continue
+-                        fi
+-                        echo $cmd &gt;&gt; $input
+-                    done
++                    if [ -z &quot;$OEM_RESERVESIZE&quot; ];then
++                        #======================================
++                        # +home +swap -recovery -reserve
++                        #--------------------------------------
++                        for cmd in \
++                            d n p 2 1 +&quot;$disk1MBytes&quot;M \
++                            n p 1 . +&quot;$swapsize&quot;M \
++                            n p 3 . . \
++                            t 1 82 \
++                            a 2 w q
++                        do
++                            if [ $cmd = &quot;.&quot; ];then
++                                echo &gt;&gt; $input
++                                continue
++                            fi
++                            echo $cmd &gt;&gt; $input
++                        done
++                    else
++                        #======================================
++                        # +home +swap -recovery +reserve
++                        #--------------------------------------
++                        for cmd in \
++                            d n p 2 1 +&quot;$disk1MBytes&quot;M \
++                            n p 1 . +&quot;$swapsize&quot;M \
++                            n e 3 . . \
++                            n l . +&quot;$reserveMByte&quot;M \
++                            n l . . \
++                            t 1 82 \
++                            a 2 w q 
++                        do
++                            if [ $cmd = &quot;.&quot; ];then
++                                echo &gt;&gt; $input
++                                continue
++                            fi
++                            echo $cmd &gt;&gt; $input
++                        done
++                    fi
+                 else
+                     #======================================
+                     # +home +swap +recovery
+                     #--------------------------------------
+-                    for cmd in \
+-                        d n p 2 1 +&quot;$disk1MBytes&quot;M \
+-                        n p 1 . +&quot;$swapsize&quot;M \
+-                        n p 4 . +&quot;$recoMByte&quot;M \
+-                        n p 3 . . \
+-                        t 1 82 \
+-                        a 2 w q
+-                    do
+-                        if [ $cmd = &quot;.&quot; ];then
+-                            echo &gt;&gt; $input
+-                            continue
+-                        fi
+-                        echo $cmd &gt;&gt; $input
+-                    done
++                    if [ -z &quot;$OEM_RESERVESIZE&quot; ];then
++                        #======================================
++                        # +home +swap +recovery -reserve
++                        #--------------------------------------
++                        for cmd in \
++                            d n p 2 1 +&quot;$disk1MBytes&quot;M \
++                            n p 1 . +&quot;$swapsize&quot;M \
++                            n p 4 . +&quot;$recoMByte&quot;M \
++                            n p 3 . . \
++                            t 1 82 \
++                            a 2 w q
++                        do
++                            if [ $cmd = &quot;.&quot; ];then
++                                echo &gt;&gt; $input
++                                continue
++                            fi
++                            echo $cmd &gt;&gt; $input
++                        done
++                    else
++                        #======================================
++                        # +home +swap +recovery +reserve
++                        #--------------------------------------
++                        for cmd in \
++                            d n p 2 1 +&quot;$disk1MBytes&quot;M \
++                            n p 1 . +&quot;$swapsize&quot;M \
++                            n p 4 . +&quot;$recoMByte&quot;M \
++                            n e . . \
++                            n . +&quot;$reserveMByte&quot;M \
++                            n . . \
++                            t 1 82 \
++                            a 2 w q 
++                        do
++                            if [ $cmd = &quot;.&quot; ];then
++                                echo &gt;&gt; $input
++                                continue
++                            fi
++                            echo $cmd &gt;&gt; $input
++                        done
++                    fi
+                 fi
+             else
+                 #======================================
+@@ -258,33 +406,78 @@ function OEMRepartStandard {
+                     #======================================
+                     # +home -swap -recovery
+                     #--------------------------------------
+-                    for cmd in \
+-                        d n p 2 1 +&quot;$disk1MBytes&quot;M \
+-                        n p 3 . . \
+-                        a 2 w q
+-                    do
+-                        if [ $cmd = &quot;.&quot; ];then
+-                            echo &gt;&gt; $input
+-                            continue
+-                        fi
+-                        echo $cmd &gt;&gt; $input
+-                    done
++                    if [ -z &quot;$OEM_RESERVESIZE&quot; ];then
++                        #======================================
++                        # +home -swap -recovery -reserve
++                        #--------------------------------------
++                        for cmd in \
++                            d n p 2 1 +&quot;$disk1MBytes&quot;M \
++                            n p 3 . . \
++                            a 2 w q
++                        do
++                            if [ $cmd = &quot;.&quot; ];then
++                                echo &gt;&gt; $input
++                                continue
++                            fi
++                            echo $cmd &gt;&gt; $input
++                        done
++                    else
++                        #======================================
++                        # +home -swap -recovery +reserve
++                        #--------------------------------------
++                        for cmd in \
++                            d n p 2 1 +&quot;$disk1MBytes&quot;M \
++                            n e 3 . . \
++                            n l . +&quot;$reserveMByte&quot;M \
++                            n l . . \
++                            a 2 w q 
++                        do
++                            if [ $cmd = &quot;.&quot; ];then
++                                echo &gt;&gt; $input
++                                continue
++                            fi
++                            echo $cmd &gt;&gt; $input
++                        done
++                    fi
+                 else
+                     #======================================
+                     # +home -swap +recovery
+                     #--------------------------------------
+-                    for cmd in \
+-                        d n p 2 1 +&quot;$disk1MBytes&quot;M \
+-                        n p 4 . +&quot;$recoMByte&quot;M \
+-                        n p 3 . . \
+-                        a 2 w q
+-                    do
+-                        if [ $cmd = &quot;.&quot; ];then
+-                            echo &gt;&gt; $input
+-                            continue
+-                        fi
+-                        echo $cmd &gt;&gt; $input
+-                    done
++                    if [ -z &quot;$OEM_RESERVESIZE&quot; ];then
++                        #======================================
++                        # +home -swap +recovery -reserve
++                        #--------------------------------------
++                        for cmd in \
++                            d n p 2 1 +&quot;$disk1MBytes&quot;M \
++                            n p 4 . +&quot;$recoMByte&quot;M \
++                            n p 3 . . \
++                            a 2 w q
++                        do
++                            if [ $cmd = &quot;.&quot; ];then
++                                echo &gt;&gt; $input
++                                continue
++                            fi
++                            echo $cmd &gt;&gt; $input
++                        done
++                    else
++                        #======================================
++                        # +home -swap +recovery +reserve
++                        #--------------------------------------
++                        for cmd in \
++                            d n p 2 1 +&quot;$disk1MBytes&quot;M \
++                            n p 4 . +&quot;$recoMByte&quot;M \
++                            n e 3 . . \
++                            n l . +&quot;$reserveMByte&quot;M \
++                            n l . . \
++                            a 2 w q 
++                        do
++                            if [ $cmd = &quot;.&quot; ];then
++                                echo &gt;&gt; $input
++                                continue
++                            fi
++                            echo $cmd &gt;&gt; $input
++                        done
++                    fi
+                 fi
+             fi
+         fi
+@@ -306,7 +499,11 @@ function OEMRepartStandard {
+         bootid=0
+     fi
+     if [ -z &quot;$OEM_WITHOUTHOME&quot; ];then
+-        export imageHomeDevice=$imageDiskDevice&quot;3&quot;
++        if [ -z &quot;$OEM_RESERVESIZE&quot; ];then
++            export imageHomeDevice=$imageDiskDevice&quot;3&quot;
++        else
++            export imageHomeDevice=$imageDiskDevice&quot;6&quot;    
++        fi
+     fi
+     if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+         export imageRecoveryDevice=$imageDiskDevice&quot;4&quot;
+@@ -324,6 +521,7 @@ function OEMRepartOverlayed {
+     # no recovery support in union mode
+     #--------------------------------------
+     unset OEM_RECOVERY
++    unset OEM_RESERVESIZE
+     #====================================== 
+     # no homepart support for union mode
+     #--------------------------------------
+@@ -415,6 +613,7 @@ function OEMRepartCombined {
+     # no recovery support for combined mode
+     #--------------------------------------
+     unset OEM_RECOVERY
++    unset OEM_RESERVESIZE
+     #====================================== 
+     # no homepart support for combined mode
+     #--------------------------------------
+
+--- a/modules/KIWIXML.pm    2009-04-14 10:48:31.000000000 +0800
++++ b/modules/KIWIXML.pm    2009-04-14 17:27:56.000000000 +0800
+@@ -1962,6 +1962,7 @@ sub getImageConfig {
+         my $oemkboot = $element -&gt; getElementsByTagName (&quot;oem-kiwi-initrd&quot;);
+         my $oemreboot= $element -&gt; getElementsByTagName (&quot;oem-reboot&quot;);
+         my $oemreco  = $element -&gt; getElementsByTagName (&quot;oem-recovery&quot;);
++        my $oemreserveMB = $element -&gt; getElementsByTagName (&quot;oem-reservedsize&quot;);
+         if (defined $keytable) {
+             $result{kiwi_keytable} = $keytable;
+         }
+@@ -1982,6 +1983,9 @@ sub getImageConfig {
+         if ((defined $oemrootMB) &amp;&amp; (&quot;$oemrootMB&quot; &gt; 0)) {
+             $result{kiwi_oemrootMB} = $oemrootMB;
+         }
++        if ((defined $oemreserveMB) &amp;&amp; (&quot;$oemreserveMB&quot; &gt; 0)) {
++            $result{kiwi_oemreserveMB} = $oemreserveMB;
++        }
+         if ((defined $oemtitle) &amp;&amp; (&quot;$oemtitle&quot; ne &quot;&quot;)) {
+             $result{kiwi_oemtitle} = $oemtitle;
+         }
+
+--- a/modules/KIWIConfig.sh    2009-04-14 17:30:15.000000000 +0800
++++ b/modules/KIWIConfig.sh    2009-04-14 17:30:48.000000000 +0800
+@@ -245,6 +245,10 @@ function baseSetupOEMPartition {
+         echo &quot;Setting up OEM_SYSTEMSIZE=$kiwi_oemrootMB&quot;
+         echo &quot;OEM_SYSTEMSIZE=$kiwi_oemrootMB&quot; &gt;&gt; $oemfile
+     fi
++    if [ ! -z &quot;$kiwi_oemreserveMB&quot; ];then
++        echo &quot;Setting up OEM_RESERVESIZE=$kiwi_oemreserveMB&quot;
++        echo &quot;OEM_RESERVESIZE=$kiwi_oemreserveMB&quot; &gt;&gt; $oemfile
++    fi
+     if [ ! -z &quot;$kiwi_oemtitle&quot; ];then
+         echo &quot;Setting up OEM_BOOT_TITLE=$kiwi_oemtitle&quot;
+         echo &quot;OEM_BOOT_TITLE=\&quot;$kiwi_oemtitle\&quot;&quot; &gt;&gt; $oemfile
+
+--- a/modules/KIWIScheme.rng    2009-04-14 18:13:17.000000000 +0800
++++ b/modules/KIWIScheme.rng    2009-04-14 18:25:16.000000000 +0800
+@@ -1165,6 +1165,26 @@ partition in MB. No swapspace with oem-s
+   
+   &lt;!--
+     ==========================================
++    common element &lt;oem-reservedsize&gt;
++    
++  --&gt;
++  
++    
++      
++    
++    
++      
++        &lt;a:documentation&gt;For oemboot driven images: Set the size of the reserved 
++partition in MB&lt;/a:documentation&gt;
++        &lt;db:para&gt;For oemboot driven images: Set the size of the reserved
++partition in MB.&lt;/db:para&gt;
++        
++        
++      
++    
++  
++  &lt;!--
++    ==========================================
+     common element &lt;oem-swap&gt;
+     
+   --&gt;
+@@ -2562,6 +2582,9 @@ and also depends of the selected image o
+             
+           
+           
++            
++          
++          
+             
+           
+           
+
+--- a/modules/KIWIScheme.rnc    2009-04-14 18:14:00.000000000 +0800
++++ b/modules/KIWIScheme.rnc    2009-04-14 18:29:50.000000000 +0800
+@@ -832,6 +832,26 @@ div {
+ }
+ 
+ #==========================================
++# common element &lt;oem-reservedsize&gt;
++#
++div {
++        k.oem-reservedsize.attlist = empty
++        k.oem-reservedsize =
++                ## For oemboot driven images: Set the size of the reserved
++                ## partition in MB
++                [
++                db:para [
++                        &quot;For oemboot driven images: Set the size of the reserved\x{a}&quot;~
++                        &quot;partition in MB.&quot;
++                ]
++                ]
++                element oem-reservedsize {
++                        k.oem-reservedsize.attlist,
++                        xsd:nonNegativeInteger
++                }
++}
++
++#==========================================
+ # common element &lt;oem-swap&gt;
+ #
+ div {
+@@ -1780,6 +1800,7 @@ div {
+             k.oem-kiwi-initrd? &amp;
+             k.oem-swapsize? &amp;
+             k.oem-systemsize? &amp;
++            k.oem-reservedsize? &amp;
+             k.oem-recovery? &amp;
+             k.oem-reboot? &amp;
+             k.packagemanager? &amp;
+
+
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001171.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4af2c0434bae97a12a2731ec298d6bc5c2418ea5
+</A></li>
+	<LI>Next message: <A HREF="001173.html">[Kiwi-devel] A patch for kiwi
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1172">[ date ]</a>
+              <a href="thread.html#1172">[ thread ]</a>
+              <a href="subject.html#1172">[ subject ]</a>
+              <a href="author.html#1172">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,169 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Fixing recommends handling for zypper and	ISO	mounting
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Fixing%20recommends%20handling%20for%20zypper%20and%0A%09ISO%09mounting&In-Reply-To=%3C20080825081821.GA32227%40D7.ddts.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000612.html">
+   <LINK REL="Next"  HREF="000617.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Fixing recommends handling for zypper and	ISO	mounting</H1>
+    <B>Marcus Sch&#228;fer</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Fixing%20recommends%20handling%20for%20zypper%20and%0A%09ISO%09mounting&In-Reply-To=%3C20080825081821.GA32227%40D7.ddts.net%3E"
+       TITLE="[Kiwi-devel] Fixing recommends handling for zypper and	ISO	mounting">ms at novell.com
+       </A><BR>
+    <I>Mon Aug 25 10:18:21 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000612.html">[Kiwi-devel] Fixing recommends handling for zypper and ISO mounting
+</A></li>
+        <LI>Next message: <A HREF="000617.html">[Kiwi-devel] Fixing recommends handling for zypper and ISO	mounting
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#615">[ date ]</a>
+              <a href="thread.html#615">[ thread ]</a>
+              <a href="subject.html#615">[ subject ]</a>
+              <a href="author.html#615">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi Carlos,
+
+&gt;<i> Two kiwi bugs found:
+</I>&gt;<i> 
+</I>&gt;<i> 1) zypper is still installing recommended packages, even after revision #1526
+</I>&gt;<i> 2) kiwi isn't mounting ISO repositories before installing image packages:
+</I>
+two questions on the patch:
+
+&gt;<i> Index: modules/KIWIRoot.pm
+</I>&gt;<i> ===================================================================
+</I>&gt;<i> --- modules/KIWIRoot.pm	(revision 1528)
+</I>&gt;<i> +++ modules/KIWIRoot.pm	(working copy)
+</I>&gt;<i> @@ -899,6 +899,7 @@
+</I>&gt;<i>  	my $this   = shift;
+</I>&gt;<i>  	my $kiwi   = $this-&gt;{kiwi};
+</I>&gt;<i>  	my $root   = $this-&gt;{root};
+</I>&gt;<i> +	my $xml    = $this-&gt;{xml};
+</I>&gt;<i>  	my $baseSystem = $this-&gt;{baseSystem};
+</I>&gt;<i>  	my $prefix = $root.&quot;/&quot;.$baseSystem;
+</I>&gt;<i>  	my $cache  = &quot;/var/cache&quot;;
+</I>&gt;<i> @@ -950,6 +951,16 @@
+</I>&gt;<i>  		} else {
+</I>&gt;<i>  			next;
+</I>&gt;<i>  		}
+</I>&gt;<i> +		#==========================================
+</I>&gt;<i> +		# Mount if source is an ISO file
+</I>&gt;<i> +		#------------------------------------------
+</I>&gt;<i> +		my %repository = $xml -&gt; getRepository();
+</I>&gt;<i> +		foreach my $source (keys %repository) {
+</I>&gt;<i> +			if ($source =~ /^iso:\/\//) {
+</I>&gt;<i> +				my $isoMountPoint = new KIWIURL($kiwi,$this) -&gt; isoPath($source);
+</I>&gt;<i> +				push(@mountList,$isoMountPoint);
+</I>&gt;<i> +			}
+</I>&gt;<i> +		}
+</I>&gt;<i>  		$kiwi -&gt; info (&quot;Mounting local channel: $chl&quot;);
+</I>&gt;<i>  		my $roopt = &quot;dirs=$cache=rw:$path=ro,ro&quot;;
+</I>&gt;<i>  		my $auopt = &quot;dirs=$path=ro&quot;;
+</I>
+
+The function isoPath() already adds the mount point to the mountList.
+I'm wondering why isoPath needs to be called here. At any time a new
+XML object is created it calls createURLList() on object construction.
+createURLList() calls normalizePath() on each repo entry of your
+xml input. I think I need to investigate this issue. I'm sorry I don't
+want to patch it that way
+
+&gt;<i> Index: modules/KIWIManager.pm
+</I>&gt;<i> ===================================================================
+</I>&gt;<i> --- modules/KIWIManager.pm	(revision 1528)
+</I>&gt;<i> +++ modules/KIWIManager.pm	(working copy)
+</I>&gt;<i> @@ -971,6 +971,15 @@
+</I>&gt;<i>  		my @installOpts = (
+</I>&gt;<i>  			&quot;--auto-agree-with-licenses&quot;
+</I>&gt;<i>  		);
+</I>&gt;<i> +		#=========================================
+</I>&gt;<i> +		# Do not install recommended packages
+</I>&gt;<i> +		#-----------------------------------------
+</I>&gt;<i> +		my %pattr = $xml -&gt; getPackageAttributes(&quot;image&quot;);
+</I>&gt;<i> +		if (($pattr{patternType} ne &quot;plusRecommended&quot;) &amp;&amp;
+</I>&gt;<i> +			($pattr{patternPackageType} ne &quot;plusRecommended&quot;)
+</I>&gt;<i> +		) {
+</I>&gt;<i> +			push (@installOpts,&quot;--no-recommends&quot;);
+</I>&gt;<i> +		}
+</I>&gt;<i>  		print $fd &quot;function clean { kill \$SPID;&quot;;
+</I>&gt;<i>  		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+</I>&gt;<i>  		print $fd &quot;trap clean INT TERM\n&quot;;
+</I>&gt;<i> @@ -999,12 +1008,6 @@
+</I>&gt;<i>  				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+</I>&gt;<i>  			}
+</I>&gt;<i>  			if (@newpatts) {
+</I>&gt;<i> -				my %pattr = $xml -&gt; getPackageAttributes();
+</I>&gt;<i> -				if (($pattr{patternType} ne &quot;plusRecommended&quot;) &amp;&amp;
+</I>&gt;<i> -					($pattr{patternPackageType} ne &quot;plusRecommended&quot;)
+</I>&gt;<i> -				) {
+</I>&gt;<i> -					push (@installOpts,&quot;--no-recommends&quot;);
+</I>&gt;<i> -				}
+</I>&gt;<i>  				print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @zypper install &quot;;
+</I>&gt;<i>  				print $fd &quot;@installOpts -t pattern @newpatts &amp;\n&quot;;
+</I>&gt;<i>  				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+</I>&gt;<i> @@ -1180,6 +1183,15 @@
+</I>&gt;<i>  			my @installOpts = (
+</I>&gt;<i>  				&quot;--auto-agree-with-licenses&quot;
+</I>&gt;<i>  			);
+</I>&gt;<i> ....
+</I>
+I'm wondering why you moved the code which adds the option to be
+not pattern specific anymore ? I thought the option --no-recommends
+makes only sense if the there is a pattern specified in config.xml
+If the xml descr. contains only a list of packages --no-recommends
+shouldn't have any effect.
+
+Could you clarify this ?
+
+Thanks for your effort
+
+Regards,
+Marcus 
+-- 
+ Public Key available
+ gpg --keyserver gpg-keyserver.de --recv-keys 0xCCE3C6A2
+ -------------------------------------------------------
+ Marcus Sch&#228;fer (Res. &amp; Dev.)   SUSE LINUX Products GmbH
+ Tel: 0911-740 53 0             Maxfeldstrasse 5
+ FAX: 0911-740 53 479           D-90409 N&#252;rnberg
+ GF: Markus Rex                 HRB: 16746 (AG N&#252;rnberg)
+ <A HREF="http://www.suse.de">http://www.suse.de</A>             Germany
+ -------------------------------------------------------
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000612.html">[Kiwi-devel] Fixing recommends handling for zypper and ISO mounting
+</A></li>
+	<LI>Next message: <A HREF="000617.html">[Kiwi-devel] Fixing recommends handling for zypper and ISO	mounting
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#615">[ date ]</a>
+              <a href="thread.html#615">[ thread ]</a>
+              <a href="subject.html#615">[ subject ]</a>
+              <a href="author.html#615">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

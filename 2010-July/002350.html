@@ -1,0 +1,264 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3da7f6aa09df0b802d1f2dfbfd65d57c958092f7
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%203da7f6aa09df0b802d1f2dfbfd65d57c958092f7&In-Reply-To=%3C20100701081300.3EFA9480523%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="002351.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3da7f6aa09df0b802d1f2dfbfd65d57c958092f7</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%203da7f6aa09df0b802d1f2dfbfd65d57c958092f7&In-Reply-To=%3C20100701081300.3EFA9480523%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3da7f6aa09df0b802d1f2dfbfd65d57c958092f7">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jul  1 10:12:59 CEST 2010</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="002351.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2e6af560cd69758245c6c4a3378d0201bc126a43
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2350">[ date ]</a>
+              <a href="thread.html#2350">[ thread ]</a>
+              <a href="subject.html#2350">[ subject ]</a>
+              <a href="author.html#2350">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  3da7f6aa09df0b802d1f2dfbfd65d57c958092f7 (commit)
+      from  cdd55241ff7115169802c8c8bda69ba0239ba439 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 3da7f6aa09df0b802d1f2dfbfd65d57c958092f7
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Jul 1 10:12:16 2010 +0200
+
+    - use format from xml if specified and not set on the commandline
+      for the conversion into another image format
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 6f2c7cf..943d030 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -1274,30 +1274,14 @@ sub main {
+ 	# Convert image into format/configuration
+ 	#------------------------------------------
+ 	if (defined $Convert) {
+-		if ($Format) {
+-			$kiwi -&gt; info (&quot;Converting into $Format...\n&quot;);
+-		} else {
+-			$kiwi -&gt; info (&quot;Converting...\n&quot;);
+-		}
++		$kiwi -&gt; info (&quot;Starting image format conversion...\n&quot;);
+ 		my $format = new KIWIImageFormat ($kiwi,$Convert,$Format);
+ 		if (! $format) {
+ 			my $code = kiwiExit (1);
+ 			return $code;
+ 		}
+-		my $config_result = $format -&gt; createMaschineConfiguration();
+-		my $format_result = $format -&gt; createFormat();
+-		if (! $format_result) {
+-			if ($Format) {
+-				$kiwi -&gt; warning (&quot;No conversion possible for $Format&quot;);
+-			} else {
+-				$kiwi -&gt; warning (&quot;No format for conversion specified&quot;);
+-			}
+-			$kiwi -&gt; skipped ();
+-		}
+-		if (! $config_result) {
+-			$kiwi -&gt; warning (&quot;No machine configuration possible&quot;);
+-			$kiwi -&gt; skipped ();
+-		}
++		$format -&gt; createFormat();
++		$format -&gt; createMaschineConfiguration();
+ 		my $code = kiwiExit (0); return $code;
+ 	}
+ 	return 1;
+diff --git a/modules/KIWIImageFormat.pm b/modules/KIWIImageFormat.pm
+index 01bdc3b..9cf5af0 100644
+--- a/modules/KIWIImageFormat.pm
++++ b/modules/KIWIImageFormat.pm
+@@ -85,6 +85,15 @@ sub new {
+ 		}
+ 	}
+ 	#==========================================
++	# check format
++	#------------------------------------------
++	my $type = $xml -&gt; getImageTypeAndAttributes();
++	if (! defined $format) {
++		if (($type) &amp;&amp; ($type-&gt;{format})) {
++			$format = $type-&gt;{format};
++		}
++	}
++	#==========================================
+ 	# Read some XML data
+ 	#------------------------------------------
+ 	my %xenref = $xml -&gt; getXenConfig();
+@@ -98,6 +107,8 @@ sub new {
+ 	$this-&gt;{xml}     = $xml;
+ 	$this-&gt;{format}  = $format;
+ 	$this-&gt;{image}   = $image;
++	$this-&gt;{type}    = $type;
++	$this-&gt;{imgtype} = $type-&gt;{type};
+ 	return $this;
+ }
+ 
+@@ -109,10 +120,15 @@ sub createFormat {
+ 	my $kiwi   = $this-&gt;{kiwi};
+ 	my $format = $this-&gt;{format};
+ 	my $image  = $this-&gt;{image};
++	my $imgtype= $this-&gt;{imgtype};
+ 	#==========================================
+ 	# check if format is a disk
+ 	#------------------------------------------
+-	if ($format) {
++	if (! defined $format) {
++		$kiwi -&gt; warning (&quot;No format for $imgtype conversion specified&quot;);
++		$kiwi -&gt; skipped ();
++		return undef;
++	} else {
+ 		my $data = qxx (&quot;parted $image print 2&gt;&amp;1&quot;);
+ 		my $code = $? &gt;&gt; 8;
+ 		if ($code != 0) {
+@@ -125,11 +141,19 @@ sub createFormat {
+ 	# convert disk into specified format
+ 	#------------------------------------------
+ 	if ($format eq &quot;vmdk&quot;) {
++		$kiwi -&gt; info (&quot;Starting $imgtype =&gt; $format conversion\n&quot;);
+ 		return $this -&gt; createVMDK();
+ 	} elsif ($format eq &quot;ovf&quot;) {
++		$kiwi -&gt; info (&quot;Starting $imgtype =&gt; $format conversion\n&quot;);
+ 		return $this -&gt; createOVF();
+ 	} elsif ($format eq &quot;qcow2&quot;) {
++		$kiwi -&gt; info (&quot;Starting $imgtype =&gt; $format conversion\n&quot;);
+ 		return $this -&gt; createQCOW2();
++	} else {
++		$kiwi -&gt; warning (
++			&quot;Can't convert image type $imgtype to $format format&quot;
++		);
++		$kiwi -&gt; skipped ();
+ 	}
+ 	return undef;
+ }
+@@ -141,8 +165,9 @@ sub createMaschineConfiguration {
+ 	my $this   = shift;
+ 	my $kiwi   = $this-&gt;{kiwi};
+ 	my $format = $this-&gt;{format};
++	my $imgtype= $this-&gt;{imgtype};
+ 	my $xml    = $this-&gt;{xml};
+-	my %type   = %{$xml -&gt; getImageTypeAndAttributes()};
++	my %type   = %{$this-&gt;{type}};
+ 	my $xenref = $this-&gt;{xenref};
+ 	my %xenc   = %{$xenref};
+ 	my $xend   = &quot;dom0&quot;;
+@@ -150,16 +175,25 @@ sub createMaschineConfiguration {
+ 		$xend = $xenc{xen_domain};
+ 	}
+ 	if (($type{type}) &amp;&amp; ($type{type} eq &quot;xen&quot;)) {
++		$kiwi -&gt; info (&quot;Starting $imgtype image machine configuration\n&quot;);
+ 		return $this -&gt; createXENConfiguration();
+ 	} elsif (
+ 		($type{bootprofile}) &amp;&amp; ($type{bootprofile} eq &quot;xen&quot;) &amp;&amp;
+ 		($xend eq &quot;domU&quot;)
+ 	) {
++		$kiwi -&gt; info (&quot;Starting $imgtype image machine configuration\n&quot;);
+ 		return $this -&gt; createXENConfiguration();
+ 	} elsif ($format eq &quot;vmdk&quot;) {
++		$kiwi -&gt; info (&quot;Starting $imgtype image machine configuration\n&quot;);
+ 		return $this -&gt; createVMwareConfiguration();
+ 	} elsif ($format eq &quot;ovf&quot;) {
++		$kiwi -&gt; info (&quot;Starting $imgtype image machine configuration\n&quot;);
+ 		return $this -&gt; createOVFConfiguration();
++	} else {
++		$kiwi -&gt; warning (
++			&quot;Can't create machine configuration for $imgtype image&quot;
++		);
++		$kiwi -&gt; skipped ();
+ 	}
+ 	return undef;
+ }
+@@ -198,7 +232,7 @@ sub createOVF {
+ 		$target = $vmxf;
+ 		$target =~ s/\.vmx$/\.$format/;
+ 		$this-&gt;{format} = $format;
+-		$kiwi -&gt; info (&quot;Creating $format image&quot;);
++		$kiwi -&gt; info (&quot;Creating $format image...&quot;);
+ 		# /.../
+ 		# temporary hack, because ovftool is not able to handle
+ 		# scsi-hardDisk correctly at the moment
+@@ -250,7 +284,7 @@ sub createVMDK {
+ 	my $convert;
+ 	my $status;
+ 	my $result;
+-	$kiwi -&gt; info (&quot;Creating $format image&quot;);
++	$kiwi -&gt; info (&quot;Creating $format image...&quot;);
+ 	$target  =~ s/\.raw$/\.$format/;
+ 	$convert = &quot;convert -f raw $source -O $format&quot;;
+ 	if (($vmwc{vmware_disktype}) &amp;&amp; ($vmwc{vmware_disktype}=~/^scsi/)) {
+@@ -280,7 +314,7 @@ sub createQCOW2 {
+ 	my $target = $source;
+ 	my $status;
+ 	my $result;
+-	$kiwi -&gt; info (&quot;Creating $format image&quot;);
++	$kiwi -&gt; info (&quot;Creating $format image...&quot;);
+ 	$target  =~ s/\.raw$/\.$format/;
+ 	$status = qxx (&quot;qemu-img -f raw $source -O $format $target 2&gt;&amp;1&quot;);
+ 	$result = $? &gt;&gt; 8;
+@@ -302,7 +336,7 @@ sub createXENConfiguration {
+ 	my $kiwi   = $this-&gt;{kiwi};
+ 	my $xml    = $this-&gt;{xml};
+ 	my $xenref = $this-&gt;{xenref};
+-	my %type   = %{$xml -&gt; getImageTypeAndAttributes()};
++	my %type   = %{$this-&gt;{type}};
+ 	my $dest   = dirname  $this-&gt;{image};
+ 	my $base   = basename $this-&gt;{image};
+ 	my %xenconfig = %{$xenref};
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="002351.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2e6af560cd69758245c6c4a3378d0201bc126a43
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2350">[ date ]</a>
+              <a href="thread.html#2350">[ thread ]</a>
+              <a href="subject.html#2350">[ subject ]</a>
+              <a href="author.html#2350">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

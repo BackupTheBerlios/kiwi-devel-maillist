@@ -1,0 +1,161 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a6d7c7b5ba21b370ebc016390aa01f63cf2736de
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a6d7c7b5ba21b370ebc016390aa01f63cf2736de&In-Reply-To=%3C20110105092931.48B2E48080E%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002930.html">
+   <LINK REL="Next"  HREF="002932.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a6d7c7b5ba21b370ebc016390aa01f63cf2736de</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a6d7c7b5ba21b370ebc016390aa01f63cf2736de&In-Reply-To=%3C20110105092931.48B2E48080E%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a6d7c7b5ba21b370ebc016390aa01f63cf2736de">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jan  5 10:29:30 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002930.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 53fe818fdafcdb5a8f7d58052ed7f0a15738051d
+</A></li>
+        <LI>Next message: <A HREF="002932.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1172e774b0dc9c2b546aa3206208e49d55307bfa
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2931">[ date ]</a>
+              <a href="thread.html#2931">[ thread ]</a>
+              <a href="subject.html#2931">[ subject ]</a>
+              <a href="author.html#2931">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  a6d7c7b5ba21b370ebc016390aa01f63cf2736de (commit)
+      from  53fe818fdafcdb5a8f7d58052ed7f0a15738051d (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit a6d7c7b5ba21b370ebc016390aa01f63cf2736de
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jan 5 10:28:00 2011 +0100
+
+    - fixed setupKernelModules() in a way that it doesn't overwrite
+      settings from /etc/sysconfig/kernel but append to them
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index c40b547..6cfe445 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -2298,16 +2298,25 @@ function setupKernelModules {
+ 	if [ -z &quot;$srcprefix&quot; ];then
+ 		srcprefix=/mnt
+ 	fi
+-	local ktempl=$srcprefix/var/adm/fillup-templates/sysconfig.kernel
++	local sysimg_ktempl=$srcprefix/var/adm/fillup-templates/sysconfig.kernel
++	local sysimg_syskernel=$srcprefix/etc/sysconfig/kernel
+ 	local syskernel=$destprefix/etc/sysconfig/kernel
++	local newstyle_mkinitrd=$srcprefix/lib/mkinitrd/scripts/boot-usb.sh
++	local key
++	local val
+ 	mkdir -p $destprefix/etc/sysconfig
+-	if [ ! -f $ktempl ];then
++	#======================================
++	# check for sysconfig template file
++	#--------------------------------------
++	if [ ! -f $sysimg_ktempl ];then
+ 		systemException \
+ 			&quot;Can't find kernel sysconfig template in system image !&quot; \
+ 		&quot;reboot&quot;
+ 	fi
+-	cp $ktempl $syskernel
+-	if [ ! -e $srcprefix/lib/mkinitrd/scripts/boot-usb.sh ];then
++	#======================================
++	# check for mkinitrd capabilities
++	#--------------------------------------
++	if [ ! -e $newstyle_mkinitrd ];then
+ 		# /.../
+ 		# if boot-usb.sh does not exist we are based on an old
+ 		# mkinitrd version which requires all modules as part of
+@@ -2317,12 +2326,31 @@ function setupKernelModules {
+ 		local USB_MODULES=&quot;ehci-hcd ohci-hcd uhci-hcd usbcore usb-storage sd&quot;
+ 		INITRD_MODULES=&quot;$INITRD_MODULES $USB_MODULES&quot;
+ 	fi
+-	sed -i -e \
+-		s&quot;@^INITRD_MODULES=.*@INITRD_MODULES=\&quot;$INITRD_MODULES\&quot;@&quot; \
+-	$syskernel
+-	sed -i -e \
+-		s&quot;@^DOMU_INITRD_MODULES=.*@DOMU_INITRD_MODULES=\&quot;$DOMURD_MODULES\&quot;@&quot; \
+-	$syskernel
++	#======================================
++	# use system image config or template
++	#--------------------------------------
++	if [ -f $sysimg_syskernel ];then
++		cp $sysimg_syskernel $syskernel
++	else
++		cp $sysimg_ktempl $syskernel
++	fi
++	#======================================
++	# update config file
++	#--------------------------------------
++	for key in INITRD_MODULES DOMU_INITRD_MODULES;do
++		if [ $key = &quot;INITRD_MODULES&quot; ];then
++			val=$INITRD_MODULES
++		fi
++		if [ $key = &quot;DOMU_INITRD_MODULES&quot; ];then
++			val=$DOMURD_MODULES
++		fi
++		if [ -z &quot;$val&quot; ];then
++			continue
++		fi
++		sed -i -e \
++			s&quot;@^$key=\&quot;\(.*\)\&quot;@$key=\&quot;\1 $val\&quot;@&quot; \
++		$syskernel
++	done
+ }
+ #======================================
+ # kernelCheck
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002930.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 53fe818fdafcdb5a8f7d58052ed7f0a15738051d
+</A></li>
+	<LI>Next message: <A HREF="002932.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1172e774b0dc9c2b546aa3206208e49d55307bfa
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2931">[ date ]</a>
+              <a href="thread.html#2931">[ thread ]</a>
+              <a href="subject.html#2931">[ subject ]</a>
+              <a href="author.html#2931">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

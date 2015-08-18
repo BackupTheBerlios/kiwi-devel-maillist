@@ -1,0 +1,624 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. fab0143320df3d0c2e62009249d044d91ae78036
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20fab0143320df3d0c2e62009249d044d91ae78036&In-Reply-To=%3C20100706140321.ED36D480C24%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002362.html">
+   <LINK REL="Next"  HREF="002364.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. fab0143320df3d0c2e62009249d044d91ae78036</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20fab0143320df3d0c2e62009249d044d91ae78036&In-Reply-To=%3C20100706140321.ED36D480C24%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. fab0143320df3d0c2e62009249d044d91ae78036">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jul  6 16:03:20 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002362.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 578fc690a7b8a44e580cfe4597c56f3bfe180ad5
+</A></li>
+        <LI>Next message: <A HREF="002364.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9378551dec431fc5483c50c269c024f6ab23109f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2363">[ date ]</a>
+              <a href="thread.html#2363">[ thread ]</a>
+              <a href="subject.html#2363">[ subject ]</a>
+              <a href="author.html#2363">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  fab0143320df3d0c2e62009249d044d91ae78036 (commit)
+      from  578fc690a7b8a44e580cfe4597c56f3bfe180ad5 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit fab0143320df3d0c2e62009249d044d91ae78036
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Jul 6 16:02:03 2010 +0200
+
+    - added support for the creation of the zipl.conf file
+      the installation of zipl into the MBR from a loop file is
+      still an open issue. We need to talk to IBM here first
+    
+    - restructure source tree a bit. make templates and repos
+      architecture dependent because of the s390 implementations
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/Makefile b/Makefile
+index 0c2bebb..8d95fbc 100644
+--- a/Makefile
++++ b/Makefile
+@@ -137,12 +137,12 @@ install:
+ 	#============================================
+ 	# Install system image template descriptions
+ 	#--------------------------------------------
+-	cp -a template/* ${KIWIIMAGE}
++	cp -a template/${arch}/* ${KIWIIMAGE} &amp;&gt;/dev/null || true
+ 
+ 	#============================================
+ 	# Install kiwi repo
+ 	#--------------------------------------------
+-	cp -a system/suse-repo ${KIWIREPO}
++	cp -a system/repo/${arch}/* ${KIWIREPO}
+ 
+ modules/KIWISchema.rng: modules/KIWISchema.rnc
+ 	#============================================
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index c8b05ba..3d7b4d7 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -4134,6 +4134,7 @@ sub setupBootLoaderConfiguration {
+ 		# Create MBR id file for boot device check
+ 		#------------------------------------------
+ 		$kiwi -&gt; info (&quot;Saving disk label on disk: $this-&gt;{mbrid}...&quot;);
++		qxx (&quot;mkdir -p $tmpdir/boot/grub&quot;);
+ 		if (! open (FD,&quot;&gt;$tmpdir/boot/grub/mbrid&quot;)) {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error  (&quot;Couldn't create mbrid file: $!&quot;);
+@@ -4146,7 +4147,95 @@ sub setupBootLoaderConfiguration {
+ 		#==========================================
+ 		# Create zipl.comf
+ 		#------------------------------------------
+-		# TODO
++		my $ziplconfig = &quot;zipl.conf&quot;;
++		$kiwi -&gt; info (&quot;Creating $ziplconfig config file...&quot;);
++		if ($isxen) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;*** zipl: Xen boot not supported ***&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		if (! -e &quot;/boot/zipl&quot;) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Can't find bootloader: /boot/zipl&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		if (! open (FD,&quot;&gt;$tmpdir/boot/$ziplconfig&quot;)) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Couldn't create $ziplconfig: $!&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		#==========================================
++		# General zipl setup
++		#------------------------------------------
++		my $title_standard;
++		my $title_failsafe;
++		if ($type =~ /^KIWI (CD|USB)/) {
++			$title_standard = $this -&gt; makeLabel (
++				&quot;Install/Restore $label&quot;
++			);
++			$title_failsafe = $this -&gt; makeLabel (
++				&quot;Failsafe -- Install/Restore $label&quot;
++			);
++		} else {
++			$title_standard = $this -&gt; makeLabel (
++				&quot;$label ( $type )&quot;
++			);
++			$title_failsafe = $this -&gt; makeLabel (
++				&quot;Failsafe -- $label ( $type )&quot;
++			);
++		}
++		print FD &quot;[defaultboot]&quot;.&quot;\n&quot;;
++		print FD &quot;defaultmenu = menu&quot;.&quot;\n\n&quot;;
++		print FD &quot;:menu&quot;.&quot;\n&quot;;
++		print FD &quot;\t&quot;.&quot;default = 1&quot;.&quot;\n&quot;;
++		print FD &quot;\t&quot;.&quot;prompt = 1&quot;.&quot;\n&quot;;
++		print FD &quot;\t&quot;.&quot;target = /boot/zipl&quot;.&quot;\n&quot;;
++		print FD &quot;\t&quot;.&quot;timeout = 200&quot;.&quot;\n&quot;;
++		print FD &quot;\t&quot;.&quot;1 = $title_standard&quot;.&quot;\n&quot;;
++		print FD &quot;\t&quot;.&quot;2 = $title_failsafe&quot;.&quot;\n\n&quot;;
++		#==========================================
++		# Standard boot
++		#------------------------------------------
++		print FD &quot;[$title_standard]&quot;.&quot;\n&quot;;
++		if ($type =~ /^KIWI CD/) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;*** zipl: CD boot not supported ***&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
++			print FD &quot;\t&quot;.&quot;image = /boot/linux.vmx&quot;.&quot;\n&quot;;
++			print FD &quot;\t&quot;.&quot;target = /boot/zipl&quot;.&quot;\n&quot;;
++			print FD &quot;\t&quot;.&quot;ramdisk = /boot/initrd.vmx,0x2000000&quot;.&quot;\n&quot;;
++		} else {
++			print FD &quot;\t&quot;.&quot;image = /boot/linux&quot;.&quot;\n&quot;;
++			print FD &quot;\t&quot;.&quot;target = /boot/zipl&quot;.&quot;\n&quot;;
++			print FD &quot;\t&quot;.&quot;ramdisk = /boot/initrd,0x2000000&quot;.&quot;\n&quot;;
++		}
++		print FD &quot;\t&quot;.&quot;parameters = loader=$bloader $cmdline&quot;.&quot;\n&quot;;
++		#==========================================
++		# Failsafe boot
++		#------------------------------------------
++		print FD &quot;[$title_failsafe]&quot;.&quot;\n&quot;;
++		if ($type =~ /^KIWI CD/) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;*** zipl: CD boot not supported ***&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
++			print FD &quot;\t&quot;.&quot;image = /boot/linux.vmx&quot;.&quot;\n&quot;;
++			print FD &quot;\t&quot;.&quot;target = /boot/zipl&quot;.&quot;\n&quot;;
++			print FD &quot;\t&quot;.&quot;ramdisk = /boot/initrd.vmx,0x2000000&quot;.&quot;\n&quot;;
++		} else {
++			print FD &quot;\t&quot;.&quot;image = /boot/linux&quot;.&quot;\n&quot;;
++			print FD &quot;\t&quot;.&quot;target = /boot/zipl&quot;.&quot;\n&quot;;
++			print FD &quot;\t&quot;.&quot;ramdisk = /boot/initrd,0x2000000&quot;.&quot;\n&quot;;
++		}
++		print FD &quot;\t&quot;.&quot;parameters = x11failsafe loader=$bloader $cmdline&quot;.&quot;\n&quot;;
++		close FD;
++		$kiwi -&gt; done();
+ 	}
+ 	#==========================================
+ 	# more boot managers to come...
+@@ -4349,8 +4438,11 @@ sub installBootLoader {
+ 	# Zipl
+ 	#------------------------------------------
+ 	if ($loader eq &quot;zipl&quot;) {
+-		$kiwi -&gt; info (&quot;Installing zipl on device: $diskname&quot;);
+ 		# TODO
++		$kiwi -&gt; info (&quot;Installing zipl on device: $diskname&quot;);
++		$kiwi -&gt; skipped();
++		$kiwi -&gt; info (&quot;*** not implemented ***&quot;);
++		$kiwi -&gt; skipped();
+ 	}
+ 	#==========================================
+ 	# more boot managers to come...
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index b241293..607828f 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,6 +1,8 @@
+ -------------------------------------------------------------------
+ Tue Jul  6 11:12:29 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- restructure source tree a bit. make templates and repos
++  architecture dependent because of the s390 implementations
+ - don't exit with an error if 'zypper rm' can't find the package
+ - check for profiles when searching for foreign packages also
+   search in type=image and type=bootstrap package sections
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index 54382b8..8d1b641 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -493,3 +493,6 @@ rm -rf $RPM_BUILD_ROOT
+ %{_datadir}/kiwi/image/suse-SLE11-JeOS
+ %{_datadir}/kiwi/image/rhel-05.4-JeOS
+ %endif
++%ifarch s390 s390x
++%{_datadir}/kiwi/image/suse-SLE11-JeOS
++%endif
+diff --git a/system/rhel-repo/rhel-054-repo/repodata/repomd.xml b/system/repo/ix86/rhel-repo/rhel-054-repo/repodata/repomd.xml
+similarity index 100%
+rename from system/rhel-repo/rhel-054-repo/repodata/repomd.xml
+rename to system/repo/ix86/rhel-repo/rhel-054-repo/repodata/repomd.xml
+diff --git a/system/boot/ppc64 b/system/repo/ppc64
+similarity index 100%
+copy from system/boot/ppc64
+copy to system/repo/ppc64
+diff --git a/system/boot/s390x b/system/repo/s390x
+similarity index 100%
+copy from system/boot/s390x
+copy to system/repo/s390x
+diff --git a/system/boot/x86_64 b/system/repo/x86_64
+similarity index 100%
+copy from system/boot/x86_64
+copy to system/repo/x86_64
+diff --git a/template/rhel-05.4-JeOS/README b/template/ix86/rhel-05.4-JeOS/README
+similarity index 100%
+rename from template/rhel-05.4-JeOS/README
+rename to template/ix86/rhel-05.4-JeOS/README
+diff --git a/template/rhel-05.4-JeOS/config-anaconda-firstboot b/template/ix86/rhel-05.4-JeOS/config-anaconda-firstboot
+similarity index 100%
+rename from template/rhel-05.4-JeOS/config-anaconda-firstboot
+rename to template/ix86/rhel-05.4-JeOS/config-anaconda-firstboot
+diff --git a/template/rhel-05.4-JeOS/config.sh b/template/ix86/rhel-05.4-JeOS/config.sh
+similarity index 100%
+rename from template/rhel-05.4-JeOS/config.sh
+rename to template/ix86/rhel-05.4-JeOS/config.sh
+diff --git a/template/rhel-05.4-JeOS/config.xml b/template/ix86/rhel-05.4-JeOS/config.xml
+similarity index 100%
+rename from template/rhel-05.4-JeOS/config.xml
+rename to template/ix86/rhel-05.4-JeOS/config.xml
+diff --git a/template/rhel-05.4-JeOS/rhel-05.4-JeOS.kiwi b/template/ix86/rhel-05.4-JeOS/rhel-05.4-JeOS.kiwi
+similarity index 100%
+rename from template/rhel-05.4-JeOS/rhel-05.4-JeOS.kiwi
+rename to template/ix86/rhel-05.4-JeOS/rhel-05.4-JeOS.kiwi
+diff --git a/template/rhel-05.4-JeOS/root/etc/X11/xorg.conf b/template/ix86/rhel-05.4-JeOS/root/etc/X11/xorg.conf
+similarity index 100%
+copy from template/rhel-05.4-JeOS/root/etc/X11/xorg.conf
+copy to template/ix86/rhel-05.4-JeOS/root/etc/X11/xorg.conf
+diff --git a/template/suse-11.1-JeOS/README b/template/ix86/suse-11.1-JeOS/README
+similarity index 100%
+rename from template/suse-11.1-JeOS/README
+rename to template/ix86/suse-11.1-JeOS/README
+diff --git a/template/suse-11.1-JeOS/config.sh b/template/ix86/suse-11.1-JeOS/config.sh
+similarity index 100%
+rename from template/suse-11.1-JeOS/config.sh
+rename to template/ix86/suse-11.1-JeOS/config.sh
+diff --git a/template/suse-11.1-JeOS/config.xml b/template/ix86/suse-11.1-JeOS/config.xml
+similarity index 100%
+rename from template/suse-11.1-JeOS/config.xml
+rename to template/ix86/suse-11.1-JeOS/config.xml
+diff --git a/template/suse-11.1-JeOS/root/etc/X11/xorg.conf b/template/ix86/suse-11.1-JeOS/root/etc/X11/xorg.conf
+similarity index 100%
+rename from template/suse-11.1-JeOS/root/etc/X11/xorg.conf
+rename to template/ix86/suse-11.1-JeOS/root/etc/X11/xorg.conf
+diff --git a/template/suse-11.1-JeOS/root/etc/motd b/template/ix86/suse-11.1-JeOS/root/etc/motd
+similarity index 100%
+rename from template/suse-11.1-JeOS/root/etc/motd
+rename to template/ix86/suse-11.1-JeOS/root/etc/motd
+diff --git a/template/suse-11.1-JeOS/root/etc/sysconfig/network/ifcfg-eth0 b/template/ix86/suse-11.1-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+similarity index 100%
+rename from template/suse-11.1-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+rename to template/ix86/suse-11.1-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+diff --git a/template/suse-11.1-JeOS/suse-11.1-JeOS.kiwi b/template/ix86/suse-11.1-JeOS/suse-11.1-JeOS.kiwi
+similarity index 100%
+rename from template/suse-11.1-JeOS/suse-11.1-JeOS.kiwi
+rename to template/ix86/suse-11.1-JeOS/suse-11.1-JeOS.kiwi
+diff --git a/template/suse-11.2-JeOS/README b/template/ix86/suse-11.2-JeOS/README
+similarity index 100%
+rename from template/suse-11.2-JeOS/README
+rename to template/ix86/suse-11.2-JeOS/README
+diff --git a/template/suse-11.2-JeOS/config.sh b/template/ix86/suse-11.2-JeOS/config.sh
+similarity index 100%
+rename from template/suse-11.2-JeOS/config.sh
+rename to template/ix86/suse-11.2-JeOS/config.sh
+diff --git a/template/suse-11.2-JeOS/config.xml b/template/ix86/suse-11.2-JeOS/config.xml
+similarity index 100%
+rename from template/suse-11.2-JeOS/config.xml
+rename to template/ix86/suse-11.2-JeOS/config.xml
+diff --git a/template/suse-11.2-JeOS/root/etc/motd b/template/ix86/suse-11.2-JeOS/root/etc/motd
+similarity index 100%
+rename from template/suse-11.2-JeOS/root/etc/motd
+rename to template/ix86/suse-11.2-JeOS/root/etc/motd
+diff --git a/template/suse-11.2-JeOS/root/etc/sysconfig/network/ifcfg-eth0 b/template/ix86/suse-11.2-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+similarity index 100%
+rename from template/suse-11.2-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+rename to template/ix86/suse-11.2-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+diff --git a/template/suse-11.2-JeOS/suse-11.2-JeOS.kiwi b/template/ix86/suse-11.2-JeOS/suse-11.2-JeOS.kiwi
+similarity index 100%
+rename from template/suse-11.2-JeOS/suse-11.2-JeOS.kiwi
+rename to template/ix86/suse-11.2-JeOS/suse-11.2-JeOS.kiwi
+diff --git a/template/suse-11.3-JeOS/README b/template/ix86/suse-11.3-JeOS/README
+similarity index 100%
+rename from template/suse-11.3-JeOS/README
+rename to template/ix86/suse-11.3-JeOS/README
+diff --git a/template/suse-11.3-JeOS/config.sh b/template/ix86/suse-11.3-JeOS/config.sh
+similarity index 100%
+rename from template/suse-11.3-JeOS/config.sh
+rename to template/ix86/suse-11.3-JeOS/config.sh
+diff --git a/template/suse-11.3-JeOS/config.xml b/template/ix86/suse-11.3-JeOS/config.xml
+similarity index 100%
+rename from template/suse-11.3-JeOS/config.xml
+rename to template/ix86/suse-11.3-JeOS/config.xml
+diff --git a/template/suse-11.3-JeOS/root/etc/motd b/template/ix86/suse-11.3-JeOS/root/etc/motd
+similarity index 100%
+rename from template/suse-11.3-JeOS/root/etc/motd
+rename to template/ix86/suse-11.3-JeOS/root/etc/motd
+diff --git a/template/suse-11.3-JeOS/root/etc/sysconfig/network/ifcfg-eth0 b/template/ix86/suse-11.3-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+similarity index 100%
+rename from template/suse-11.3-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+rename to template/ix86/suse-11.3-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+diff --git a/template/suse-11.3-JeOS/suse-11.2-JeOS.kiwi b/template/ix86/suse-11.3-JeOS/suse-11.2-JeOS.kiwi
+similarity index 100%
+rename from template/suse-11.3-JeOS/suse-11.2-JeOS.kiwi
+rename to template/ix86/suse-11.3-JeOS/suse-11.2-JeOS.kiwi
+diff --git a/template/suse-SLE10-JeOS/README b/template/ix86/suse-SLE10-JeOS/README
+similarity index 100%
+rename from template/suse-SLE10-JeOS/README
+rename to template/ix86/suse-SLE10-JeOS/README
+diff --git a/template/suse-SLE10-JeOS/config.sh b/template/ix86/suse-SLE10-JeOS/config.sh
+similarity index 100%
+rename from template/suse-SLE10-JeOS/config.sh
+rename to template/ix86/suse-SLE10-JeOS/config.sh
+diff --git a/template/suse-SLE10-JeOS/config.xml b/template/ix86/suse-SLE10-JeOS/config.xml
+similarity index 100%
+rename from template/suse-SLE10-JeOS/config.xml
+rename to template/ix86/suse-SLE10-JeOS/config.xml
+diff --git a/template/suse-SLE10-JeOS/root/etc/X11/xorg.conf b/template/ix86/suse-SLE10-JeOS/root/etc/X11/xorg.conf
+similarity index 100%
+rename from template/suse-SLE10-JeOS/root/etc/X11/xorg.conf
+rename to template/ix86/suse-SLE10-JeOS/root/etc/X11/xorg.conf
+diff --git a/template/suse-SLE10-JeOS/root/etc/motd b/template/ix86/suse-SLE10-JeOS/root/etc/motd
+similarity index 100%
+rename from template/suse-SLE10-JeOS/root/etc/motd
+rename to template/ix86/suse-SLE10-JeOS/root/etc/motd
+diff --git a/template/suse-SLE10-JeOS/root/etc/sysconfig/network/ifcfg-eth0 b/template/ix86/suse-SLE10-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+similarity index 100%
+rename from template/suse-SLE10-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+rename to template/ix86/suse-SLE10-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+diff --git a/template/suse-SLE10-JeOS/suse-SLE10-JeOS.kiwi b/template/ix86/suse-SLE10-JeOS/suse-SLE10-JeOS.kiwi
+similarity index 100%
+rename from template/suse-SLE10-JeOS/suse-SLE10-JeOS.kiwi
+rename to template/ix86/suse-SLE10-JeOS/suse-SLE10-JeOS.kiwi
+diff --git a/template/suse-SLE11-JeOS/README b/template/ix86/suse-SLE11-JeOS/README
+similarity index 100%
+copy from template/suse-SLE11-JeOS/README
+copy to template/ix86/suse-SLE11-JeOS/README
+diff --git a/template/suse-SLE11-JeOS/config.sh b/template/ix86/suse-SLE11-JeOS/config.sh
+similarity index 100%
+copy from template/suse-SLE11-JeOS/config.sh
+copy to template/ix86/suse-SLE11-JeOS/config.sh
+diff --git a/template/suse-SLE11-JeOS/config.xml b/template/ix86/suse-SLE11-JeOS/config.xml
+similarity index 100%
+copy from template/suse-SLE11-JeOS/config.xml
+copy to template/ix86/suse-SLE11-JeOS/config.xml
+diff --git a/template/suse-SLE11-JeOS/root/etc/X11/xorg.conf b/template/ix86/suse-SLE11-JeOS/root/etc/X11/xorg.conf
+similarity index 100%
+rename from template/suse-SLE11-JeOS/root/etc/X11/xorg.conf
+rename to template/ix86/suse-SLE11-JeOS/root/etc/X11/xorg.conf
+diff --git a/template/suse-SLE11-JeOS/root/etc/motd b/template/ix86/suse-SLE11-JeOS/root/etc/motd
+similarity index 100%
+copy from template/suse-SLE11-JeOS/root/etc/motd
+copy to template/ix86/suse-SLE11-JeOS/root/etc/motd
+diff --git a/template/suse-SLE11-JeOS/root/etc/sysconfig/network/ifcfg-eth0 b/template/ix86/suse-SLE11-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+similarity index 100%
+rename from template/suse-SLE11-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+rename to template/ix86/suse-SLE11-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+diff --git a/template/suse-SLE11-JeOS/suse-SLE11-JeOS.kiwi b/template/ix86/suse-SLE11-JeOS/suse-SLE11-JeOS.kiwi
+similarity index 100%
+copy from template/suse-SLE11-JeOS/suse-SLE11-JeOS.kiwi
+copy to template/ix86/suse-SLE11-JeOS/suse-SLE11-JeOS.kiwi
+diff --git a/system/boot/ppc64 b/template/ppc64
+similarity index 100%
+copy from system/boot/ppc64
+copy to template/ppc64
+diff --git a/template/suse-SLE11-JeOS/README b/template/s390/suse-SLE11-JeOS/README
+similarity index 100%
+rename from template/suse-SLE11-JeOS/README
+rename to template/s390/suse-SLE11-JeOS/README
+diff --git a/template/suse-SLE11-JeOS/config.sh b/template/s390/suse-SLE11-JeOS/config.sh
+similarity index 100%
+rename from template/suse-SLE11-JeOS/config.sh
+rename to template/s390/suse-SLE11-JeOS/config.sh
+diff --git a/template/suse-SLE11-JeOS/config.xml b/template/s390/suse-SLE11-JeOS/config.xml
+similarity index 86%
+rename from template/suse-SLE11-JeOS/config.xml
+rename to template/s390/suse-SLE11-JeOS/config.xml
+index 3fe1c5b..426e3ce 100644
+--- a/template/suse-SLE11-JeOS/config.xml
++++ b/template/s390/suse-SLE11-JeOS/config.xml
+@@ -21,7 +21,10 @@
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 		&lt;timezone&gt;Europe/Berlin&lt;/timezone&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;xenFlavour&quot;&gt;
++	&lt;preferences profiles=&quot;s390&quot;&gt;
++		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-SLES11&quot; bootloader=&quot;zipl&quot; primary=&quot;true&quot;/&gt;
++	&lt;/preferences&gt;
++	&lt;preferences profiles=&quot;xenFlavour,x86&quot;&gt;
+ 		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-SLES11&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;xenk&quot;&gt;
+ 			&lt;machine memory=&quot;512&quot; domain=&quot;domU&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+@@ -36,7 +39,7 @@
+ 			&lt;machine domain=&quot;dom0&quot;/&gt;
+ 		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+-	&lt;preferences profiles=&quot;vmxFlavour&quot;&gt;
++	&lt;preferences profiles=&quot;vmxFlavour,x86&quot;&gt;
+ 		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-SLES11&quot; format=&quot;vmdk&quot;&gt;
+ 			&lt;machine memory=&quot;512&quot; guestOS=&quot;suse&quot; HWversion=&quot;4&quot;&gt;
+ 				&lt;vmdisk controller=&quot;scsi&quot; id=&quot;0&quot;/&gt;
+@@ -57,12 +60,12 @@
+ 	&lt;users group=&quot;root&quot;&gt;
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+-	&lt;repository type=&quot;rpm-md&quot;&gt;
+-		&lt;source path=&quot;<A HREF="obs:///SUSE:SLE-11:GA:Products:Test/standard">obs:///SUSE:SLE-11:GA:Products:Test/standard</A>&quot;/&gt;
+-	&lt;/repository&gt;
+-	&lt;repository type=&quot;rpm-md&quot;&gt;
+-		&lt;source path=&quot;<A HREF="obs:///SUSE:SLE-11:GA/standard">obs:///SUSE:SLE-11:GA/standard</A>&quot;/&gt;
+-	&lt;/repository&gt;
++	&lt;repository type=&quot;yast2&quot; alias=&quot;sdk&quot;&gt;
++                &lt;source path=&quot;<A HREF="http://download.suse.de/install/SLP/SLE-11-SP1-SDK-LATEST/%arch/DVD1">http://download.suse.de/install/SLP/SLE-11-SP1-SDK-LATEST/%arch/DVD1</A>&quot;/&gt;
++        &lt;/repository&gt;
++        &lt;repository type=&quot;yast2&quot; alias=&quot;distro&quot;&gt;
++                &lt;source path=&quot;<A HREF="http://download.suse.de/install/SLP/SLES-11-SP1-GM/%arch/DVD1/">http://download.suse.de/install/SLP/SLES-11-SP1-GM/%arch/DVD1/</A>&quot;/&gt;
++        &lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;sles-release&quot;/&gt;
+ 		&lt;package name=&quot;sles-release-DVD&quot;/&gt;
+@@ -118,15 +121,16 @@
+ 		&lt;package name=&quot;gfxboot-branding-SLES&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;s390&quot;&gt;
+-		&lt;package name=&quot;zipl&quot;/&gt;
++		&lt;package name=&quot;s390-tools&quot;/&gt;
++		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour,x86&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; replaces=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-base&quot; replaces=&quot;kernel-default-base&quot;/&gt;
+ 		&lt;package name=&quot;xen-tools-domU&quot; replaces=&quot;&quot;/&gt;
+ 		&lt;package name=&quot;xen&quot; replaces=&quot;&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;vmxFlavour&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;vmxFlavour,x86&quot;&gt;
+ 		&lt;package name=&quot;kernel-default&quot; replaces=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;kernel-default-base&quot; replaces=&quot;kernel-xen-base&quot;/&gt;
+ 		&lt;package name=&quot;kernel-default-base&quot; replaces=&quot;xen-tools-domU&quot;/&gt;
+diff --git a/template/rhel-05.4-JeOS/root/etc/X11/xorg.conf b/template/s390/suse-SLE11-JeOS/root/etc/X11/xorg.conf
+similarity index 100%
+rename from template/rhel-05.4-JeOS/root/etc/X11/xorg.conf
+rename to template/s390/suse-SLE11-JeOS/root/etc/X11/xorg.conf
+diff --git a/template/s390/suse-SLE11-JeOS/root/etc/inittab b/template/s390/suse-SLE11-JeOS/root/etc/inittab
+new file mode 100644
+index 0000000..001eb14
+--- /dev/null
++++ b/template/s390/suse-SLE11-JeOS/root/etc/inittab
+@@ -0,0 +1,66 @@
++#
++# /etc/inittab
++#
++# Copyright (c) 1996-2002 SuSE Linux AG, Nuernberg, Germany.  All rights reserved.
++#
++# Author: Florian La Roche, 1996
++# Please send feedback to <A HREF="http://www.suse.de/feedback">http://www.suse.de/feedback</A>
++#
++# This is the main configuration file of /sbin/init, which
++# is executed by the kernel on startup. It describes what
++# scripts are used for the different run-levels.
++#
++# All scripts for runlevel changes are in /etc/init.d/.
++#
++# This file may be modified by SuSEconfig unless CHECK_INITTAB
++# in /etc/sysconfig/suseconfig is set to &quot;no&quot;
++#
++
++# The default runlevel is defined here
++id:3:initdefault:
++
++# First script to be executed, if not booting in emergency (-b) mode
++si::bootwait:/etc/init.d/boot
++
++# /etc/init.d/rc takes care of runlevel handling
++#
++# runlevel 0  is  System halt   (Do not use this for initdefault!)
++# runlevel 1  is  Single user mode
++# runlevel 2  is  Local multiuser without remote network (e.g. NFS)
++# runlevel 3  is  Full multiuser with network
++# runlevel 4  is  Not used
++# runlevel 5  is  Full multiuser with network and xdm
++# runlevel 6  is  System reboot (Do not use this for initdefault!)
++#
++l0:0:wait:/etc/init.d/rc 0
++l1:1:wait:/etc/init.d/rc 1
++l2:2:wait:/etc/init.d/rc 2
++l3:3:wait:/etc/init.d/rc 3
++#l4:4:wait:/etc/init.d/rc 4
++l5:5:wait:/etc/init.d/rc 5
++l6:6:wait:/etc/init.d/rc 6
++
++# what to do in single-user mode
++ls:S:wait:/etc/init.d/rc S
++~~:S:respawn:/sbin/sulogin
++
++# Default HMC/3215/3270 console:
++#1:2345:respawn:/sbin/mingetty --noclear /dev/ttyS0 dumb
++# VT220(Linux) console:
++#2:2345:respawn:/sbin/mingetty --noclear /dev/ttyS1 xterm
++# additional 3270 terminals:
++#3:2345:respawn:/sbin/mingetty --noclear /dev/3270/ttycons dumb
++# KVM hypervisor console:
++1:2345:respawn:/sbin/mingetty --noclear /dev/hvc0 linux
++
++# what to do when CTRL-ALT-DEL is pressed
++ca::ctrlaltdel:/sbin/shutdown -r -t 4 now
++
++# not used for now:
++pf::powerwait:/etc/init.d/powerfail start
++pn::powerfailnow:/etc/init.d/powerfail now
++#pn::powerfail:/etc/init.d/powerfail now
++po::powerokwait:/etc/init.d/powerfail stop
++sh:12345:powerfail:/sbin/shutdown -h now THE POWER IS FAILING
++
++# end of /etc/inittab
+diff --git a/template/suse-SLE11-JeOS/root/etc/motd b/template/s390/suse-SLE11-JeOS/root/etc/motd
+similarity index 100%
+rename from template/suse-SLE11-JeOS/root/etc/motd
+rename to template/s390/suse-SLE11-JeOS/root/etc/motd
+diff --git a/template/s390/suse-SLE11-JeOS/root/etc/securetty b/template/s390/suse-SLE11-JeOS/root/etc/securetty
+new file mode 100644
+index 0000000..0d9bc68
+--- /dev/null
++++ b/template/s390/suse-SLE11-JeOS/root/etc/securetty
+@@ -0,0 +1,13 @@
++# 
++# This file contains the device names of tty lines (one per line,
++# without leading /dev/) on which root is allowed to login.
++#
++tty1
++tty2
++tty3
++tty4
++tty5
++tty6
++ttyS0
++ttyS1
++hvc0
+diff --git a/doc/examples/suse-11.1/suse-ec2-guest/root/etc/sysconfig/network/ifcfg-eth0 b/template/s390/suse-SLE11-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+similarity index 100%
+copy from doc/examples/suse-11.1/suse-ec2-guest/root/etc/sysconfig/network/ifcfg-eth0
+copy to template/s390/suse-SLE11-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+diff --git a/template/suse-SLE11-JeOS/suse-SLE11-JeOS.kiwi b/template/s390/suse-SLE11-JeOS/suse-SLE11-JeOS.kiwi
+similarity index 100%
+rename from template/suse-SLE11-JeOS/suse-SLE11-JeOS.kiwi
+rename to template/s390/suse-SLE11-JeOS/suse-SLE11-JeOS.kiwi
+diff --git a/system/boot/s390x b/template/s390x
+similarity index 100%
+copy from system/boot/s390x
+copy to template/s390x
+diff --git a/system/boot/x86_64 b/template/x86_64
+similarity index 100%
+copy from system/boot/x86_64
+copy to template/x86_64
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002362.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 578fc690a7b8a44e580cfe4597c56f3bfe180ad5
+</A></li>
+	<LI>Next message: <A HREF="002364.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9378551dec431fc5483c50c269c024f6ab23109f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2363">[ date ]</a>
+              <a href="thread.html#2363">[ thread ]</a>
+              <a href="subject.html#2363">[ subject ]</a>
+              <a href="author.html#2363">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

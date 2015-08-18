@@ -1,0 +1,191 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. dc1818b76e090a3f453a9a7534249eddeaab1b87
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20dc1818b76e090a3f453a9a7534249eddeaab1b87&In-Reply-To=%3C201006140911.o5E9BMAo015752%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002294.html">
+   <LINK REL="Next"  HREF="002297.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. dc1818b76e090a3f453a9a7534249eddeaab1b87</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20dc1818b76e090a3f453a9a7534249eddeaab1b87&In-Reply-To=%3C201006140911.o5E9BMAo015752%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. dc1818b76e090a3f453a9a7534249eddeaab1b87">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Jun 14 11:11:22 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002294.html">[Kiwi-devel] Early exit
+</A></li>
+        <LI>Next message: <A HREF="002297.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0b57ff452d8dc8ed8054f9c2a53c6707a67e0613
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2295">[ date ]</a>
+              <a href="thread.html#2295">[ thread ]</a>
+              <a href="subject.html#2295">[ subject ]</a>
+              <a href="author.html#2295">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  dc1818b76e090a3f453a9a7534249eddeaab1b87 (commit)
+      from  e61cda1fac02a85729510b79299833b97e2f26c8 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit dc1818b76e090a3f453a9a7534249eddeaab1b87
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Jun 14 11:11:12 2010 +0200
+
+    - Remove some code duplication by using a new
+      createDirInteractive() function
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 3693b45..11c7e31 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -217,6 +217,34 @@ my $boot;       # KIWIBoot  object for logical extends
+ my $migrate;    # KIWIMigrate object for system to image migration
+ 
+ #============================================
++# createDirInteractive
++#--------------------------------------------
++sub createDirInteractive {
++	my $kiwi = shift;
++	my $targetDir = shift;
++	if (! -d $targetDir) {
++		my $prefix = $kiwi -&gt; getPrefix (1);
++		my $answer = &quot;unknown&quot;;
++		$kiwi -&gt; info (&quot;Destination: $Destination doesn't exist\n&quot;);
++		while ($answer !~ /^yes$|^no$/) {
++			print STDERR $prefix,
++				&quot;Would you like kiwi to create it [yes/no] ? &quot;;
++			chomp ($answer = &lt;&gt;);
++		}
++		if ($answer eq &quot;yes&quot;) {
++			qxx (&quot;mkdir -p $Destination&quot;);
++			return 1;
++		}
++	} else {
++		# Directory exists
++		return 1;
++	}
++	# Directory does not exist and user did
++	# not request dir creation.
++	return undef;
++}
++
++#============================================
+ # findExec
+ #--------------------------------------------
+ sub findExec {
+@@ -286,21 +314,9 @@ sub main {
+ 	#----------------------------------------
+ 	if (defined $Build) {
+ 		#==========================================
+-		# Check if destdir exists or not 
++		# Create destdir if needed
+ 		#------------------------------------------
+-		if (! -d $Destination) {
+-			my $prefix = $kiwi -&gt; getPrefix (1);
+-			my $answer = &quot;unknown&quot;;
+-			$kiwi -&gt; info (&quot;Destination: $Destination doesn't exist\n&quot;);
+-			while ($answer !~ /^yes$|^no$/) {
+-				print STDERR $prefix,
+-					&quot;Would you like kiwi to create it [yes/no] ? &quot;;
+-				chomp ($answer = &lt;&gt;);
+-			}
+-			if ($answer eq &quot;yes&quot;) {
+-				qxx (&quot;mkdir -p $Destination&quot;);
+-			}
+-		}
++		my $dirCreated = createDirInteractive($kiwi, $Destination);
+ 		#==========================================
+ 		# Setup prepare 
+ 		#------------------------------------------
+@@ -650,21 +666,9 @@ sub main {
+ 			);
+ 		}
+ 		#==========================================
+-		# Check if destdir exists or not 
++		# Create destdir if needed
+ 		#------------------------------------------
+-		if (! -d $Destination) {
+-			my $prefix = $kiwi -&gt; getPrefix (1);
+-			my $answer = &quot;unknown&quot;;
+-			$kiwi -&gt; info (&quot;Destination: $Destination doesn't exist\n&quot;);
+-			while ($answer !~ /^yes$|^no$/) {
+-				print STDERR $prefix,
+-					&quot;Would you like kiwi to create it [yes/no] ? &quot;;
+-				chomp ($answer = &lt;&gt;);
+-			}
+-			if ($answer eq &quot;yes&quot;) {
+-				qxx (&quot;mkdir -p $Destination&quot;);
+-			}
+-		}
++		my $dirCreated = createDirInteractive($kiwi, $Destination);
+ 		#==========================================
+ 		# Check for default base root in XML
+ 		#------------------------------------------
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 965338e..a180190 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Mon Jun 14 11:10:15 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- Remove some code duplication by using a new
++  createDirInteractive() function
++
++-------------------------------------------------------------------
+ Wed Jun  9 12:40:39 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v4.41
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002294.html">[Kiwi-devel] Early exit
+</A></li>
+	<LI>Next message: <A HREF="002297.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0b57ff452d8dc8ed8054f9c2a53c6707a67e0613
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2295">[ date ]</a>
+              <a href="thread.html#2295">[ thread ]</a>
+              <a href="subject.html#2295">[ subject ]</a>
+              <a href="author.html#2295">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

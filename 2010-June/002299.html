@@ -1,0 +1,295 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b1d4bc23670f865e869b7c2d0b12f39fb17ffedb
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b1d4bc23670f865e869b7c2d0b12f39fb17ffedb&In-Reply-To=%3C201006150841.o5F8fqLN020131%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002297.html">
+   <LINK REL="Next"  HREF="002300.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b1d4bc23670f865e869b7c2d0b12f39fb17ffedb</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b1d4bc23670f865e869b7c2d0b12f39fb17ffedb&In-Reply-To=%3C201006150841.o5F8fqLN020131%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b1d4bc23670f865e869b7c2d0b12f39fb17ffedb">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jun 15 10:41:52 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002297.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0b57ff452d8dc8ed8054f9c2a53c6707a67e0613
+</A></li>
+        <LI>Next message: <A HREF="002300.html">[Kiwi-devel] avoid Perl runtim error message on XML parse error
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2299">[ date ]</a>
+              <a href="thread.html#2299">[ thread ]</a>
+              <a href="subject.html#2299">[ subject ]</a>
+              <a href="author.html#2299">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  b1d4bc23670f865e869b7c2d0b12f39fb17ffedb (commit)
+      from  0b57ff452d8dc8ed8054f9c2a53c6707a67e0613 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b1d4bc23670f865e869b7c2d0b12f39fb17ffedb
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Jun 15 10:38:59 2010 +0200
+
+    - migration:
+      - fixed filesystem scan
+      - copy /etc entirely to root/
+      - don't setup services
+      - use product file to add system repository
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIMigrate.pm b/modules/KIWIMigrate.pm
+index 781cb16..d4367aa 100644
+--- a/modules/KIWIMigrate.pm
++++ b/modules/KIWIMigrate.pm
+@@ -22,6 +22,7 @@ package KIWIMigrate;
+ #------------------------------------------
+ use strict;
+ use Carp qw (cluck);
++use XML::LibXML;
+ use File::Find;
+ use File::stat;
+ use File::Basename;
+@@ -109,13 +110,6 @@ sub new {
+ 	$kiwi -&gt; done ();
+ 	$kiwi -&gt; info (&quot;Results will be written to: $dest&quot;);
+ 	$kiwi -&gt; done ();
+-	if (! $this -&gt; getRootDevice()) {
+-		$kiwi -&gt; failed ();
+-		$kiwi -&gt; error (&quot;Couldn't find system root device&quot;);
+-		$kiwi -&gt; failed ();
+-		rmdir $dest;
+-		return undef;
+-	}
+ 	#==========================================
+ 	# Store addon repo information if specified
+ 	#------------------------------------------
+@@ -180,6 +174,7 @@ sub new {
+ 		'\/var\/log',                   # no logs
+ 		'\/var\/run',                   # no pid files
+ 		'\/etc\/fstab',                 # no fstab file
++		'\/etc\/udev\/rules.d',         # no udev rules
+ 		'\/media\/',                    # no media automount files
+ 		'\/var\/lib\/hardware\/'        # no hwinfo hardware files
+ 	);
+@@ -843,12 +838,6 @@ sub setPrepareConfigSkript {
+ 	print FD 'echo &quot;Configure image: [$kiwi_iname]...&quot;'.&quot;\n&quot;;
+ 	print FD 'suseSetupProduct'.&quot;\n&quot;;
+ 	#==========================================
+-	# Services...
+-	#------------------------------------------
+-	foreach my $service (@result) {
+-		print FD 'suseInsertService '.$service.&quot;\n&quot;;
+-	}
+-	#==========================================
+ 	# Repos...
+ 	#------------------------------------------
+ 	foreach my $source (keys %{$osc{$product}} ) {
+@@ -856,14 +845,55 @@ sub setPrepareConfigSkript {
+ 		my $url  = $osc{$product}{$source}{src};
+ 		my $flag = $osc{$product}{$source}{flag};
+ 		if ($flag ne &quot;remote&quot;) {
+-			$kiwi -&gt; warning (
+-				&quot;Local repo: $alias will not be added to config.sh&quot;
+-			);
+-			$kiwi -&gt; skipped ();
++			# $kiwi -&gt; warning (
++			#	&quot;Local repo: $alias will not be added to config.sh&quot;
++			# );
++			# $kiwi -&gt; skipped ();
+ 			next;
+ 		}
+ 		print FD &quot;zypper ar \\\n\t\&quot;&quot;.$url.&quot;\&quot; \\\n\t\&quot;&quot;.$alias.&quot;\&quot;\n&quot;;
+ 	}
++	#==========================================
++	# Product repo...
++	#------------------------------------------
++	my $repoProduct = &quot;/etc/products.d/openSUSE.prod&quot;;
++	if (-e $repoProduct) {
++		my $PXML;
++		if (! open ($PXML,&quot;cat $repoProduct|&quot;)) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; warning (&quot;--&gt; Failed to open product file $repoProduct&quot;);
++			$kiwi -&gt; skipped ();
++		} else {
++			binmode $PXML;
++			my $pxml = new XML::LibXML;
++			my $tree = $pxml -&gt; parse_fh ( $PXML );
++			my $urls = $tree -&gt; getElementsByTagName (&quot;product&quot;)
++				-&gt; get_node(1) -&gt; getElementsByTagName (&quot;urls&quot;)
++				-&gt; get_node(1) -&gt; getElementsByTagName (&quot;url&quot;);
++			for (my $i=1;$i&lt;= $urls-&gt;size();$i++) {
++				my $node = $urls -&gt; get_node($i);
++				my $name = $node -&gt; getAttribute (&quot;name&quot;);
++				if ($name eq &quot;repository&quot;) {
++					my $url   = $node -&gt; textContent();
++					my $alias = &quot;openSUSE&quot;;
++					my $alreadyThere = 0;
++					$url =~ s/\/$//;
++					foreach my $source (keys %{$osc{$product}} ) {
++						my $curl = $osc{$product}{$source}{src};
++						$curl =~ s/\/$//;
++						if ($curl eq $url) {
++							$alreadyThere = 1; last;
++						}
++					}
++					if (! $alreadyThere) {
++						print FD &quot;zypper ar \\\n\t\&quot;&quot;;
++						print FD $url.&quot;\&quot; \\\n\t\&quot;&quot;.$alias.&quot;\&quot;\n&quot;;
++					}
++				}
++			}
++			close $PXML;
++		}
++	}
+ 	print FD 'suseConfig'.&quot;\n&quot;;
+ 	print FD 'baseCleanMount'.&quot;\n&quot;;
+ 	print FD 'exit 0'.&quot;\n&quot;;
+@@ -1059,46 +1089,6 @@ sub getPackageList {
+ }
+ 
+ #==========================================
+-# getRootDevice
+-#------------------------------------------
+-sub getRootDevice {
+-	# ...
+-	# Find the root device of the operating system. Only those
+-	# data are inspected. We don't handle sub-mounted systems
+-	# within the root tree
+-	# ---
+-	my $this = shift;
+-	my $rootdev;
+-	if (! open (FD,&quot;/etc/fstab&quot;)) {
+-		return undef;
+-	}
+-	my @fstab = &lt;FD&gt;; close FD;
+-	foreach my $mount (@fstab) {
+-		if ($mount =~ /\s+\/\s+/) {
+-			my @attribs = split (/\s+/,$mount);
+-			if ( -e $attribs[0]) {
+-				$rootdev = $attribs[0]; last;
+-			}
+-		}
+-	}
+-	if (! $rootdev) {
+-		return undef;
+-	}
+-	my $data = qxx (&quot;df $rootdev | tail -n1&quot;);
+-	my $code = $? &gt;&gt; 8;
+-	if ($code != 0) {
+-		return undef;
+-	}
+-	if ($data =~ /$rootdev\s+\d+\s\s(\d+)\s\s/) {
+-		$data = $1;
+-		$data = int ( $data / 1024 );
+-	}	
+-	$this-&gt;{rdev}  = $rootdev;
+-	$this-&gt;{rsize} = $data;
+-	return $this;
+-}
+-
+-#==========================================
+ # setSystemOverlayFiles
+ #------------------------------------------
+ sub setSystemOverlayFiles {
+@@ -1175,9 +1165,12 @@ sub setSystemOverlayFiles {
+ 	sub generateWanted {
+ 		my $filehash = shift;
+ 		return sub {
+-			if (((-l $File::Find::name) &amp;&amp; (-e $File::Find::name)) ||
+-				(! -d $File::Find::name))
+-			{
++			if (-d $File::Find::name) {
++				my $attr = stat ($File::Find::name);
++				if ($attr-&gt;dev &lt; 0x100) {
++					$File::Find::prune = 1;
++				}
++			} else {
+ 				my $file = $File::Find::name;
+ 				my $dirn = $File::Find::dir;
+ 				my $attr;
+@@ -1347,6 +1340,12 @@ sub setSystemOverlayFiles {
+ 	}
+ 	$kiwi -&gt; done();
+ 	#==========================================
++	# Create modified files tree /etc
++	#------------------------------------------
++	mkpath (&quot;$dest/root/etc&quot;, {verbose =&gt; 0});
++	qxx (&quot;tar -cf - -C $dest/root-nopackage/etc .|tar -xC $dest/root/etc 2&gt;&amp;1&quot;);
++	qxx (&quot;rm -rf $dest/root-nopackage/etc&quot;);
++	#==========================================
+ 	# Cleanup symbolic links
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Cleaning symlinks...&quot;);
+@@ -1382,10 +1381,6 @@ sub setInitialSetup {
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	$kiwi -&gt; info (&quot;Setting up initial deployment workflow...&quot;);
+ 	#==========================================
+-	# Cleanup
+-	#------------------------------------------
+-	qxx (&quot;rm -rf $dest/root 2&gt;&amp;1&quot;);
+-	#==========================================
+ 	# create root directory
+ 	#------------------------------------------
+ 	mkdir &quot;$dest/root&quot;;
+@@ -1597,7 +1592,7 @@ sub autoyastClone {
+ 		# version is less than 2.19.x (1.xx.yy with xx &gt;= 19 can be ignored)
+ 		$kiwi -&gt; warning(&quot;AutoYaST version $ayVersion is too old for cloning&quot;);
+ 		$kiwi -&gt; skipped();
+-		return undef;
++		return $this;
+ 	}
+ 	#==========================================
+ 	# run yast for cloning
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002297.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0b57ff452d8dc8ed8054f9c2a53c6707a67e0613
+</A></li>
+	<LI>Next message: <A HREF="002300.html">[Kiwi-devel] avoid Perl runtim error message on XML parse error
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2299">[ date ]</a>
+              <a href="thread.html#2299">[ thread ]</a>
+              <a href="subject.html#2299">[ subject ]</a>
+              <a href="author.html#2299">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

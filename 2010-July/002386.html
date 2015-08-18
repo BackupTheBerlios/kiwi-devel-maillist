@@ -1,0 +1,159 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ca13ab134df4b20d5acc6d8d10baabc4ae668421
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ca13ab134df4b20d5acc6d8d10baabc4ae668421&In-Reply-To=%3C20100707094552.3A7584809E9%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002385.html">
+   <LINK REL="Next"  HREF="002387.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ca13ab134df4b20d5acc6d8d10baabc4ae668421</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ca13ab134df4b20d5acc6d8d10baabc4ae668421&In-Reply-To=%3C20100707094552.3A7584809E9%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ca13ab134df4b20d5acc6d8d10baabc4ae668421">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jul  7 11:45:52 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002385.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5d265f69bee00d2bea94deed7e54e86a0e7e509f
+</A></li>
+        <LI>Next message: <A HREF="002387.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8ceb15e11cbda2700e018958457af4524dccf23a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2386">[ date ]</a>
+              <a href="thread.html#2386">[ thread ]</a>
+              <a href="subject.html#2386">[ subject ]</a>
+              <a href="author.html#2386">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  ca13ab134df4b20d5acc6d8d10baabc4ae668421 (commit)
+      from  5d265f69bee00d2bea94deed7e54e86a0e7e509f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ca13ab134df4b20d5acc6d8d10baabc4ae668421
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jul 7 11:45:39 2010 +0200
+
+    - add some sanity checks
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 414f76e..4d14e78 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -3556,7 +3556,7 @@ sub getMBRDiskLabel {
+ 	undef $this-&gt;{mbrid};
+ 	for (my $i=0;$i&lt;4;$i++) {
+ 		$bytes[$i] = 1 + int(rand($range));
+-		redo if $bytes[0] &lt;= 0xf;
++		redo if $bytes[0] &lt;= 0x11;
+ 	}
+ 	my $nid = sprintf (&quot;0x%02x%02x%02x%02x&quot;,
+ 		$bytes[0],$bytes[1],$bytes[2],$bytes[3]
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index cca30b6..7ef8c27 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -152,7 +152,9 @@ function closeKernelConsole {
+ 	# /.../
+ 	# close the kernel console, set level to 1
+ 	# ----
+-	klogconsole -l 1
++	if [ -x /usr/sbin/klogconsole ];then
++		klogconsole -l 1
++	fi
+ }
+ #======================================
+ # openKernelConsole
+@@ -164,6 +166,9 @@ function openKernelConsole {
+ 	# but it isn't really. If DEBUG is set the logging remains on
+ 	# the first console
+ 	# ----
++	if [ ! -x /usr/sbin/klogconsole ];then
++		return
++	fi
+ 	if test &quot;$DEBUG&quot; = 0;then
+ 		Echo &quot;Kernel logging enabled on: /dev/tty$KLOG_CONSOLE&quot;
+ 		setctsid /dev/tty$KLOG_CONSOLE \
+@@ -178,6 +183,9 @@ function reopenKernelConsole {
+ 	# reopen kernel console to be able to see kernel messages
+ 	# while the system is booting
+ 	# ----
++	if [ ! -x /usr/sbin/klogconsole ];then
++		return
++	fi
+ 	Echo &quot;Kernel logging enabled on: /dev/tty$KLOG_DEFAULT&quot;
+ 	klogconsole -l 7 -r$KLOG_DEFAULT
+ }
+@@ -4012,8 +4020,10 @@ function cleanDirectory {
+ #--------------------------------------
+ function cleanInitrd {
+ 	cp /usr/bin/chroot /bin
+-	cp /usr/sbin/klogconsole /bin
+ 	cp /sbin/halt /bin/reboot
++	if [ -x /usr/sbin/klogconsole ];then
++		cp /usr/sbin/klogconsole /bin
++	fi
+ 	for dir in /*;do
+ 		case &quot;$dir&quot; in
+ 			&quot;/lib&quot;)   continue ;;
+@@ -5740,7 +5750,9 @@ function initialize {
+ 	#======================================
+ 	# Prevent blank screen
+ 	#--------------------------------------
+-	setterm -powersave off -blank 0
++	if [ -x /usr/bin/setterm ];then
++		setterm -powersave off -blank 0
++	fi
+ 	#======================================
+ 	# Start boot timer (first stage)
+ 	#--------------------------------------
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002385.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5d265f69bee00d2bea94deed7e54e86a0e7e509f
+</A></li>
+	<LI>Next message: <A HREF="002387.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8ceb15e11cbda2700e018958457af4524dccf23a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2386">[ date ]</a>
+              <a href="thread.html#2386">[ thread ]</a>
+              <a href="subject.html#2386">[ subject ]</a>
+              <a href="author.html#2386">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

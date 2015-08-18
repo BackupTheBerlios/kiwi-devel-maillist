@@ -1,0 +1,334 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1319 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1319%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200806101510.m5AFAbH2011001%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000408.html">
+   <LINK REL="Next"  HREF="000410.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1319 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1319%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200806101510.m5AFAbH2011001%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1319 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jun 10 17:10:37 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000408.html">[Kiwi-devel] [SVN:KIWI-Team] r1318 - kiwi-tags/KIWI-238-SuSE-11-0
+</A></li>
+        <LI>Next message: <A HREF="000410.html">[Kiwi-devel] [SVN:KIWI-Team] r1320 - kiwi-head/system/boot/oemboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#409">[ date ]</a>
+              <a href="thread.html#409">[ thread ]</a>
+              <a href="subject.html#409">[ subject ]</a>
+              <a href="author.html#409">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: Tue Jun 10 17:10:28 2008
+New Revision: 1319
+
+Modified:
+   kiwi-head/.newversion
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+   kiwi-head/system/boot/oemboot/suse-linuxrc
+   kiwi-head/system/boot/oemboot/suse-preinit
+
+Log:
+
+- v2.39
+- added creation of /etc/sysconfig/bootloader
+- fixed oemboot repartition code if no swap, no home and a
+  recovery partition was specified
+
+
+
+Modified: kiwi-head/.newversion
+==============================================================================
+--- kiwi-head/.newversion	(original)
++++ kiwi-head/.newversion	Tue Jun 10 17:10:28 2008
+@@ -13,7 +13,7 @@
+ 
+ # spec file version update
+ cat rpm/kiwi.spec | sed \
+-	-e s&quot;@Version:       .*@Version:       $version@&quot; \
++	-e s&quot;@Version:       .*@Version:        $version@&quot; \
+ 	-e s&quot;@kiwi (Version .*@kiwi (Version $version@&quot; \
+ &gt; rpm/kiwi.spec.new &amp;&amp; mv rpm/kiwi.spec.new rpm/kiwi.spec
+ 
+
+Modified: kiwi-head/kiwi.pl
+==============================================================================
+--- kiwi-head/kiwi.pl	(original)
++++ kiwi-head/kiwi.pl	Tue Jun 10 17:10:28 2008
+@@ -43,7 +43,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;2.38&quot;;
++our $Version       = &quot;2.39&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+ our $ConfigFile    = &quot;$ENV{'HOME'}/.kiwirc&quot;;
+ our $ConfigStatus  = 0;
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+==============================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	(original)
++++ kiwi-head/modules/KIWILinuxRC.sh	Tue Jun 10 17:10:28 2008
+@@ -528,6 +528,7 @@
+ 	local menu=$destsPrefix/boot/grub/menu.lst
+ 	local conf=$destsPrefix/etc/grub.conf
+ 	local dmap=$destsPrefix/boot/grub/device.map
++	local sysb=$destsPrefix/etc/sysconfig/bootloader
+ 	local console=&quot;&quot;
+ 	local kname=&quot;&quot;
+ 	local kernel=&quot;&quot;
+@@ -699,6 +700,11 @@
+ 	#--------------------------------------
+ 	rdisk=`echo $rdev | sed -e s&quot;@[0-9]@@g&quot;`
+ 	echo &quot;(hd0) $rdisk&quot; &gt; $dmap
++	#======================================
++	# create sysconfig/bootloader
++	#--------------------------------------
++	echo &quot;LOADER_TYPE=\&quot;grub\&quot;&quot;     &gt; $sysb
++	echo &quot;LOADER_LOCATION=\&quot;mbr\&quot;&quot; &gt;&gt; $sysb
+ }
+ #======================================
+ # setupDefaultPXENetwork
+
+Modified: kiwi-head/rpm/kiwi.changes
+==============================================================================
+--- kiwi-head/rpm/kiwi.changes	(original)
++++ kiwi-head/rpm/kiwi.changes	Tue Jun 10 17:10:28 2008
+@@ -1,4 +1,12 @@
+ -------------------------------------------------------------------
++Tue Jun 10 17:04:32 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v2.39
++- added creation of /etc/sysconfig/bootloader
++- fixed oemboot repartition code if no swap, no home and a
++  recovery partition was specified
++
++-------------------------------------------------------------------
+ Mon Jun  9 16:56:28 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed update check for split images (bnc #398515)
+
+Modified: kiwi-head/rpm/kiwi.spec
+==============================================================================
+--- kiwi-head/rpm/kiwi.spec	(original)
++++ kiwi-head/rpm/kiwi.spec	Tue Jun 10 17:10:28 2008
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 2.38)
++# spec file for package kiwi (Version 2.39
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -42,7 +42,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 = 2.14
+ Obsoletes:      kiwi2 = 2.14
+-Version:        2.38
++Version:        2.39
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+Modified: kiwi-head/system/boot/oemboot/suse-linuxrc
+==============================================================================
+--- kiwi-head/system/boot/oemboot/suse-linuxrc	(original)
++++ kiwi-head/system/boot/oemboot/suse-linuxrc	Tue Jun 10 17:10:28 2008
+@@ -624,11 +624,11 @@
+ 							done
+ 						else
+ 							#======================================
+-							# 10.2.1.2.2 without recovery partition
++							# 10.2.1.2.2 with recovery partition
+ 							#--------------------------------------
+ 							for cmd in \
+-								d n p 4 . +&quot;$recoMByte&quot;M \
+-								n p 2 . . w
++								d n p 2 1 +&quot;$disk1MBytes&quot;M \
++								n p 4 . . w
+ 							do
+ 								if [ $cmd = &quot;.&quot; ];then
+ 									echo &gt;&gt; $input
+@@ -787,9 +787,6 @@
+ 				if ! cp /reco-root/boot/linux.vmx /reco-save/boot/vmlinuz;then
+ 					systemException &quot;Failed to copy recovery kernel&quot; &quot;reboot&quot;
+ 				fi
+-				if ! cp /reco-root/boot/message /reco-save/boot;then
+-					systemException &quot;Failed to copy message file&quot; &quot;reboot&quot;
+-				fi
+ 				umount /reco-save &amp;&amp; rmdir /reco-save
+ 				umount /reco-root &amp;&amp; rmdir /reco-root
+ 			fi
+@@ -895,6 +892,8 @@
+ 		if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ 			KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS LOCAL_BOOT=yes&quot;
+ 			KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS deviceRoot=$deviceRoot&quot;
++			KIWI_INITRD_PARAMS=\
++				&quot;$KIWI_INITRD_PARAMS deviceRecovery=$deviceRecovery&quot;
+ 			export KIWI_INITRD_PARAMS
+ 		fi
+ 		if [ &quot;$FSTYPE&quot; = &quot;reiserfs&quot; ];then
+@@ -931,8 +930,40 @@
+ # 13) Recover system if requested
+ #--------------------------------------
+ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+-	# TODO restore recovery data
+-	systemException &quot;*** system restore not yet implemented ***&quot; &quot;reboot&quot;
++	Echo -n &quot;Do you want to start the System-Recovery ? [y/n]&quot;; read runReco
++	if [ ! $runReco = &quot;y&quot; ];then
++		systemException &quot;System-Recovery not started&quot; &quot;reboot&quot;
++	fi
++	Echo &quot;Starting System-Recovery...&quot;
++	#======================================
++	# 13.1) mount recovery partition
++	#--------------------------------------
++	mkdir -p /reco-save
++	if ! mount $deviceRecovery /reco-save &gt;/dev/null;then
++		systemException &quot;Failed to mount recovery device&quot; &quot;reboot&quot;
++	fi
++	#TODO
++	#======================================
++	# 13.2) restore root archive
++	#--------------------------------------
++	#recovery.tar.bz2
++	echo &quot;BREAK&quot;
++	/bin/sh
++
++	#======================================
++	# 13.3) restore boot files
++	#--------------------------------------
++	#/reco-save/etc/fstab
++	#/reco-save/etc/sysconfig/kernel
++	#/reco-save/etc/sysconfig/bootloader
++	#for i in `setupBootLoaderFiles`;do
++	#	/reco-save/$i
++	#done
++
++	#======================================
++	# 13.4) umount recovery and boot
++	#--------------------------------------
++	umount $deviceRecovery
+ fi
+ 
+ #======================================
+@@ -1000,13 +1031,19 @@
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ 	Echo &quot;Setting up recovery configuration files...&quot;
+-	mkdir /reco-save
+ 	if ! mount $deviceRecovery /reco-save &gt;/dev/null;then
+ 		systemException &quot;Failed to mount recovery device&quot; &quot;reboot&quot;
+ 	fi
++	mkdir -p /reco-save/etc/sysconfig
+ 	if ! cp /mnt/etc/fstab /reco-save/etc;then
+ 		systemException &quot;Failed to copy recovery fstab&quot; &quot;reboot&quot;
+ 	fi
++	if ! cp /mnt/etc/sysconfig/kernel /reco-save/etc/sysconfig;then
++		systemException &quot;Failed to copy recovery sysconfig/kernel&quot; &quot;reboot&quot;
++	fi
++	if ! cp /mnt/etc/sysconfig/bootloader /reco-save/etc/sysconfig;then
++		systemException &quot;Failed to copy recovery sysconfig/bootloader&quot; &quot;reboot&quot;
++	fi
+ 	for i in `setupBootLoaderFiles`;do
+ 		bootdir=`dirname $i` &amp;&amp; mkdir -p /reco-save/$bootdir
+ 		if ! cp /mnt/$i /reco-save/$i;then
+@@ -1031,9 +1068,9 @@
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	importBranding
+-	cp /preinit /mnt
+-	cp /include /mnt
+ fi
++cp /preinit /mnt
++cp /include /mnt
+ 
+ #======================================
+ # 21) kill boot shell
+
+Modified: kiwi-head/system/boot/oemboot/suse-preinit
+==============================================================================
+--- kiwi-head/system/boot/oemboot/suse-preinit	(original)
++++ kiwi-head/system/boot/oemboot/suse-preinit	Tue Jun 10 17:10:28 2008
+@@ -28,7 +28,7 @@
+ #======================================
+ # 2) check for LOCAL_BOOT
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;yes&quot; ];then
++if [ $LOCAL_BOOT = &quot;yes&quot; ] &amp;&amp; [ -z &quot;$KIWI_RECOVERY&quot; ];then
+ 	exit 0
+ fi
+ 
+@@ -45,16 +45,7 @@
+ #======================================
+ # 5) create initrd on diskful
+ #--------------------------------------
+-if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+-	#======================================
+-	# use kiwi initrd as it is right now
+-	#--------------------------------------
+-	pushd /boot &amp;&gt;/dev/null
+-	rm -f vmlinuz &amp;&amp; ln -s linux.vmx  vmlinuz
+-	rm -f initrd  &amp;&amp; ln -s initrd.vmx initrd
+-	popd &amp;&gt;/dev/null
+-	bootLoaderOK=1
+-elif [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
++if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+ 	#======================================
+ 	# use distro initrd via mkinitrd
+ 	#--------------------------------------
+@@ -94,7 +85,9 @@
+ #======================================
+ # 7) create /etc/ImagePackages
+ #--------------------------------------
+-if [ -x /bin/rpm ];then
+-	Echo &quot;Creating initial image package info file&quot;
+-	rpm -qa --last &gt; /etc/ImagePackages
++if [ $LOCAL_BOOT = &quot;no&quot; ];then
++	if [ -x /bin/rpm ];then
++		Echo &quot;Creating initial image package info file&quot;
++		rpm -qa --last &gt; /etc/ImagePackages
++	fi
+ fi
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000408.html">[Kiwi-devel] [SVN:KIWI-Team] r1318 - kiwi-tags/KIWI-238-SuSE-11-0
+</A></li>
+	<LI>Next message: <A HREF="000410.html">[Kiwi-devel] [SVN:KIWI-Team] r1320 - kiwi-head/system/boot/oemboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#409">[ date ]</a>
+              <a href="thread.html#409">[ thread ]</a>
+              <a href="subject.html#409">[ subject ]</a>
+              <a href="author.html#409">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

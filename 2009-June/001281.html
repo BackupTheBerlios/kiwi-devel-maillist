@@ -1,0 +1,869 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 01c7aa5b1733c88d8d2ad0c0140a8d38f1e49653
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2001c7aa5b1733c88d8d2ad0c0140a8d38f1e49653&In-Reply-To=%3C200906081055.n58AtP3i031867%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001280.html">
+   <LINK REL="Next"  HREF="001282.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 01c7aa5b1733c88d8d2ad0c0140a8d38f1e49653</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2001c7aa5b1733c88d8d2ad0c0140a8d38f1e49653&In-Reply-To=%3C200906081055.n58AtP3i031867%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 01c7aa5b1733c88d8d2ad0c0140a8d38f1e49653">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Jun  8 12:55:25 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001280.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. da485a7f593959816ae36fefdb37a1a2d27c35b2
+</A></li>
+        <LI>Next message: <A HREF="001282.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 24bb113732a64002a31850db5100904f7ae2f813
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1281">[ date ]</a>
+              <a href="thread.html#1281">[ thread ]</a>
+              <a href="subject.html#1281">[ subject ]</a>
+              <a href="author.html#1281">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  01c7aa5b1733c88d8d2ad0c0140a8d38f1e49653 (commit)
+      from  da485a7f593959816ae36fefdb37a1a2d27c35b2 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 01c7aa5b1733c88d8d2ad0c0140a8d38f1e49653
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Jun 8 12:55:03 2009 +0200
+
+    - fixed dom0 Xen setup
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 1c0e46a..6eecd95 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -115,24 +115,10 @@ sub new {
+ 		$zipped = 1;
+ 	}
+ 	#==========================================
+-	# xen kernel used
+-	#------------------------------------------
+-	$isxen = 0;
+-	$xengz = $initrd;
+-	if ($zipped) {
+-		$xengz =~ s/\.gz$//;
+-	}
+-	$xengz =~ s/\.splash$//;
+-	foreach my $xen (glob (&quot;$xengz*xen*.gz&quot;)) {
+-		$isxen = 1;
+-		$xengz = $xen;
+-		last;
+-	}
+-	#==========================================
+ 	# find kernel file
+ 	#------------------------------------------
+ 	$kernel = $initrd;
+-	if ($zipped) {
++	if ($kernel =~ /gz$/) {
+ 		$kernel =~ s/gz$/kernel/;
+ 	} else {
+ 		$kernel = $kernel.&quot;.kernel&quot;;
+@@ -153,6 +139,18 @@ sub new {
+ 		return undef;
+ 	}
+ 	#==========================================
++	# check if Xen system is used
++	#------------------------------------------
++	$isxen = 0;
++	$xengz = $initrd;
++	$xengz =~ s/\.gz$//;
++	$xengz =~ s/\.splash$//;
++	foreach my $xen (glob (&quot;$xengz*xen*.gz&quot;)) {
++		$isxen = 1;
++		$xengz = $xen;
++		last;
++	}
++	#==========================================
+ 	# create tmp dir for operations
+ 	#------------------------------------------
+ 	$tmpdir = qxx (&quot;mktemp -q -d /tmp/kiwiboot.XXXXXX&quot;); chomp $tmpdir;
+@@ -457,7 +455,7 @@ sub createBootStructure {
+ 		$this -&gt; cleanTmp ();
+ 		return undef;
+ 	}
+-	if ($isxen &amp;&amp; $xendomain eq &quot;dom0&quot;) {
++	if (($isxen) &amp;&amp; ($xendomain eq &quot;dom0&quot;)) {
+ 		$status = qxx ( &quot;cp $xengz $tmpdir/boot/$xname 2&gt;&amp;1&quot; );
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+@@ -3358,7 +3356,7 @@ sub setupBootLoaderConfiguration {
+ 		#==========================================
+ 		# Standard boot
+ 		#------------------------------------------
+-		if (! $isxen || ($isxen &amp;&amp; $xendomain eq &quot;domU&quot;)) {
++		if ((! $isxen) || ($isxen &amp;&amp; $xendomain eq &quot;domU&quot;)) {
+ 			if ($type =~ /^KIWI CD/) {
+ 				print FD &quot; kernel (cd)/boot/linux vga=$vga splash=silent&quot;;
+ 				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096 cdinst=1&quot;;
+@@ -3421,7 +3419,7 @@ sub setupBootLoaderConfiguration {
+ 		#------------------------------------------
+ 		$title = $this -&gt; makeLabel (&quot;Failsafe -- $title&quot;);
+ 		print FD &quot;title $title\n&quot;;
+-		if (! $isxen || ($isxen &amp;&amp; $xendomain eq &quot;domU&quot;)) {
++		if ((! $isxen) || ($isxen &amp;&amp; $xendomain eq &quot;domU&quot;)) {
+ 			if ($type =~ /^KIWI CD/) {
+ 				print FD &quot; kernel (cd)/boot/linux vga=$vga splash=silent&quot;;
+ 				print FD &quot; ramdisk_size=512000 ramdisk_blocksize=4096 cdinst=1&quot;;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 526085c..adf7dbf 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -4,6 +4,7 @@ Fri Jun  5 10:23:12 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ - v3.56
+ - fixed missing xen bootprofile in vmx and oem (bnc #510276)
+ - added ec2 bootkernel profile for vmx,oem,xen (bnc #510276)
++- fixed dom0 Xen setup
+ 
+ -------------------------------------------------------------------
+ Thu Jun  4 16:35:39 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+diff --git a/system/boot/ix86/isoboot/suse-10.3/config.xml b/system/boot/ix86/isoboot/suse-10.3/config.xml
+index 1e67b43..527efa0 100644
+--- a/system/boot/ix86/isoboot/suse-10.3/config.xml
++++ b/system/boot/ix86/isoboot/suse-10.3/config.xml
+@@ -15,10 +15,11 @@
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xen&quot; description=&quot;Boot with xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+ 		&lt;profile name=&quot;smp&quot; description=&quot;KERNEL: bigsmp kernel&quot;/&gt;
+ 		&lt;profile name=&quot;rt&quot; description=&quot;KERNEL: Real time kernel&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
++		&lt;profile name=&quot;nex&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;usbdrivers&quot;&gt;
+ 		&lt;file name=&quot;usb/host/ehci-hcd.ko&quot;/&gt;
+@@ -55,6 +56,9 @@
+ 		&lt;file name=&quot;drivers/ata/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/parport/*&quot;/&gt;
+ 	&lt;/drivers&gt;
++	&lt;drivers type=&quot;drivers&quot; profiles=&quot;xen&quot;&gt;
++		&lt;file name=&quot;drivers/xen/*&quot;/&gt;
++	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;/image/CDs/full-10.3-i386&quot;/&gt;
+ 	&lt;/repository&gt;
+@@ -69,7 +73,7 @@
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;rt&quot;&gt;
+ 		&lt;package name=&quot;kernel-rt&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;aufs-kmp-xen&quot;/&gt;
+ 	&lt;/packages&gt;
+diff --git a/system/boot/ix86/isoboot/suse-11.0/config.xml b/system/boot/ix86/isoboot/suse-11.0/config.xml
+index c7ac100..625a245 100644
+--- a/system/boot/ix86/isoboot/suse-11.0/config.xml
++++ b/system/boot/ix86/isoboot/suse-11.0/config.xml
+@@ -15,10 +15,11 @@
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xen&quot; description=&quot;Boot with xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+ 		&lt;profile name=&quot;pae&quot; description=&quot;KERNEL: pae kernel&quot;/&gt;
+ 		&lt;profile name=&quot;rt&quot; description=&quot;KERNEL: Real time kernel&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
++		&lt;profile name=&quot;nex&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;usbdrivers&quot;&gt;
+ 		&lt;file name=&quot;usb/host/ehci-hcd.ko&quot;/&gt;
+@@ -57,6 +58,9 @@
+ 		&lt;file name=&quot;drivers/parport/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
++	&lt;drivers type=&quot;drivers&quot; profiles=&quot;xen&quot;&gt;
++		&lt;file name=&quot;drivers/xen/*&quot;/&gt;
++	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;/image/CDs/full-11.0-i386&quot;/&gt;
+ 	&lt;/repository&gt;
+@@ -71,9 +75,10 @@
+ 	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;rt&quot;&gt;
+ 		&lt;package name=&quot;kernel-rt&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;aufs-kmp-xen&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/system/boot/ix86/isoboot/suse-11.1/config.xml b/system/boot/ix86/isoboot/suse-11.1/config.xml
+index bee6b02..da9d2cb 100644
+--- a/system/boot/ix86/isoboot/suse-11.1/config.xml
++++ b/system/boot/ix86/isoboot/suse-11.1/config.xml
+@@ -15,10 +15,11 @@
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xen&quot; description=&quot;Boot with xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+ 		&lt;profile name=&quot;pae&quot; description=&quot;KERNEL: pae kernel&quot;/&gt;
+ 		&lt;profile name=&quot;rt&quot; description=&quot;KERNEL: Real time kernel&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
++		&lt;profile name=&quot;nex&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;usbdrivers&quot;&gt;
+ 		&lt;file name=&quot;usb/host/ehci-hcd.ko&quot;/&gt;
+@@ -56,6 +57,9 @@
+ 		&lt;file name=&quot;drivers/parport/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
++	&lt;drivers type=&quot;drivers&quot; profiles=&quot;xen&quot;&gt;
++		&lt;file name=&quot;drivers/xen/*&quot;/&gt;
++	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;/image/CDs/full-i386&quot;/&gt;
+ 	&lt;/repository&gt;
+@@ -71,11 +75,12 @@
+ 		&lt;package name=&quot;kernel-pae-extra&quot;/&gt;
+ 		&lt;package name=&quot;aufs-kmp-pae&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-base&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-extra&quot;/&gt;
+ 		&lt;package name=&quot;aufs-kmp-xen&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/system/boot/ix86/isoboot/suse-11.2/config.xml b/system/boot/ix86/isoboot/suse-11.2/config.xml
+index c059648..feb2522 100644
+--- a/system/boot/ix86/isoboot/suse-11.2/config.xml
++++ b/system/boot/ix86/isoboot/suse-11.2/config.xml
+@@ -15,10 +15,11 @@
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xen&quot; description=&quot;Boot with xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+ 		&lt;profile name=&quot;pae&quot; description=&quot;KERNEL: pae kernel&quot;/&gt;
+ 		&lt;profile name=&quot;rt&quot; description=&quot;KERNEL: Real time kernel&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
++		&lt;profile name=&quot;nex&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;usbdrivers&quot;&gt;
+ 		&lt;file name=&quot;usb/host/ehci-hcd.ko&quot;/&gt;
+@@ -55,6 +56,9 @@
+ 		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
+ 		&lt;file name=&quot;lib/crc-t10dif.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
++	&lt;drivers type=&quot;drivers&quot; profiles=&quot;xen&quot;&gt;
++		&lt;file name=&quot;drivers/xen/*&quot;/&gt;
++	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;/image/CDs/full-i386&quot;/&gt;
+ 	&lt;/repository&gt;
+@@ -68,10 +72,11 @@
+ 		&lt;package name=&quot;kernel-pae-base&quot;/&gt;
+ 		&lt;package name=&quot;kernel-pae-extra&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-base&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-extra&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/system/boot/ix86/isoboot/suse-SLED11/config.xml b/system/boot/ix86/isoboot/suse-SLED11/config.xml
+index 481224b..a02e8d6 100644
+--- a/system/boot/ix86/isoboot/suse-SLED11/config.xml
++++ b/system/boot/ix86/isoboot/suse-SLED11/config.xml
+@@ -15,10 +15,11 @@
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xen&quot; description=&quot;Boot with xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+ 		&lt;profile name=&quot;pae&quot; description=&quot;KERNEL: pae kernel&quot;/&gt;
+ 		&lt;profile name=&quot;rt&quot; description=&quot;KERNEL: Real time kernel&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
++		&lt;profile name=&quot;nex&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;usbdrivers&quot;&gt;
+ 		&lt;file name=&quot;usb/host/ehci-hcd.ko&quot;/&gt;
+@@ -54,6 +55,9 @@
+ 		&lt;file name=&quot;drivers/parport/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
++	&lt;drivers type=&quot;drivers&quot; profiles=&quot;xen&quot;&gt;
++		&lt;file name=&quot;drivers/xen/*&quot;/&gt;
++	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;/image/CDs/full-i386&quot;/&gt;
+ 	&lt;/repository&gt;
+@@ -68,9 +72,10 @@
+ 		&lt;package name=&quot;kernel-pae&quot;/&gt;
+ 		&lt;package name=&quot;kernel-pae-base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-base&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/system/boot/ix86/isoboot/suse-SLES11/config.xml b/system/boot/ix86/isoboot/suse-SLES11/config.xml
+index 5edbad2..93c10af 100644
+--- a/system/boot/ix86/isoboot/suse-SLES11/config.xml
++++ b/system/boot/ix86/isoboot/suse-SLES11/config.xml
+@@ -15,10 +15,11 @@
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xen&quot; description=&quot;Boot with xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+ 		&lt;profile name=&quot;pae&quot; description=&quot;KERNEL: pae kernel&quot;/&gt;
+ 		&lt;profile name=&quot;rt&quot; description=&quot;KERNEL: Real time kernel&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
++		&lt;profile name=&quot;nex&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;usbdrivers&quot;&gt;
+ 		&lt;file name=&quot;usb/host/ehci-hcd.ko&quot;/&gt;
+@@ -54,6 +55,9 @@
+ 		&lt;file name=&quot;drivers/parport/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
++	&lt;drivers type=&quot;drivers&quot; profiles=&quot;xen&quot;&gt;
++		&lt;file name=&quot;drivers/xen/*&quot;/&gt;
++	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;/image/CDs/full-i386&quot;/&gt;
+ 	&lt;/repository&gt;
+@@ -68,9 +72,10 @@
+ 		&lt;package name=&quot;kernel-pae&quot;/&gt;
+ 		&lt;package name=&quot;kernel-pae-base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-base&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-10.3/config.xml b/system/boot/ix86/oemboot/suse-10.3/config.xml
+index 0524796..155cdd7 100644
+--- a/system/boot/ix86/oemboot/suse-10.3/config.xml
++++ b/system/boot/ix86/oemboot/suse-10.3/config.xml
+@@ -76,6 +76,7 @@
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;aufs-kmp-xen&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;dialog&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-11.0/config.xml b/system/boot/ix86/oemboot/suse-11.0/config.xml
+index 29e98d8..8260af9 100644
+--- a/system/boot/ix86/oemboot/suse-11.0/config.xml
++++ b/system/boot/ix86/oemboot/suse-11.0/config.xml
+@@ -78,6 +78,7 @@
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;aufs-kmp-xen&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;dialog&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-11.1/config.xml b/system/boot/ix86/oemboot/suse-11.1/config.xml
+index b7cd86f..99fa81c 100644
+--- a/system/boot/ix86/oemboot/suse-11.1/config.xml
++++ b/system/boot/ix86/oemboot/suse-11.1/config.xml
+@@ -84,12 +84,14 @@
+ 		&lt;package name=&quot;kernel-xen-base&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-extra&quot;/&gt;
+ 		&lt;package name=&quot;aufs-kmp-xen&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;ec2&quot;&gt;
+ 		&lt;package name=&quot;kernel-ec2&quot;/&gt;
+ 		&lt;package name=&quot;kernel-ec2-base&quot;/&gt;
+ 		&lt;package name=&quot;kernel-ec2-extra&quot;/&gt;
+ 		&lt;package name=&quot;aufs-kmp-ec2&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;dialog&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLED10/config.xml b/system/boot/ix86/oemboot/suse-SLED10/config.xml
+index 4c85909..00e5afd 100644
+--- a/system/boot/ix86/oemboot/suse-SLED10/config.xml
++++ b/system/boot/ix86/oemboot/suse-SLED10/config.xml
+@@ -72,6 +72,7 @@
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; arch=&quot;x86_64&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xenpae&quot; arch=&quot;i686&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;dialog&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLED11/config.xml b/system/boot/ix86/oemboot/suse-SLED11/config.xml
+index b4937a2..6b7997a 100644
+--- a/system/boot/ix86/oemboot/suse-SLED11/config.xml
++++ b/system/boot/ix86/oemboot/suse-SLED11/config.xml
+@@ -79,10 +79,12 @@
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-base&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;ec2&quot;&gt;
+ 		&lt;package name=&quot;kernel-ec2&quot;/&gt;
+ 		&lt;package name=&quot;kernel-ec2-base&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;dialog&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLES10/config.xml b/system/boot/ix86/oemboot/suse-SLES10/config.xml
+index aea9a6e..e86f956 100644
+--- a/system/boot/ix86/oemboot/suse-SLES10/config.xml
++++ b/system/boot/ix86/oemboot/suse-SLES10/config.xml
+@@ -72,6 +72,7 @@
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; arch=&quot;x86_64&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xenpae&quot; arch=&quot;i686&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;dialog&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLES11/config.xml b/system/boot/ix86/oemboot/suse-SLES11/config.xml
+index 2583ee7..0c8d5b0 100644
+--- a/system/boot/ix86/oemboot/suse-SLES11/config.xml
++++ b/system/boot/ix86/oemboot/suse-SLES11/config.xml
+@@ -79,10 +79,12 @@
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-base&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;ec2&quot;&gt;
+ 		&lt;package name=&quot;kernel-ec2&quot;/&gt;
+ 		&lt;package name=&quot;kernel-ec2-base&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;dialog&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-10.3/config.xml b/system/boot/ix86/usbboot/suse-10.3/config.xml
+index 806d794..e046dec 100644
+--- a/system/boot/ix86/usbboot/suse-10.3/config.xml
++++ b/system/boot/ix86/usbboot/suse-10.3/config.xml
+@@ -15,8 +15,9 @@
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xen&quot; description=&quot;Boot with xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
++		&lt;profile name=&quot;nex&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;smp&quot; description=&quot;KERNEL: bigsmp kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;usbdrivers&quot;&gt;
+@@ -59,6 +60,9 @@
+ 		&lt;file name=&quot;drivers/parport/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/char/lp.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
++	&lt;drivers type=&quot;drivers&quot; profiles=&quot;xen&quot;&gt;
++		&lt;file name=&quot;drivers/xen/*&quot;/&gt;
++	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;/image/CDs/full-10.3-i386&quot;/&gt;
+ 	&lt;/repository&gt;
+@@ -70,7 +74,7 @@
+ 		&lt;package name=&quot;kernel-bigsmp&quot;/&gt;
+ 		&lt;package name=&quot;aufs-kmp-bigsmp&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;aufs-kmp-xen&quot;/&gt;
+ 		&lt;package name=&quot;xen&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-11.0/config.xml b/system/boot/ix86/usbboot/suse-11.0/config.xml
+index df90345..c816da3 100644
+--- a/system/boot/ix86/usbboot/suse-11.0/config.xml
++++ b/system/boot/ix86/usbboot/suse-11.0/config.xml
+@@ -15,8 +15,9 @@
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xen&quot; description=&quot;Boot with xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
++		&lt;profile name=&quot;nex&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;pae&quot; description=&quot;KERNEL: pae kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;usbdrivers&quot;&gt;
+@@ -61,6 +62,9 @@
+ 		&lt;file name=&quot;drivers/char/lp.ko&quot;/&gt;
+ 		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
++	&lt;drivers type=&quot;drivers&quot; profiles=&quot;xen&quot;&gt;
++		&lt;file name=&quot;drivers/xen/*&quot;/&gt;
++	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;/image/CDs/full-11.0-i386&quot;/&gt;
+ 	&lt;/repository&gt;
+@@ -72,7 +76,7 @@
+ 		&lt;package name=&quot;kernel-pae&quot;/&gt;
+ 		&lt;package name=&quot;aufs-kmp-pae&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;aufs-kmp-xen&quot;/&gt;
+ 		&lt;package name=&quot;xen&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-11.1/config.xml b/system/boot/ix86/usbboot/suse-11.1/config.xml
+index 8c47b02..ba5e3bc 100644
+--- a/system/boot/ix86/usbboot/suse-11.1/config.xml
++++ b/system/boot/ix86/usbboot/suse-11.1/config.xml
+@@ -15,8 +15,9 @@
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xen&quot; description=&quot;Boot with xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
++		&lt;profile name=&quot;nex&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;pae&quot; description=&quot;KERNEL: pae kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;usbdrivers&quot;&gt;
+@@ -60,6 +61,9 @@
+ 		&lt;file name=&quot;drivers/char/lp.ko&quot;/&gt;
+ 		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
++	&lt;drivers type=&quot;drivers&quot; profiles=&quot;xen&quot;&gt;
++		&lt;file name=&quot;drivers/xen/*&quot;/&gt;
++	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;/image/CDs/full-i386&quot;/&gt;
+ 	&lt;/repository&gt;
+@@ -75,7 +79,7 @@
+ 		&lt;package name=&quot;kernel-pae-extra&quot;/&gt;
+ 		&lt;package name=&quot;aufs-kmp-pae&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-base&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-extra&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-11.2/config.xml b/system/boot/ix86/usbboot/suse-11.2/config.xml
+index 95c3664..6defa5f 100644
+--- a/system/boot/ix86/usbboot/suse-11.2/config.xml
++++ b/system/boot/ix86/usbboot/suse-11.2/config.xml
+@@ -15,8 +15,9 @@
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xen&quot; description=&quot;Boot with xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
++		&lt;profile name=&quot;nex&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;pae&quot; description=&quot;KERNEL: pae kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;usbdrivers&quot;&gt;
+@@ -59,6 +60,9 @@
+ 		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
+ 		&lt;file name=&quot;lib/crc-t10dif.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
++	&lt;drivers type=&quot;drivers&quot; profiles=&quot;xen&quot;&gt;
++		&lt;file name=&quot;drivers/xen/*&quot;/&gt;
++	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;/image/CDs/full-i386&quot;/&gt;
+ 	&lt;/repository&gt;
+@@ -72,7 +76,7 @@
+ 		&lt;package name=&quot;kernel-pae-base&quot;/&gt;
+ 		&lt;package name=&quot;kernel-pae-extra&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-base&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-extra&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-SLED10/config.xml b/system/boot/ix86/usbboot/suse-SLED10/config.xml
+index a0cae03..e9a8736 100644
+--- a/system/boot/ix86/usbboot/suse-SLED10/config.xml
++++ b/system/boot/ix86/usbboot/suse-SLED10/config.xml
+@@ -15,8 +15,9 @@
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xen&quot; description=&quot;Boot with xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
++		&lt;profile name=&quot;nex&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;smp&quot; description=&quot;KERNEL: smp kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;usbdrivers&quot;&gt;
+@@ -54,6 +55,9 @@
+ 		&lt;file name=&quot;drivers/message/fusion/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/net/*&quot;/&gt;
+ 	&lt;/drivers&gt;
++	&lt;drivers type=&quot;drivers&quot; profiles=&quot;xen&quot;&gt;
++		&lt;file name=&quot;drivers/xen/*&quot;/&gt;
++	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;/mounts/machcd2/dists/full-sle10-sp2-%arch&quot;/&gt;
+ 	&lt;/repository&gt;
+@@ -66,7 +70,7 @@
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;smp&quot;&gt;
+ 		&lt;package name=&quot;kernel-smp&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; arch=&quot;x86_64&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xenpae&quot; arch=&quot;i686&quot;/&gt;
+ 		&lt;package name=&quot;xen&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-SLED11/config.xml b/system/boot/ix86/usbboot/suse-SLED11/config.xml
+index 682cc12..d47ce09 100644
+--- a/system/boot/ix86/usbboot/suse-SLED11/config.xml
++++ b/system/boot/ix86/usbboot/suse-SLED11/config.xml
+@@ -15,8 +15,9 @@
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xen&quot; description=&quot;Boot with xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
++		&lt;profile name=&quot;nex&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;pae&quot; description=&quot;KERNEL: pae kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;usbdrivers&quot;&gt;
+@@ -58,6 +59,9 @@
+ 		&lt;file name=&quot;drivers/char/lp.ko&quot;/&gt;
+ 		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
++	&lt;drivers type=&quot;drivers&quot; profiles=&quot;xen&quot;&gt;
++		&lt;file name=&quot;drivers/xen/*&quot;/&gt;
++	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;/image/CDs/full-i386&quot;/&gt;
+ 	&lt;/repository&gt;
+@@ -72,7 +76,7 @@
+ 		&lt;package name=&quot;kernel-pae&quot;/&gt;
+ 		&lt;package name=&quot;kernel-pae-base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-base&quot;/&gt;
+ 		&lt;package name=&quot;xen&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-SLES10/config.xml b/system/boot/ix86/usbboot/suse-SLES10/config.xml
+index ef299b9..069a99d 100644
+--- a/system/boot/ix86/usbboot/suse-SLES10/config.xml
++++ b/system/boot/ix86/usbboot/suse-SLES10/config.xml
+@@ -15,8 +15,9 @@
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xen&quot; description=&quot;Boot with xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
++		&lt;profile name=&quot;nex&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;smp&quot; description=&quot;KERNEL: smp kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;usbdrivers&quot;&gt;
+@@ -54,6 +55,9 @@
+ 		&lt;file name=&quot;drivers/message/fusion/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/net/*&quot;/&gt;
+ 	&lt;/drivers&gt;
++	&lt;drivers type=&quot;drivers&quot; profiles=&quot;xen&quot;&gt;
++		&lt;file name=&quot;drivers/xen/*&quot;/&gt;
++	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;/mounts/machcd2/dists/full-sle10-sp2-%arch&quot;/&gt;
+ 	&lt;/repository&gt;
+@@ -66,7 +70,7 @@
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;smp&quot;&gt;
+ 		&lt;package name=&quot;kernel-smp&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; arch=&quot;x86_64&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xenpae&quot; arch=&quot;i686&quot;/&gt;
+ 		&lt;package name=&quot;xen&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-SLES11/config.xml b/system/boot/ix86/usbboot/suse-SLES11/config.xml
+index 0f70624..bc8b41b 100644
+--- a/system/boot/ix86/usbboot/suse-SLES11/config.xml
++++ b/system/boot/ix86/usbboot/suse-SLES11/config.xml
+@@ -15,8 +15,9 @@
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;default&quot; description=&quot;Boot with default kernel&quot;/&gt;
++		&lt;profile name=&quot;xen&quot; description=&quot;Boot with xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
+-		&lt;profile name=&quot;xen&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
++		&lt;profile name=&quot;nex&quot; description=&quot;KERNEL: Xen kernel/mboot.c32&quot;/&gt;
+ 		&lt;profile name=&quot;pae&quot; description=&quot;KERNEL: pae kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;usbdrivers&quot;&gt;
+@@ -58,6 +59,9 @@
+ 		&lt;file name=&quot;drivers/char/lp.ko&quot;/&gt;
+ 		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
++	&lt;drivers type=&quot;drivers&quot; profiles=&quot;xen&quot;&gt;
++		&lt;file name=&quot;drivers/xen/*&quot;/&gt;
++	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;/image/CDs/full-i386&quot;/&gt;
+ 	&lt;/repository&gt;
+@@ -72,7 +76,7 @@
+ 		&lt;package name=&quot;kernel-pae&quot;/&gt;
+ 		&lt;package name=&quot;kernel-pae-base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xen&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-base&quot;/&gt;
+ 		&lt;package name=&quot;xen&quot;/&gt;
+diff --git a/system/boot/ix86/vmxboot/suse-11.1/config.xml b/system/boot/ix86/vmxboot/suse-11.1/config.xml
+index 74c36ad..0073843 100644
+--- a/system/boot/ix86/vmxboot/suse-11.1/config.xml
++++ b/system/boot/ix86/vmxboot/suse-11.1/config.xml
+@@ -6,7 +6,7 @@
+ 		&lt;specification&gt;boot/initrd image for virtual machines&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+-		&lt;type bootprofile=&quot;default&quot; bootkernel=&quot;std&quot;&gt;cpio&lt;/type&gt;
++		&lt;type bootprofile=&quot;xen&quot; bootkernel=&quot;nex&quot;&gt;cpio&lt;/type&gt;
+ 		&lt;version&gt;2.7.1&lt;/version&gt;
+ 		&lt;size unit=&quot;M&quot;&gt;60&lt;/size&gt;
+ 		
+@@ -72,12 +72,14 @@
+ 		&lt;package name=&quot;kernel-xen-base&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-extra&quot;/&gt;
+ 		&lt;package name=&quot;aufs-kmp-xen&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;ec2&quot;&gt;
+ 		&lt;package name=&quot;kernel-ec2&quot;/&gt;
+ 		&lt;package name=&quot;kernel-ec2-base&quot;/&gt;
+ 		&lt;package name=&quot;kernel-ec2-extra&quot;/&gt;
+ 		&lt;package name=&quot;aufs-kmp-ec2&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+diff --git a/system/boot/ix86/vmxboot/suse-11.2/config.xml b/system/boot/ix86/vmxboot/suse-11.2/config.xml
+index f72fde2..b2a91c2 100644
+--- a/system/boot/ix86/vmxboot/suse-11.2/config.xml
++++ b/system/boot/ix86/vmxboot/suse-11.2/config.xml
+@@ -68,6 +68,7 @@
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-base&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-extra&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;ec2&quot;&gt;
+ 		&lt;package name=&quot;kernel-ec2&quot;/&gt;
+diff --git a/system/boot/ix86/vmxboot/suse-SLED10/config.xml b/system/boot/ix86/vmxboot/suse-SLED10/config.xml
+index ba48585..82b4fe7 100644
+--- a/system/boot/ix86/vmxboot/suse-SLED10/config.xml
++++ b/system/boot/ix86/vmxboot/suse-SLED10/config.xml
+@@ -63,6 +63,7 @@
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; arch=&quot;x86_64&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xenpae&quot; arch=&quot;i686&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+diff --git a/system/boot/ix86/vmxboot/suse-SLED11/config.xml b/system/boot/ix86/vmxboot/suse-SLED11/config.xml
+index 2933ced..a5e2a70 100644
+--- a/system/boot/ix86/vmxboot/suse-SLED11/config.xml
++++ b/system/boot/ix86/vmxboot/suse-SLED11/config.xml
+@@ -67,10 +67,12 @@
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-base&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;ec2&quot;&gt;
+ 		&lt;package name=&quot;kernel-ec2&quot;/&gt;
+ 		&lt;package name=&quot;kernel-ec2-base&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+diff --git a/system/boot/ix86/vmxboot/suse-SLES11/config.xml b/system/boot/ix86/vmxboot/suse-SLES11/config.xml
+index 3e958e2..28341c9 100644
+--- a/system/boot/ix86/vmxboot/suse-SLES11/config.xml
++++ b/system/boot/ix86/vmxboot/suse-SLES11/config.xml
+@@ -67,10 +67,12 @@
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;nex&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xen-base&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;ec2&quot;&gt;
+ 		&lt;package name=&quot;kernel-ec2&quot;/&gt;
+ 		&lt;package name=&quot;kernel-ec2-base&quot;/&gt;
++		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001280.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. da485a7f593959816ae36fefdb37a1a2d27c35b2
+</A></li>
+	<LI>Next message: <A HREF="001282.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 24bb113732a64002a31850db5100904f7ae2f813
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1281">[ date ]</a>
+              <a href="thread.html#1281">[ thread ]</a>
+              <a href="subject.html#1281">[ subject ]</a>
+              <a href="author.html#1281">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

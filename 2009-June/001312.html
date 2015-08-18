@@ -1,0 +1,511 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e81d7e0defda0effa8122493cc3101280ad1227c
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20e81d7e0defda0effa8122493cc3101280ad1227c&In-Reply-To=%3C200906230957.n5N9vuxr014069%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001311.html">
+   <LINK REL="Next"  HREF="001313.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e81d7e0defda0effa8122493cc3101280ad1227c</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20e81d7e0defda0effa8122493cc3101280ad1227c&In-Reply-To=%3C200906230957.n5N9vuxr014069%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e81d7e0defda0effa8122493cc3101280ad1227c">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jun 23 11:57:56 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001311.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d692a7012206c681f77c40d4876713a5b8e41fe4
+</A></li>
+        <LI>Next message: <A HREF="001313.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8267867bab7bf75c6ceaa9cb6b12dc7f90821318
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1312">[ date ]</a>
+              <a href="thread.html#1312">[ thread ]</a>
+              <a href="subject.html#1312">[ subject ]</a>
+              <a href="author.html#1312">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  e81d7e0defda0effa8122493cc3101280ad1227c (commit)
+      from  d692a7012206c681f77c40d4876713a5b8e41fe4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit e81d7e0defda0effa8122493cc3101280ad1227c
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Jun 23 11:57:44 2009 +0200
+
+    - improved support for obtaining XML information (bnc #513093)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index e9b29d7..e32848d 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -176,7 +176,6 @@ our $Migrate;               # migrate running system to image description
+ our @Exclude;               # exclude directories in migrate search
+ our $Report;                # create report on root/ tree migration only
+ our @Profiles;              # list of profiles to include in image
+-our $ListProfiles;          # lists the available profiles in image
+ our $ForceNewRoot;          # force creation of new root directory
+ our $BaseRoot;              # use given path as base system
+ our $BaseRootMode;          # specify base-root mode copy | union
+@@ -186,6 +185,7 @@ our $GzipCmd;               # command to run to gzip things
+ our $PrebuiltBootImage;     # directory where a prepared boot image may be found
+ our $PreChrootCall;         # program name called before chroot switch
+ our $listXMLInfo;           # list XML information for this operation
++our @listXMLInfoSelection;  # info selection for listXMLInfo
+ our $CreatePassword;        # create crypted password
+ our $ISOCheck;              # create checkmedia boot entry
+ our $PackageManager;        # package manager to use for this image
+@@ -1290,7 +1290,6 @@ sub init {
+ 		&quot;isocheck&quot;              =&gt; \$ISOCheck,
+ 		&quot;createhash=s&quot;          =&gt; \$CreateHash,
+ 		&quot;setup-splash=s&quot;        =&gt; \$SetupSplash,
+-		&quot;list-profiles|i=s&quot;     =&gt; \$ListProfiles,
+ 		&quot;force-new-root&quot;        =&gt; \$ForceNewRoot,
+ 		&quot;base-root=s&quot;           =&gt; \$BaseRoot,
+ 		&quot;base-root-mode=s&quot;      =&gt; \$BaseRootMode,
+@@ -1300,7 +1299,8 @@ sub init {
+ 		&quot;package-manager=s&quot;     =&gt; \$PackageManager,
+ 		&quot;prebuiltbootimage=s&quot;   =&gt; \$PrebuiltBootImage,
+ 		&quot;prechroot-call=s&quot;      =&gt; \$PreChrootCall,
+-		&quot;list-xmlinfo|x=s&quot;      =&gt; \$listXMLInfo,
++		&quot;info|i=s&quot;              =&gt; \$listXMLInfo,
++		&quot;select=s&quot;              =&gt; \@listXMLInfoSelection,
+ 		&quot;fs-blocksize=i&quot;        =&gt; \$FSBlockSize,
+ 		&quot;fs-journalsize=i&quot;      =&gt; \$FSJournalSize,
+ 		&quot;fs-inodesize=i&quot;        =&gt; \$FSInodeSize,
+@@ -1327,12 +1327,6 @@ sub init {
+ 		createHash();
+ 	}
+ 	#==========================================
+-	# non root task: Handle ListProfiles option 
+-	#------------------------------------------
+-	if (defined $ListProfiles) {
+-		listProfiles();
+-	}
+-	#==========================================
+ 	# non root task: Clone image 
+ 	#------------------------------------------
+ 	if (defined $Clone) {
+@@ -1362,7 +1356,6 @@ sub init {
+ 		(! defined $SetupSplash)        &amp;&amp;
+ 		(! defined $BootVMDisk)         &amp;&amp;
+ 		(! defined $Migrate)            &amp;&amp;
+-		(! defined $ListProfiles)       &amp;&amp;
+ 		(! defined $InstallStick)       &amp;&amp;
+ 		(! defined $listXMLInfo)        &amp;&amp;
+ 		(! defined $CreatePassword)     &amp;&amp;
+@@ -1510,8 +1503,9 @@ sub usage {
+ 	print &quot;Helper Tools:\n&quot;;
+ 	print &quot;    kiwi --createpassword\n&quot;;
+ 	print &quot;    kiwi --createhash &lt;image-path&gt;\n&quot;;
+-	print &quot;    kiwi --list-profiles &lt;image-path&gt;\n&quot;;
+-	print &quot;    kiwi --list-xmlinfo &lt;image-path&gt; [--type &lt;image-type&gt;]\n&quot;;
++	print &quot;    kiwi --info &lt;image-path&gt; --select &lt;\n&quot;;
++	print &quot;           repo-patterns|patterns|types|sources|size|profiles\n&quot;;
++	print &quot;         &gt; --select ...\n&quot;;
+ 	print &quot;    kiwi --setup-splash &lt;initrd&gt;\n&quot;;
+ 	print &quot;\n&quot;;
+ 
+@@ -1673,45 +1667,53 @@ sub listImage {
+ }
+ 
+ #==========================================
+-# listProfiles
+-#------------------------------------------
+-sub listProfiles {
+-	# ...
+-	# list the available profiles in image
+-	# ---
+-	my $kiwi = new KIWILog(&quot;tiny&quot;);
+-	$kiwi -&gt; info (&quot;Reading image description [ListProfiles]...\n&quot;);
+-	my $xml  = new KIWIXML ($kiwi, $ListProfiles);
+-	if (! defined $xml) {
+-		exit 1;
+-	}
+-	my @profiles = $xml -&gt; getProfiles ();
+-	if ((scalar @profiles) == 0) {
+-		$kiwi -&gt; info (&quot;No profiles available&quot;);
+-		$kiwi -&gt; done ();
+-		exit 0;
+-	}
+-	foreach my $profile (@profiles) {
+-		my $name = $profile -&gt; {name};
+-		my $desc = $profile -&gt; {description};
+-		$kiwi -&gt; info (&quot;$name: [ $desc ]&quot;);
+-		$kiwi -&gt; done ();
+-	}
+-	exit 0;
+-}
+-
+-#==========================================
+ # listXMLInfo
+ #------------------------------------------
+ sub listXMLInfo {
+ 	# ...
+ 	# print information about the XML description. The
+-	# information listed here is for information only and
+-	# not specified in its format
++	# information listed here is for information only
++	# before a prepare and/or create command is called
+ 	# ---
++	my %select;
++	my $gotselection = 0;
++	my $meta;
++	my $delete;
++	my $solfile;
++	my $satlist;
++	#==========================================
++	# Create info block description
++	#------------------------------------------
++	$select{&quot;repo-patterns&quot;} = &quot;List available patterns from repos&quot;;
++	$select{&quot;patterns&quot;}      = &quot;List configured patterns&quot;;
++	$select{&quot;types&quot;}         = &quot;List configured types&quot;;
++	$select{&quot;sources&quot;}       = &quot;List configured source URLs&quot;;
++	$select{&quot;size&quot;}          = &quot;List install/delete size estimation&quot;;
++	$select{&quot;profiles&quot;}      = &quot;List profiles&quot;;
++	#==========================================
++	# Create log object
++	#------------------------------------------
+ 	my $kiwi = new KIWILog(&quot;tiny&quot;);
++	#==========================================
++	# Check selection list
++	#------------------------------------------
++	foreach my $info (@listXMLInfoSelection) {
++		if (defined $select{$info}) {
++			$gotselection = 1; last;
++		}
++	}
++	if (! $gotselection) {
++		$kiwi -&gt; error  (&quot;Can't find info for given selection&quot;);
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; info   (&quot;Choose between the following:\n&quot;);
++		foreach my $info (keys %select) {
++			my $s = sprintf (&quot;--&gt; %-15s:%s\n&quot;,$info,$select{$info});
++			$kiwi -&gt; info ($s); 
++		}
++		exit 1;
++	}
+ 	$kiwi -&gt; info (&quot;Reading image description [ListXMLInfo]...\n&quot;);
+-	my $xml  = new KIWIXML ($kiwi,$listXMLInfo,undef,$SetImageType);
++	my $xml  = new KIWIXML ($kiwi,$listXMLInfo);
+ 	if (! defined $xml) {
+ 		exit 1;
+ 	}
+@@ -1740,66 +1742,133 @@ sub listXMLInfo {
+ 		);
+ 	}
+ 	#==========================================
+-	# print boot information of type section
+-	#------------------------------------------
+-	my %type = %{$xml-&gt;getImageTypeAndAttributes()};
+-	if (defined $type{boot}) {
+-		$kiwi -&gt; info (&quot;Primary image type: $type{type} @ $type{boot}\n&quot;);
+-	} else {
+-		$kiwi -&gt; info (&quot;Primary image type: $type{type}\n&quot;);
+-	}
+-	#==========================================
+-	# print repo information
++	# Walk through selection list
+ 	#------------------------------------------
+-	foreach my $url (@{$xml-&gt;{urllist}}) {
+-		$kiwi -&gt; info (&quot;Source URL: $url\n&quot;);
+-	}
+-	#==========================================
+-	# print install size information
+-	#------------------------------------------
+-	my ($meta,$delete,$solfile) = $xml -&gt; getInstallSize();
+-	my $size = 0;
+-	my %meta = ();
+-	if ($meta) {
+-		%meta = %{$meta};
+-		foreach my $p (keys %meta) {
+-			$size += $meta{$p};
+-		}
+-		if ($size &gt; 0) {
+-			$kiwi -&gt; info (&quot;Install size for root tree: $size kB\n&quot;);
+-		}
+-	} else {
+-		$kiwi -&gt; failed();
+-		exit 1;
+-	}
+-	#==========================================
+-	# print deletion size information
+-	#------------------------------------------
+-	$size = 0;
+-	if ($delete) {
+-		foreach my $del (@{$delete}) {
+-			if ($meta{$del}) {
+-				$size += $meta{$del};
+-			}
+-		}
+-	}
+-	if ($size &gt; 0) {
+-		$kiwi -&gt; info (&quot;Deletion size for root tree; $size kB\n&quot;);
+-	}
+-	#==========================================
+-	# print available patterns
+-	#------------------------------------------
+-	if (-f $solfile) {
+-		my @patterns = qxx (
+-			&quot;dumpsolv $solfile | grep 'name: pattern' | cut -f3 -d :&quot;);
+-		$kiwi -&gt; info (&quot;Available patterns with this repo set\n&quot;);
+-		foreach my $p (@patterns) {
+-			$kiwi -&gt; info (&quot;--&gt; $p&quot;);
++	foreach my $info (@listXMLInfoSelection) {
++		SWITCH: for ($info) {
++			#==========================================
++			# repo-patterns
++			#------------------------------------------
++			/^repo-patterns/ &amp;&amp; do {
++				if (! $meta) {
++					($meta,$delete,$solfile,$satlist) = $xml-&gt;getInstallSize();
++					if (! $meta) {
++						$kiwi -&gt; failed();
++						exit 1;
++					}
++				}
++				if (-f $solfile) {
++					my @patterns = qxx (
++						&quot;dumpsolv $solfile|grep 'name: pattern'|cut -f4 -d :&quot;
++					);
++					$kiwi -&gt; info (&quot;Available patterns in repository set\n&quot;);
++					foreach my $p (@patterns) {
++						$kiwi -&gt; info (&quot;--&gt; $p&quot;);
++					}
++				}
++				last SWITCH;
++			};
++			#==========================================
++			# patterns
++			#------------------------------------------
++			/^patterns/      &amp;&amp; do {
++				if (! $meta) {
++					($meta,$delete,$solfile,$satlist) = $xml-&gt;getInstallSize();
++					if (! $meta) {
++						$kiwi -&gt; failed();
++						exit 1;
++					}
++				}
++				my @pats;
++				my @solved = @{$satlist};
++				foreach my $s (@solved) {
++					if ($s =~ /pattern:(.*)/) {
++						 push (@pats,$1);
++					}
++				}
++				if (! @pats) {
++					$kiwi -&gt; info (&quot;No patterns configured\n&quot;);
++				} else {
++					$kiwi -&gt; info (&quot;Image Patterns:\n&quot;);
++					foreach my $pattern (@pats) {
++						$kiwi -&gt; info (&quot;--&gt; $pattern\n&quot;);
++					}
++				}
++				last SWITCH;
++			};
++			#==========================================
++			# types
++			#------------------------------------------
++			/^types/         &amp;&amp; do {
++				$kiwi -&gt; info (&quot;Image Types:\n&quot;);
++				foreach my $t ($xml -&gt; getTypes()) {
++					my %type = %{$t};
++					$kiwi -&gt; info (&quot;--&gt; $type{type} primary=$type{primary}&quot;);
++					if (defined $type{boot}) {
++						$kiwi -&gt; note (&quot; boot=$type{boot}&quot;);
++					}
++					$kiwi -&gt; note (&quot;\n&quot;);
++				}
++				last SWITCH;
++			};
++			#==========================================
++			# sources
++			#------------------------------------------
++			/^sources/       &amp;&amp; do {
++				foreach my $url (@{$xml-&gt;{urllist}}) {
++					$kiwi -&gt; info (&quot;Source URL: $url\n&quot;);
++				}
++				last SWITCH;
++			};
++			#==========================================
++			# size
++			#------------------------------------------
++			/^size/          &amp;&amp; do {
++				if (! $meta) {
++					($meta,$delete,$solfile,$satlist) = $xml-&gt;getInstallSize();
++					if (! $meta) {
++						$kiwi -&gt; failed();
++						exit 1;
++					}
++				}
++				my $size = 0;
++				my %meta = %{$meta};
++				foreach my $p (keys %meta) {
++					$size += $meta{$p};
++				}
++				if ($size &gt; 0) {
++					$kiwi-&gt;info (&quot;Estimated root tree size: $size kB\n&quot;);
++				}
++				$size = 0;
++				if ($delete) {
++					foreach my $del (@{$delete}) {
++						if ($meta{$del}) {
++							$size += $meta{$del};
++						}
++					}
++				}
++				if ($size &gt; 0) {
++					$kiwi -&gt; info (&quot;Estimated deletion size; $size kB\n&quot;);
++				}
++				last SWITCH;
++			};
++			#==========================================
++			# profiles
++			#------------------------------------------
++			/^profiles/      &amp;&amp; do {
++				my @profiles = $xml -&gt; getProfiles ();
++				if ((scalar @profiles) == 0) {
++					$kiwi -&gt; info (&quot;No profiles available\n&quot;);
++				}
++				foreach my $profile (@profiles) {
++					my $name = $profile -&gt; {name};
++					my $desc = $profile -&gt; {description};
++					$kiwi -&gt; info (&quot;$name: [ $desc ]\n&quot;);
++				}
++				last SWITCH;
++			};
+ 		}
+ 	}
+-	#==========================================
+-	# more to come...
+-	#------------------------------------------
+ 	exit 0;
+ }
+ 
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 847fb38..2786282 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -1424,6 +1424,50 @@ sub getUsers {
+ }
+ 
+ #==========================================
++# getTypes
++#------------------------------------------
++sub getTypes {
++	# ...
++	# Receive a list of types available for this image
++	# ---
++	my $this    = shift;
++	my $kiwi    = $this-&gt;{kiwi};
++	my @result  = ();
++	my @tnodes  = ();
++	my $gotprim = 0;
++	my @node    = $this-&gt;{optionsNodeList} -&gt; get_nodelist();
++	my $urlhd   = new KIWIURL ($kiwi,undef);
++	foreach my $element (@node) {
++		if (! $this -&gt; requestedProfile ($element)) {
++			next;
++		}
++		my @types = $element -&gt; getElementsByTagName (&quot;type&quot;);
++		push (@<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">tnodes, at types</A>);
++	}
++	foreach my $node (@tnodes) {
++		my %record  = ();
++		$record{type} = $node -&gt; string_value();
++		$record{boot} = $node -&gt; getAttribute(&quot;boot&quot;);
++		my $bootpath = $urlhd -&gt; obsPath ($record{boot},&quot;boot&quot;);
++		if (defined $bootpath) {
++			$record{boot} = $bootpath;
++		}
++		my $primary = $node -&gt; getAttribute(&quot;primary&quot;);
++		if ((defined $primary) &amp;&amp; ($primary =~ /yes|true/i)) {
++			$record{primary} = &quot;true&quot;;
++			$gotprim = 1;
++		} else {
++			$record{primary} = &quot;false&quot;;
++		}
++		push (@result,\%record);
++	}
++	if (! $gotprim) {
++		$result[0]-&gt;{primary} = &quot;true&quot;;
++	}
++	return @result;
++}
++
++#==========================================
+ # getProfiles
+ #------------------------------------------
+ sub getProfiles {
+@@ -2664,7 +2708,7 @@ sub getInstallSize {
+ 	}
+ 	my %meta = $psolve -&gt; getMetaData();
+ 	my $solf = $psolve -&gt; getSolfile();
+-	return (\%meta,\@delete,$solf);
++	return (\%meta,\@delete,$solf,\@result);
+ }
+ 
+ #==========================================
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index e88b3ab..34195fe 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -2,6 +2,7 @@
+ Mon Jun 22 16:05:53 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.60
++- improved support for obtaining XML information (bnc #513093)
+ - don't remove libx*, 11.2 hwinfo is linked against libx86emu
+ - don't remove mkfs/fsck links, just a cleanup fix 
+ 
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001311.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d692a7012206c681f77c40d4876713a5b8e41fe4
+</A></li>
+	<LI>Next message: <A HREF="001313.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8267867bab7bf75c6ceaa9cb6b12dc7f90821318
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1312">[ date ]</a>
+              <a href="thread.html#1312">[ thread ]</a>
+              <a href="subject.html#1312">[ subject ]</a>
+              <a href="author.html#1312">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,199 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1532 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1532%20-%20kiwi-head/modules&In-Reply-To=%3C200808251054.m7PAsJul013703%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000618.html">
+   <LINK REL="Next"  HREF="000621.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1532 - kiwi-head/modules</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1532%20-%20kiwi-head/modules&In-Reply-To=%3C200808251054.m7PAsJul013703%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1532 - kiwi-head/modules">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Aug 25 12:54:19 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000618.html">[Kiwi-devel] r1531 - kiwi-head/modules
+</A></li>
+        <LI>Next message: <A HREF="000621.html">[Kiwi-devel] r1533 - in kiwi-head: . doc doc/LaTex doc/schema	doc/schema/kiwi.dia modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#620">[ date ]</a>
+              <a href="thread.html#620">[ thread ]</a>
+              <a href="subject.html#620">[ subject ]</a>
+              <a href="author.html#620">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-08-25 12:54:15 +0200 (Mon, 25 Aug 2008)
+New Revision: 1532
+
+Modified:
+   kiwi-head/modules/KIWIManager.pm
+Log:
+
+- fixed handling of --no-recommends option in zypper, apply
+  for packages too
+
+
+
+Modified: kiwi-head/modules/KIWIManager.pm
+===================================================================
+--- kiwi-head/modules/KIWIManager.pm	2008-08-25 10:40:49 UTC (rev 1531)
++++ kiwi-head/modules/KIWIManager.pm	2008-08-25 10:54:15 UTC (rev 1532)
+@@ -971,6 +971,12 @@
+ 		my @installOpts = (
+ 			&quot;--auto-agree-with-licenses&quot;
+ 		);
++		my %pattr = $xml -&gt; getPackageAttributes();
++		if (($pattr{patternType} ne &quot;plusRecommended&quot;) &amp;&amp;
++			($pattr{patternPackageType} ne &quot;plusRecommended&quot;)
++		) {
++			push (@installOpts,&quot;--no-recommends&quot;);
++		}
+ 		print $fd &quot;function clean { kill \$SPID;&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+@@ -999,12 +1005,6 @@
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+ 			if (@newpatts) {
+-				my %pattr = $xml -&gt; getPackageAttributes();
+-				if (($pattr{patternType} ne &quot;plusRecommended&quot;) &amp;&amp;
+-					($pattr{patternPackageType} ne &quot;plusRecommended&quot;)
+-				) {
+-					push (@installOpts,&quot;--no-recommends&quot;);
+-				}
+ 				print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @zypper install &quot;;
+ 				print $fd &quot;@installOpts -t pattern @newpatts &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+@@ -1114,6 +1114,9 @@
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
+ 		if (! $chroot) {
++			#==========================================
++			# setup install options outside of chroot
++			#------------------------------------------
+ 			my @installOpts = (
+ 				&quot;--explain&quot;,
+ 				&quot;--log-level=error&quot;,
+@@ -1144,6 +1147,9 @@
+ 			print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
+ 			print $fd &quot;rm -f $root/etc/smart/channels/*\n&quot;;
+ 		} else {
++			#==========================================
++			# setup install options inside of chroot
++			#------------------------------------------
+ 			my @install = @packs;
+ 			my @installOpts = (
+ 				&quot;--explain&quot;,
+@@ -1177,9 +1183,18 @@
+ 	#------------------------------------------
+ 	if ($manager eq &quot;zypper&quot;) {
+ 		if (! $chroot) {
++			#==========================================
++			# setup install options outside of chroot
++			#------------------------------------------
+ 			my @installOpts = (
+ 				&quot;--auto-agree-with-licenses&quot;
+ 			);
++			my %pattr = $xml -&gt; getPackageAttributes();
++			if (($pattr{patternType} ne &quot;plusRecommended&quot;) &amp;&amp;
++				($pattr{patternPackageType} ne &quot;plusRecommended&quot;)
++			) {
++				push (@installOpts,&quot;--no-recommends&quot;);
++			}
+ 			#==========================================
+ 			# Add package manager to package list
+ 			#------------------------------------------
+@@ -1218,12 +1233,6 @@
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+ 			if (@newpatts) {
+-				my %pattr = $xml -&gt; getPackageAttributes();
+-				if (($pattr{patternType} ne &quot;plusRecommended&quot;) &amp;&amp;
+-					($pattr{patternPackageType} ne &quot;plusRecommended&quot;)
+-				) {
+-					push (@installOpts,&quot;--no-recommends&quot;);
+-				}
+ 				if (@packs) {
+ 					print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+ 				}
+@@ -1233,6 +1242,9 @@
+ 			}
+ 			print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
+ 		} else {
++			#==========================================
++			# select patterns and packages
++			#------------------------------------------
+ 			my @install   = ();
+ 			my @newpatts  = ();
+ 			foreach my $need (@packs) {
+@@ -1242,9 +1254,18 @@
+ 				}
+ 				push @install,$need;
+ 			}
++			#==========================================
++			# setup install options inside of chroot
++			#------------------------------------------
+ 			my @installOpts = (
+ 				&quot;--auto-agree-with-licenses&quot;
+ 			);
++			my %pattr = $xml -&gt; getPackageAttributes();
++			if (($pattr{patternType} ne &quot;plusRecommended&quot;) &amp;&amp;
++				($pattr{patternPackageType} ne &quot;plusRecommended&quot;)
++			) {
++				push (@installOpts,&quot;--no-recommends&quot;);
++			}
+ 			#==========================================
+ 			# Create screen call file
+ 			#------------------------------------------
+@@ -1263,12 +1284,6 @@
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+ 			if (@newpatts) {
+-				my %pattr = $xml -&gt; getPackageAttributes();
+-				if (($pattr{patternType} ne &quot;plusRecommended&quot;) &amp;&amp;
+-					($pattr{patternPackageType} ne &quot;plusRecommended&quot;)
+-				) {
+-					push (@installOpts,&quot;--no-recommends&quot;);
+-				}
+ 				if (@install) {
+ 					print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+ 				}
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000618.html">[Kiwi-devel] r1531 - kiwi-head/modules
+</A></li>
+	<LI>Next message: <A HREF="000621.html">[Kiwi-devel] r1533 - in kiwi-head: . doc doc/LaTex doc/schema	doc/schema/kiwi.dia modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#620">[ date ]</a>
+              <a href="thread.html#620">[ thread ]</a>
+              <a href="subject.html#620">[ subject ]</a>
+              <a href="author.html#620">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

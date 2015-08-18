@@ -1,0 +1,141 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 22a5173ae08432d430d27d33d78541fe82a664cf
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%2022a5173ae08432d430d27d33d78541fe82a664cf&In-Reply-To=%3C201004071450.o37EofwK025973%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002081.html">
+   <LINK REL="Next"  HREF="002083.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 22a5173ae08432d430d27d33d78541fe82a664cf</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%2022a5173ae08432d430d27d33d78541fe82a664cf&In-Reply-To=%3C201004071450.o37EofwK025973%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 22a5173ae08432d430d27d33d78541fe82a664cf">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Apr  7 16:50:41 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002081.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d8732c84a36c63e163a964ade64202e5a21f87ad
+</A></li>
+        <LI>Next message: <A HREF="002083.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b126bf2933434cc004d48beea631298665369078
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2082">[ date ]</a>
+              <a href="thread.html#2082">[ thread ]</a>
+              <a href="subject.html#2082">[ subject ]</a>
+              <a href="author.html#2082">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-374-SuSE-11-1-SLE-SP-Devel has been updated
+       via  22a5173ae08432d430d27d33d78541fe82a664cf (commit)
+      from  be00b4bccbd29b0d53ab5f1e90f21a3b9be48d7e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 22a5173ae08432d430d27d33d78541fe82a664cf
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Apr 7 16:50:34 2010 +0200
+
+    - fixed bootnext boot from harddrive feature (bnc #583212)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index da7bb62..657a632 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -3688,18 +3688,24 @@ sub setupBootLoaderConfiguration {
+ 			my $dev = $1 eq 'CD' ? '(cd)' : '(hd0,0)';
+ 			print FD &quot;gfxmenu $dev/boot/message\n&quot;;
+ 			print FD &quot;title Boot from Hard Disk\n&quot;;
+-			print FD &quot; chainloader $dev/boot/grub/bootnext\n&quot;;
++			if ($dev eq '(cd)') {
++				print FD &quot; rootnoverify (hd0)\n&quot;;
++				print FD &quot; chainloader (hd0)+1\n&quot;;
++			}
++			else {
++				print FD &quot; chainloader $dev/boot/grub/bootnext\n&quot;;
++				my $bootnext = $this -&gt; addBootNext (
++					&quot;$tmpdir/boot/grub/bootnext&quot;, hex $this-&gt;{mbrid}
++				);
++				if (! defined $bootnext) {
++					$kiwi -&gt; failed ();
++					$kiwi -&gt; error  (&quot;Failed to write bootnext\n&quot;);
++					$kiwi -&gt; failed ();
++					return undef;
++				}
++			}
+ 			$title = $this -&gt; makeLabel (&quot;Install/Restore $label&quot;);
+ 			print FD &quot;title $title\n&quot;;
+-			my $bootnext = $this -&gt; addBootNext (
+-				&quot;$tmpdir/boot/grub/bootnext&quot;, hex $this-&gt;{mbrid}
+-			);
+-			if (! defined $bootnext) {
+-				$kiwi -&gt; failed ();
+-				$kiwi -&gt; error  (&quot;Failed to write bootnext\n&quot;);
+-				$kiwi -&gt; failed ();
+-				return undef;
+-			}
+ 		} else {
+ 			$title = $this -&gt; makeLabel (&quot;$label [ $type ]&quot;);
+ 			print FD &quot;gfxmenu (hd0,$bootpart)/boot/message\n&quot;;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index e3f07de..e7ff560 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,9 @@
+ -------------------------------------------------------------------
++Wed Apr  7 16:50:05 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed bootnext boot from harddrive feature (bnc #583212)
++
++-------------------------------------------------------------------
+ Tue Mar 30 15:35:48 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - added iputils package to 11.2 JeOS
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002081.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d8732c84a36c63e163a964ade64202e5a21f87ad
+</A></li>
+	<LI>Next message: <A HREF="002083.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b126bf2933434cc004d48beea631298665369078
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2082">[ date ]</a>
+              <a href="thread.html#2082">[ thread ]</a>
+              <a href="subject.html#2082">[ subject ]</a>
+              <a href="author.html#2082">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

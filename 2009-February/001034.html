@@ -1,0 +1,496 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1912 - in kiwi-head: doc doc/LaTex modules rpm	system/boot/ix86/netboot system/boot/ppc/netboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1912%20-%20in%20kiwi-head%3A%20doc%20doc/LaTex%20modules%20rpm%0A%09system/boot/ix86/netboot%20system/boot/ppc/netboot&In-Reply-To=%3C200902191152.n1JBq2vs023796%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001033.html">
+   <LINK REL="Next"  HREF="001036.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1912 - in kiwi-head: doc doc/LaTex modules rpm	system/boot/ix86/netboot system/boot/ppc/netboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1912%20-%20in%20kiwi-head%3A%20doc%20doc/LaTex%20modules%20rpm%0A%09system/boot/ix86/netboot%20system/boot/ppc/netboot&In-Reply-To=%3C200902191152.n1JBq2vs023796%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1912 - in kiwi-head: doc doc/LaTex modules rpm	system/boot/ix86/netboot system/boot/ppc/netboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Feb 19 12:52:02 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001033.html">[Kiwi-devel] r1911 - kiwi-head/doc/LaTex
+</A></li>
+        <LI>Next message: <A HREF="001036.html">[Kiwi-devel] r1913 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel:	modules rpm system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ppc/netboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1034">[ date ]</a>
+              <a href="thread.html#1034">[ thread ]</a>
+              <a href="subject.html#1034">[ subject ]</a>
+              <a href="author.html#1034">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-02-19 12:51:44 +0100 (Thu, 19 Feb 2009)
+New Revision: 1912
+
+Modified:
+   kiwi-head/doc/LaTex/Revision.txt
+   kiwi-head/doc/LaTex/instsource.tex
+   kiwi-head/doc/LaTex/kiwi.tex
+   kiwi-head/doc/LaTex/source.tex
+   kiwi-head/doc/kiwi.pdf
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/system/boot/ix86/netboot/suse-linuxrc
+   kiwi-head/system/boot/ppc/netboot/suse-linuxrc
+Log:
+
+- add function canWrite() to check if we can write to
+  the destination before copying config / branding files
+- fixed atftp option handling for the multicast setup
+  use &quot;multicast enable/disable&quot; notation
+- fixed dhcpcd calls to use PXE_IFACE as parameter
+- use DNSDOMAIN for DOMAIN if DOMAIN is not set
+- use DNSSERVERS for DNS if DNS is not set
+
+
+
+Modified: kiwi-head/doc/LaTex/Revision.txt
+===================================================================
+--- kiwi-head/doc/LaTex/Revision.txt	2009-02-18 17:13:19 UTC (rev 1911)
++++ kiwi-head/doc/LaTex/Revision.txt	2009-02-19 11:51:44 UTC (rev 1912)
+@@ -1 +1 @@
+-3.11
+\ No newline at end of file
++3.19
+\ No newline at end of file
+
+Modified: kiwi-head/doc/LaTex/instsource.tex
+===================================================================
+--- kiwi-head/doc/LaTex/instsource.tex	2009-02-18 17:13:19 UTC (rev 1911)
++++ kiwi-head/doc/LaTex/instsource.tex	2009-02-19 11:51:44 UTC (rev 1912)
+@@ -1,4 +1,4 @@
+-\chapter{Installation Sources and Products}
++\chapter{Creation of Installation Sources and Products}
+ \label{chapter:instsrc}
+ \minitoc
+ 
+
+Modified: kiwi-head/doc/LaTex/kiwi.tex
+===================================================================
+--- kiwi-head/doc/LaTex/kiwi.tex	2009-02-18 17:13:19 UTC (rev 1911)
++++ kiwi-head/doc/LaTex/kiwi.tex	2009-02-19 11:51:44 UTC (rev 1912)
+@@ -43,7 +43,16 @@
+ pdfstartview=FitV,       % options are: fit[ |h|v|b|bh|bv]
+ hyperindex=true]{hyperref}
+ 
++% Environment for code listings
++\usepackage{listings}
+ 
++\lstset{language=Bash} % C++ als Programmiersprache im listings package
++\lstset{extendedchars, breaklines, basicstyle=\ttfamily\normalsize}
++\lstset{keywordstyle=\color[rgb]{0.00,0.00,0.50}{}\bfseries,commentstyle=\color[rgb]{0.00,0.50,0.25}{}}
++\lstset{numbers=left, stepnumber=1, numberstyle=\tiny, xleftmargin=1em, numbersep=10pt}
++\lstset{basewidth={0.5em,0.45em}, captionpos=b}
++\lstset{frame=tblr, framerule=0.5pt}
++
+ %%==============================
+ %% Definitions
+ %%------------------------------
+@@ -140,6 +149,7 @@
+ \input oem
+ \input xen
+ \input ec2
++%\input instsource
+ \input testing
+ \printindex
+ \end{document}
+
+Modified: kiwi-head/doc/LaTex/source.tex
+===================================================================
+--- kiwi-head/doc/LaTex/source.tex	2009-02-18 17:13:19 UTC (rev 1911)
++++ kiwi-head/doc/LaTex/source.tex	2009-02-19 11:51:44 UTC (rev 1912)
+@@ -1,6 +1,6 @@
+-\index{KIWI installation source!instsource|(}
++\index{KIWI Setup of installation sources!instsourcesetup|(}
+ \chapter{Installation Source}
+-\label{chapter:instsource}
++\label{chapter:instsourcesetup}
+ \minitoc
+ 
+ Before you start to use any of the examples provided in the following
+
+Modified: kiwi-head/doc/kiwi.pdf
+===================================================================
+(Binary files differ)
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2009-02-18 17:13:19 UTC (rev 1911)
++++ kiwi-head/modules/KIWILinuxRC.sh	2009-02-19 11:51:44 UTC (rev 1912)
+@@ -1733,7 +1733,7 @@
+ 		done
+ 	fi
+ 	export PXE_IFACE=$iface
+-	dhcpcd $PXE_IFACE 1&gt;&amp;2
++	dhcpcd -p $PXE_IFACE 1&gt;&amp;2
+ 	if test $? != 0;then
+ 		systemException \
+ 			&quot;Failed to setup DHCP network interface !&quot; \
+@@ -1742,10 +1742,16 @@
+ 	ifconfig lo 127.0.0.1 netmask 255.0.0.0 up
+ 	for i in 1 2 3 4 5 6 7 8 9 0;do
+ 		[ -s /var/lib/dhcpcd/dhcpcd-$PXE_IFACE.info ] &amp;&amp; break
+-		sleep 5
++		sleep 2
+ 	done
+ 	importFile &lt; /var/lib/dhcpcd/dhcpcd-$PXE_IFACE.info
++	if [ -z &quot;$DOMAIN&quot; ] &amp;&amp; [ -n &quot;$DNSDOMAIN&quot; ];then
++		export DOMAIN=$DNSDOMAIN
++	fi
+ 	echo &quot;search $DOMAIN&quot; &gt; /etc/resolv.conf
++	if [ -z &quot;$DNS&quot; ] &amp;&amp; [ -n &quot;$DNSSERVERS&quot; ];then
++		export DNS=$DNSSERVERS
++	fi
+ 	IFS=&quot;,&quot; ; for i in $DNS;do
+ 		echo &quot;nameserver $i&quot; &gt;&gt; /etc/resolv.conf
+ 	done
+@@ -3077,13 +3083,13 @@
+ 			if test &quot;$izip&quot; = &quot;compressed&quot;; then
+ 				# mutlicast is disabled because you can't seek in a pipe
+ 				atftp \
+-					--option &quot;disable multicast&quot; \
++					--option &quot;multicast disable&quot; \
+ 					--option &quot;blksize $imageBlkSize&quot; -g -r $path \
+ 					-l /dev/stdout $host 2&gt;$TRANSFER_ERRORS_FILE |\
+ 					gzip -d &gt; $dest 2&gt;&gt;$TRANSFER_ERRORS_FILE
+ 			else
+ 				atftp \
+-					--option &quot;$multicast multicast&quot;  \
++					--option &quot;multicast $multicast&quot;  \
+ 					--option &quot;blksize $imageBlkSize&quot; \
+ 					-g -r $path -l $dest $host &amp;&gt; $TRANSFER_ERRORS_FILE
+ 			fi
+@@ -3157,12 +3163,20 @@
+ 	# to the system to allow to use them persistently
+ 	# ----
+ 	if [ -f /image/loader/message ];then
+-		mv /image/loader/message /mnt/boot
++		if ! canWrite /mnt/boot;then
++			Echo &quot;Can't write to boot, import of boot message skipped&quot;
++		else
++			mv /image/loader/message /mnt/boot
++		fi
+ 	fi
+ 	if [ -f /image/loader/branding/logo.mng ];then
+ 	if [ -d /mnt/etc/bootsplash/themes ];then
+ 		for theme in /mnt/etc/bootsplash/themes/*;do
+ 			if [ -d $theme/images ];then
++				if ! canWrite $theme;then
++					Echo &quot;Can't write to $theme, import of boot theme skipped&quot;
++					continue
++				fi
+ 				cp /image/loader/branding/logo.mng  $theme/images
+ 				cp /image/loader/branding/logov.mng $theme/images
+ 				cp /image/loader/branding/*.jpg $theme/images
+@@ -3269,9 +3283,20 @@
+ 	# all files created below /config inside the initrd are
+ 	# now copied into the system image
+ 	# ----
++	local file
++	local dir
+ 	cd /config
+-	find . -type d | while read d ; do  mkdir -p /mnt/$d ; done
+-	find . -type f | while read f ; do  cp $f /mnt/$f ; done
++	find . -type f | while read file;do
++		dir=$(dirname $file)
++		if ! canWrite /mnt/$dir;then
++			Echo &quot;Can't write to $dir, read-only filesystem... skipped&quot;
++			continue
++		fi
++		if [ ! -d /mnt/$dir ];then
++			mkdir -p /mnt/$dir
++		fi
++		cp $file /mnt/$file
++	done
+ 	cd /
+ 	rm -rf /config
+ }
+@@ -3324,14 +3349,16 @@
+ 	reopenKernelConsole
+ 	udevPending
+ 	mount --move /dev /mnt/dev
++	udevKill
+ 	umount -t devpts /mnt/dev/pts
+-	udevKill
+ 	udevPending
+ 	#======================================
+ 	# copy boot log file into system image
+ 	#--------------------------------------
+ 	mkdir -p /mnt/var/log
+-	cp /var/log/boot.kiwi /mnt/var/log/boot.kiwi
++	rm -f /var/log/boot.msg
++	cp -f /mnt/dev/shm/initrd.msg /mnt/var/log/boot.msg
++	cp -f /var/log/boot.kiwi /mnt/var/log/boot.kiwi
+ 	#======================================
+ 	# run preinit stage
+ 	#--------------------------------------
+@@ -3412,3 +3439,26 @@
+ 	local unionFST=$3
+ 	export UNIONFS_CONFIG=&quot;$rwDevice,$roDevice,$unionFST&quot;
+ }
++#======================================
++# canWrite
++#--------------------------------------
++function canWrite {
++	# /.../
++	# check if we can write to the given location
++	# If no location is given the function test
++	# for write permissions in /mnt.
++	# returns zero on success.
++	# ---
++	local dest=$1
++	if [ -z &quot;$dest&quot; ];then
++		dest=/mnt
++	fi
++	if [ ! -d $dest ];then
++		return 1
++	fi
++	if touch $dest/can-write &amp;&gt;/dev/null;then
++		rm $dest/can-write
++		return 0
++	fi
++	return 1
++}
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2009-02-18 17:13:19 UTC (rev 1911)
++++ kiwi-head/rpm/kiwi.changes	2009-02-19 11:51:44 UTC (rev 1912)
+@@ -2,6 +2,13 @@
+ Tue Feb 17 14:42:28 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.19
++- add function canWrite() to check if we can write to
++  the destination before copying config / branding files
++- fixed atftp option handling for the multicast setup
++  use &quot;multicast enable/disable&quot; notation
++- fixed dhcpcd calls to use PXE_IFACE as parameter
++- use DNSDOMAIN for DOMAIN if DOMAIN is not set
++- use DNSSERVERS for DNS if DNS is not set
+ - added default split section if no split section is set in
+   config.xml. The contents of the default section are stored
+   in /usr/share/kiwi/modules/KIWISplit.txt. At the moment we
+
+Modified: kiwi-head/system/boot/ix86/netboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/netboot/suse-linuxrc	2009-02-18 17:13:19 UTC (rev 1911)
++++ kiwi-head/system/boot/ix86/netboot/suse-linuxrc	2009-02-19 11:51:44 UTC (rev 1912)
+@@ -28,7 +28,7 @@
+ # Exports (Booting)
+ #--------------------------------------
+ export DOMURD_MODULES=&quot;xennet xenblk&quot;
+-export INITRD_MODULES=&quot;reiserfs&quot;
++export INITRD_MODULES=&quot;&quot;
+ export LOCAL_BOOT=&quot;no&quot;
+ export KERNEL_LIST
+ 
+@@ -285,7 +285,7 @@
+ 		while test ! -s $CONFIG;do
+ 			Echo &quot;Lookup network client config file again...&quot;
+ 			Echo &quot;Checking for config file: config.$DHCPCHADDR&quot;
+-			dhcpcd -n
++			dhcpcd -n $PXE_IFACE
+ 			fetchFile KIWI/config.$DHCPCHADDR $CONFIG
+ 			if test ! -s $CONFIG;then
+ 				searchAlternativeConfig
+@@ -370,8 +370,8 @@
+ 					Echo &quot;Base system is up to date, activating disk system...&quot;
+ 				fi
+ 			else
++				Echo -b &quot;On-disk Image mount attempt failed,&quot;
+ 				Echo -b &quot;Image Update for image [ $imageName ] needed&quot;
+-				Echo -b &quot;Image mount failed&quot;
+ 				RELOAD_IMAGE=&quot;yes&quot;
+ 				systemIntegrity=&quot;clean&quot;
+ 			fi
+@@ -465,7 +465,7 @@
+ 			# /.../
+ 			# now load the image into the imageDevice
+ 			# ---
+-			multicast=&quot;&quot;
++			multicast=&quot;enable&quot;
+ 			if test &quot;$imageZipped&quot; = &quot;compressed&quot;; then
+ 				Echo &quot;Compressed image found: Disable multicast download&quot;
+ 				multicast=&quot;disable&quot;
+@@ -516,9 +516,7 @@
+ 			Echo &quot;Retry to load image...&quot;
+ 			sleep 15
+ 		done
+-		echo $imageDevice | grep -q ram
+-		haveDataInRam=$?
+-		if test ! -z $DISK &amp;&amp; test $haveDataInRam != 0;then
++		if test ! -z $DISK;then
+ 			probeFileSystem $imageDevice
+ 			if test &quot;$FSTYPE&quot; = &quot;reiserfs&quot;;then
+ 				Echo &quot;Resize Reiser filesystem to full partition space...&quot;
+@@ -540,15 +538,6 @@
+ 				INITRD_MODULES=&quot;$INITRD_MODULES ext3&quot;
+ 			fi
+ 		fi
+-		if test ! -z $DISK &amp;&amp; test $haveDataInRam = 0;then
+-			Echo &quot;Including RAM device data to disk...&quot;
+-			RELOAD_CONFIG=&quot;yes&quot;
+-			mkdir -p /config
+-			mountSystem
+-			rm -rf /mnt/lost+found
+-			cp -a /mnt/* /config &amp;&amp; rm -f /mnt/*
+-			umountSystem
+-		fi
+ 		rm -f /etc/ireal.md5
+ 		rm -f /etc/image.md5
+ 	done
+@@ -924,7 +913,7 @@
+ 	[ -z &quot;$NBDROOT&quot; ]      &amp;&amp; \
+ 	[ -z &quot;$AOEROOT&quot; ]
+ then
+-	dhcpcd -k
++	dhcpcd -p -k $PXE_IFACE
+ fi
+ 
+ #======================================
+@@ -951,8 +940,10 @@
+ # 25) copy initrd files to image
+ #--------------------------------------
+ importBranding
+-cp /preinit /mnt
+-cp /include /mnt
++if canWrite /mnt;then
++	cp /preinit /mnt
++	cp /include /mnt
++fi
+ 
+ #======================================
+ # 26) check if reboot is required
+
+Modified: kiwi-head/system/boot/ppc/netboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ppc/netboot/suse-linuxrc	2009-02-18 17:13:19 UTC (rev 1911)
++++ kiwi-head/system/boot/ppc/netboot/suse-linuxrc	2009-02-19 11:51:44 UTC (rev 1912)
+@@ -28,7 +28,7 @@
+ # Exports (Booting)
+ #--------------------------------------
+ export DOMURD_MODULES=&quot;xennet xenblk&quot;
+-export INITRD_MODULES=&quot;reiserfs&quot;
++export INITRD_MODULES=&quot;&quot;
+ export LOCAL_BOOT=&quot;no&quot;
+ export KERNEL_LIST
+ 
+@@ -285,7 +285,7 @@
+ 		while test ! -s $CONFIG;do
+ 			Echo &quot;Lookup network client config file again...&quot;
+ 			Echo &quot;Checking for config file: config.$DHCPCHADDR&quot;
+-			dhcpcd -n
++			dhcpcd -n $PXE_IFACE
+ 			fetchFile KIWI/config.$DHCPCHADDR $CONFIG
+ 			if test ! -s $CONFIG;then
+ 				searchAlternativeConfig
+@@ -370,8 +370,8 @@
+ 					Echo &quot;Base system is up to date, activating disk system...&quot;
+ 				fi
+ 			else
++				Echo -b &quot;On-disk Image mount attempt failed,&quot;
+ 				Echo -b &quot;Image Update for image [ $imageName ] needed&quot;
+-				Echo -b &quot;Image mount failed&quot;
+ 				RELOAD_IMAGE=&quot;yes&quot;
+ 				systemIntegrity=&quot;clean&quot;
+ 			fi
+@@ -465,7 +465,7 @@
+ 			# /.../
+ 			# now load the image into the imageDevice
+ 			# ---
+-			multicast=&quot;&quot;
++			multicast=&quot;enable&quot;
+ 			if test &quot;$imageZipped&quot; = &quot;compressed&quot;; then
+ 				Echo &quot;Compressed image found: Disable multicast download&quot;
+ 				multicast=&quot;disable&quot;
+@@ -516,9 +516,7 @@
+ 			Echo &quot;Retry to load image...&quot;
+ 			sleep 15
+ 		done
+-		echo $imageDevice | grep -q ram
+-		haveDataInRam=$?
+-		if test ! -z $DISK &amp;&amp; test $haveDataInRam != 0;then
++		if test ! -z $DISK;then
+ 			probeFileSystem $imageDevice
+ 			if test &quot;$FSTYPE&quot; = &quot;reiserfs&quot;;then
+ 				Echo &quot;Resize Reiser filesystem to full partition space...&quot;
+@@ -540,15 +538,6 @@
+ 				INITRD_MODULES=&quot;$INITRD_MODULES ext3&quot;
+ 			fi
+ 		fi
+-		if test ! -z $DISK &amp;&amp; test $haveDataInRam = 0;then
+-			Echo &quot;Including RAM device data to disk...&quot;
+-			RELOAD_CONFIG=&quot;yes&quot;
+-			mkdir -p /config
+-			mountSystem
+-			rm -rf /mnt/lost+found
+-			cp -a /mnt/* /config &amp;&amp; rm -f /mnt/*
+-			umountSystem
+-		fi
+ 		rm -f /etc/ireal.md5
+ 		rm -f /etc/image.md5
+ 	done
+@@ -924,7 +913,7 @@
+ 	[ -z &quot;$NBDROOT&quot; ]      &amp;&amp; \
+ 	[ -z &quot;$AOEROOT&quot; ]
+ then
+-	dhcpcd -k
++	dhcpcd -p -k $PXE_IFACE
+ fi
+ 
+ #======================================
+@@ -951,8 +940,10 @@
+ # 25) copy initrd files to image
+ #--------------------------------------
+ importBranding
+-cp /preinit /mnt
+-cp /include /mnt
++if canWrite /mnt;then
++	cp /preinit /mnt
++	cp /include /mnt
++fi
+ 
+ #======================================
+ # 26) check if reboot is required
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001033.html">[Kiwi-devel] r1911 - kiwi-head/doc/LaTex
+</A></li>
+	<LI>Next message: <A HREF="001036.html">[Kiwi-devel] r1913 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel:	modules rpm system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ppc/netboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1034">[ date ]</a>
+              <a href="thread.html#1034">[ thread ]</a>
+              <a href="subject.html#1034">[ subject ]</a>
+              <a href="author.html#1034">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

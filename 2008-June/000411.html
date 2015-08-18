@@ -1,0 +1,655 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1321 - in kiwi-head: . rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1321%20-%20in%20kiwi-head%3A%20.%20rpm&In-Reply-To=%3C200806111435.m5BEZnNe015679%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000410.html">
+   <LINK REL="Next"  HREF="000412.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1321 - in kiwi-head: . rpm</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1321%20-%20in%20kiwi-head%3A%20.%20rpm&In-Reply-To=%3C200806111435.m5BEZnNe015679%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1321 - in kiwi-head: . rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jun 11 16:35:49 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000410.html">[Kiwi-devel] [SVN:KIWI-Team] r1320 - kiwi-head/system/boot/oemboot
+</A></li>
+        <LI>Next message: <A HREF="000412.html">[Kiwi-devel] [SVN:KIWI-Team] r1322 - in kiwi-head/system/boot:	isoboot/suse-10.1 isoboot/suse-10.2 isoboot/suse-10.3	isoboot/suse-11.0 isoboot/suse-SLED10 isoboot/suse-SLED10-SP1	isoboot/suse-SLES10 isoboot/suse-SLES10-SP1 netboot/suse-10.1	netboot/suse-10.2 netboot/suse-11.0 netboot/suse-SLED10	netboot/suse-SLED10-SP1 netboot/suse-SLES10	netboot/suse-SLES10-SP1 oemboot/suse-10.2 oemboot/suse-10.3	oemboot/suse-11.0 oemboot/suse-SLED10-SP1	oemboot/suse-SLES10-SP1 usbboot/suse-10.2 usbboot/suse-10.3	usbboot/suse-11.0 usbboot/suse-SLED10 usbboot/suse-SLED10-SP1	usbboot/suse-SLES10 usbboot/suse-SLES10-SP1 vmxboot/suse-10.1	vmxboot/suse-10.2 vmxboot/suse-10.3 vmxboot/suse-11.0	vmxboot/suse-SLED10 vmxboot/suse-SLED10-SP1	vmxboot/suse-SLES10 vmxboot/suse-SLES10-SP1 xenboot/suse-10.1	xenboot/suse-10.2 xenboot/suse-10.3 xenboot/suse-11.0	xenboot/suse-SLED10 xenboot/suse-SLED10-SP1	xenboot/suse-SLES10 xenboot/suse-SLES10-SP1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#411">[ date ]</a>
+              <a href="thread.html#411">[ thread ]</a>
+              <a href="subject.html#411">[ subject ]</a>
+              <a href="author.html#411">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: Wed Jun 11 16:35:45 2008
+New Revision: 1321
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIConfig.sh
+   kiwi-head/modules/KIWIImage.pm
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/modules/KIWIManager.pm
+   kiwi-head/modules/KIWIRoot.pm
+   kiwi-head/modules/KIWIXML.pm
+   kiwi-head/rpm/kiwi.changes
+
+Log:
+
+- added kiwi_ prefix to all .profile variables
+- fixed checkFileSystem function to use type=auto if the
+  filesystem couldn't be detected by the file util (bnc #398381)
+- added svn revision information to .profile and let it
+  appear in /var/log/boot.kiwi during first deployment
+- allow package manager to be set on the commandline
+- fixed missing file close, patch by Nat Friedman
+
+
+
+Modified: kiwi-head/kiwi.pl
+==============================================================================
+--- kiwi-head/kiwi.pl	(original)
++++ kiwi-head/kiwi.pl	Wed Jun 11 16:35:45 2008
+@@ -174,6 +174,7 @@
+ our $Compress;          # set compression level
+ our $CreatePassword;    # create crypted password
+ our $ISOCheck;          # create checkmedia boot entry
++our $PackageManager;    # package manager to use for this image
+ our $kiwi;              # global logging handler object
+ 
+ #============================================
+@@ -515,7 +516,7 @@
+ 		$kiwi -&gt; info (&quot;Updating type in .profile environment&quot;);
+ 		my $type = $xml -&gt; getImageTypeAndAttributes() -&gt; {type};
+ 		qxx (
+-			&quot;sed -i -e stype=#type=.*#type=$type# $Create/.profile 2&gt;&amp;1&quot;
++			&quot;sed -i -e s#kiwi_type=$type=.*#kiwi_type=$type# $Create/.profile&quot;
+ 		);
+ 		$kiwi -&gt; done();
+ 		#==========================================
+@@ -1175,6 +1176,7 @@
+ 		&quot;nocolor&quot;               =&gt; \$NoColor,
+ 		&quot;log-port=i&quot;            =&gt; \$LogPort,
+ 		&quot;gzip-cmd=s&quot;            =&gt; \$GzipCmd,
++		&quot;package-manager=s&quot;     =&gt; \$PackageManager,
+ 		&quot;prebuiltbootimage=s&quot;   =&gt; \$PrebuiltBootImage,
+ 		&quot;prechroot-call=s&quot;      =&gt; \$PreChrootCall,
+ 		&quot;list-xmlinfo|x=s&quot;      =&gt; \$listXMLInfo,
+@@ -1467,6 +1469,10 @@
+ 	print &quot;    run test(s) on prepared image root tree.\n&quot;;
+ 	print &quot;    If additional name is omitted default set of tests will be\n&quot;;
+ 	print &quot;    used. Otherwise only provided tests will be executed\n&quot;;
++	print &quot;\n&quot;;
++	print &quot;  [ --package-manager &lt;smart|zypper&gt;\n&quot;;
++	print &quot;    set the package manager to use for this image. If set it\n&quot;;
++	print &quot;    will temporarly overwrite the value set in config.xml\n&quot;;
+ 	print &quot;--\n&quot;;
+ 	version();
+ }
+@@ -1865,14 +1871,16 @@
+ 					$type = &quot;cromfs&quot;;
+ 					last SWITCH;
+ 				};
+-				# unknown filesystem type...
+-				return undef;
++				# unknown filesystem type use auto...
++				$type = &quot;auto&quot;;
+ 			};
+ 			$result{type}     = $type;
+ 			$result{readonly} = $KnownFS{$type}{ro};
+ 			$result{hastool}  = 0;
+-			if (-x $KnownFS{$type}{tool}) {
+-				$result{hastool} = 1;
++			if (defined $KnownFS{$type}{tool}) {
++				if (-x $KnownFS{$type}{tool}) {
++					$result{hastool} = 1;
++				}
+ 			}
+ 		} else {
+ 			return undef;
+
+Modified: kiwi-head/modules/KIWIConfig.sh
+==============================================================================
+--- kiwi-head/modules/KIWIConfig.sh	(original)
++++ kiwi-head/modules/KIWIConfig.sh	Wed Jun 11 16:35:45 2008
+@@ -182,6 +182,7 @@
+ 		atd
+ 		syslog
+ 		cron
++		kbd
+ 	)
+ 	for i in &quot;${services[@]}&quot;;do
+ 		if [ -x /etc/init.d/$i ] &amp;&amp; [ -f /etc/init.d/$i ];then
+@@ -196,31 +197,31 @@
+ function baseSetupOEMPartition {
+ 	local oemfile=/config.oempartition
+ 	rm -f $oemfile
+-	if [ ! -z &quot;$oemreboot&quot; ];then
++	if [ ! -z &quot;$kiwi_oemreboot&quot; ];then
+ 		echo &quot;Setting up OEM_REBOOT=1&quot;
+ 		echo &quot;OEM_REBOOT=1&quot; &gt;&gt; $oemfile
+ 	fi
+-	if [ ! -z &quot;$oemswap&quot; ];then
++	if [ ! -z &quot;$kiwi_oemswap&quot; ];then
+ 		echo &quot;Setting up OEM_WITHOUTSWAP=1&quot;
+ 		echo &quot;OEM_WITHOUTSWAP=1&quot; &gt;&gt; $oemfile
+ 	fi
+-	if [ ! -z &quot;$oemswapMB&quot; ];then
+-		echo &quot;Setting up OEM_SWAPSIZE=$oemswapMB&quot;
+-		echo &quot;OEM_SWAPSIZE=$oemswapMB&quot; &gt;&gt; $oemfile
++	if [ ! -z &quot;$kiwi_oemswapMB&quot; ];then
++		echo &quot;Setting up OEM_SWAPSIZE=$kiwi_oemswapMB&quot;
++		echo &quot;OEM_SWAPSIZE=$kiwi_oemswapMB&quot; &gt;&gt; $oemfile
+ 	fi
+-	if [ ! -z &quot;$oemhome&quot; ];then
++	if [ ! -z &quot;$kiwi_oemhome&quot; ];then
+ 		echo &quot;Setting up OEM_WITHOUTHOME=1&quot;
+ 		echo &quot;OEM_WITHOUTHOME=1&quot; &gt;&gt; $oemfile
+ 	fi
+-	if [ ! -z &quot;$oemrootMB&quot; ];then
+-		echo &quot;Setting up OEM_SYSTEMSIZE=$oemrootMB&quot;
+-		echo &quot;OEM_SYSTEMSIZE=$oemrootMB&quot; &gt;&gt; $oemfile
+-	fi
+-	if [ ! -z &quot;$oemtitle&quot; ];then
+-		echo &quot;Setting up OEM_BOOT_TITLE=$oemtitle&quot;
+-		echo &quot;OEM_BOOT_TITLE=$oemtitle&quot; &gt;&gt; $oemfile
++	if [ ! -z &quot;$kiwi_oemrootMB&quot; ];then
++		echo &quot;Setting up OEM_SYSTEMSIZE=$kiwi_oemrootMB&quot;
++		echo &quot;OEM_SYSTEMSIZE=$kiwi_oemrootMB&quot; &gt;&gt; $oemfile
++	fi
++	if [ ! -z &quot;$kiwi_oemtitle&quot; ];then
++		echo &quot;Setting up OEM_BOOT_TITLE=$kiwi_oemtitle&quot;
++		echo &quot;OEM_BOOT_TITLE=$kiwi_oemtitle&quot; &gt;&gt; $oemfile
+ 	fi
+-	if [ ! -z &quot;$oemrecovery&quot; ];then
++	if [ ! -z &quot;$kiwi_oemrecovery&quot; ];then
+ 		echo &quot;Setting up OEM_RECOVERY=1&quot;
+ 		echo &quot;OEM_RECOVERY=1&quot; &gt;&gt; $oemfile
+ 	fi
+@@ -259,29 +260,29 @@
+ 	#======================================
+ 	# keytable
+ 	#--------------------------------------
+-	if [ ! -z &quot;$keytable&quot; ];then
++	if [ ! -z &quot;$kiwi_keytable&quot; ];then
+ 		cat etc/sysconfig/keyboard |\
+-			sed -e s&quot;@KEYTABLE=\&quot;.*\&quot;@KEYTABLE=\&quot;$keytable\&quot;@&quot; \
++			sed -e s&quot;@KEYTABLE=\&quot;.*\&quot;@KEYTABLE=\&quot;$kiwi_keytable\&quot;@&quot; \
+ 		&gt; etc/sysconfig/keyboard.new
+ 		mv etc/sysconfig/keyboard.new etc/sysconfig/keyboard
+ 	fi
+ 	#======================================
+ 	# locale
+ 	#--------------------------------------
+-	if [ ! -z &quot;$language&quot; ];then
++	if [ ! -z &quot;$kiwi_language&quot; ];then
+ 		cat /etc/sysconfig/language |\
+-			sed -e s&quot;@RC_LANG=\&quot;.*\&quot;@RC_LANG=\&quot;$language\&quot;@&quot; \
++			sed -e s&quot;@RC_LANG=\&quot;.*\&quot;@RC_LANG=\&quot;$kiwi_language\&quot;@&quot; \
+ 		&gt; etc/sysconfig/language.new
+ 		mv etc/sysconfig/language.new etc/sysconfig/language
+ 	fi
+ 	#======================================
+ 	# timezone
+ 	#--------------------------------------
+-	if [ ! -z &quot;$timezone&quot; ];then
+-		if [ -f /usr/share/zoneinfo/$timezone ];then
+-			mv /usr/share/zoneinfo/$timezone /etc/localtime
++	if [ ! -z &quot;$kiwi_timezone&quot; ];then
++		if [ -f /usr/share/zoneinfo/$kiwi_timezone ];then
++			mv /usr/share/zoneinfo/$kiwi_timezone /etc/localtime
+ 		else
+-			echo &quot;timezone: $timezone not found&quot;
++			echo &quot;timezone: $kiwi_timezone not found&quot;
+ 		fi
+ 	fi
+ 	#======================================
+@@ -294,14 +295,14 @@
+ # baseGetPackagesForDeletion
+ #--------------------------------------
+ function baseGetPackagesForDeletion {
+-	echo $delete
++	echo $kiwi_delete
+ }
+ 
+ #======================================
+ # baseGetProfilesUsed
+ #--------------------------------------
+ function baseGetProfilesUsed {
+-	echo $profiles
++	echo $kiwi_profiles
+ }
+ 
+ #======================================
+@@ -331,7 +332,6 @@
+ 			if test $locale = $dir;then
+ 				continue
+ 			fi
+-			
+ 			local baseLocale=`/usr/bin/basename $locale`
+ 			local found=&quot;no&quot;
+ 			for keep in $imageLocales;do
+@@ -340,7 +340,6 @@
+ 					break
+ 				fi
+ 			done
+-
+ 			if test $found = &quot;no&quot;;then
+ 				rm -rf $locale
+ 			fi
+@@ -539,14 +538,14 @@
+ 	# example: baseSetupBusyBox -f /bin/zcat /bin/vi
+ 	# ---
+ 	local applets=&quot;&quot;
+-	local force=&quot;no&quot;
+-	local busyboxlinks=&quot;/usr/share/busybox/busybox.links&quot;
++	local force=no
++	local busyboxlinks=/usr/share/busybox/busybox.links
+ 	if ! rpm -q --quiet busybox; then
+ 		echo &quot;Busybox not installed... skipped&quot;
+-		return 0;
++		return 0
+ 	fi
+ 	if [ $# -gt 0 ] &amp;&amp; [ &quot;$1&quot; = &quot;-f&quot; ]; then
+-		force=&quot;yes&quot;
++		force=yes
+ 		shift
+ 	fi
+ 	if [ $# -gt 0 ]; then
+@@ -967,7 +966,7 @@
+ 			#==========================================
+ 			# handle USB drivers...
+ 			#------------------------------------------
+-			test ! -z &quot;$usbdrivers&quot;;for i in $usbdrivers;do
++			test ! -z &quot;$kiwi_usbdrivers&quot;;for i in $kiwi_usbdrivers;do
+ 				local path=`dirname $i`
+ 				test -f /tmp/drivers/$i &amp;&amp; \
+ 				mkdir -p /tmp/usb-used/drivers/$path &amp;&amp; \
+@@ -976,7 +975,7 @@
+ 			#==========================================
+ 			# handle SCSI drivers...
+ 			#------------------------------------------
+-			test ! -z &quot;$scsidrivers&quot;;for i in $scsidrivers;do
++			test ! -z &quot;$kiwi_scsidrivers&quot;;for i in $kiwi_scsidrivers;do
+ 				local path=`dirname $i`
+ 				if [ $path = &quot;.&quot; ];then
+ 					test -f /tmp/drivers/scsi/$i &amp;&amp; \
+@@ -990,7 +989,7 @@
+ 			#==========================================
+ 			# handle Network drivers...
+ 			#------------------------------------------
+-			test ! -z &quot;$netdrivers&quot;;for i in $netdrivers;do
++			test ! -z &quot;$kiwi_netdrivers&quot;;for i in $kiwi_netdrivers;do
+ 				local path=`dirname $i`
+ 				if [ $path = &quot;.&quot; ];then
+ 					test -f /tmp/drivers/net/$i &amp;&amp; \
+@@ -1004,7 +1003,7 @@
+ 			#==========================================
+ 			# handle misc drivers...
+ 			#------------------------------------------
+-			test ! -z &quot;$drivers&quot;;for i in $drivers;do
++			test ! -z &quot;$kiwi_drivers&quot;;for i in $kiwi_drivers;do
+ 				local path=`/usr/bin/dirname $i`
+ 				local base=`/usr/bin/basename $i`
+ 				if [ &quot;$base&quot; = &quot;*&quot; ];then
+
+Modified: kiwi-head/modules/KIWIImage.pm
+==============================================================================
+--- kiwi-head/modules/KIWIImage.pm	(original)
++++ kiwi-head/modules/KIWIImage.pm	Wed Jun 11 16:35:45 2008
+@@ -1163,6 +1163,9 @@
+ 	$main::ForeignRepo{&quot;create&quot;}  = $main::Create;
+ 	$main::Create = $main::RootTree;
+ 	$xml = new KIWIXML ( $kiwi,$main::Prepare );
++	if (! defined $xml) {
++		return undef;
++	}
+ 	my $iso = $xml -&gt; getImageName();
+ 	undef $main::SetImageType;
+ 	$kiwi -&gt; info (&quot;Checking for pre-built boot image&quot;);
+@@ -2067,6 +2070,9 @@
+ 	$main::ForeignRepo{&quot;create&quot;}  = $main::Create;
+ 	$main::Create = $main::RootTree;
+ 	$xml = new KIWIXML ( $kiwi,$main::Prepare );
++	if (! defined $xml) {
++		return undef;
++	}
+ 	my $iname = $xml -&gt; getImageName();
+ 	undef $main::SetImageType;
+ 	$kiwi -&gt; info (&quot;Checking for pre-built boot image&quot;);
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+==============================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	(original)
++++ kiwi-head/modules/KIWILinuxRC.sh	Wed Jun 11 16:35:45 2008
+@@ -276,6 +276,8 @@
+ 	fi
+ 	setctsid -f $ELOG_CONSOLE /bin/bash -c &quot;tail -f $ELOG_FILE&quot; &amp;
+ 	exec 2&gt;&gt;$ELOG_FILE
++	echo &quot;KIWI .profile contents:&quot; 1&gt;&amp;2
++	cat .profile 1&gt;&amp;2
+ 	set -x 1&gt;&amp;2
+ }
+ #======================================
+
+Modified: kiwi-head/modules/KIWIManager.pm
+==============================================================================
+--- kiwi-head/modules/KIWIManager.pm	(original)
++++ kiwi-head/modules/KIWIManager.pm	Wed Jun 11 16:35:45 2008
+@@ -785,6 +785,8 @@
+ 	#------------------------------------------
+ 	if ($manager eq &quot;ensconce&quot;) {
+ 		# Ignored for ensconce, always report package as installed
++		print $fd &quot;echo 0 &gt; $screenCall.exit; exit 0\n&quot;;
++		$fd -&gt; close();
+ 		return $this;
+ 	}
+ 	return $this -&gt; setupScreenCall();
+@@ -869,6 +871,8 @@
+ 	#------------------------------------------
+ 	if ($manager eq &quot;ensconce&quot;) {
+ 		# Ignored for ensconce, always report package as installed
++		print $fd &quot;echo 0 &gt; $screenCall.exit; exit 0\n&quot;;
++		$fd -&gt; close();
+ 		return $this;
+ 	}
+ 	return $this -&gt; setupScreenCall();
+@@ -980,6 +984,8 @@
+ 	#------------------------------------------
+ 	if ($manager eq &quot;ensconce&quot;) {
+ 		# Ignored for ensconce, always report package as installed
++		print $fd &quot;echo 0 &gt; $screenCall.exit; exit 0\n&quot;;
++		$fd -&gt; close();
+ 		return $this;
+ 	}
+ 	return $this -&gt; setupScreenCall();
+@@ -1257,7 +1263,8 @@
+ 	#------------------------------------------
+ 	if ($manager eq &quot;ensconce&quot;) {
+ 		if (! $chroot) {
+-			# Ignored for ensconce
++			print $fd &quot;echo 0 &gt; $screenCall.exit; exit 0 \n&quot;;
++			$fd -&gt; close();
+ 		} else {
+ 			$kiwi -&gt; info (&quot;Installing image packages...&quot;);
+ 			print $fd &quot;function clean { kill \$SPID; &quot;;
+
+Modified: kiwi-head/modules/KIWIRoot.pm
+==============================================================================
+--- kiwi-head/modules/KIWIRoot.pm	(original)
++++ kiwi-head/modules/KIWIRoot.pm	Wed Jun 11 16:35:45 2008
+@@ -178,6 +178,7 @@
+ 	$kiwi -&gt; info (&quot;Setting up package manager: &quot;);
+ 	my $pmgr = $xml -&gt; getPackageManager();
+ 	if (! defined $pmgr) {
++		$kiwi -&gt; failed();
+ 		if (defined $overlay) {
+ 			$overlay -&gt; resetOverlay();
+ 		}
+@@ -859,7 +860,7 @@
+ 		if (! -d $cache) {
+ 			qxx (&quot; mkdir -p $cache &quot;);
+ 		}
+-		qxx (&quot;mkdir -p $mount&quot;);
++		qxx (&quot;mkdir -p \&quot;$mount\&quot;&quot;);
+ 		my $data = qxx (&quot; touch $path/bob 2&gt;&amp;1 &quot;);
+ 		my $code = $? &gt;&gt; 8;
+ 		if ($code == 0) {
+@@ -881,7 +882,7 @@
+ 			}
+ 		}
+ 		if ($code != 0) {
+-			my $data = qxx (&quot; mount -o bind $path $mount 2&gt;&amp;1 &quot;);
++			my $data = qxx (&quot; mount -o bind \&quot;$path\&quot; \&quot;$mount\&quot; 2&gt;&amp;1 &quot;);
+ 			my $code = $? &gt;&gt; 8;
+ 			if ($code != 0) {
+ 				$kiwi -&gt; failed();
+@@ -918,15 +919,15 @@
+ 	foreach my $item (reverse @mountList) {
+ 		$kiwi -&gt; info (&quot;Umounting path: $item\n&quot;);
+ 		if ($item =~ /^\/tmp\/kiwimount/) {
+-			qxx (&quot;umount $item 2&gt;/dev/null&quot;);
++			qxx (&quot;umount \&quot;$item\&quot; 2&gt;/dev/null&quot;);
+ 		} else {
+-			qxx (&quot;umount -l $item 2&gt;/dev/null&quot;);
++			qxx (&quot;umount -l \&quot;$item\&quot; 2&gt;/dev/null&quot;);
+ 		}
+ 		if ($item =~ /^$prefix/) {
+-			qxx (&quot; rmdir -p $item 2&gt;&amp;1 &quot;);
++			qxx (&quot; rmdir -p \&quot;$item\&quot; 2&gt;&amp;1 &quot;);
+ 		}
+ 		if ($item =~ /^\/tmp\/kiwimount/) {
+-			qxx (&quot; rmdir -p $item 2&gt;&amp;1 &quot;);
++			qxx (&quot; rmdir -p \&quot;$item\&quot; 2&gt;&amp;1 &quot;);
+ 		}
+ 	}
+ 	if (defined $this-&gt;{baseRoot}) {
+
+Modified: kiwi-head/modules/KIWIXML.pm
+==============================================================================
+--- kiwi-head/modules/KIWIXML.pm	(original)
++++ kiwi-head/modules/KIWIXML.pm	Wed Jun 11 16:35:45 2008
+@@ -202,6 +202,12 @@
+ 	$this-&gt;{optionsNodeList} = $optionsNodeList;
+ 
+ 	#==========================================
++	# Set packagemanager if set on commandline
++	#------------------------------------------
++	if (defined $main::PackageManager) {
++		$this -&gt; setPackageManager ($main::PackageManager);
++	}
++	#==========================================
+ 	# setup foreign repository sections
+ 	#------------------------------------------
+ 	if ( defined $foreignRepo-&gt;{xmlnode} ) {
+@@ -912,6 +918,24 @@
+ }
+ 
+ #==========================================
++# setPackageManager
++#------------------------------------------
++sub setPackageManager {
++	# ...
++	# set packagemanager to use for this image
++	# ---
++	my $this  = shift;
++	my $value = shift;
++	my $addElement = new XML::LibXML::Element (&quot;packagemanager&quot;);
++	$addElement -&gt; appendText ($value);
++	my $opts = $this-&gt;{optionsNodeList} -&gt; get_node(1);
++	my $node = $opts -&gt; getElementsByTagName (&quot;packagemanager&quot;) -&gt; get_node(1);
++	$opts -&gt; removeChild ($node);
++	$opts -&gt; appendChild ($addElement);
++	return $this;
++}
++
++#==========================================
+ # getPackageManager
+ #------------------------------------------
+ sub getPackageManager {
+@@ -931,17 +955,13 @@
+ 		if (&quot;$pmgr&quot; eq &quot;$manager&quot;) {
+ 			my $file = $packageManager{$manager};
+ 			if (! -f $file) {
+-				$kiwi -&gt; failed ();
+-				$kiwi -&gt; error  (&quot;Package manager $file doesn't exist&quot;);
+-				$kiwi -&gt; failed ();
++				$kiwi -&gt; loginfo (&quot;Package manager $file doesn't exist&quot;);
+ 				return undef;
+ 			}
+ 			return $manager;
+ 		}
+ 	}
+-	$kiwi -&gt; failed ();
+-	$kiwi -&gt; error  (&quot;Invalid package manager: $pmgr&quot;);
+-	$kiwi -&gt; failed ();
++	$kiwi -&gt; loginfo (&quot;Invalid package manager: $pmgr&quot;);
+ 	return undef;
+ }
+ 
+@@ -1642,10 +1662,18 @@
+ 	my $this = shift;
+ 	my %result;
+ 	#==========================================
++	# revision information
++	#------------------------------------------
++	my $rev  = &quot;unknown&quot;;
++	if (open FD,$main::Revision) {
++		$rev = &lt;FD&gt;; close FD;
++	}
++	$result{kiwi_revision} = $rev;
++	#==========================================
+ 	# preferences
+ 	#------------------------------------------
+ 	if (getCompressed ($this,&quot;quiet&quot;)) {
+-		$result{compressed} = &quot;yes&quot;;
++		$result{kiwi_compressed} = &quot;yes&quot;;
+ 	}
+ 	my %type = %{$this-&gt;getImageTypeAndAttributes()};
+ 	my @delp = $this -&gt; getDeleteList();
+@@ -1654,22 +1682,22 @@
+ 	my $size = getImageSize    ($this);
+ 	my $name = getImageName    ($this);
+ 	if (@delp) {
+-		$result{delete} = join(&quot; &quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">, at delp</A>);
++		$result{kiwi_delete} = join(&quot; &quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">, at delp</A>);
+ 	}
+ 	if (@tstp) {
+-		$result{testing} = join(&quot; &quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">, at tstp</A>);
++		$result{kiwi_testing} = join(&quot; &quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">, at tstp</A>);
+ 	}
+ 	if (%type) {
+-		$result{type} = $type{type};
++		$result{kiwi_type} = $type{type};
+ 	}
+ 	if ($size) {
+-		$result{size} = $size;
++		$result{kiwi_size} = $size;
+ 	}
+ 	if ($name) {
+-		$result{name} = $name;
++		$result{kiwi_iname} = $name;
+ 	}
+ 	if ($iver) {
+-		$result{version} = $iver;
++		$result{kiwi_iversion} = $iver;
+ 	}
+ 	#==========================================
+ 	# drivers
+@@ -1677,6 +1705,7 @@
+ 	my @node = $this-&gt;{driversNodeList} -&gt; get_nodelist();
+ 	foreach my $element (@node) {
+ 		my $type = $element -&gt; getAttribute(&quot;type&quot;);
++		$type = &quot;kiwi_&quot;.$type;
+ 		if (! $this -&gt; requestedProfile ($element)) {
+ 			next;
+ 		}
+@@ -1709,39 +1738,39 @@
+ 	my $oemreboot= $node -&gt; getElementsByTagName (&quot;oem-reboot&quot;);
+ 	my $oemreco  = $node -&gt; getElementsByTagName (&quot;oem-recovery&quot;);
+ 	if (defined $keytable) {
+-		$result{keytable} = $keytable;
++		$result{kiwi_keytable} = $keytable;
+ 	}
+ 	if (defined $timezone) {
+-		$result{timezone} = $timezone;
++		$result{kiwi_timezone} = $timezone;
+ 	}
+ 	if (defined $language) {
+-		$result{language} = $language;
++		$result{kiwi_language} = $language;
+ 	}
+ 	if ((defined $oemswap) &amp;&amp; (&quot;$oemswap&quot; eq &quot;no&quot;)) {
+-		$result{oemswap} = &quot;no&quot;;
++		$result{kiwi_oemswap} = &quot;no&quot;;
+ 	} elsif ((defined $oemswapMB) &amp;&amp; (&quot;$oemswapMB&quot; &gt; 0)) {
+-		$result{oemswapMB} = $oemswapMB;
++		$result{kiwi_oemswapMB} = $oemswapMB;
+ 	}
+ 	if ((defined $oemhome) &amp;&amp; (&quot;$oemhome&quot; eq &quot;no&quot;)) {
+-		$result{oemhome} = &quot;no&quot;;
++		$result{kiwi_oemhome} = &quot;no&quot;;
+ 	}
+ 	if ((defined $oemrootMB) &amp;&amp; (&quot;$oemrootMB&quot; &gt; 0)) {
+-		$result{oemrootMB} = $oemrootMB;
++		$result{kiwi_oemrootMB} = $oemrootMB;
+ 	}
+ 	if ((defined $oemtitle) &amp;&amp; (&quot;$oemtitle&quot; ne &quot;&quot;)) {
+-		$result{oemtitle} = $oemtitle;
++		$result{kiwi_oemtitle} = $oemtitle;
+ 	}
+ 	if ((defined $oemreboot) &amp;&amp; (&quot;$oemreboot&quot; eq &quot;yes&quot;)) {
+-		$result{oemreboot} = $oemreboot;
++		$result{kiwi_oemreboot} = $oemreboot;
+ 	}
+ 	if ((defined $oemreco) &amp;&amp; (&quot;$oemreco&quot; eq &quot;yes&quot;)) {
+-		$result{oemrecovery} = $oemreco;
++		$result{kiwi_oemrecovery} = $oemreco;
+ 	}
+ 	#==========================================
+ 	# profiles
+ 	#------------------------------------------
+ 	if (defined $this-&gt;{reqProfiles}) {
+-		$result{profiles} = join &quot;,&quot;, @{$this-&gt;{reqProfiles}};
++		$result{kiwi_profiles} = join &quot;,&quot;, @{$this-&gt;{reqProfiles}};
+ 	}
+ 	return %result;
+ }
+
+Modified: kiwi-head/rpm/kiwi.changes
+==============================================================================
+--- kiwi-head/rpm/kiwi.changes	(original)
++++ kiwi-head/rpm/kiwi.changes	Wed Jun 11 16:35:45 2008
+@@ -2,6 +2,13 @@
+ Tue Jun 10 17:04:32 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.39
++- added kiwi_ prefix to all .profile variables
++- fixed checkFileSystem function to use type=auto if the
++  filesystem couldn't be detected by the file util (bnc #398381)
++- added svn revision information to .profile and let it
++  appear in /var/log/boot.kiwi during first deployment
++- allow package manager to be set on the commandline
++- fixed missing file close, patch by Nat Friedman
+ - added creation of /etc/sysconfig/bootloader
+ - fixed oemboot repartition code if no swap, no home and a
+   recovery partition was specified
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000410.html">[Kiwi-devel] [SVN:KIWI-Team] r1320 - kiwi-head/system/boot/oemboot
+</A></li>
+	<LI>Next message: <A HREF="000412.html">[Kiwi-devel] [SVN:KIWI-Team] r1322 - in kiwi-head/system/boot:	isoboot/suse-10.1 isoboot/suse-10.2 isoboot/suse-10.3	isoboot/suse-11.0 isoboot/suse-SLED10 isoboot/suse-SLED10-SP1	isoboot/suse-SLES10 isoboot/suse-SLES10-SP1 netboot/suse-10.1	netboot/suse-10.2 netboot/suse-11.0 netboot/suse-SLED10	netboot/suse-SLED10-SP1 netboot/suse-SLES10	netboot/suse-SLES10-SP1 oemboot/suse-10.2 oemboot/suse-10.3	oemboot/suse-11.0 oemboot/suse-SLED10-SP1	oemboot/suse-SLES10-SP1 usbboot/suse-10.2 usbboot/suse-10.3	usbboot/suse-11.0 usbboot/suse-SLED10 usbboot/suse-SLED10-SP1	usbboot/suse-SLES10 usbboot/suse-SLES10-SP1 vmxboot/suse-10.1	vmxboot/suse-10.2 vmxboot/suse-10.3 vmxboot/suse-11.0	vmxboot/suse-SLED10 vmxboot/suse-SLED10-SP1	vmxboot/suse-SLES10 vmxboot/suse-SLES10-SP1 xenboot/suse-10.1	xenboot/suse-10.2 xenboot/suse-10.3 xenboot/suse-11.0	xenboot/suse-SLED10 xenboot/suse-SLED10-SP1	xenboot/suse-SLES10 xenboot/suse-SLES10-SP1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#411">[ date ]</a>
+              <a href="thread.html#411">[ thread ]</a>
+              <a href="subject.html#411">[ subject ]</a>
+              <a href="author.html#411">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

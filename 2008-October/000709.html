@@ -1,0 +1,224 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1611 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1611%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200810071002.m97A29SE007909%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000708.html">
+   <LINK REL="Next"  HREF="000710.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1611 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1611%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200810071002.m97A29SE007909%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1611 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Oct  7 12:02:09 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000708.html">[Kiwi-devel] r1610 - kiwi-head/doc
+</A></li>
+        <LI>Next message: <A HREF="000710.html">[Kiwi-devel] r1612 - kiwi-head/rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#709">[ date ]</a>
+              <a href="thread.html#709">[ thread ]</a>
+              <a href="subject.html#709">[ subject ]</a>
+              <a href="author.html#709">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-07 12:02:03 +0200 (Tue, 07 Oct 2008)
+New Revision: 1611
+
+Modified:
+   kiwi-head/modules/KIWIXML.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- added support for openSUSE project patterns (bnc #432477)
+
+
+
+Modified: kiwi-head/modules/KIWIXML.pm
+===================================================================
+--- kiwi-head/modules/KIWIXML.pm	2008-10-06 15:46:34 UTC (rev 1610)
++++ kiwi-head/modules/KIWIXML.pm	2008-10-07 10:02:03 UTC (rev 1611)
+@@ -2774,7 +2774,6 @@
+ 			my $link = $1;
+ 			if ($link =~ /$search/) {
+ 				$url  = $location.$link;
+-				print (&quot;NEXT\n&quot;);
+ 				$data = qxx (&quot;lwp-download $url $dest 2&gt;&amp;1&quot;);
+ 				$code = $? &gt;&gt; 8;
+ 				if ($code == 0) {
+@@ -2802,10 +2801,11 @@
+ 	# ----
+ 	my $kiwi     = shift;
+ 	my $repos    = shift;
+-	my $patternd = &quot;/suse/setup/descr/&quot;;
++	my @patternd = (&quot;/suse/setup/descr/&quot;,&quot;/repodata&quot;);
+ 	my $patterns = &quot;/suse/setup/descr/patterns&quot;;
+ 	my $packages = &quot;/suse/setup/descr/packages.gz&quot;;
+ 	my $solvable = &quot;/suse/setup/descr/primary.gz&quot;;
++	my $project  = &quot;/repodata/patterns.xml.gz&quot;;
+ 	my $arch     = qxx (&quot;uname -m&quot;); chomp $arch;
+ 	my $count    = 0;
+ 	my $index    = 0;
+@@ -2814,7 +2814,10 @@
+ 	#==========================================
+ 	# check for sat tools
+ 	#------------------------------------------
+-	if ((! -x &quot;/usr/bin/mergesolv&quot;) || (! -x &quot;/usr/bin/susetags2solv&quot;)) {
++	if ((! -x &quot;/usr/bin/mergesolv&quot;) ||
++		(! -x &quot;/usr/bin/susetags2solv&quot;) ||
++		(! -x &quot;/usr/bin/rpmmd2solv&quot;)
++	) {
+ 		$kiwi -&gt; error  (&quot;--&gt; Can't find satsolver tools&quot;);
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+@@ -2840,7 +2843,13 @@
+ 		# create directory listing for each repo
+ 		#------------------------------------------
+ 		my $destfile = $sdir.&quot;/listing&quot;;
+-		if (! KIWIXML::getInstSourceFile ($kiwi,$repo.$patternd,$destfile)) {
++		my $foundDir = 0;
++		foreach my $patternd (@patternd) {
++			if (KIWIXML::getInstSourceFile ($kiwi,$repo.$patternd,$destfile)) {
++				$foundDir = 1; last;
++			}
++		}
++		if (! $foundDir) {
+ 			next;
+ 		}
+ 		#==========================================
+@@ -2851,14 +2860,13 @@
+ 		}
+ 		my $repoOK = -1;
+ 		foreach my $line (&lt;FD&gt;) {
+-			if ($line =~ /\&quot;primary.gz\&quot;/) {
++			# opensuse rpm-md project repo
++			if ($line =~ /\&quot;patterns\.xml\.gz\&quot;/) {
+ 				$repoOK = 1; last;
+ 			}
+-			if ($line =~ /\&quot;packages.gz\&quot;/) {
+-				$repoOK++;
+-			}
++			# standard yast2 distribution repo
+ 			if ($line =~ /\&quot;patterns\&quot;/) {
+-				$repoOK++;
++				$repoOK++; last;
+ 			}
+ 		}
+ 		if ($repoOK) {
+@@ -2889,8 +2897,22 @@
+ 		#==========================================
+ 		# check for pre-created solvable first
+ 		#------------------------------------------
++		my $foundFile = 0;
+ 		$destfile = $sdir.&quot;/primary-&quot;.$count.&quot;.gz&quot;;
+ 		if (KIWIXML::getInstSourceFile ($kiwi,$repo.$solvable,$destfile)) {
++			$foundFile = 1;
++		}
++		#==========================================
++		# check for opensuse project pattern
++		#------------------------------------------
++		$destfile = $sdir.&quot;/projectxml-&quot;.$count.&quot;.gz&quot;;
++		if (KIWIXML::getInstSourceFile ($kiwi,$repo.$project,$destfile)) {
++			$foundFile = 1;
++		}
++		#==========================================
++		# skip if we already have solvable
++		#------------------------------------------
++		if ($foundFile) {
+ 			next;
+ 		}
+ 		#==========================================
+@@ -2917,7 +2939,7 @@
+ 			if ($line !~ /\.$arch\./) {
+ 				next;
+ 			}
+-			my $file = $repo.$patternd.$line;
++			my $file = $repo.$patternd[0].$line;
+ 			if (! KIWIXML::getInstSourceFile($kiwi,$file,$destfile)) {
+ 				$kiwi -&gt; warning (&quot;--&gt; Pattern file $line not found&quot;);
+ 				$kiwi -&gt; skipped ();
+@@ -2954,7 +2976,22 @@
+ 			$error = 1;
+ 		}
+ 	}
++	$count++;
+ 	#==========================================
++	# create solvable from opensuse xml pattern
++	#------------------------------------------
++	if (glob (&quot;$sdir/projectxml-*.gz&quot;)) {
++		$destfile = $sdir.&quot;/primary-&quot;.$count;
++		$scommand = &quot;gzip -cd $sdir/projectxml-*.gz&quot;;
++		my $data = qxx (&quot;($scommand) | rpmmd2solv &gt; $destfile 2&gt;/dev/null&quot;);
++		my $code = $? &gt;&gt; 8;
++		if ($code != 0) {
++			$kiwi -&gt; error  (&quot;--&gt; Can't create SaT solvable file&quot;);
++			$kiwi -&gt; failed ();
++			$error = 1;
++		}
++	}
++	#==========================================
+ 	# uncompress all pre-created solvables
+ 	#------------------------------------------
+ 	if (! $error) {
+@@ -2990,6 +3027,7 @@
+ 	# cleanup cache dir
+ 	#------------------------------------------
+ 	qxx (&quot;rm -f $sdir/primary-*&quot;);
++	qxx (&quot;rm -f $sdir/projectxml-*.gz&quot;);
+ 	qxx (&quot;rm -f $sdir/packages-*.gz&quot;);
+ 	qxx (&quot;rm -f $sdir/*.pat.gz&quot;);
+ 	if (! $error) {
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-06 15:46:34 UTC (rev 1610)
++++ kiwi-head/rpm/kiwi.changes	2008-10-07 10:02:03 UTC (rev 1611)
+@@ -3,6 +3,9 @@
+ 
+ - v2.85
+ - fixed getPackageAttributes() to respect profiles
++- removed completely outdated kiwi.quick.pdf
++- fixed udev initial setup, default rules in /lib/udev/rules.d 
++- added support for openSUSE project patterns (bnc #432477)
+ - added required kernel packages -base, -extras according
+   to kernel split for SUSE 11.1 (bnc #432482)
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000708.html">[Kiwi-devel] r1610 - kiwi-head/doc
+</A></li>
+	<LI>Next message: <A HREF="000710.html">[Kiwi-devel] r1612 - kiwi-head/rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#709">[ date ]</a>
+              <a href="thread.html#709">[ thread ]</a>
+              <a href="subject.html#709">[ subject ]</a>
+              <a href="author.html#709">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,1226 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 21fed0aa0f4c623347f3c621cc9b78f3c448fe72
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2021fed0aa0f4c623347f3c621cc9b78f3c448fe72&In-Reply-To=%3C20101221162517.D6E6C480BF9%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002920.html">
+   <LINK REL="Next"  HREF="002922.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 21fed0aa0f4c623347f3c621cc9b78f3c448fe72</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2021fed0aa0f4c623347f3c621cc9b78f3c448fe72&In-Reply-To=%3C20101221162517.D6E6C480BF9%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 21fed0aa0f4c623347f3c621cc9b78f3c448fe72">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Dec 21 17:25:17 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002920.html">[Kiwi-devel] The initrd for OEM images
+</A></li>
+        <LI>Next message: <A HREF="002922.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 18d685207a2c5df109851a1761e6299c844411d5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2921">[ date ]</a>
+              <a href="thread.html#2921">[ thread ]</a>
+              <a href="subject.html#2921">[ subject ]</a>
+              <a href="author.html#2921">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  21fed0aa0f4c623347f3c621cc9b78f3c448fe72 (commit)
+      from  5f06ca92dec198ac89034ef3f6150cd4289c7db4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 21fed0aa0f4c623347f3c621cc9b78f3c448fe72
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Dec 21 17:20:46 2010 +0100
+
+    - make sure bootincluded packages and archives are not
+      removed by the initrd strip down functions. This is done
+      by introdudcing two new functions in KIWIConfig.sh:
+    
+      * basePackBootIncludes
+      * baseUnpackBootIncludes
+    
+      whereas the first one packs the bootinclude files and the
+      second one unpacks them again. The standard boot image
+      descriptions provided by kiwi uses that functions to make
+      sure all bootincluded files can be restored at the end of
+      the strip down functions called in image.sh (bnc #660743)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 7412a1e..f623a00 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -1559,4 +1559,35 @@ function baseDisableCtrlAltDel {
+ 	sed -i &quot;s/ca::ctrlaltdel/#ca::ctrlaltdel/&quot; /etc/inittab
+ }
+ 
++#======================================
++# basePackBootIncludes
++#--------------------------------------
++function basePackBootIncludes {
++	# /.../
++	# This function packs the rpm files for the packages
++	# listed in $kiwi_fixedpackbootincludes and the file list
++	# in bootincluded_archives.filelist into a tarball
++	# ----
++	local archive=/bootinclude.tgz
++	if [ -f /bootincluded_archives.filelist ];then
++		echo &quot;Packing bootincluded archives...&quot;
++		cat /bootincluded_archives.filelist | xargs tar -C / -rvf $archive
++	fi
++	if [ ! -z &quot;$kiwi_fixedpackbootincludes&quot; ];then
++		echo &quot;Packing bootincluded packages...&quot;
++		rpm -ql $kiwi_fixedpackbootincludes | xargs tar -C / -rvf $archive
++	fi
++}
++
++#======================================
++# baseUnpackBootIncludes
++#--------------------------------------
++function baseUnpackBootIncludes {
++	local archive=/bootinclude.tgz
++	if [ -f $archive ];then
++		echo &quot;Unpacking bootinclude archive...&quot;
++		tar -C / -xvf $archive &amp;&amp; rm -f $archive
++	fi
++}
++
+ # vim: set noexpandtab:
+diff --git a/modules/KIWIManager.pm b/modules/KIWIManager.pm
+index 62fdbb3..4749940 100644
+--- a/modules/KIWIManager.pm
++++ b/modules/KIWIManager.pm
+@@ -1676,6 +1676,7 @@ sub setupArchives {
+ 	print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 	print $fd &quot;trap clean INT TERM\n&quot;;
+ 	print $fd &quot;for i in @tars;do\n&quot;;
++	print $fd &quot;   tar -tf $idesc/\$i &gt;&gt; $root/bootincluded_archives.filelist\n&quot;;
+ 	print $fd &quot;   if ! tar -C $root -xvf $idesc/\$i;then\n&quot;;
+ 	print $fd &quot;       ECODE=\$?\n&quot;;
+ 	print $fd &quot;       echo \$ECODE &gt; $screenCall.exit\n&quot;;
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index d5b6974..fbff8ac 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -1898,6 +1898,7 @@ sub addPackages {
+ 	# ----
+ 	my $this  = shift;
+ 	my $ptype = shift;
++	my $bincl = shift;
+ 	my $nodes = shift;
+ 	my @packs = @_;
+ 	if (! defined $nodes) {
+@@ -1918,6 +1919,9 @@ sub addPackages {
+ 		next if ($pack eq &quot;&quot;);
+ 		my $addElement = new XML::LibXML::Element (&quot;package&quot;);
+ 		$addElement -&gt; setAttribute(&quot;name&quot;,$pack);
++		if (($bincl) &amp;&amp; ($bincl-&gt;{$pack} == 1)) {
++			$addElement -&gt; setAttribute(&quot;bootinclude&quot;,&quot;true&quot;);
++		}
+ 		$nodes -&gt; get_node($nodeNumber)
+ 			-&gt; appendChild ($addElement);
+ 	}
+@@ -1972,6 +1976,7 @@ sub addArchives {
+ 	# ----
+ 	my $this  = shift;
+ 	my $ptype = shift;
++	my $bincl = shift;
+ 	my $nodes = shift;
+ 	my @tars  = @_;
+ 	if (! defined $nodes) {
+@@ -1991,6 +1996,9 @@ sub addArchives {
+ 	foreach my $tar (@tars) {
+ 		my $addElement = new XML::LibXML::Element (&quot;archive&quot;);
+ 		$addElement -&gt; setAttribute(&quot;name&quot;,$tar);
++		if ($bincl) {
++			$addElement -&gt; setAttribute(&quot;bootinclude&quot;,&quot;true&quot;);
++		}
+ 		$nodes -&gt; get_node($nodeNumber)
+ 			-&gt; appendChild ($addElement);
+ 	}
+@@ -2007,7 +2015,7 @@ sub addImagePackages {
+ 	# section of the xml description parse tree.
+ 	# ----
+ 	my $this  = shift;
+-	return $this -&gt; addPackages (&quot;bootstrap&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">,undef, at _</A>);
++	return $this -&gt; addPackages (&quot;bootstrap&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">,undef,undef, at _</A>);
+ }
+ 
+ #==========================================
+@@ -2031,7 +2039,38 @@ sub addRemovePackages {
+ 	# section of the xml description parse tree.
+ 	# ----
+ 	my $this  = shift;
+-	return $this -&gt; addPackages (&quot;delete&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">,undef, at _</A>);
++	return $this -&gt; addPackages (&quot;delete&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">,undef,undef, at _</A>);
++}
++
++#==========================================
++# getBootIncludes
++#------------------------------------------
++sub getBootIncludes {
++	# ...
++	# Collect all items marked as bootinclude=&quot;true&quot;
++	# and return them in a list of names
++	# ----
++	my $this = shift;
++	my @node = $this-&gt;{packageNodeList} -&gt; get_nodelist();
++	my @result = ();
++	my @plist  = ();
++	foreach my $element (@node) {
++		my $type = $element -&gt; getAttribute (&quot;type&quot;);
++		if (! $this -&gt; __requestedProfile ($element)) {
++			next;
++		}
++		if (($type eq &quot;image&quot;) || ($type eq &quot;bootstrap&quot;)) {
++			push (@plist,$element-&gt;getElementsByTagName (&quot;package&quot;));
++		}
++	}
++	foreach my $element (@plist) {
++		my $itemname= $element -&gt; getAttribute (&quot;name&quot;);
++		my $bootinc = $element -&gt; getAttribute (&quot;bootinclude&quot;);
++		if ((defined $bootinc) &amp;&amp; (&quot;$bootinc&quot; eq &quot;true&quot;)) {
++			push (@result,$itemname);
++		}
++	}
++	return @result;
+ }
+ 
+ #==========================================
+@@ -2056,6 +2095,13 @@ sub getImageConfig {
+ 	}
+ 	$result{kiwi_revision} = $rev;
+ 	#==========================================
++	# bootincluded items (packs,archives)
++	#------------------------------------------
++	my @bincl = $this -&gt; getBootIncludes();
++	if (@bincl) {
++		$result{kiwi_fixedpackbootincludes} = join(&quot; &quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">, at bincl</A>);
++	}
++	#==========================================
+ 	# preferences attributes and text elements
+ 	#------------------------------------------
+ 	my %type = %{$this-&gt;getImageTypeAndAttributes()};
+@@ -4055,6 +4101,7 @@ sub __updateDescriptionFromChangeSet {
+ 		my @falistImage;
+ 		my @fplistImage;
+ 		my @fplistDelete;
++		my %fixedBootInclude;
+ 		foreach my $element (@node) {
+ 			my $type = $element  -&gt; getAttribute (&quot;type&quot;);
+ 			if (! $this -&gt; __requestedProfile ($element)) {
+@@ -4069,12 +4116,16 @@ sub __updateDescriptionFromChangeSet {
+ 			my $package = $element -&gt; getAttribute (&quot;name&quot;);
+ 			my $bootinc = $element -&gt; getAttribute (&quot;bootinclude&quot;);
+ 			my $bootdel = $element -&gt; getAttribute (&quot;bootdelete&quot;);
++			my $include = 0;
+ 			if ((defined $bootinc) &amp;&amp; (&quot;$bootinc&quot; eq &quot;true&quot;)) {
+ 				push (@fplistImage,$package);
++				$include++;
+ 			}
+ 			if ((defined $bootdel) &amp;&amp; (&quot;$bootdel&quot; eq &quot;true&quot;)) {
+ 				push (@fplistDelete,$package);
++				$include--;
+ 			}
++			$fixedBootInclude{$package} = $include;
+ 		}
+ 		foreach my $element (@alist) {
+ 			my $archive = $element -&gt; getAttribute (&quot;name&quot;);
+@@ -4089,11 +4140,11 @@ sub __updateDescriptionFromChangeSet {
+ 				$kiwi -&gt; info (&quot;--&gt; $p\n&quot;);
+ 			}
+ 			$this -&gt; addPackages (
+-				&quot;bootstrap&quot;,$<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">packageNodeList, at fplistImage</A>
++				&quot;bootstrap&quot;,\%fixedBootInclude,$<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">packageNodeList, at fplistImage</A>
+ 			);
+ 			if (@fplistDelete) {
+ 				$this -&gt; addPackages (
+-					&quot;delete&quot;,$<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">packageNodeList, at fplistDelete</A>
++					&quot;delete&quot;,undef,$<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">packageNodeList, at fplistDelete</A>
+ 				);
+ 			}
+ 		}
+@@ -4103,7 +4154,7 @@ sub __updateDescriptionFromChangeSet {
+ 				$kiwi -&gt; info (&quot;--&gt; $p\n&quot;);
+ 			}
+ 			$this -&gt; addArchives (
+-				&quot;bootstrap&quot;,$<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">packageNodeList, at falistImage</A>
++				&quot;bootstrap&quot;,&quot;bootinclude&quot;,$<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">packageNodeList, at falistImage</A>
+ 			);
+ 		}
+ 	}
+diff --git a/system/boot/ix86/isoboot/rhel-05.4/images.sh b/system/boot/ix86/isoboot/rhel-05.4/images.sh
+index 6c0ab5a..7651026 100755
+--- a/system/boot/ix86/isoboot/rhel-05.4/images.sh
++++ b/system/boot/ix86/isoboot/rhel-05.4/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ rhelStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ rhelStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/isoboot/suse-11.1/images.sh b/system/boot/ix86/isoboot/suse-11.1/images.sh
+index bb5e5ec..aa37ea4 100755
+--- a/system/boot/ix86/isoboot/suse-11.1/images.sh
++++ b/system/boot/ix86/isoboot/suse-11.1/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/isoboot/suse-11.2/images.sh b/system/boot/ix86/isoboot/suse-11.2/images.sh
+index bb5e5ec..aa37ea4 100755
+--- a/system/boot/ix86/isoboot/suse-11.2/images.sh
++++ b/system/boot/ix86/isoboot/suse-11.2/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/isoboot/suse-11.3/images.sh b/system/boot/ix86/isoboot/suse-11.3/images.sh
+index bb5e5ec..aa37ea4 100755
+--- a/system/boot/ix86/isoboot/suse-11.3/images.sh
++++ b/system/boot/ix86/isoboot/suse-11.3/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/isoboot/suse-11.4/images.sh b/system/boot/ix86/isoboot/suse-11.4/images.sh
+index bb5e5ec..aa37ea4 100755
+--- a/system/boot/ix86/isoboot/suse-11.4/images.sh
++++ b/system/boot/ix86/isoboot/suse-11.4/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/isoboot/suse-SLED10/images.sh b/system/boot/ix86/isoboot/suse-SLED10/images.sh
+index 0d0f36a..f95f0b1 100755
+--- a/system/boot/ix86/isoboot/suse-SLED10/images.sh
++++ b/system/boot/ix86/isoboot/suse-SLED10/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/isoboot/suse-SLED11/images.sh b/system/boot/ix86/isoboot/suse-SLED11/images.sh
+index 9682d80..eeae90a 100755
+--- a/system/boot/ix86/isoboot/suse-SLED11/images.sh
++++ b/system/boot/ix86/isoboot/suse-SLED11/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/isoboot/suse-SLES10/images.sh b/system/boot/ix86/isoboot/suse-SLES10/images.sh
+index fff07f3..0e9efdf 100755
+--- a/system/boot/ix86/isoboot/suse-SLES10/images.sh
++++ b/system/boot/ix86/isoboot/suse-SLES10/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/isoboot/suse-SLES11/images.sh b/system/boot/ix86/isoboot/suse-SLES11/images.sh
+index fff07f3..0e9efdf 100755
+--- a/system/boot/ix86/isoboot/suse-SLES11/images.sh
++++ b/system/boot/ix86/isoboot/suse-SLES11/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/netboot/suse-11.1/images.sh b/system/boot/ix86/netboot/suse-11.1/images.sh
+index f13650b..5d2f1f7 100755
+--- a/system/boot/ix86/netboot/suse-11.1/images.sh
++++ b/system/boot/ix86/netboot/suse-11.1/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/netboot/suse-11.2/images.sh b/system/boot/ix86/netboot/suse-11.2/images.sh
+index f13650b..5d2f1f7 100755
+--- a/system/boot/ix86/netboot/suse-11.2/images.sh
++++ b/system/boot/ix86/netboot/suse-11.2/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/netboot/suse-11.3/images.sh b/system/boot/ix86/netboot/suse-11.3/images.sh
+index f13650b..5d2f1f7 100755
+--- a/system/boot/ix86/netboot/suse-11.3/images.sh
++++ b/system/boot/ix86/netboot/suse-11.3/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/netboot/suse-11.4/images.sh b/system/boot/ix86/netboot/suse-11.4/images.sh
+index f13650b..5d2f1f7 100755
+--- a/system/boot/ix86/netboot/suse-11.4/images.sh
++++ b/system/boot/ix86/netboot/suse-11.4/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/netboot/suse-SLED10/images.sh b/system/boot/ix86/netboot/suse-SLED10/images.sh
+index 786a189..28c5fa4 100755
+--- a/system/boot/ix86/netboot/suse-SLED10/images.sh
++++ b/system/boot/ix86/netboot/suse-SLED10/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/netboot/suse-SLED11/images.sh b/system/boot/ix86/netboot/suse-SLED11/images.sh
+index e228614..1b508ce 100755
+--- a/system/boot/ix86/netboot/suse-SLED11/images.sh
++++ b/system/boot/ix86/netboot/suse-SLED11/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/netboot/suse-SLES10/images.sh b/system/boot/ix86/netboot/suse-SLES10/images.sh
+index e9b9382..42456b6 100755
+--- a/system/boot/ix86/netboot/suse-SLES10/images.sh
++++ b/system/boot/ix86/netboot/suse-SLES10/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/netboot/suse-SLES11/images.sh b/system/boot/ix86/netboot/suse-SLES11/images.sh
+index e9b9382..42456b6 100755
+--- a/system/boot/ix86/netboot/suse-SLES11/images.sh
++++ b/system/boot/ix86/netboot/suse-SLES11/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/usbboot/suse-11.1/images.sh b/system/boot/ix86/usbboot/suse-11.1/images.sh
+index f13650b..5d2f1f7 100755
+--- a/system/boot/ix86/usbboot/suse-11.1/images.sh
++++ b/system/boot/ix86/usbboot/suse-11.1/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/usbboot/suse-11.2/images.sh b/system/boot/ix86/usbboot/suse-11.2/images.sh
+index f13650b..5d2f1f7 100755
+--- a/system/boot/ix86/usbboot/suse-11.2/images.sh
++++ b/system/boot/ix86/usbboot/suse-11.2/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/usbboot/suse-11.3/images.sh b/system/boot/ix86/usbboot/suse-11.3/images.sh
+index f13650b..5d2f1f7 100755
+--- a/system/boot/ix86/usbboot/suse-11.3/images.sh
++++ b/system/boot/ix86/usbboot/suse-11.3/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/usbboot/suse-11.4/images.sh b/system/boot/ix86/usbboot/suse-11.4/images.sh
+index f13650b..5d2f1f7 100755
+--- a/system/boot/ix86/usbboot/suse-11.4/images.sh
++++ b/system/boot/ix86/usbboot/suse-11.4/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/usbboot/suse-SLED10/images.sh b/system/boot/ix86/usbboot/suse-SLED10/images.sh
+index 786a189..28c5fa4 100755
+--- a/system/boot/ix86/usbboot/suse-SLED10/images.sh
++++ b/system/boot/ix86/usbboot/suse-SLED10/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/usbboot/suse-SLED11/images.sh b/system/boot/ix86/usbboot/suse-SLED11/images.sh
+index e228614..1b508ce 100755
+--- a/system/boot/ix86/usbboot/suse-SLED11/images.sh
++++ b/system/boot/ix86/usbboot/suse-SLED11/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/usbboot/suse-SLES10/images.sh b/system/boot/ix86/usbboot/suse-SLES10/images.sh
+index e9b9382..42456b6 100755
+--- a/system/boot/ix86/usbboot/suse-SLES10/images.sh
++++ b/system/boot/ix86/usbboot/suse-SLES10/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/usbboot/suse-SLES11/images.sh b/system/boot/ix86/usbboot/suse-SLES11/images.sh
+index e9b9382..42456b6 100755
+--- a/system/boot/ix86/usbboot/suse-SLES11/images.sh
++++ b/system/boot/ix86/usbboot/suse-SLES11/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/vmxboot/suse-11.1/images.sh b/system/boot/ix86/vmxboot/suse-11.1/images.sh
+index f13650b..5d2f1f7 100755
+--- a/system/boot/ix86/vmxboot/suse-11.1/images.sh
++++ b/system/boot/ix86/vmxboot/suse-11.1/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/vmxboot/suse-11.2/images.sh b/system/boot/ix86/vmxboot/suse-11.2/images.sh
+index f13650b..5d2f1f7 100755
+--- a/system/boot/ix86/vmxboot/suse-11.2/images.sh
++++ b/system/boot/ix86/vmxboot/suse-11.2/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/vmxboot/suse-11.3/images.sh b/system/boot/ix86/vmxboot/suse-11.3/images.sh
+index f13650b..5d2f1f7 100755
+--- a/system/boot/ix86/vmxboot/suse-11.3/images.sh
++++ b/system/boot/ix86/vmxboot/suse-11.3/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/vmxboot/suse-11.4/images.sh b/system/boot/ix86/vmxboot/suse-11.4/images.sh
+index f13650b..5d2f1f7 100755
+--- a/system/boot/ix86/vmxboot/suse-11.4/images.sh
++++ b/system/boot/ix86/vmxboot/suse-11.4/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/vmxboot/suse-SLED10/images.sh b/system/boot/ix86/vmxboot/suse-SLED10/images.sh
+index 786a189..28c5fa4 100755
+--- a/system/boot/ix86/vmxboot/suse-SLED10/images.sh
++++ b/system/boot/ix86/vmxboot/suse-SLED10/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/vmxboot/suse-SLED11/images.sh b/system/boot/ix86/vmxboot/suse-SLED11/images.sh
+index e228614..1b508ce 100755
+--- a/system/boot/ix86/vmxboot/suse-SLED11/images.sh
++++ b/system/boot/ix86/vmxboot/suse-SLED11/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/vmxboot/suse-SLES10/images.sh b/system/boot/ix86/vmxboot/suse-SLES10/images.sh
+index e9b9382..42456b6 100755
+--- a/system/boot/ix86/vmxboot/suse-SLES10/images.sh
++++ b/system/boot/ix86/vmxboot/suse-SLES10/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+diff --git a/system/boot/ix86/vmxboot/suse-SLES11/images.sh b/system/boot/ix86/vmxboot/suse-SLES11/images.sh
+index e9b9382..42456b6 100755
+--- a/system/boot/ix86/vmxboot/suse-SLES11/images.sh
++++ b/system/boot/ix86/vmxboot/suse-SLES11/images.sh
+@@ -5,6 +5,11 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #==========================================
++# pack boot includes
++#------------------------------------------
++basePackBootIncludes
++
++#==========================================
+ # remove unneded kernel files
+ #------------------------------------------
+ suseStripKernel
+@@ -26,6 +31,11 @@ rpm -e --nodeps --noscripts \
+ suseStripInitrd
+ 
+ #==========================================
++# unpack boot includes
++#------------------------------------------
++baseUnpackBootIncludes
++
++#==========================================
+ # umount /proc
+ #------------------------------------------
+ umount /proc &amp;&gt;/dev/null
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002920.html">[Kiwi-devel] The initrd for OEM images
+</A></li>
+	<LI>Next message: <A HREF="002922.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 18d685207a2c5df109851a1761e6299c844411d5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2921">[ date ]</a>
+              <a href="thread.html#2921">[ thread ]</a>
+              <a href="subject.html#2921">[ subject ]</a>
+              <a href="author.html#2921">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,188 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. ba918ebfc783f8ef4f5cef23597e82cbfb999ccf
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20ba918ebfc783f8ef4f5cef23597e82cbfb999ccf&In-Reply-To=%3C20100818093325.33692480F7D%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002556.html">
+   <LINK REL="Next"  HREF="002558.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. ba918ebfc783f8ef4f5cef23597e82cbfb999ccf</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20ba918ebfc783f8ef4f5cef23597e82cbfb999ccf&In-Reply-To=%3C20100818093325.33692480F7D%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. ba918ebfc783f8ef4f5cef23597e82cbfb999ccf">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Aug 18 11:33:24 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002556.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0794e53e3ce0c69cf3e3974125bb1763208369a0
+</A></li>
+        <LI>Next message: <A HREF="002558.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. 4ed150201acbbb62f67c945ae809284523cb6071
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2557">[ date ]</a>
+              <a href="thread.html#2557">[ thread ]</a>
+              <a href="subject.html#2557">[ subject ]</a>
+              <a href="author.html#2557">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-374-SuSE-11-1-SLE-SP-Devel has been updated
+       via  ba918ebfc783f8ef4f5cef23597e82cbfb999ccf (commit)
+       via  0fd051fbb65bc85ca5994045e33cf9944801c2d8 (commit)
+      from  deaa0ac97ad804d755e5a67f04b878d743902823 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ba918ebfc783f8ef4f5cef23597e82cbfb999ccf
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Aug 18 11:06:47 2010 +0200
+
+    - fixed netboot building by providing atftp for SLE11 (bnc #632203)
+
+commit 0fd051fbb65bc85ca5994045e33cf9944801c2d8
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Aug 18 11:11:44 2010 +0200
+
+    - disable filesystem check for kiwi managed partitions
+      by resetting the mount counter using using tune2fs
+      (bnc #627021)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 2dd3084..cf4bb94 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -3908,10 +3908,42 @@ function mountSystem {
+ 		mountSystemStandard &quot;$mountDevice&quot;
+ 		retval=$?
+ 	fi
++	#======================================
++	# reset mount counter
++	#--------------------------------------
++	resetMountCounter
+ 	IFS=$OLDIFS
+ 	return $retval
+ }
+ #======================================
++# resetMountCounter
++#--------------------------------------
++function resetMountCounter {
++	local curtype=$FSTYPE
++	local command
++	for device in \
++		$imageRootDevice $imageBootDevice \
++		$imageRecoveryDevice $imageHomeDevice
++	do
++		if [ ! -e $device ];then
++			continue
++		fi
++		probeFileSystem $device
++		if [ &quot;$FSTYPE&quot; = &quot;ext2&quot; ];then
++			command=&quot;tune2fs -c -1 -i 0&quot;
++		elif [ &quot;$FSTYPE&quot; = &quot;ext3&quot; ];then
++			command=&quot;tune2fs -c -1 -i 0&quot;
++		elif [ &quot;$FSTYPE&quot; = &quot;ext4&quot; ];then
++			command=&quot;tune2fs -c -1 -i 0&quot;
++		else
++			# nothing to do here...
++			continue
++		fi
++		eval $command $device 1&gt;&amp;2
++	done
++	FSTYPE=$curtype
++}
++#======================================
+ # cleanDirectory
+ #--------------------------------------
+ function cleanDirectory {
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index e322ecd..4fca771 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Fri Aug 13 14:24:25 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- disable filesystem check for kiwi managed partitions
++  by resetting the mount counter using using tune2fs
++  (bnc #627021)
++
++-------------------------------------------------------------------
+ Tue Aug 10 15:42:08 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - added acpi modules to kiwi's oemboot initrd. This is required
+diff --git a/system/boot/ix86/netboot/suse-SLED11/config.xml b/system/boot/ix86/netboot/suse-SLED11/config.xml
+index 3871c19..6d8d250 100644
+--- a/system/boot/ix86/netboot/suse-SLED11/config.xml
++++ b/system/boot/ix86/netboot/suse-SLED11/config.xml
+@@ -156,6 +156,7 @@
+ 		&lt;package name=&quot;iputils&quot;/&gt;
+ 		&lt;package name=&quot;atftp&quot;/&gt;
+ 		&lt;package name=&quot;busybox&quot;/&gt;
++		&lt;package name=&quot;atftp&quot;/&gt;
+ 		&lt;package name=&quot;bind-libs&quot;/&gt;
+ 		&lt;package name=&quot;bind-utils&quot;/&gt;
+ 		&lt;package name=&quot;dhcpcd&quot;/&gt;
+@@ -184,6 +185,7 @@
+ 		&lt;package name=&quot;iputils&quot;/&gt;
+ 		&lt;package name=&quot;atftp&quot;/&gt;
+ 		&lt;package name=&quot;busybox&quot;/&gt;
++		&lt;package name=&quot;atftp&quot;/&gt;
+ 		&lt;package name=&quot;dhcpcd&quot;/&gt;
+ 		&lt;package name=&quot;file&quot;/&gt;
+ 		&lt;package name=&quot;hwinfo&quot;/&gt;
+diff --git a/system/suse-repo/suse-sle11-repo/atftp-0.7.0-135.6.i586.rpm b/system/suse-repo/suse-sle11-repo/atftp-0.7.0-135.6.i586.rpm
+new file mode 100644
+index 0000000..8ffc924
+Binary files /dev/null and b/system/suse-repo/suse-sle11-repo/atftp-0.7.0-135.6.i586.rpm differ
+diff --git a/system/suse-repo/suse-sle11-repo/atftp-0.7.0-135.6.x86_64.rpm b/system/suse-repo/suse-sle11-repo/atftp-0.7.0-135.6.x86_64.rpm
+new file mode 100644
+index 0000000..25437f7
+Binary files /dev/null and b/system/suse-repo/suse-sle11-repo/atftp-0.7.0-135.6.x86_64.rpm differ
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002556.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0794e53e3ce0c69cf3e3974125bb1763208369a0
+</A></li>
+	<LI>Next message: <A HREF="002558.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. 4ed150201acbbb62f67c945ae809284523cb6071
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2557">[ date ]</a>
+              <a href="thread.html#2557">[ thread ]</a>
+              <a href="subject.html#2557">[ subject ]</a>
+              <a href="author.html#2557">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

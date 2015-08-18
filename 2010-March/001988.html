@@ -1,0 +1,443 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a7793ed126482256a1d7b864aef2642e741b2591
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a7793ed126482256a1d7b864aef2642e741b2591&In-Reply-To=%3C201003091612.o29GCvb4004216%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001987.html">
+   <LINK REL="Next"  HREF="001989.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a7793ed126482256a1d7b864aef2642e741b2591</H1>
+    <B>mbarringer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a7793ed126482256a1d7b864aef2642e741b2591&In-Reply-To=%3C201003091612.o29GCvb4004216%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a7793ed126482256a1d7b864aef2642e741b2591">mbarringer at mail.berlios.de
+       </A><BR>
+    <I>Tue Mar  9 17:12:57 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001987.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. f82ab9d247aef4a90ab83eafe54c65ddf40630bc
+</A></li>
+        <LI>Next message: <A HREF="001989.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. a637943a9b6efc83cc857a8a8c7f7f4e55868da2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1988">[ date ]</a>
+              <a href="thread.html#1988">[ thread ]</a>
+              <a href="subject.html#1988">[ subject ]</a>
+              <a href="author.html#1988">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  a7793ed126482256a1d7b864aef2642e741b2591 (commit)
+      from  40fd1f4ed67734747a38a201c1f45d7efd4e2993 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit a7793ed126482256a1d7b864aef2642e741b2591
+Author: Matt Barringer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarringer at suse.de</A>&gt;
+Date:   Tue Mar 9 17:12:01 2010 +0100
+
+    Adding two new command flags:
+     -l, which lists USB devices
+     -k, which sets the imagewriter in &quot;kiosk mode&quot; (it won't list drives &gt; 200GB)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/tools/burner/MainWindow.cpp b/tools/burner/MainWindow.cpp
+index 44a88ee..84ea297 100644
+--- a/tools/burner/MainWindow.cpp
++++ b/tools/burner/MainWindow.cpp
+@@ -28,19 +28,23 @@
+ #include &lt;QtDBus&gt;
+ #include &lt;QFile&gt;
+ 
+-#ifndef Q_OS_LINUX
+-#error &quot;Only linux is supported at the moment&quot;
+-#endif
++#include &lt;unistd.h&gt;
++#include &lt;sys/types.h&gt;
++#include &lt;sys/sysctl.h&gt;
++
++
+ 
+ #include &quot;MainWindow.h&quot;
+ 
+-MainWindow::MainWindow (const char *cmddevice,
++MainWindow::MainWindow (Platform *platform,
++                        const char *cmddevice,
+                         const char *cmdfile,
+                         bool unsafe,
+                         bool maximized,
+                         QWidget *parent)
+  : QWidget(parent)
+ {
++    pPlatform = platform;
+     QDBusConnection dbusConnection = QDBusConnection::systemBus();
+     file = QString();
+     mMaximized = maximized;
+@@ -56,9 +60,7 @@ MainWindow::MainWindow (const char *cmddevice,
+ #endif
+ 
+     setWindowTitle(tr(VERSION));
+-    platform = new Platform;
+-    platform-&gt;findDevices(mUnsafe);
+-    reloadDeviceList(platform, cmddevice);
++    reloadDeviceList(cmddevice);
+ 
+     if (cmdfile != NULL)
+     {
+@@ -89,10 +91,10 @@ MainWindow::MainWindow (const char *cmddevice,
+ }
+ 
+ void
+-MainWindow::reloadDeviceList(Platform *platform, const char *cmddevice)
++MainWindow::reloadDeviceList(const char *cmddevice)
+ {
+     int dev = -1;
+-    QLinkedList&lt;DeviceItem *&gt; list = platform-&gt;getDeviceList();
++    QLinkedList&lt;DeviceItem *&gt; list = pPlatform-&gt;getDeviceList();
+     QLinkedList&lt;DeviceItem *&gt;::iterator i;
+     for (i = list.begin(); i != list.end(); ++i)
+     {
+@@ -302,7 +304,7 @@ MainWindow::deviceInserted(QDBusMessage message)
+     QString devicePath = message.arguments().at(0).toString();
+     if (devicePath.startsWith(&quot;/org/freedesktop/Hal/devices/storage_serial&quot;))
+     {
+-        DeviceItem *device = platform-&gt;getNewDevice(devicePath);
++        DeviceItem *device = pPlatform-&gt;getNewDevice(devicePath);
+         if (device != NULL)
+             if (deviceComboBox-&gt;findText(device-&gt;getDisplayString()) == -1)
+                 deviceComboBox-&gt;addItem(device-&gt;getDisplayString(), 0);
+@@ -316,7 +318,7 @@ MainWindow::deviceRemoved(QDBusMessage message)
+     QString devicePath = message.arguments().at(0).toString();
+     if (devicePath.startsWith(&quot;/org/freedesktop/Hal/devices/storage_serial&quot;))
+     {
+-        QLinkedList&lt;DeviceItem *&gt; list = platform-&gt;getDeviceList();
++        QLinkedList&lt;DeviceItem *&gt; list = pPlatform-&gt;getDeviceList();
+         QLinkedList&lt;DeviceItem *&gt;::iterator i;
+         for (i = list.begin(); i != list.end(); ++i)
+         {
+@@ -326,7 +328,7 @@ MainWindow::deviceRemoved(QDBusMessage message)
+                 if (index != -1)
+                 {
+                     deviceComboBox-&gt;removeItem(index);
+-                    platform-&gt;removeDeviceFromList(devicePath);
++                    pPlatform-&gt;removeDeviceFromList(devicePath);
+                     break;
+                 }
+             }
+@@ -414,11 +416,11 @@ MainWindow::write()
+         return;
+     }
+ 
+-    DeviceItem *item = platform-&gt;findDeviceInList(deviceComboBox-&gt;currentText());
++    DeviceItem *item = pPlatform-&gt;findDeviceInList(deviceComboBox-&gt;currentText());
+ 
+     if (item != NULL)
+     {
+-        if (platform-&gt;isMounted(item-&gt;getUDI()))
++        if (pPlatform-&gt;isMounted(item-&gt;getUDI()))
+         {
+             // We won't let them nuke a mounted device
+             QMessageBox msgBox;
+@@ -435,7 +437,7 @@ MainWindow::write()
+             {
+                 case QMessageBox::Yes:
+                 {
+-                    if (!platform-&gt;unmountDevice(item-&gt;getUDI()))
++                    if (!pPlatform-&gt;unmountDevice(item-&gt;getUDI()))
+                     {
+                         QMessageBox failedBox;
+                         failedBox.setText(tr(&quot;Unmount failed.  I will not write to this device.&quot;));
+@@ -472,7 +474,7 @@ MainWindow::write()
+         {
+             case QMessageBox::Ok:
+             {
+-                platform-&gt;writeData(item-&gt;getPath(), file, item-&gt;getSize());
++                pPlatform-&gt;writeData(item-&gt;getPath(), file, item-&gt;getSize());
+                 break;
+             }
+             default:
+diff --git a/tools/burner/MainWindow.h b/tools/burner/MainWindow.h
+index e3844bc..2070c4f 100644
+--- a/tools/burner/MainWindow.h
++++ b/tools/burner/MainWindow.h
+@@ -30,14 +30,15 @@
+ 
+ #include &quot;Platform.h&quot;
+ #include &quot;DeviceItem.h&quot;
+-#define VERSION &quot;SUSE Studio Image Writer 1.6.1&quot;
++#define VERSION &quot;SUSE Studio Image Writer 1.7&quot;
+ 
+ class MainWindow : public QWidget
+ {
+     Q_OBJECT
+ 
+ public:
+-    MainWindow(const char *cmddevice,
++    MainWindow(Platform *platform,
++               const char *cmddevice,
+                const char *cmdfile,
+                bool unsafe = false,
+                bool maximized = false,
+@@ -66,7 +67,7 @@ private:
+     void centerWindow();
+     void useNewUI();
+     void useOldUI();
+-    void reloadDeviceList(Platform *platform, const char *cmddevice);
++    void reloadDeviceList(const char *cmddevice);
+ 
+ #if (QT_VERSION &lt; 0x040400)
+     QLineEdit* fileLine;
+@@ -76,7 +77,7 @@ private:
+     QString file;
+     QLabel *fileSize, *fileLabel;
+     QComboBox *deviceComboBox;
+-    Platform *platform;
++    Platform *pPlatform;
+     bool mMaximized;
+     bool mUnsafe;
+ };
+diff --git a/tools/burner/Platform.cpp b/tools/burner/Platform.cpp
+index 568e74e..4075182 100644
+--- a/tools/burner/Platform.cpp
++++ b/tools/burner/Platform.cpp
+@@ -18,7 +18,7 @@
+  *  you may find current contact information at www.novell.com
+  *  
+  *  Author: Matt Barringer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarringer at suse.de</A>&gt;
+- *  
++ *
+  */
+ 
+ #include &lt;sys/mount.h&gt;
+@@ -91,6 +91,8 @@ Platform::getNewDevice(QString devicePath, LibHalContext *context)
+     DeviceItem *devItem = NULL;
+     LibHalContext *localContext = context;
+ 
++    // context / localContext is NULL when getNewDevice is called from the main window
++    // when a USB device is inserted
+     if (localContext == NULL)
+     {
+         if ((localContext = initHal()) == NULL)
+@@ -140,28 +142,48 @@ Platform::getNewDevice(QString devicePath, LibHalContext *context)
+             devItem-&gt;setModelString(product);
+ 
+         if (!strcmp(vendor, &quot;&quot;))
+-    #ifdef KIOSKHACK
+-            devItem-&gt;setVendorString(&quot;SUSE Studio USB Key&quot;);
+-    #else
+-            devItem-&gt;setVendorString(&quot;Unknown Device&quot;);
+-    #endif
++        {
++            if (mKioskMode)
++                devItem-&gt;setVendorString(&quot;SUSE Studio USB Key&quot;);
++            else
++                devItem-&gt;setVendorString(&quot;Unknown Device&quot;);
++        }
+         else
++        {
+             devItem-&gt;setVendorString(vendor);
+-
++        }
+         QString newDisplayString = QString(&quot;%1 %2 - %3 (%4 MB)&quot;).arg(devItem-&gt;getVendorString()).arg(devItem-&gt;getModelString()).arg(devItem-&gt;getPath()).arg(devItem-&gt;getSize() / 1048576);
+         devItem-&gt;setDisplayString(newDisplayString);
+ 
+-    // TODO replace the kiosk hack with the unsafe mode
+-    #ifdef KIOSKHACK
+-        // VERY VERY VERY VERY VERY  ugly hack for kiosk: ignore hard disks bigger than 100GB
+-        if((devItem-&gt;getSize() / 1048576) &lt; 200000)
+-    #endif
+-
++        if (mKioskMode)
++        {
++            if((devItem-&gt;getSize() / 1048576) &gt; 200000)
++            {
++                delete devItem;
++                libhal_free_string(device);
++                libhal_free_string(product);
++                libhal_free_string(vendor);
++                if (context == NULL)
++                {
++                    libhal_ctx_shutdown(localContext, NULL);
++                    libhal_ctx_free(localContext);
++                }
++
++                return(NULL);
++            }
++        }
++        
+         // If a device is 0 megs we might as well just not list it
+-        // TODO: Perhaps make kiosk mode the default in order to not list external hard drives &gt; 100GB?
+         if ((devItem-&gt;getSize() / 1048576) &gt; 0)
++        {
+             itemList &lt;&lt; devItem;
+-
++        }
++        else
++        {
++            delete devItem;
++            devItem = NULL;
++        }
++        
+         libhal_free_string(device);
+         libhal_free_string(product);
+         libhal_free_string(vendor);
+diff --git a/tools/burner/Platform.h b/tools/burner/Platform.h
+index 05daa61..c7e9d42 100644
+--- a/tools/burner/Platform.h
++++ b/tools/burner/Platform.h
+@@ -35,7 +35,7 @@ class Platform
+ {
+ 
+ public:
+-    Platform() {}
++    Platform(bool kioskMode = false) { mKioskMode = kioskMode; }
+     void findDevices(bool unsafe = false);
+     bool isMounted(QString path);
+     void writeData(QString path, QString fileName, qint64 deviceSize);
+@@ -50,6 +50,7 @@ public slots:
+     void tick(qint64 lastWritten, qint64 bytesWritten);
+ 
+ private:
++    bool mKioskMode;
+     DeviceItem *pDevice;
+     QLinkedList&lt;DeviceItem *&gt; itemList;
+     LibHalContext *initHal();
+diff --git a/tools/burner/main.cpp b/tools/burner/main.cpp
+index c7d8183..ac37541 100644
+--- a/tools/burner/main.cpp
++++ b/tools/burner/main.cpp
+@@ -22,14 +22,17 @@
+  */
+ 
+ #include &lt;QApplication&gt;
+-#include &quot;MainWindow.h&quot;
+ 
+-#if defined (Q_OS_UNIX)
+-#include &lt;unistd.h&gt;
+-#include &lt;sys/types.h&gt;
+-#include &lt;sys/sysctl.h&gt;
++#ifndef Q_OS_LINUX
++#error &quot;Only linux is supported at the moment&quot;
+ #endif
+ 
++
++#include &quot;MainWindow.h&quot;
++#include &quot;Platform.h&quot;
++#include &quot;DeviceItem.h&quot;
++
++
+ int
+ main (int argc, char *argv[])
+ {
+@@ -38,6 +41,8 @@ main (int argc, char *argv[])
+     char *file = NULL;
+     bool unsafe = false;
+     bool maximized = false;
++    bool listMode = false;
++    bool kioskMode = false;
+ #if defined(Q_OS_UNIX) 
+ #ifndef KIOSKHACK
+     if (getuid() != 0)
+@@ -45,15 +50,17 @@ main (int argc, char *argv[])
+ #endif
+ #endif
+ 
+-    while ((c = getopt (argc, argv, &quot;mvuhd:f:&quot;)) != -1)
++    while ((c = getopt (argc, argv, &quot;mlkvuhd:f:&quot;)) != -1)
+     {
+         switch (c)
+         {
+             case 'h':
+-                fprintf(stdout, &quot;Usage:\t%s [-d &lt;device&gt;] [-f &lt;raw file&gt;] [-u] [-v]\n&quot;, argv[0]);
++                fprintf(stdout, &quot;Usage:\t%s [-d &lt;device&gt;] [-f &lt;raw file&gt;] [-u] [-l] [-v]\n&quot;, argv[0]);
+                 fprintf(stdout, &quot;Flashes a raw disk file to a device\n\n&quot;);
+                 fprintf(stdout, &quot;-d &lt;device&gt;\t\tSpecify a device, for example: /dev/sdc\n&quot;);
+                 fprintf(stdout, &quot;-f &lt;raw file\t\tSpecify the file to write\n&quot;);
++                fprintf(stdout, &quot;-k\t\t\tOperate in \&quot;kiosk mode\&quot;, only listing disks smaller than 200GB\n&quot;);
++                fprintf(stdout, &quot;-l\t\t\tList valid USB devices\n&quot;);
+                 fprintf(stdout, &quot;-m\t\t\tMaximize the window&quot;);
+                 fprintf(stdout, &quot;-u\t\t\tOperate in unsafe mode, listing all disks, not just removable ones\n&quot;);
+                 fprintf(stdout, &quot;-v\t\t\tVersion and author information\n&quot;);
+@@ -67,6 +74,12 @@ main (int argc, char *argv[])
+             case 'f':
+                 file = strdup(optarg);
+                 break;
++            case 'l':
++                listMode = true;
++                break;
++            case 'k':
++                kioskMode = true;
++                break;
+             case 'v':
+                 fprintf(stdout, &quot;%s\nWritten by Matt Barringer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarringer at suse.de</A>&gt;\n&quot;, VERSION);
+                 exit(0);
+@@ -80,7 +93,21 @@ main (int argc, char *argv[])
+     }
+ 
+     QApplication app(argc, argv);
+-    MainWindow window(device, file, unsafe, maximized);
++    Platform *platform = new Platform(kioskMode);
++    platform-&gt;findDevices(unsafe);
++    if (listMode)
++    {
++        QLinkedList&lt;DeviceItem *&gt; list = platform-&gt;getDeviceList();
++        QLinkedList&lt;DeviceItem *&gt;::iterator i;
++        for (i = list.begin(); i != list.end(); ++i)
++        {
++            if (!(*i)-&gt;getPath().isEmpty())
++                fprintf(stdout, &quot;%s\n&quot;, (*i)-&gt;getPath().toAscii().data());
++        }
++        exit(0);
++    }
++    
++    MainWindow window(platform, device, file, unsafe, maximized);
+     if (maximized)
+     {
+         window.showMaximized();
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001987.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. f82ab9d247aef4a90ab83eafe54c65ddf40630bc
+</A></li>
+	<LI>Next message: <A HREF="001989.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. a637943a9b6efc83cc857a8a8c7f7f4e55868da2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1988">[ date ]</a>
+              <a href="thread.html#1988">[ thread ]</a>
+              <a href="subject.html#1988">[ subject ]</a>
+              <a href="author.html#1988">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

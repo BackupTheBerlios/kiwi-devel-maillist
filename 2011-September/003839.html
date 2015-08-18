@@ -1,0 +1,222 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c1157e412d15cc82d3d37434659c26b9b22cecf0
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20c1157e412d15cc82d3d37434659c26b9b22cecf0&In-Reply-To=%3C20110927102249.211FC48123F%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003835.html">
+   <LINK REL="Next"  HREF="003840.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c1157e412d15cc82d3d37434659c26b9b22cecf0</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20c1157e412d15cc82d3d37434659c26b9b22cecf0&In-Reply-To=%3C20110927102249.211FC48123F%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c1157e412d15cc82d3d37434659c26b9b22cecf0">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Sep 27 12:22:48 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003835.html">[Kiwi-devel] Downside of providing remote repositories for special packages.
+</A></li>
+        <LI>Next message: <A HREF="003840.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c5841f6a35d954bf7dea55c47a49a0294cacc5b7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3839">[ date ]</a>
+              <a href="thread.html#3839">[ thread ]</a>
+              <a href="subject.html#3839">[ subject ]</a>
+              <a href="author.html#3839">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  c1157e412d15cc82d3d37434659c26b9b22cecf0 (commit)
+      from  71e47f2c2e9184d28777d6a72ee2852fd3b6b509 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit c1157e412d15cc82d3d37434659c26b9b22cecf0
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Sep 27 11:52:29 2011 +0200
+
+    - added support for RHEL splashimage (redhat-logos)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 1665897..c5e3e84 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -3046,8 +3046,12 @@ sub setupBootLoaderConfiguration {
+ 		print FD &quot;timeout $bootTimeout\n&quot;;
+ 		if ($type =~ /^KIWI (CD|USB)/) {
+ 			my $dev = $1 eq 'CD' ? '(cd)' : '(hd0,0)';
+-			if ((! $type{fastboot}) &amp;&amp; (-e &quot;$tmpdir/boot/message&quot;)) {
+-				print FD &quot;gfxmenu $dev/boot/message\n&quot;;
++			if (! $type{fastboot}) {
++				if (-e &quot;$tmpdir/boot/grub/splash.xpm.gz&quot;) {
++					print FD &quot;splashimage=$dev/boot/grub/splash.xpm.gz\n&quot;
++				} elsif (-e &quot;$tmpdir/boot/message&quot;) {
++					print FD &quot;gfxmenu $dev/boot/message\n&quot;;
++				}
+ 			}
+ 			print FD &quot;title Boot from Hard Disk\n&quot;;
+ 			if ($dev eq '(cd)') {
+@@ -3070,7 +3074,9 @@ sub setupBootLoaderConfiguration {
+ 			print FD &quot;title $title\n&quot;;
+ 		} else {
+ 			$title = $this -&gt; makeLabel (&quot;$label [ $type ]&quot;);
+-			if (-e &quot;$tmpdir/boot/message&quot;) {
++			if (-e &quot;$tmpdir/boot/grub/splash.xpm.gz&quot;) {
++				print FD &quot;splashimage=(hd0,$bootpart)/boot/grub/splash.xpm.gz\n&quot;
++			} elsif (-e &quot;$tmpdir/boot/message&quot;) {
+ 				print FD &quot;gfxmenu (hd0,$bootpart)/boot/message\n&quot;;
+ 			}
+ 			print FD &quot;title $title\n&quot;;
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index a15c9e4..c07f7d8 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -1039,6 +1039,21 @@ function rhelGFXBoot {
+ }
+ 
+ #======================================
++# rhelSplashToGrub
++#--------------------------------------
++function rhelSplashToGrub {
++	local grub_stage=/usr/lib/grub
++	local rhel_logos=/boot/grub/splash.xpm.gz
++	if [ ! -e $rhel_logos ];then
++		return
++	fi
++	if [ ! -d $grub_stage ];then
++		mkdir -p $grub_stage
++	fi
++	mv $rhel_logos $grub_stage
++}
++
++#======================================
+ # suseGFXBoot
+ #--------------------------------------
+ function suseGFXBoot {
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index da5d8d6..4d5373e 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -1889,7 +1889,9 @@ function setupBootLoaderGrub {
+ 	# create menu.lst file
+ 	#--------------------------------------
+ 	echo &quot;timeout $KIWI_BOOT_TIMEOUT&quot;  &gt; $menu
+-	if [ -f /image/loader/message ] || [ -f /boot/message ];then
++	if [ -f $mountPrefix/boot/grub/splash.xpm.gz ];then
++		echo &quot;splashimage=$gdev/boot/grub/splash.xpm.gz&quot; &gt;&gt; $menu
++	elif [ -f /image/loader/message ] || [ -f /boot/message ];then
+ 		echo &quot;gfxmenu $gdev/boot/message&quot; &gt;&gt; $menu
+ 	fi
+ 	local count=1
+diff --git a/system/boot/ix86/vmxboot/rhel-05.4/config.sh b/system/boot/ix86/vmxboot/rhel-05.4/config.sh
+index f54232b..449f03e 100755
+--- a/system/boot/ix86/vmxboot/rhel-05.4/config.sh
++++ b/system/boot/ix86/vmxboot/rhel-05.4/config.sh
+@@ -33,13 +33,17 @@ baseStripLocales \
+ 	$(for i in $(echo $kiwi_language | tr &quot;,&quot; &quot; &quot;);do echo -n &quot;$i.utf8 &quot;;done)
+ baseStripTranslations kiwi.mo
+ 
+-
+ #======================================
+ # Setup link for the grub stage files
+ #--------------------------------------
+ baseSetupBootLoaderCompatLinks
+ 
+ #======================================
++# check for RHEL boot logo
++#--------------------------------------
++rhelSplashToGrub
++
++#======================================
+ # Umount kernel filesystems
+ #--------------------------------------
+ baseCleanMount
+diff --git a/system/boot/ix86/vmxboot/rhel-preinit b/system/boot/ix86/vmxboot/rhel-preinit
+index d5dc507..274e0ff 100755
+--- a/system/boot/ix86/vmxboot/rhel-preinit
++++ b/system/boot/ix86/vmxboot/rhel-preinit
+@@ -36,7 +36,6 @@ fi
+ # 3) start udev
+ #--------------------------------------
+ mountSystemFilesystems
+-udevSystemStart
+ 
+ #======================================
+ # 4) create /etc/ImagePackages
+@@ -81,5 +80,5 @@ authconfig --updateall
+ #======================================
+ # 9) kill udev
+ #--------------------------------------
+-udevSystemStop
++killall udevd
+ umountSystemFilesystems
+diff --git a/template/ix86/rhel-05.4-JeOS/config.xml b/template/ix86/rhel-05.4-JeOS/config.xml
+index 7a4f958..f504d55 100644
+--- a/template/ix86/rhel-05.4-JeOS/config.xml
++++ b/template/ix86/rhel-05.4-JeOS/config.xml
+@@ -16,7 +16,7 @@
+ 		&lt;hwclock&gt;utc&lt;/hwclock&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+ 		&lt;type image=&quot;iso&quot; primary=&quot;true&quot; boot=&quot;isoboot/rhel-05.4&quot; flags=&quot;clic&quot;/&gt;
+-		&lt;type image=&quot;vmx&quot; boot=&quot;vmxboot/rhel-05.4&quot; filesystem=&quot;ext3&quot; format=&quot;vmdk&quot;&gt;
++		&lt;type image=&quot;vmx&quot; boot=&quot;vmxboot/rhel-05.4&quot; filesystem=&quot;ext3&quot; format=&quot;vmdk&quot; kernelcmdline=&quot;rhgb&quot;&gt;
+ 			&lt;machine memory=&quot;1024&quot; guestOS=&quot;rhel5&quot;&gt;
+ 				&lt;vmdisk controller=&quot;scsi&quot; id=&quot;0&quot;/&gt;
+ 				&lt;vmnic driver=&quot;e1000&quot; interface=&quot;0&quot; mode=&quot;bridged&quot;/&gt;
+@@ -51,6 +51,7 @@
+ 		&lt;rhelGroup name=&quot;System Tools&quot;/&gt;
+ 		&lt;rhelGroup name=&quot;Text-based Internet&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-upstream&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
++		&lt;package name=&quot;redhat-logos&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003835.html">[Kiwi-devel] Downside of providing remote repositories for special packages.
+</A></li>
+	<LI>Next message: <A HREF="003840.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c5841f6a35d954bf7dea55c47a49a0294cacc5b7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3839">[ date ]</a>
+              <a href="thread.html#3839">[ thread ]</a>
+              <a href="subject.html#3839">[ subject ]</a>
+              <a href="author.html#3839">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

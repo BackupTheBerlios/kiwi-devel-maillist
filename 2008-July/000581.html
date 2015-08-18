@@ -1,0 +1,396 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1495 - in kiwi-head: . modules rpm	system/boot/ix86/netboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1495%20-%20in%20kiwi-head%3A%20.%20modules%20rpm%0A%09system/boot/ix86/netboot&In-Reply-To=%3C200807281534.m6SFYgZP004832%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000580.html">
+   <LINK REL="Next"  HREF="000582.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1495 - in kiwi-head: . modules rpm	system/boot/ix86/netboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1495%20-%20in%20kiwi-head%3A%20.%20modules%20rpm%0A%09system/boot/ix86/netboot&In-Reply-To=%3C200807281534.m6SFYgZP004832%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1495 - in kiwi-head: . modules rpm	system/boot/ix86/netboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Jul 28 17:34:42 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000580.html">[Kiwi-devel] r1494 - in kiwi-head/doc: . LaTex
+</A></li>
+        <LI>Next message: <A HREF="000582.html">[Kiwi-devel] r1496 - in kiwi-head: modules tools/satplugin
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#581">[ date ]</a>
+              <a href="thread.html#581">[ thread ]</a>
+              <a href="subject.html#581">[ subject ]</a>
+              <a href="author.html#581">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-07-28 17:34:28 +0200 (Mon, 28 Jul 2008)
+New Revision: 1495
+
+Modified:
+   kiwi-head/Makefile
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+   kiwi-head/system/boot/ix86/netboot/suse-linuxrc
+Log:
+
+- v2.62
+- added ppc related lilo boot functions and rewrote the
+  kernelList function. Hopefully this doesn't break other
+  bootloader configurations
+- fixed build for ia64
+
+
+
+Modified: kiwi-head/Makefile
+===================================================================
+--- kiwi-head/Makefile	2008-07-28 10:20:51 UTC (rev 1494)
++++ kiwi-head/Makefile	2008-07-28 15:34:28 UTC (rev 1495)
+@@ -4,7 +4,7 @@
+ #
+ # Makefile for OpenSuSE - KIWI Image System
+ # ---
+-arch      = `uname -m | grep -q ^i &amp;&amp; echo ix86 || uname -m`
++arch      = `uname -m | grep -q ^i[3-6] &amp;&amp; echo ix86 || uname -m`
+ buildroot = /
+ syslinux  = /usr/share/syslinux
+ bindlib   = lib
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-07-28 10:20:51 UTC (rev 1494)
++++ kiwi-head/kiwi.pl	2008-07-28 15:34:28 UTC (rev 1495)
+@@ -43,7 +43,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;2.61&quot;;
++our $Version       = &quot;2.62&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+ our $ConfigFile    = &quot;$ENV{'HOME'}/.kiwirc&quot;;
+ our $ConfigName    = &quot;config.xml&quot;;
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-07-28 10:20:51 UTC (rev 1494)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-07-28 15:34:28 UTC (rev 1495)
+@@ -394,6 +394,7 @@
+ 	case $arch in
+ 		i*86)   installBootLoaderGrub ;;
+ 		x86_64) installBootLoaderGrub ;;
++		ppc*)   installBootLoaderLilo ;;
+ 		*)
+ 		systemException \
+ 			&quot;*** boot loader setup for $arch not implemented ***&quot; \
+@@ -439,6 +440,25 @@
+ 	fi
+ }
+ #======================================
++# installBootLoaderLilo
++#--------------------------------------
++function installBootLoaderLilo {
++	# /.../
++	# install the lilo according to the contents of
++	# /etc/lilo.conf
++	# ----
++	if [ -x /sbin/lilo ];then
++		Echo &quot;Installing boot loader...&quot;
++		/sbin/lilo 1&gt;&amp;2
++		if [ ! $? = 0 ];then
++			Echo &quot;Failed to install boot loader&quot;
++		fi
++	else
++		Echo &quot;Image doesn't have lilo installed&quot;
++		Echo &quot;Can't install boot loader&quot;
++	fi
++}
++#======================================
+ # installBootLoaderGrubRecovery
+ #--------------------------------------
+ function installBootLoaderGrubRecovery {
+@@ -554,6 +574,7 @@
+ 	case $arch in
+ 		i*86)    setupBootLoaderFilesGrub ;;
+ 		x86_64)  setupBootLoaderFilesGrub ;;
++		ppc*)    setupBootLoaderFilesLilo ;;
+ 		*)
+ 		systemException \
+ 			&quot;*** boot loader files for $arch not implemented ***&quot; \
+@@ -567,6 +588,12 @@
+ 	echo &quot;/boot/grub/menu.lst /etc/grub.conf&quot;
+ }
+ #======================================
++# setupBootLoaderFilesLilo
++#--------------------------------------
++function setupBootLoaderFilesLilo {
++	echo &quot;/etc/lilo.conf&quot;
++}
++#======================================
+ # setupBootLoader
+ #--------------------------------------
+ function setupBootLoader {
+@@ -584,6 +611,7 @@
+ 	case $arch in
+ 		i*86)   eval setupBootLoaderGrub $para ;;
+ 		x86_64) eval setupBootLoaderGrub $para ;;
++		ppc*)   eval setupBootLoaderLilo $para ;;
+ 		*)
+ 		systemException \
+ 			&quot;*** boot loader setup for $arch not implemented ***&quot; \
+@@ -850,6 +878,84 @@
+ 	echo &quot;LOADER_LOCATION=\&quot;mbr\&quot;&quot; &gt;&gt; $sysb
+ }
+ #======================================
++# setupBootLoaderLilo
++#--------------------------------------
++function setupBootLoaderLilo {
++	# /.../
++	# create lilo.conf file used for
++	# installing the bootloader
++	# ----
++	local mountPrefix=$1  # mount path of the image
++	local destsPrefix=$2  # base dir for the config files
++	local gnum=$3         # lilo boot partition ID
++	local bdev=$4         # lilo root partition
++	local gfix=$5         # lilo title postfix
++	local swap=$6         # optional swap partition
++	local conf=$destsPrefix/etc/lilo.conf
++	local sysb=$destsPrefix/etc/sysconfig/bootloader
++	local kname=&quot;&quot;
++	local kernel=&quot;&quot;
++	local initrd=&quot;&quot;
++	local count=1
++	echo \
++		&quot;setupBootLoaderLilo $# called with '$1' '$2' '$3' '$4' '$5' '$6' '$7'&quot;\
++	&gt;&amp;2
++	#======================================
++	# check for system image .profile
++	#--------------------------------------
++	if [ -f $mountPrefix/image/.profile ];then
++		importFile &lt; $mountPrefix/image/.profile
++	fi
++	#======================================
++	# check for boot TIMEOUT
++	#--------------------------------------
++	if test -z $KIWI_BOOT_TIMEOUT;then
++		KIWI_BOOT_TIMEOUT=10;
++	fi
++	#======================================
++	# create directory structure
++	#--------------------------------------
++	for dir in $conf $sysb;do
++		dir=`dirname $dir`; mkdir -p $dir
++	done
++	#======================================
++	# setup lilo device node
++	#--------------------------------------
++	bdev=`echo $bdev |\
++		sed -e &quot;/\/dev\/disk\/by/{s/\(\/dev.*\)\(-part[0-9]\+$\)/\\1/;p;d};
++		/\/dev\//s/\(\/dev\/.*\)\([0-9]\+$\)/\1/&quot;`
++	#======================================
++	# create menu.lst file
++	#--------------------------------------
++	(
++	echo &quot;# generated by kiwi '$1' '$2' '$3' '$4' '$5' '$6' '$7'&quot;
++	echo &quot;boot=$bdev&quot;
++	echo &quot;activate&quot;
++	echo &quot;timeout=$KIWI_BOOT_TIMEOUT&quot;
++	echo &quot;default=kiwi$count&quot;
++	IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
++		if test ! -z &quot;$i&quot;;then
++			kernel=`echo $i | cut -f1 -d:`
++			initrd=`echo $i | cut -f2 -d:`
++			kname=${KERNEL_NAME[$count]}
++			echo &quot;image=/boot/$kernel&quot;
++			echo -n &quot;###Don't change this comment - YaST2 identifier:&quot;
++			echo &quot; Original name: linux###&quot;
++			echo &quot;# kiwi_iname $kiwi_iname&quot;
++			echo &quot;    label=kiwi$count&quot;
++			echo &quot;    initrd=/boot/$initrd&quot;
++			echo &quot;    append=\&quot;quiet sysrq=1 panic=9 $KIWI_INITRD_PARAMS\&quot;&quot;
++			echo &quot;&quot;
++			count=`expr $count + 1`
++		fi
++	done
++	) &gt; $conf
++	#======================================
++	# create sysconfig/bootloader
++	#--------------------------------------
++	echo &quot;LOADER_TYPE=\&quot;ppc\&quot;&quot;     &gt; $sysb
++}
++#======================================
+ # setupDefaultPXENetwork
+ #--------------------------------------
+ function setupDefaultPXENetwork {
+@@ -1961,33 +2067,30 @@
+ 	# ----
+ 	local prefix=$1
+ 	local kcount=0
+-	local name=&quot;&quot;
++	local kname=&quot;&quot;
++	local kernel=&quot;&quot;
++	local initrd=&quot;&quot;
+ 	KERNEL_LIST=&quot;&quot;
+ 	KERNEL_NAME=&quot;&quot;
+ 	for i in $prefix/lib/modules/*;do
+ 		if [ ! -d $i ];then
+ 			continue
+ 		fi
+-		name=${i##*/}
+-		if [ ! -f $prefix/boot/vmlinux-$name.gz ];then
++		unset KERNEL_PAIR
++		unset kernel
++		unset initrd
++		kname=`basename $i`
++		for k in $prefix/boot/vmlinu[zx]-${i##*/}; do
++			if [ -f $k ];then
++				kernel=${k##*/}
++				initrd=initrd-${i##*/}
++			fi
++		done
++		if [ -z $kernel ];then
+ 			continue
+ 		fi
+-		KERNEL_PAIR=&quot;&quot;
+-		local kname=`basename $i`
+-		for n in $prefix/boot/*;do
+-			if [ ! -L $n ];then
+-				continue
+-			fi
+-			real=`readlink $n`
+-			if [ $real = vmlinuz-$name ];then
+-				kernel=${n##*/}
+-				kcount=$((kcount+1))
+-			fi
+-			if [ $real = initrd-$name ];then
+-				initrd=${n##*/}
+-			fi
+-			KERNEL_PAIR=$kernel:$initrd
+-		done
++		kcount=$((kcount+1))
++		KERNEL_PAIR=$kernel:$initrd
+ 		KERNEL_NAME[$kcount]=$kname
+ 		if [ $kcount = 1 ];then
+ 			KERNEL_LIST=$KERNEL_PAIR
+@@ -1996,17 +2099,21 @@
+ 		fi
+ 	done
+ 	if [ -z &quot;$KERNEL_LIST&quot; ];then
+-		if [ -e $prefix/boot/vmlinuz ] &amp;&amp; [ -e $prefix/boot/initrd ];then
+-			# /.../
+-			# the system image doesn't provide the kernel and initrd but
+-			# there is a downloaded kernel and initrd from the KIWI_INITRD
+-			# setup. the kernelList function won't find initrds that get
+-			# downloaded over tftp so make sure the vmlinuz/initrd combo
+-			# gets added
+-			# ----
++		# /.../
++		# the system image doesn't provide the kernel and initrd but
++		# if there is a downloaded kernel and initrd from the KIWI_INITRD
++		# setup. the kernelList function won't find initrds that gets
++		# downloaded over tftp so make sure the vmlinu[zx]/initrd combo
++		# gets added
++		# ----
++		if [ -e $prefix/boot/vmlinuz ];then
+ 			KERNEL_LIST=&quot;vmlinuz:initrd&quot;
+ 			KERNEL_NAME[1]=vmlinuz
+ 		fi
++		if [ -e $prefix/boot/vmlinux ];then
++			KERNEL_LIST=&quot;vmlinux:initrd&quot;
++			KERNEL_NAME[1]=vmlinux
++		fi
+ 	fi
+ 	export KERNEL_LIST
+ 	export KERNEL_NAME
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-07-28 10:20:51 UTC (rev 1494)
++++ kiwi-head/rpm/kiwi.changes	2008-07-28 15:34:28 UTC (rev 1495)
+@@ -1,4 +1,13 @@
+ -------------------------------------------------------------------
++Mon Jul 28 17:28:59 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v2.62
++- added ppc related lilo boot functions and rewrote the
++  kernelList function. Hopefully this doesn't break other
++  bootloader configurations
++- fixed build for ia64
++
++-------------------------------------------------------------------
+ Thu Jul 24 16:08:06 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.61
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-07-28 10:20:51 UTC (rev 1494)
++++ kiwi-head/rpm/kiwi.spec	2008-07-28 15:34:28 UTC (rev 1495)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 2.61
++# spec file for package kiwi (Version 2.62
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        2.61
++Version:        2.62
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+Modified: kiwi-head/system/boot/ix86/netboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/netboot/suse-linuxrc	2008-07-28 10:20:51 UTC (rev 1494)
++++ kiwi-head/system/boot/ix86/netboot/suse-linuxrc	2008-07-28 15:34:28 UTC (rev 1495)
+@@ -621,6 +621,7 @@
+ 			fetchFile $KIWI_INITRD /mnt/boot/initrd
+ 			if [ ! -z $KIWI_KERNEL ];then
+ 				Echo &quot;Import KIWI kernel file: $KIWI_KERNEL&quot;
++				rm -f /mnt/boot/vmlinuz*
+ 				fetchFile $KIWI_KERNEL /mnt/boot/vmlinuz
+ 			fi
+ 			KIWI_INITRD_PARAMS=&quot;IMAGE=\&quot;$IMAGE\&quot;&quot;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000580.html">[Kiwi-devel] r1494 - in kiwi-head/doc: . LaTex
+</A></li>
+	<LI>Next message: <A HREF="000582.html">[Kiwi-devel] r1496 - in kiwi-head: modules tools/satplugin
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#581">[ date ]</a>
+              <a href="thread.html#581">[ thread ]</a>
+              <a href="subject.html#581">[ subject ]</a>
+              <a href="author.html#581">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

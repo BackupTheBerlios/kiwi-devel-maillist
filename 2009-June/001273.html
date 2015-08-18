@@ -1,0 +1,162 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. b71acccf5b231bbc496ada3ff124fa434dca17c7
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-301-SuSE-11-1-Devel%2C%0A%09updated.%20b71acccf5b231bbc496ada3ff124fa434dca17c7&In-Reply-To=%3C200906020757.n527v8uB016437%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001272.html">
+   <LINK REL="Next"  HREF="001274.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. b71acccf5b231bbc496ada3ff124fa434dca17c7</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-301-SuSE-11-1-Devel%2C%0A%09updated.%20b71acccf5b231bbc496ada3ff124fa434dca17c7&In-Reply-To=%3C200906020757.n527v8uB016437%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. b71acccf5b231bbc496ada3ff124fa434dca17c7">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jun  2 09:57:08 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001272.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. aeb2ba8f69daa27012d3e5f06538bfac58da752a
+</A></li>
+        <LI>Next message: <A HREF="001274.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 14e01b72986c9edb2bdb89c09be3574e7678b3c2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1273">[ date ]</a>
+              <a href="thread.html#1273">[ thread ]</a>
+              <a href="subject.html#1273">[ subject ]</a>
+              <a href="author.html#1273">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-301-SuSE-11-1-Devel has been updated
+       via  b71acccf5b231bbc496ada3ff124fa434dca17c7 (commit)
+      from  e9a29655dafd4817abc2a6097d52abdda802f59b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b71acccf5b231bbc496ada3ff124fa434dca17c7
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Jun 2 09:56:46 2009 +0200
+
+    - allow use of zypper <A HREF="iso://">iso://</A> URL type in kiwi (bnc #498437)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIURL.pm b/modules/KIWIURL.pm
+index 9894fed..ae339d7 100644
+--- a/modules/KIWIURL.pm
++++ b/modules/KIWIURL.pm
+@@ -96,15 +96,13 @@ sub normalizePath {
+ 	if (defined $path) {
+ 		return $path;
+ 	}
+-	if ($main::PackageManager ne &quot;zypper&quot;) {
+-		$path = $this -&gt; isoPath ($module);
+-		if (defined $path) {
+-			return $path;
+-		}
+-		$path = $this -&gt; filePath ($module);
+-		if (defined $path) {
+-			return $path;
+-		}
++	$path = $this -&gt; isoPath ($module);
++	if (defined $path) {
++		return $path;
++	}
++	$path = $this -&gt; filePath ($module);
++	if (defined $path) {
++		return $path;
+ 	}
+ 	return $module;
+ }
+@@ -302,6 +300,8 @@ sub isoPath {
+ 	my $root   = $this-&gt;{root};
+ 	my $result;
+ 	my $status;
++	my $file;
++	my $path;
+ 	#==========================================
+ 	# normalize URL data
+ 	#------------------------------------------
+@@ -309,6 +309,23 @@ sub isoPath {
+ 		return undef;
+ 	}
+ 	$module =~ s/iso:\/\///;
++	#==========================================
++	# Convert zypper iso URL if required
++	#------------------------------------------
++	if ($module =~ /iso=(.*\.iso)/) {
++		$file = $1;
++		if ($module =~ /url=file:\/\/(.*)/) {
++			$path = $1;
++		} elsif ($module =~ /url=dir:\/\/(.*)/) {
++			$path = $1;
++		} else {
++			return undef;
++		}
++		$module = $path.&quot;/&quot;.$file;
++	}
++	#==========================================
++	# Check existence of iso file
++	#------------------------------------------
+ 	if ($module !~ /^\//) {
+ 		my $pwd = qxx (&quot;pwd&quot;); chomp $pwd;
+ 		$module = $pwd.&quot;/&quot;.$module;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 1a05e66..30d8fe5 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,9 @@
+ -------------------------------------------------------------------
++Tue Jun  2 09:56:00 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- allow use of zypper <A HREF="iso://">iso://</A> URL type in kiwi (bnc #498437)
++
++-------------------------------------------------------------------
+ Wed May 27 15:54:06 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed OEM recovery, don't check mbr id (bnc #503653)
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001272.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. aeb2ba8f69daa27012d3e5f06538bfac58da752a
+</A></li>
+	<LI>Next message: <A HREF="001274.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 14e01b72986c9edb2bdb89c09be3574e7678b3c2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1273">[ date ]</a>
+              <a href="thread.html#1273">[ thread ]</a>
+              <a href="subject.html#1273">[ subject ]</a>
+              <a href="author.html#1273">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

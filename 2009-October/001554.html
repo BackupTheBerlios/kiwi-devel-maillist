@@ -1,0 +1,190 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5d2a67713859f055cf3d50130a1ab836b649975d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%205d2a67713859f055cf3d50130a1ab836b649975d&In-Reply-To=%3C200910281041.n9SAfIps029517%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001553.html">
+   <LINK REL="Next"  HREF="001555.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5d2a67713859f055cf3d50130a1ab836b649975d</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%205d2a67713859f055cf3d50130a1ab836b649975d&In-Reply-To=%3C200910281041.n9SAfIps029517%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5d2a67713859f055cf3d50130a1ab836b649975d">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Oct 28 11:41:18 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001553.html">[Kiwi-devel] Patch for example demonstrating the use of GNOME
+</A></li>
+        <LI>Next message: <A HREF="001555.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-2-Devel,	created. 5d2a67713859f055cf3d50130a1ab836b649975d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1554">[ date ]</a>
+              <a href="thread.html#1554">[ thread ]</a>
+              <a href="subject.html#1554">[ subject ]</a>
+              <a href="author.html#1554">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  5d2a67713859f055cf3d50130a1ab836b649975d (commit)
+      from  23af5318d939aebbe93abe7b594cc8ae2907922b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 5d2a67713859f055cf3d50130a1ab836b649975d
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Oct 28 11:41:05 2009 +0100
+
+    - OEM recover/repair
+      * make sure passwd/shadow and group files will be preserved
+      * make sure RPM database will be preserved
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 94db9b6..1c32f0d 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Wed Oct 28 10:00:57 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- OEM recover/repair
++  * make sure passwd/shadow and group files will be preserved
++  * make sure RPM database will be preserved
++
++-------------------------------------------------------------------
+ Tue Oct 27 14:08:21 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - offer only languages for selection which are part of the
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index 8faf4a4..e339228 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -408,6 +408,21 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 		fi
+ 		cd /mnt
+ 		#======================================
++		# store files temporary
++		#--------------------------------------
++		if [ -z &quot;$RESTORE&quot; ];then
++			for i in passwd shadow group;do
++				if ! cp etc/$i tmp/$i;then
++					umountSystem; rm -f tmp/passwd tmp/shadow tmp/group
++					systemException &quot;Failed to store $i&quot; &quot;reboot&quot;
++				fi
++			done
++			if ! cp -a var/lib/rpm tmp/;then
++				rm -rf tmp/rpm; umountSystem
++				systemException &quot;Failed to store RPM database&quot; &quot;reboot&quot;
++			fi
++		fi
++		#======================================
+ 		# create backup diffs
+ 		#--------------------------------------
+ 		if [ -z &quot;$RESTORE&quot; ] &amp;&amp; [ &quot;$DOBACKUP&quot; = 1 ];then
+@@ -418,7 +433,7 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 				xargs tar -cO -f - 2&gt;/dev/null |\
+ 				tar -v -C tmp/foobar -xf -
+ 			then
+-				rm -rf tmp/foobar
++				rm -rf tmp/foobar; umountSystem
+ 				systemException &quot;Failed to create backup files&quot; &quot;reboot&quot;
+ 			fi
+ 		fi
+@@ -473,6 +488,9 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 			rm -rf tmp/backup/mtab*
+ 			rm -rf tmp/backup/fstab*
+ 			rm -rf tmp/backup/kernel*
++			rm -rf tmp/backup/passwd*
++			rm -rf tmp/backup/shadow*
++			rm -rf tmp/backup/group*
+ 		fi
+ 		dPID=$(pidof mst)
+ 		kill $dPID
+@@ -509,7 +527,23 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 		fi
+ 	done
+ 	#======================================
+-	# 16.5) restore fstab partitions
++	# 16.5) restore temporary stored files
++	#--------------------------------------
++	if [ -z &quot;$RESTORE&quot; ];then
++		for i in passwd shadow group;do
++			if ! mv /mnt/tmp/$i /mnt/etc/$i;then
++				systemException &quot;Failed to restore $i&quot; &quot;reboot&quot;
++			fi
++		done
++		mv /mnt/var/lib/rpm /mnt/var/lib/rpm.backup
++		if ! mv /mnt/tmp/rpm /mnt/var/lib/;then
++			mv /mnt/var/lib/rpm.backup /mnt/var/lib/rpm
++			systemException &quot;Failed to restore RPM database&quot; &quot;reboot&quot;
++		fi
++		rm -rf /mnt/var/lib/rpm.backup
++	fi
++	#======================================
++	# 16.6) restore fstab partitions
+ 	#--------------------------------------
+ 	if [ ! -z &quot;$RESTORE&quot; ];then
+ 		imageSwapDevice=$(cat /mnt/etc/fstab | grep swap | cut -f1 -d &quot; &quot;)
+@@ -528,11 +562,11 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 		fi
+ 	fi
+ 	#======================================
+-	# 16.6) umount recovery and boot
++	# 16.7) umount recovery and boot
+ 	#--------------------------------------
+ 	umount $imageRecoveryDevice
+ 	#======================================
+-	# 16.7) import oem config file
++	# 16.8) import oem config file
+ 	#--------------------------------------
+ 	importFile &lt; $OEM_PARTITION_CONFIG
+ 	IFS=$IFS_ORIG
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001553.html">[Kiwi-devel] Patch for example demonstrating the use of GNOME
+</A></li>
+	<LI>Next message: <A HREF="001555.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-2-Devel,	created. 5d2a67713859f055cf3d50130a1ab836b649975d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1554">[ date ]</a>
+              <a href="thread.html#1554">[ thread ]</a>
+              <a href="subject.html#1554">[ subject ]</a>
+              <a href="author.html#1554">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

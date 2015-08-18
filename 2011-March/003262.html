@@ -1,0 +1,170 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0cc08153a27779c62384338803ee4483301f41f1
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%200cc08153a27779c62384338803ee4483301f41f1&In-Reply-To=%3C20110329101722.33942480AA1%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003259.html">
+   <LINK REL="Next"  HREF="003263.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0cc08153a27779c62384338803ee4483301f41f1</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%200cc08153a27779c62384338803ee4483301f41f1&In-Reply-To=%3C20110329101722.33942480AA1%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0cc08153a27779c62384338803ee4483301f41f1">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Mar 29 12:17:21 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003259.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9031f3ae6c4822752eed2af64e85a4d2952d1767
+</A></li>
+        <LI>Next message: <A HREF="003263.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-480-SuSE-11.4-Devel,	updated. 4f0afbcaa53ec81be7afa8d84e5a94b84ba8246b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3262">[ date ]</a>
+              <a href="thread.html#3262">[ thread ]</a>
+              <a href="subject.html#3262">[ subject ]</a>
+              <a href="author.html#3262">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  0cc08153a27779c62384338803ee4483301f41f1 (commit)
+      from  9031f3ae6c4822752eed2af64e85a4d2952d1767 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 0cc08153a27779c62384338803ee4483301f41f1
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Mar 29 12:14:37 2011 +0200
+
+    - fixed boot path lookup if boot attribute contains an
+      absolute path (bnc #683135)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 6e5699e..52e3bc3 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -293,10 +293,14 @@ sub checkAndSetupPrebuiltBootImage {
+ 	my $pblt = $type{checkprebuilt};
+ 	my $boot = $type{boot};
+ 	my $ok   = 0;
++	my $bootpath = $boot;
++	if (($boot !~ /^\//) &amp;&amp; (! -d $boot)) {
++		$bootpath = $main::System.&quot;/&quot;.$boot;
++	}
+ 	#==========================================
+ 	# open boot image XML object
+ 	#------------------------------------------
+-	my $bxml = new KIWIXML ( $kiwi,$main::System.&quot;/&quot;.$boot );
++	my $bxml = new KIWIXML ( $kiwi,$bootpath );
+ 	if (! $bxml) {
+ 		return undef;
+ 	}
+@@ -313,7 +317,7 @@ sub checkAndSetupPrebuiltBootImage {
+ 	#==========================================
+ 	# check path names for boot image
+ 	#------------------------------------------
+-	my $lookup = $main::System.&quot;/&quot;.$boot.&quot;-prebuilt/&quot;;
++	my $lookup = $bootpath.&quot;-prebuilt/&quot;;
+ 	if (defined $main::PrebuiltBootImage) {
+ 		$lookup = $main::PrebuiltBootImage.&quot;/&quot;;
+ 	}
+@@ -1000,7 +1004,11 @@ sub createImageRootAndBoot {
+ 		#------------------------------------------
+ 		$main::Survive  = &quot;yes&quot;;
+ 		$main::RootTree = &quot;$tmpdir/kiwi-&quot;.$text.&quot;boot-$$&quot;;
+-		$main::Prepare  = $main::System.&quot;/&quot;.$stype{boot};
++		if (($stype{boot} !~ /^\//) &amp;&amp; (! -d $stype{boot})) {
++			$main::Prepare = $main::System.&quot;/&quot;.$stype{boot};
++		} else {
++			$main::Prepare = $stype{boot};
++		}
+ 		$main::Create   = $main::RootTree;
+ 		undef @main::Profiles;
+ 		undef @main::AddPackage;
+@@ -1467,7 +1475,11 @@ sub createImageLiveCD {
+ 		#------------------------------------------
+ 		$main::Survive  = &quot;yes&quot;;
+ 		$main::RootTree = &quot;$tmpdir/kiwi-isoboot-$$&quot;;
+-		$main::Prepare  = $main::System.&quot;/&quot;.$stype{boot};
++		if (($stype{boot} !~ /^\//) &amp;&amp; (! -d $stype{boot})) {
++			$main::Prepare = $main::System.&quot;/&quot;.$stype{boot};
++		} else {
++			$main::Prepare = $stype{boot};
++		}
+ 		$main::Create   = $main::RootTree;
+ 		undef @main::Profiles;
+ 		undef @main::AddPackage;
+@@ -2498,7 +2510,11 @@ sub createImageSplit {
+ 		#------------------------------------------
+ 		$main::Survive  = &quot;yes&quot;;
+ 		$main::RootTree = &quot;$tmpdir/kiwi-splitboot-$$&quot;;
+-		$main::Prepare  = $main::System.&quot;/&quot;.$type{boot};
++		if (($type{boot} !~ /^\//) &amp;&amp; (! -d $type{boot})) {
++			$main::Prepare = $main::System.&quot;/&quot;.$type{boot};
++		} else {
++			$main::Prepare = $type{boot};
++		}
+ 		$main::Create   = $main::RootTree;
+ 		undef @main::Profiles;
+ 		undef @main::AddPackage;
+diff --git a/modules/KIWIRoot.pm b/modules/KIWIRoot.pm
+index e553cbc..aa4ecf2 100644
+--- a/modules/KIWIRoot.pm
++++ b/modules/KIWIRoot.pm
+@@ -66,7 +66,7 @@ sub new {
+ 	if (! defined $kiwi) {
+ 		$kiwi = new KIWILog(&quot;tiny&quot;);
+ 	}
+-	if (($imageDesc !~ /\//) &amp;&amp; (! -d $imageDesc)) {
++	if (($imageDesc !~ /^\//) &amp;&amp; (! -d $imageDesc)) {
+ 		$imageDesc = $main::System.&quot;/&quot;.$imageDesc;
+ 	}
+ 	if (! defined $baseSystem) {
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003259.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9031f3ae6c4822752eed2af64e85a4d2952d1767
+</A></li>
+	<LI>Next message: <A HREF="003263.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-480-SuSE-11.4-Devel,	updated. 4f0afbcaa53ec81be7afa8d84e5a94b84ba8246b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3262">[ date ]</a>
+              <a href="thread.html#3262">[ thread ]</a>
+              <a href="subject.html#3262">[ subject ]</a>
+              <a href="author.html#3262">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

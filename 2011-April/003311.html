@@ -1,0 +1,667 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7c95b9b3b5f03785979587d1b43441644b1008d2
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%207c95b9b3b5f03785979587d1b43441644b1008d2&In-Reply-To=%3C20110407093229.D7FE0480EBA%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003309.html">
+   <LINK REL="Next"  HREF="003312.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7c95b9b3b5f03785979587d1b43441644b1008d2</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%207c95b9b3b5f03785979587d1b43441644b1008d2&In-Reply-To=%3C20110407093229.D7FE0480EBA%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7c95b9b3b5f03785979587d1b43441644b1008d2">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Apr  7 11:32:28 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003309.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1bd7e6be2200eb06d72926ae603421773adcb0b4
+</A></li>
+        <LI>Next message: <A HREF="003312.html">[Kiwi-devel] [PATCH] Quote filename in fixupOverlayFilesOwnership	function
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3311">[ date ]</a>
+              <a href="thread.html#3311">[ thread ]</a>
+              <a href="subject.html#3311">[ subject ]</a>
+              <a href="author.html#3311">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  7c95b9b3b5f03785979587d1b43441644b1008d2 (commit)
+      from  1bd7e6be2200eb06d72926ae603421773adcb0b4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 7c95b9b3b5f03785979587d1b43441644b1008d2
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Apr 7 11:27:01 2011 +0200
+
+    - Added a new consistency check and unit tests to ensure that
+      config.xml files specifying an image type that requires an
+      initrd set the boot attribute on the &lt;type&gt; element.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIXMLValidator.pm b/modules/KIWIXMLValidator.pm
+index 906c931..328824a 100644
+--- a/modules/KIWIXMLValidator.pm
++++ b/modules/KIWIXMLValidator.pm
+@@ -149,6 +149,34 @@ sub validate {
+ # Private helper methods
+ #------------------------------------------
+ #==========================================
++# __checkBootSpecPresent
++#------------------------------------------
++sub __checkBootSpecPresent {
++	# ...
++	# Check that the boot attribute is set for types that require an
++	# initrd.
++	# ---
++	my $this        = shift;
++	my $systemTree  = $this-&gt;{systemTree};
++	my @needsInitrd = qw /iso oem pxe split vmx/;
++	my @types = $systemTree -&gt; getElementsByTagName('type');
++	for my $type (@types) {
++		my $image = $type -&gt; getAttribute('image');
++		if (grep /^$image/, @needsInitrd) {
++			my $boot = $type -&gt; getAttribute('boot');
++			if (! $boot) {
++				my $kiwi = $this -&gt; {kiwi};
++				my $msg = &quot;$image requires initrd, but no 'boot' &quot;
++					. 'attribute specified.';
++				$kiwi -&gt; error($msg);
++				$kiwi -&gt; failed();
++				return undef;
++			}
++		}
++	}
++	return 1;
++}
++#==========================================
+ # __checkDefaultProfSetting
+ #------------------------------------------
+ sub __checkDefaultProfSetting {
+@@ -166,7 +194,7 @@ sub __checkDefaultProfSetting {
+ 		}
+ 		if ($numDefProfs &gt; 1) {
+ 			my $kiwi = $this-&gt;{kiwi};
+-			my $msg = 'Only one profile may be set as the dafault profile by '
++			my $msg = 'Only one profile may be set as the default profile by '
+ 			. 'using the &quot;import&quot; attribute.';
+ 			$kiwi -&gt; error($msg);
+ 			$kiwi -&gt; failed();
+@@ -282,12 +310,12 @@ sub __checkFilesysSpec {
+ 	my $this = shift;
+ 	my $isInvalid;
+ 	my $kiwi = $this-&gt;{kiwi};
+-	my @typeNodes = $this-&gt;{systemTree} -&gt; getElementsByTagName(&quot;type&quot;);
++	my @typeNodes = $this-&gt;{systemTree} -&gt; getElementsByTagName('type');
+ 	my @typesReqFS = qw /oem pxe vmx/;
+ 	for my $typeN (@typeNodes) {
+-		my $imgType = $typeN -&gt; getAttribute( &quot;image&quot; );
++		my $imgType = $typeN -&gt; getAttribute( 'image' );
+ 		if (grep /$imgType/, @typesReqFS) {
+-			my $hasFSattr = $typeN -&gt; getAttribute( &quot;filesystem&quot; );
++			my $hasFSattr = $typeN -&gt; getAttribute( 'filesystem' );
+ 			if (! $hasFSattr) {
+ 				my $msg = 'filesystem attribute must be set for image=&quot;'
+ 				. $imgType
+@@ -715,7 +743,7 @@ sub __checkVersionDefinition {
+ 	my $this = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $systemTree = $this-&gt;{systemTree};
+-	my @versions = $systemTree -&gt; getElementsByTagName(&quot;version&quot;);
++	my @versions = $systemTree -&gt; getElementsByTagName('version');
+ 	my $numVersions = @versions;
+ 	if ($numVersions &gt; 1) {
+ 		my $msg = &quot;Only one &lt;version&gt; definition expected, found $numVersions&quot;;
+@@ -802,6 +830,9 @@ sub __validateConsistency {
+ 	# in any code that populates this object from XML data.
+ 	# ---
+ 	my $this = shift;
++	if (! $this -&gt; __checkBootSpecPresent()) {
++		return undef;
++	}
+ 	if (! $this -&gt; __checkDefaultProfSetting()) {
+ 		return undef;
+ 	}
+diff --git a/tests/unit/data/kiwiXMLInfo/config.xml b/tests/unit/data/kiwiXMLInfo/config.xml
+index dad9daf..2a713cd 100644
+--- a/tests/unit/data/kiwiXMLInfo/config.xml
++++ b/tests/unit/data/kiwiXMLInfo/config.xml
+@@ -34,6 +34,6 @@
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot; patternType=&quot;onlyRequired&quot;&gt;
+ 		&lt;package name=&quot;kiwi-test-dummy&quot;/&gt;
+-		&lt;!--&lt;opensusePattern name=&quot;base&quot;/&gt;--&gt;
++&lt;!--&lt;opensusePattern name=&quot;base&quot;/&gt;--&gt;
+ 	&lt;/packages&gt;
+ &lt;/image&gt;
+diff --git a/tests/unit/data/kiwiRuntimeChecker/fileSysImg/xfs/config.xml b/tests/unit/data/kiwiXMLValidator/bootDescriptInvalid_1.xml
+similarity index 73%
+copy from tests/unit/data/kiwiRuntimeChecker/fileSysImg/xfs/config.xml
+copy to tests/unit/data/kiwiXMLValidator/bootDescriptInvalid_1.xml
+index f4ecfc7..2b970cc 100644
+--- a/tests/unit/data/kiwiRuntimeChecker/fileSysImg/xfs/config.xml
++++ b/tests/unit/data/kiwiXMLValidator/bootDescriptInvalid_1.xml
+@@ -1,25 +1,24 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;xfs-test-config&quot;&gt;
++&lt;image schemaversion=&quot;5.1&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;Test configuration for runtime validtaion using xfs as image type.&lt;/specification&gt;
++		&lt;specification&gt;test type requires boot attribute&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+-		&lt;version&gt;1.0.0&lt;/version&gt;
++		&lt;type image=&quot;iso&quot; /&gt; 
++		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+ 		&lt;rpm-force&gt;true&lt;/rpm-force&gt;
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+-		&lt;type image=&quot;xfs&quot;/&gt;
+ 	&lt;/preferences&gt;
+ 	&lt;users group=&quot;root&quot;&gt;
+-		&lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
++		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+-	&lt;repository type=&quot;rpm-dir&quot;&gt;
+-		&lt;source path=&quot;/tmp&quot;/&gt;
++	&lt;repository type=&quot;yast2&quot;&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/doc/examples/suse-11.3/suse-vm-guest/config.xml b/tests/unit/data/kiwiXMLValidator/bootDescriptInvalid_2.xml
+similarity index 71%
+copy from doc/examples/suse-11.3/suse-vm-guest/config.xml
+copy to tests/unit/data/kiwiXMLValidator/bootDescriptInvalid_2.xml
+index 932eecc..61d1be1 100644
+--- a/doc/examples/suse-11.3/suse-vm-guest/config.xml
++++ b/tests/unit/data/kiwiXMLValidator/bootDescriptInvalid_2.xml
+@@ -1,16 +1,16 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.3-vm-guest&quot;&gt;
++&lt;image schemaversion=&quot;5.1&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 virtual disk system&lt;/specification&gt;
++		&lt;author&gt;Robert Schweikert&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
++		&lt;specification&gt;test type requires boot attribute&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+-		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+-			&lt;machine memory=&quot;512&quot;&gt;
+-				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+-			&lt;/machine&gt;
++		&lt;type image=&quot;oem&quot; filesystem=&quot;ext3&quot; installiso=&quot;true&quot;&gt; 
++			&lt;oemconfig&gt;
++				&lt;oem-swap&gt;true&lt;/oem-swap&gt;
++				&lt;oem-swapsize&gt;512&lt;/oem-swapsize&gt;
++			&lt;/oemconfig&gt;
+ 		&lt;/type&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+@@ -28,12 +28,11 @@
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
++		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;vmx&quot;/&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/tests/unit/data/kiwiRuntimeChecker/fileSysImg/xfs/config.xml b/tests/unit/data/kiwiXMLValidator/bootDescriptInvalid_3.xml
+similarity index 73%
+copy from tests/unit/data/kiwiRuntimeChecker/fileSysImg/xfs/config.xml
+copy to tests/unit/data/kiwiXMLValidator/bootDescriptInvalid_3.xml
+index f4ecfc7..1139502 100644
+--- a/tests/unit/data/kiwiRuntimeChecker/fileSysImg/xfs/config.xml
++++ b/tests/unit/data/kiwiXMLValidator/bootDescriptInvalid_3.xml
+@@ -1,25 +1,24 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;xfs-test-config&quot;&gt;
++&lt;image schemaversion=&quot;5.1&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;Test configuration for runtime validtaion using xfs as image type.&lt;/specification&gt;
++		&lt;specification&gt;test type requires boot attribute&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+-		&lt;version&gt;1.0.0&lt;/version&gt;
++		&lt;type image=&quot;pxe&quot; /&gt; 
++		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+ 		&lt;rpm-force&gt;true&lt;/rpm-force&gt;
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+-		&lt;type image=&quot;xfs&quot;/&gt;
+ 	&lt;/preferences&gt;
+ 	&lt;users group=&quot;root&quot;&gt;
+-		&lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
++		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+-	&lt;repository type=&quot;rpm-dir&quot;&gt;
+-		&lt;source path=&quot;/tmp&quot;/&gt;
++	&lt;repository type=&quot;yast2&quot;&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/doc/examples/suse-11.3/suse-vm-guest/config.xml b/tests/unit/data/kiwiXMLValidator/bootDescriptInvalid_4.xml
+similarity index 71%
+copy from doc/examples/suse-11.3/suse-vm-guest/config.xml
+copy to tests/unit/data/kiwiXMLValidator/bootDescriptInvalid_4.xml
+index 932eecc..4e753e8 100644
+--- a/doc/examples/suse-11.3/suse-vm-guest/config.xml
++++ b/tests/unit/data/kiwiXMLValidator/bootDescriptInvalid_4.xml
+@@ -1,17 +1,12 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.3-vm-guest&quot;&gt;
++&lt;image schemaversion=&quot;5.1&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 virtual disk system&lt;/specification&gt;
++		&lt;author&gt;Robert Schweikert&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
++		&lt;specification&gt;test type requires boot attribute&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+-		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+-			&lt;machine memory=&quot;512&quot;&gt;
+-				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+-			&lt;/machine&gt;
+-		&lt;/type&gt;
++		&lt;type image=&quot;split&quot; fsreadonly=&quot;squashfs&quot; fsreadwrite=&quot;ext3&quot; installiso=&quot;true&quot;/&gt; 
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -28,12 +23,11 @@
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
++		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;vmx&quot;/&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/doc/examples/suse-11.3/suse-vm-guest/config.xml b/tests/unit/data/kiwiXMLValidator/bootDescriptInvalid_5.xml
+similarity index 75%
+copy from doc/examples/suse-11.3/suse-vm-guest/config.xml
+copy to tests/unit/data/kiwiXMLValidator/bootDescriptInvalid_5.xml
+index 932eecc..b7e6c6d 100644
+--- a/doc/examples/suse-11.3/suse-vm-guest/config.xml
++++ b/tests/unit/data/kiwiXMLValidator/bootDescriptInvalid_5.xml
+@@ -1,14 +1,13 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.3-vm-guest&quot;&gt;
++&lt;image schemaversion=&quot;5.1&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.3 virtual disk system&lt;/specification&gt;
++		&lt;author&gt;Robert Schweikert&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
++		&lt;specification&gt;test type requires boot attribute&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+-		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot; format=&quot;vmdk&quot;&gt;
+-			&lt;machine memory=&quot;512&quot;&gt;
++		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; format=&quot;vmdk&quot;&gt; 
++			&lt;machine  memory=&quot;512&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+@@ -28,12 +27,11 @@
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
++		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;vmx&quot;/&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/tests/unit/data/kiwiRuntimeChecker/fileSysImg/ext2/config.xml b/tests/unit/data/kiwiXMLValidator/bootDescriptValid_1.xml
+similarity index 71%
+copy from tests/unit/data/kiwiRuntimeChecker/fileSysImg/ext2/config.xml
+copy to tests/unit/data/kiwiXMLValidator/bootDescriptValid_1.xml
+index a2be866..5408745 100644
+--- a/tests/unit/data/kiwiRuntimeChecker/fileSysImg/ext2/config.xml
++++ b/tests/unit/data/kiwiXMLValidator/bootDescriptValid_1.xml
+@@ -1,25 +1,24 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;ext2-test-config&quot;&gt;
++&lt;image schemaversion=&quot;5.1&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;Test configuration for runtime validtaion using ext2 as image type.&lt;/specification&gt;
++		&lt;specification&gt;test type requires boot attribute&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+-		&lt;version&gt;1.0.0&lt;/version&gt;
++		&lt;type image=&quot;iso&quot; boot=&quot;isoboot/suse-11.4&quot;/&gt; 
++		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+ 		&lt;rpm-force&gt;true&lt;/rpm-force&gt;
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+-		&lt;type image=&quot;ext2&quot;/&gt;
+ 	&lt;/preferences&gt;
+ 	&lt;users group=&quot;root&quot;&gt;
+-		&lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
++		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+-	&lt;repository type=&quot;rpm-dir&quot;&gt;
+-		&lt;source path=&quot;/tmp&quot;/&gt;
++	&lt;repository type=&quot;yast2&quot;&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.4/repo/oss/">opensuse://11.4/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/doc/examples/suse-11.4/suse-vm-guest/config.xml b/tests/unit/data/kiwiXMLValidator/bootDescriptValid_2.xml
+similarity index 71%
+copy from doc/examples/suse-11.4/suse-vm-guest/config.xml
+copy to tests/unit/data/kiwiXMLValidator/bootDescriptValid_2.xml
+index b42cf39..ce92216 100644
+--- a/doc/examples/suse-11.4/suse-vm-guest/config.xml
++++ b/tests/unit/data/kiwiXMLValidator/bootDescriptValid_2.xml
+@@ -1,16 +1,16 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.4-vm-guest&quot;&gt;
++&lt;image schemaversion=&quot;5.1&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.4 virtual disk system&lt;/specification&gt;
++		&lt;author&gt;Robert Schweikert&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
++		&lt;specification&gt;test type requires boot attribute&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+-		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.4&quot; format=&quot;vmdk&quot;&gt;
+-			&lt;machine memory=&quot;512&quot;&gt;
+-				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+-			&lt;/machine&gt;
++		&lt;type image=&quot;oem&quot; filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-11.4&quot; installiso=&quot;true&quot;&gt; 
++			&lt;oemconfig&gt;
++				&lt;oem-swap&gt;true&lt;/oem-swap&gt;
++				&lt;oem-swapsize&gt;512&lt;/oem-swapsize&gt;
++			&lt;/oemconfig&gt;
+ 		&lt;/type&gt;
+ 		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+@@ -28,12 +28,11 @@
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
++		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;vmx&quot;/&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/tests/unit/data/kiwiRuntimeChecker/fileSysImg/xfs/config.xml b/tests/unit/data/kiwiXMLValidator/bootDescriptValid_3.xml
+similarity index 73%
+copy from tests/unit/data/kiwiRuntimeChecker/fileSysImg/xfs/config.xml
+copy to tests/unit/data/kiwiXMLValidator/bootDescriptValid_3.xml
+index f4ecfc7..c8a64fa 100644
+--- a/tests/unit/data/kiwiRuntimeChecker/fileSysImg/xfs/config.xml
++++ b/tests/unit/data/kiwiXMLValidator/bootDescriptValid_3.xml
+@@ -1,25 +1,24 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;xfs-test-config&quot;&gt;
++&lt;image schemaversion=&quot;5.1&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;Test configuration for runtime validtaion using xfs as image type.&lt;/specification&gt;
++		&lt;specification&gt;test type requires boot attribute&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+-		&lt;version&gt;1.0.0&lt;/version&gt;
++		&lt;type image=&quot;xfs&quot;/&gt; 
++		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+ 		&lt;rpm-force&gt;true&lt;/rpm-force&gt;
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+-		&lt;type image=&quot;xfs&quot;/&gt;
+ 	&lt;/preferences&gt;
+ 	&lt;users group=&quot;root&quot;&gt;
+-		&lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
++		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+-	&lt;repository type=&quot;rpm-dir&quot;&gt;
+-		&lt;source path=&quot;/tmp&quot;/&gt;
++	&lt;repository type=&quot;yast2&quot;&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/tests/unit/data/kiwiRuntimeChecker/fileSysImg/ext2/config.xml b/tests/unit/data/kiwiXMLValidator/bootDescriptValid_4.xml
+similarity index 72%
+copy from tests/unit/data/kiwiRuntimeChecker/fileSysImg/ext2/config.xml
+copy to tests/unit/data/kiwiXMLValidator/bootDescriptValid_4.xml
+index a2be866..34d9d5a 100644
+--- a/tests/unit/data/kiwiRuntimeChecker/fileSysImg/ext2/config.xml
++++ b/tests/unit/data/kiwiXMLValidator/bootDescriptValid_4.xml
+@@ -1,25 +1,24 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;ext2-test-config&quot;&gt;
++&lt;image schemaversion=&quot;5.1&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+ 		&lt;author&gt;Robert Schweikert&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;Test configuration for runtime validtaion using ext2 as image type.&lt;/specification&gt;
++		&lt;specification&gt;test type requires boot attribute&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+-		&lt;version&gt;1.0.0&lt;/version&gt;
++		&lt;type image=&quot;btrfs&quot;/&gt; 
++		&lt;version&gt;1.1.2&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+ 		&lt;rpm-force&gt;true&lt;/rpm-force&gt;
+ 		&lt;locale&gt;en_US&lt;/locale&gt;
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+-		&lt;type image=&quot;ext2&quot;/&gt;
+ 	&lt;/preferences&gt;
+ 	&lt;users group=&quot;root&quot;&gt;
+-		&lt;user pwd=&quot;linux&quot; pwdformat=&quot;plain&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
++		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+ 	&lt;/users&gt;
+-	&lt;repository type=&quot;rpm-dir&quot;&gt;
+-		&lt;source path=&quot;/tmp&quot;/&gt;
++	&lt;repository type=&quot;yast2&quot;&gt;
++		&lt;source path=&quot;<A HREF="opensuse://11.3/repo/oss/">opensuse://11.3/repo/oss/</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+diff --git a/doc/examples/suse-11.4/suse-vm-guest/config.xml b/tests/unit/data/kiwiXMLValidator/bootDescriptValid_5.xml
+similarity index 75%
+copy from doc/examples/suse-11.4/suse-vm-guest/config.xml
+copy to tests/unit/data/kiwiXMLValidator/bootDescriptValid_5.xml
+index b42cf39..ef607a8 100644
+--- a/doc/examples/suse-11.4/suse-vm-guest/config.xml
++++ b/tests/unit/data/kiwiXMLValidator/bootDescriptValid_5.xml
+@@ -1,14 +1,13 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+-
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;suse-11.4-vm-guest&quot;&gt;
++&lt;image schemaversion=&quot;5.1&quot; name=&quot;suse-11.3-xen-guest&quot;&gt;
+ 	&lt;description type=&quot;system&quot;&gt;
+-		&lt;author&gt;Marcus Sch&#195;&#164;fer&lt;/author&gt;
+-		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+-		&lt;specification&gt;openSUSE 11.4 virtual disk system&lt;/specification&gt;
++		&lt;author&gt;Robert Schweikert&lt;/author&gt;
++		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&lt;/contact&gt;
++		&lt;specification&gt;test type requires boot attribute&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+-		&lt;type image=&quot;vmx&quot; primary=&quot;true&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.4&quot; format=&quot;vmdk&quot;&gt;
+-			&lt;machine memory=&quot;512&quot;&gt;
++		&lt;type image=&quot;vmx&quot; boot=&quot;<A HREF="system://vmxboot/suse-11.4">system://vmxboot/suse-11.4</A>&quot; filesystem=&quot;ext3&quot; format=&quot;vmdk&quot;&gt; 
++			&lt;machine  memory=&quot;512&quot;&gt;
+ 				&lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+@@ -28,12 +27,11 @@
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-openSUSE&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+-		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
++		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;vmx&quot;/&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/tests/unit/lib/Test/kiwiXMLValidator.pm b/tests/unit/lib/Test/kiwiXMLValidator.pm
+index b024303..813272e 100644
+--- a/tests/unit/lib/Test/kiwiXMLValidator.pm
++++ b/tests/unit/lib/Test/kiwiXMLValidator.pm
+@@ -40,6 +40,46 @@ sub new {
+ }
+ 
+ #==========================================
++# test_bootDescriptSet
++#------------------------------------------
++sub test_bootDescriptSet {
++	# ...
++	# Test that required boot attribute requirement is properly enforced
++	# ---
++	my $this = shift;
++	my @invalidConfigs = $this -&gt; __getInvalidFiles('bootDescript');
++	for my $iConfFile (@invalidConfigs) {
++		my $validator = $this -&gt; __getValidator($iConfFile);
++		$validator -&gt; validate();
++		my $kiwi = $this -&gt; {kiwi};
++		my $msg = $kiwi -&gt; getMessage();
++		my $specType;
++		if ( $iConfFile =~ 'bootDescriptInvalid_1.xml' ) {
++			$specType = 'iso';
++		} elsif ( $iConfFile =~ 'bootDescriptInvalid_2.xml' ) {
++			$specType = 'oem';
++		} elsif ( $iConfFile =~ 'bootDescriptInvalid_3.xml' ) {
++			$specType = 'pxe';
++		} elsif ( $iConfFile =~ 'bootDescriptInvalid_4.xml' ) {
++			$specType = 'split';
++		} elsif ( $iConfFile =~ 'bootDescriptInvalid_5.xml' ) {
++			$specType = 'vmx';
++		}
++		my $expectedMsg = &quot;$specType requires initrd, but no 'boot' &quot;
++					. 'attribute specified.';
++		$this -&gt; assert_str_equals($expectedMsg, $msg);
++		my $msgT = $kiwi -&gt; getMessageType();
++		$this -&gt; assert_str_equals('error', $msgT);
++		my $state = $kiwi -&gt; getState();
++		$this -&gt; assert_str_equals('failed', $state);
++		# Test this condition last to get potential error messages
++		$this -&gt; assert_not_null($validator);
++	}
++	my @validConfigs = $this -&gt; __getValidFiles('bootDescript');
++	$this -&gt; __verifyValid(@validConfigs);
++}
++
++#==========================================
+ # test_ctorInvalidConfPath
+ #------------------------------------------
+ sub test_ctorInvalidConfPath {
+@@ -188,7 +228,7 @@ sub test_defaultProfileSpec {
+ 		$validator -&gt; validate();
+ 		my $kiwi = $this -&gt; {kiwi};
+ 		my $msg = $kiwi -&gt; getMessage();
+-		my $expectedMsg = 'Only one profile may be set as the dafault '
++		my $expectedMsg = 'Only one profile may be set as the default '
+ 		. 'profile by using the &quot;import&quot; attribute.';
+ 		$this -&gt; assert_str_equals($expectedMsg, $msg);
+ 		my $msgT = $kiwi -&gt; getMessageType();
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003309.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1bd7e6be2200eb06d72926ae603421773adcb0b4
+</A></li>
+	<LI>Next message: <A HREF="003312.html">[Kiwi-devel] [PATCH] Quote filename in fixupOverlayFilesOwnership	function
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3311">[ date ]</a>
+              <a href="thread.html#3311">[ thread ]</a>
+              <a href="subject.html#3311">[ subject ]</a>
+              <a href="author.html#3311">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

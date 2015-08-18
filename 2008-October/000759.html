@@ -1,0 +1,145 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1667 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1667%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200810230805.m9N85cKm013020%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000758.html">
+   <LINK REL="Next"  HREF="000760.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1667 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1667%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200810230805.m9N85cKm013020%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1667 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Oct 23 10:05:38 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000758.html">[Kiwi-devel] r1666 - in kiwi-head: . modules
+</A></li>
+        <LI>Next message: <A HREF="000760.html">[Kiwi-devel] r1668 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#759">[ date ]</a>
+              <a href="thread.html#759">[ thread ]</a>
+              <a href="subject.html#759">[ subject ]</a>
+              <a href="author.html#759">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-23 10:05:33 +0200 (Thu, 23 Oct 2008)
+New Revision: 1667
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWILog.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- added usage message for --verbose option
+- fixed POSIX based date call
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-10-22 17:18:11 UTC (rev 1666)
++++ kiwi-head/kiwi.pl	2008-10-23 08:05:33 UTC (rev 1667)
+@@ -55,7 +55,6 @@
+ our $ConfigStatus  = 0;
+ our $TL            = 1;
+ our $BT;
+-our $Verbosity     = 0; # control the verbosity level
+ #============================================
+ # Read $HOME/.kiwirc
+ #--------------------------------------------
+@@ -194,6 +193,7 @@
+ our $FSBlockSize;           # filesystem block size
+ our $FSInodeSize;           # filesystem inode size
+ our $FSJournalSize;         # filesystem journal size
++our $Verbosity = 0;         # control the verbosity level
+ our $kiwi;                  # global logging handler object
+ 
+ #============================================
+@@ -1300,7 +1300,7 @@
+ 	# image creation system
+ 	# ---
+ 	my $kiwi = new KIWILog(&quot;tiny&quot;);
+-	my $date = qxx ( &quot;LANG=POSIX date -I&quot; ); chomp $date;
++	my $date = qxx ( &quot;bash -c 'LANG=POSIX date -I'&quot; ); chomp $date;
+ 	print &quot;Linux KIWI setup  (image builder) ($date)\n&quot;;
+ 	print &quot;Copyright (c) 2007 - SUSE LINUX Products GmbH\n&quot;;
+ 	print &quot;\n&quot;;
+@@ -1485,6 +1485,10 @@
+ 	print &quot;  [ --partitioner &lt;fdisk|parted ]\n&quot;;
+ 	print &quot;    Select the tool to create partition tables. Supported are\n&quot;;
+ 	print &quot;    fdisk (sfdisk) and parted. By default fdisk is used\n&quot;;
++	print &quot;\n&quot;;
++	print &quot;  [ -v | --verbose &lt;1|2|3&gt; ]\n&quot;;
++	print &quot;    Control the verbosity level. At the moment this option\n&quot;;
++	print &quot;    has an effect on the create-instsource module only\n&quot;;
+ 	print &quot;--\n&quot;;
+ 	version();
+ }
+
+Modified: kiwi-head/modules/KIWILog.pm
+===================================================================
+--- kiwi-head/modules/KIWILog.pm	2008-10-22 17:18:11 UTC (rev 1666)
++++ kiwi-head/modules/KIWILog.pm	2008-10-23 08:05:33 UTC (rev 1667)
+@@ -425,7 +425,7 @@
+ 	my $this  = shift;
+ 	my $level = shift;
+ 	my $date;
+-	#$date = qx (LANG=POSIX /bin/date &quot;+%h-%d %H:%M:%S&quot;); chomp $date;
++	#$date = qx (bash -c 'LANG=POSIX /bin/date &quot;+%h-%d %H:%M:%S'&quot;); chomp $date;
+ 	my @lt= localtime(time());
+ 	$date = sprintf (&quot;%s-%02d %02d:%02d:%02d&quot;,
+ 		(qw{Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec})[$lt[4]],
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-22 17:18:11 UTC (rev 1666)
++++ kiwi-head/rpm/kiwi.changes	2008-10-23 08:05:33 UTC (rev 1667)
+@@ -3,6 +3,8 @@
+ 
+ - v2.96
+ - turn runlevel 4 requests into runlevel 5 for suse
++- added usage message for --verbose option
++- fixed POSIX based date call
+ 
+ -------------------------------------------------------------------
+ Tue Oct 21 10:13:10 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000758.html">[Kiwi-devel] r1666 - in kiwi-head: . modules
+</A></li>
+	<LI>Next message: <A HREF="000760.html">[Kiwi-devel] r1668 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#759">[ date ]</a>
+              <a href="thread.html#759">[ thread ]</a>
+              <a href="subject.html#759">[ subject ]</a>
+              <a href="author.html#759">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

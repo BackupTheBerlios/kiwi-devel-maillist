@@ -1,0 +1,147 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1811 - in kiwi-head: modules rpm	system/boot/ix86/oemboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1811%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ix86/oemboot&In-Reply-To=%3C200812031619.mB3GJ8WY020533%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000925.html">
+   <LINK REL="Next"  HREF="000927.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1811 - in kiwi-head: modules rpm	system/boot/ix86/oemboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1811%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ix86/oemboot&In-Reply-To=%3C200812031619.mB3GJ8WY020533%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1811 - in kiwi-head: modules rpm	system/boot/ix86/oemboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Dec  3 17:19:08 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000925.html">[Kiwi-devel] USB device scan...
+</A></li>
+        <LI>Next message: <A HREF="000927.html">[Kiwi-devel] USB Bug in 3.01
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#926">[ date ]</a>
+              <a href="thread.html#926">[ thread ]</a>
+              <a href="subject.html#926">[ subject ]</a>
+              <a href="author.html#926">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-12-03 17:19:06 +0100 (Wed, 03 Dec 2008)
+New Revision: 1811
+
+Modified:
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/system/boot/ix86/oemboot/suse-linuxrc
+Log:
+
+- fixed unified/split based oem second boot phase (bnc #450780)
+- added usb-storage device scan detection (bnc #455993)
+
+
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-12-03 11:58:44 UTC (rev 1810)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-12-03 16:19:06 UTC (rev 1811)
+@@ -1295,7 +1295,7 @@
+ #--------------------------------------
+ function CDDevice {
+ 	# /.../
+-	# detect CD/DVD device(s). The function use the information
++	# detect CD/DVD/USB device(s). The function use the information
+ 	# from hwinfo --cdrom to search for the block device
+ 	# ----
+ 	local count=0
+@@ -1306,6 +1306,25 @@
+ 	do
+ 		/sbin/modprobe $module
+ 	done
++	Echo -n &quot;Waiting for USB devices to settle...&quot;
++	while ! [ -d /sys/bus/usb/drivers/usb-storage ] &amp;&amp; [ $count -lt 5 ]; do
++		echo -n .
++		sleep 1
++		count=`expr $count + 1`
++	done
++	count=0
++	if [ -d /sys/bus/usb/drivers/usb-storage ]; then
++		while \
++			[ $(dmesg|grep -c 'usb-storage: device scan complete') -lt 1 ] &amp;&amp; \
++			[ $count -lt 15 ]
++		do
++			echo -n .
++			sleep 1
++			count=`expr $count + 1`
++		done
++		count=0
++	fi
++	echo
+ 	Echo -n &quot;Waiting for CD/DVD device(s) to appear...&quot;
+ 	while true;do
+ 		cddevs=`$h --cdrom | grep &quot;Device File:&quot;|sed -e&quot;s@(.*)@@&quot; | cut -f2 -d:`
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-12-03 11:58:44 UTC (rev 1810)
++++ kiwi-head/rpm/kiwi.changes	2008-12-03 16:19:06 UTC (rev 1811)
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Wed Dec  3 15:49:46 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed unified/split based oem second boot phase (bnc #450780)
++- added usb-storage device scan detection (bnc #455993)
++
++-------------------------------------------------------------------
+ Wed Dec  3 11:50:17 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - added slepos functions (bnc #349181)
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-linuxrc	2008-12-03 11:58:44 UTC (rev 1810)
++++ kiwi-head/system/boot/ix86/oemboot/suse-linuxrc	2008-12-03 16:19:06 UTC (rev 1811)
+@@ -109,6 +109,9 @@
+ if [ $LOCAL_BOOT = &quot;yes&quot; ];then
+ 	export deviceRoot=$root
+ 	export deviceDisk=`getDiskDevice $deviceRoot | sed -e s&quot;@[0-9]@@g&quot;`
++	if [ ! -z &quot;$UNIONFS_CONFIG&quot; ] || [ ! -z &quot;$COMBINED_IMAGE&quot; ];then
++		deviceRoot=&quot;$deviceDisk&quot;1
++	fi
+ 	if [ ! -z &quot;$UNIONFS_CONFIG&quot; ];then
+ 		setupUnionFS &quot;$deviceDisk&quot;2 &quot;$deviceDisk&quot;1 aufs
+ 	fi
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000925.html">[Kiwi-devel] USB device scan...
+</A></li>
+	<LI>Next message: <A HREF="000927.html">[Kiwi-devel] USB Bug in 3.01
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#926">[ date ]</a>
+              <a href="thread.html#926">[ thread ]</a>
+              <a href="subject.html#926">[ subject ]</a>
+              <a href="author.html#926">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

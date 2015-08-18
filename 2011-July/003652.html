@@ -1,0 +1,254 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f0c48d57b79756835ffd633520368585e1b23823
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20f0c48d57b79756835ffd633520368585e1b23823&In-Reply-To=%3C20110727153554.D2296480D21%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003651.html">
+   <LINK REL="Next"  HREF="003655.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f0c48d57b79756835ffd633520368585e1b23823</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20f0c48d57b79756835ffd633520368585e1b23823&In-Reply-To=%3C20110727153554.D2296480D21%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f0c48d57b79756835ffd633520368585e1b23823">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jul 27 17:35:54 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003651.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. cb6e139226e77f33c70e9cdfc03f644933eae570
+</A></li>
+        <LI>Next message: <A HREF="003655.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f298243b778f3bb18fffedbb525ed5516a327c51
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3652">[ date ]</a>
+              <a href="thread.html#3652">[ thread ]</a>
+              <a href="subject.html#3652">[ subject ]</a>
+              <a href="author.html#3652">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  f0c48d57b79756835ffd633520368585e1b23823 (commit)
+       via  434d54cf55239742d1b543063c6c7b50ad52f062 (commit)
+      from  5855701bd9c7e8cd3eddc594fc9e954b7654056f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit f0c48d57b79756835ffd633520368585e1b23823
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jul 27 17:29:37 2011 +0200
+
+    - fixed splash setup on recreation of the splash.install.gz initrd
+
+commit 434d54cf55239742d1b543063c6c7b50ad52f062
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jul 27 16:18:34 2011 +0200
+
+    - added function to check for boot image creation and call
+      setupSplash only if we are building a boot image
+    - fixed splash creation for iso images
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 879528f..b4fb68c 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -2561,6 +2561,16 @@ sub setupInstallFlags {
+ 		return undef;
+ 	}
+ 	qxx (&quot;rm -rf $irddir&quot;);
++	#==========================================
++	# recreate splash data to initrd
++	#------------------------------------------
++	my $splash = $initrd;
++	if (! ($splash =~ s/splash\.gz/spl/)) {
++		$splash =~ s/gz/spl/;
++	}
++	if (-f $splash) {
++		qxx (&quot;cat $splash &gt;&gt; $newird&quot;);
++	}
+ 	return $newird;
+ }
+ 
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 3eaa0df..101f4f8 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -1604,6 +1604,14 @@ sub createImageLiveCD {
+ 		}
+ 	}
+ 	#==========================================
++	# Include splash screen to initrd
++	#------------------------------------------
++	my $kboot  = new KIWIBoot ($kiwi,$pinitrd,$cmdL);
++	if (! defined $kboot) {
++		return undef;
++	}
++	$pinitrd = $kboot -&gt; setupSplash();
++	#==========================================
+ 	# Prepare for CD ISO image
+ 	#------------------------------------------
+ 	my $CD = $idest.&quot;/CD&quot;;
+@@ -3387,6 +3395,15 @@ sub extractSplash {
+ 	my $zipper    = $this-&gt;{gdata}-&gt;{Gzip};
+ 	my $newspl    = $imageDest.&quot;/splash&quot;;
+ 	#==========================================
++	# check if boot image
++	#------------------------------------------
++	if (! defined $name) {
++		return $this;
++	}
++	if (! $this-&gt;isBootImage ($name)) {
++		return $this;
++	}
++	#==========================================
+ 	# move out all splash files
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Extracting splash files...&quot;);
+@@ -3436,21 +3453,12 @@ sub extractSplash {
+ }
+ 
+ #==========================================
+-# extractKernel
++# isBootImage
+ #------------------------------------------
+-sub extractKernel {
++sub isBootImage {
+ 	my $this = shift;
+ 	my $name = shift;
+-	my $kiwi = $this-&gt;{kiwi};
+-	my $xml  = $this-&gt;{xml}; 
+-	my $imageTree = $this-&gt;{imageTree};
+-	#==========================================
+-	# extract kernel from physical extend
+-	#------------------------------------------
+-	# This is done for boot images only. Therefore we check
+-	# if the file vmlinux[.gz] exists which was created by the
+-	# suseStripKernel() function
+-	# ---
++	my $xml  = $this-&gt;{xml};
+ 	if (! defined $name) {
+ 		return $this;
+ 	}
+@@ -3461,46 +3469,65 @@ sub extractKernel {
+ 	}
+ 	SWITCH: for ($para) {
+ 		/ext3/i     &amp;&amp; do {
+-			return $name;
++			return 0;
+ 			last SWITCH;
+ 		};
+ 		/ext4/i     &amp;&amp; do {
+-			return $name;
++			return 0;
+ 			last SWITCH;
+ 		};
+ 		/reiserfs/i &amp;&amp; do {
+-			return $name;
++			return 0;
+ 			last SWITCH;
+ 		};
+ 		/iso/i &amp;&amp; do {
+-			return $name;
++			return 0;
+ 			last SWITCH;
+ 		};
+ 		/ext2/i &amp;&amp; do {
+ 			if ($name !~ /boot/) {
+-				return $name;
++				return 0;
+ 			}
+ 			last SWITCH;
+ 		};
+ 		/squashfs/i &amp;&amp; do {
+-			return $name;
++			return 0;
+ 			last SWITCH;
+ 		};
+ 		/clicfs/i &amp;&amp; do {
+-			return $name;
++			return 0;
+ 			last SWITCH;
+ 		};
+ 		/btrfs/i  &amp;&amp; do {
+-			return $name;
++			return 0;
+ 			last SWITCH;
+ 		};
+ 		/xfs/i    &amp;&amp; do {
+-			return $name;
++			return 0;
+ 			last SWITCH;
+ 		};
+ 	}
++	return 1;
++}
++
++#==========================================
++# extractKernel
++#------------------------------------------
++sub extractKernel {
++	my $this = shift;
++	my $name = shift;
++	my $imageTree = $this-&gt;{imageTree};
++	#==========================================
++	# check for boot image
++	#------------------------------------------
++	if (! defined $name) {
++		return $this;
++	}
++	if (! $this-&gt;isBootImage ($name)) {
++		return $name;
++	}
+ 	#==========================================
+-	# this is a boot image, extract kernel
++	# extract kernel from physical extend
+ 	#------------------------------------------
+ 	return $this -&gt; extractLinux (
+ 		$name,$imageTree,$this-&gt;{imageDest}
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003651.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. cb6e139226e77f33c70e9cdfc03f644933eae570
+</A></li>
+	<LI>Next message: <A HREF="003655.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f298243b778f3bb18fffedbb525ed5516a327c51
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3652">[ date ]</a>
+              <a href="thread.html#3652">[ thread ]</a>
+              <a href="subject.html#3652">[ subject ]</a>
+              <a href="author.html#3652">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

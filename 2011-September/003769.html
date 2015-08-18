@@ -1,0 +1,394 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ace081b2945602bee42acfd596577a3c7ee7468c
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ace081b2945602bee42acfd596577a3c7ee7468c&In-Reply-To=%3C20110905090530.94540481217%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003772.html">
+   <LINK REL="Next"  HREF="003770.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ace081b2945602bee42acfd596577a3c7ee7468c</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ace081b2945602bee42acfd596577a3c7ee7468c&In-Reply-To=%3C20110905090530.94540481217%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ace081b2945602bee42acfd596577a3c7ee7468c">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Sep  5 11:05:28 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003772.html">[Kiwi-devel] OEM to USB bug
+</A></li>
+        <LI>Next message: <A HREF="003770.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 529208ad838053bad5c93deb9ee656c82c4bebd4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3769">[ date ]</a>
+              <a href="thread.html#3769">[ thread ]</a>
+              <a href="subject.html#3769">[ subject ]</a>
+              <a href="author.html#3769">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  ace081b2945602bee42acfd596577a3c7ee7468c (commit)
+      from  d632869396adc2458d87ff31f6a97a4de8487e64 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ace081b2945602bee42acfd596577a3c7ee7468c
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Sep 5 11:04:01 2011 +0200
+
+    - added support for vmxboot for RHEL 5.4. Thanks to Praveen
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 9769c45..b05cc7e 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -888,6 +888,64 @@ function installBootLoaderGrubRecovery {
+ 	fi
+ }
+ #======================================
++# setupRHELInitrd
++#--------------------------------------
++function setupRHELInitrd {
++	# /.../
++	# call mkinitrd on RHEL systems to create the distro initrd.
++	# Note: mkinitrd will be obsolete on RHEL in future releases
++	# so this function is a candiate for a rewrite
++	# ----
++	bootLoaderOK=1
++	local umountProc=0
++	local umountSys=0
++	local systemMap=0
++	local haveVMX=0
++	local params
++	local running
++	local rlinux
++	local rinitrd
++	local kernel_version=`uname -r`
++	for i in `find /boot/ -name &quot;System.map*&quot;`;do
++		systemMap=1
++	done
++	if [ $systemMap -eq 1 ];then
++		if [ ! -e /proc/mounts ];then
++			mount -t proc proc /proc
++			umountProc=1
++		fi
++		if [ ! -e /sys/block ];then
++			mount -t sysfs sysfs /sys
++			umountSys=1
++		fi
++		if [ $bootLoaderOK = &quot;1&quot; ];then
++			if [ -f /boot/initrd.vmx ];then
++				rm -f /boot/initrd.vmx
++				rm -f /boot/linux.vmx
++				rm -f /boot/initrd-*.img   ##remove the dist's initrd image
++				haveVMX=1
++			fi
++		fi
++		params=&quot; -f /boot/initrd-$kernel_version $kernel_version&quot;
++		if ! mkinitrd $params;then
++			Echo &quot;Can't create initrd&quot;
++			systemIntegrity=unknown
++			bootLoaderOK=0
++		fi
++		if [ $umountSys -eq 1 ];then
++			umount /sys
++		fi
++		if [ $umountProc -eq 1 ];then
++			umount /proc
++		fi
++	else
++		Echo &quot;Image doesn't include kernel system map&quot;
++		Echo &quot;Can't create initrd&quot;
++		systemIntegrity=unknown
++		bootLoaderOK=0
++	fi
++}
++#======================================
+ # setupSUSEInitrd
+ #--------------------------------------
+ function setupSUSEInitrd {
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index ed67c97..ac50d13 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -508,6 +508,7 @@ rm -rf $RPM_BUILD_ROOT
+ %dir %{_datadir}/kiwi/image/vmxboot
+ %doc %{_datadir}/kiwi/image/vmxboot/README
+ %{_datadir}/kiwi/image/vmxboot/suse*
++%{_datadir}/kiwi/image/vmxboot/rhel*
+ %endif
+ 
+ %ifarch %ix86 x86_64 ppc ppc64 s390 s390x
+diff --git a/system/boot/ix86/isoboot/suse-11.3/config.sh b/system/boot/ix86/vmxboot/rhel-05.4/config.sh
+similarity index 94%
+copy from system/boot/ix86/isoboot/suse-11.3/config.sh
+copy to system/boot/ix86/vmxboot/rhel-05.4/config.sh
+index 3caa20a..f54232b 100755
+--- a/system/boot/ix86/isoboot/suse-11.3/config.sh
++++ b/system/boot/ix86/vmxboot/rhel-05.4/config.sh
+@@ -27,17 +27,18 @@ test -f /.profile &amp;&amp; . /.profile
+ echo &quot;Configure image: [$kiwi_iname]...&quot;
+ 
+ #======================================
+-# SuSEconfig
+-#--------------------------------------
+-suseConfig
+-
+-#======================================
+ # Keep UTF-8 locale
+ #--------------------------------------
+ baseStripLocales \
+ 	$(for i in $(echo $kiwi_language | tr &quot;,&quot; &quot; &quot;);do echo -n &quot;$i.utf8 &quot;;done)
+ baseStripTranslations kiwi.mo
+ 
++
++#======================================
++# Setup link for the grub stage files
++#--------------------------------------
++baseSetupBootLoaderCompatLinks
++
+ #======================================
+ # Umount kernel filesystems
+ #--------------------------------------
+diff --git a/system/boot/ix86/isoboot/rhel-05.4/config.xml b/system/boot/ix86/vmxboot/rhel-05.4/config.xml
+similarity index 95%
+copy from system/boot/ix86/isoboot/rhel-05.4/config.xml
+copy to system/boot/ix86/vmxboot/rhel-05.4/config.xml
+index 79615f0..525e214 100644
+--- a/system/boot/ix86/isoboot/rhel-05.4/config.xml
++++ b/system/boot/ix86/vmxboot/rhel-05.4/config.xml
+@@ -1,6 +1,6 @@
+ &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+ 
+-&lt;image schemaversion=&quot;5.2&quot; name=&quot;initrd-isoboot-rhel-05.4&quot;&gt;
++&lt;image schemaversion=&quot;5.2&quot; name=&quot;initrd-vmxboot-rhel-05.4&quot;&gt;
+ 	&lt;description type=&quot;boot&quot;&gt;
+ 		&lt;author&gt;Marcus Schaefer&lt;/author&gt;
+ 		&lt;contact&gt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&lt;/contact&gt;
+@@ -61,7 +61,7 @@
+ 	&lt;repository type=&quot;rpm-md&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;<A HREF="iso:///image/CDs/RHEL-5.4-%arch-DVD.iso/Server">iso:///image/CDs/RHEL-5.4-%arch-DVD.iso/Server</A>&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;repository type=&quot;rpm-md&quot; status=&quot;fixed&quot;&gt;
++	&lt;repository type=&quot;rpm-md&quot; status=&quot;fixed&quot; priority=&quot;1&quot;&gt;
+ 		&lt;source path=&quot;/usr/share/kiwi/repo/rhel-repo/rhel-054-repo&quot;/&gt;
+ 	&lt;/repository&gt;
+ 	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+@@ -83,7 +83,6 @@
+ 		&lt;package name=&quot;initscripts&quot;/&gt;
+ 		&lt;package name=&quot;sysfsutils&quot;/&gt;
+ 		&lt;package name=&quot;file&quot;/&gt;
+-		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;make&quot;/&gt;
+ 		&lt;package name=&quot;memtest86+&quot;/&gt;
+ 		&lt;package name=&quot;hdparm&quot;/&gt;
+@@ -97,7 +96,6 @@
+ 		&lt;package name=&quot;hwinfo&quot;/&gt;
+ 		&lt;package name=&quot;pam&quot;/&gt;
+ 		&lt;package name=&quot;parted&quot;/&gt;
+-		&lt;package name=&quot;clicfs&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
+ 		&lt;package name=&quot;cracklib-dicts&quot;/&gt;
+@@ -115,13 +113,11 @@
+ 		&lt;package name=&quot;gawk&quot;/&gt;
+ 		&lt;package name=&quot;gdbm&quot;/&gt;
+ 		&lt;package name=&quot;glib2&quot;/&gt;
+-		&lt;package name=&quot;grub&quot;/&gt;
+ 		&lt;package name=&quot;hdparm&quot;/&gt;
+ 		&lt;package name=&quot;info&quot;/&gt;
+ 		&lt;package name=&quot;iproute&quot;/&gt;
+ 		&lt;package name=&quot;irqbalance&quot;/&gt;
+ 		&lt;package name=&quot;logrotate&quot;/&gt;
+-		&lt;package name=&quot;lvm2&quot;/&gt;
+ 		&lt;package name=&quot;make&quot;/&gt;
+ 		&lt;package name=&quot;mdadm&quot;/&gt;
+ 		&lt;package name=&quot;memtest86+&quot;/&gt;
+diff --git a/system/boot/ix86/isoboot/rhel-05.4/images.sh b/system/boot/ix86/vmxboot/rhel-05.4/images.sh
+similarity index 97%
+copy from system/boot/ix86/isoboot/rhel-05.4/images.sh
+copy to system/boot/ix86/vmxboot/rhel-05.4/images.sh
+index 7651026..e53324b 100755
+--- a/system/boot/ix86/isoboot/rhel-05.4/images.sh
++++ b/system/boot/ix86/vmxboot/rhel-05.4/images.sh
+@@ -17,7 +17,7 @@ rhelStripKernel
+ #==========================================
+ # setup gfxboot
+ #------------------------------------------
+-rhelGFXBoot SLES isolinux
++rhelGFXBoot SLES grub
+ 
+ #==========================================
+ # remove unneeded packages
+diff --git a/system/boot/ix86/isoboot/rhel-05.4/root/include b/system/boot/ix86/vmxboot/rhel-05.4/root/include
+similarity index 100%
+copy from system/boot/ix86/isoboot/rhel-05.4/root/include
+copy to system/boot/ix86/vmxboot/rhel-05.4/root/include
+diff --git a/system/boot/ix86/isoboot/rhel-05.4/root/linuxrc b/system/boot/ix86/vmxboot/rhel-05.4/root/linuxrc
+similarity index 100%
+copy from system/boot/ix86/isoboot/rhel-05.4/root/linuxrc
+copy to system/boot/ix86/vmxboot/rhel-05.4/root/linuxrc
+diff --git a/system/boot/ix86/isoboot/rhel-05.4/root/preinit b/system/boot/ix86/vmxboot/rhel-05.4/root/preinit
+similarity index 100%
+copy from system/boot/ix86/isoboot/rhel-05.4/root/preinit
+copy to system/boot/ix86/vmxboot/rhel-05.4/root/preinit
+diff --git a/system/boot/ix86/vmxboot/suse-linuxrc b/system/boot/ix86/vmxboot/rhel-linuxrc
+similarity index 99%
+copy from system/boot/ix86/vmxboot/suse-linuxrc
+copy to system/boot/ix86/vmxboot/rhel-linuxrc
+index 1a18074..5b9ce36 100755
+--- a/system/boot/ix86/vmxboot/suse-linuxrc
++++ b/system/boot/ix86/vmxboot/rhel-linuxrc
+@@ -237,7 +237,7 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 		export KIWI_INITRD_PARAMS=&quot;COMBINED_IMAGE=local&quot;
+ 	fi
+ 	setupBootLoader /mnt /config $(($bootid - 1)) $imageRootDevice VMX
+-	setupKernelModules /config
++	# FIXME: 'setupKernelModules /config' does not work on RHEL
+ fi
+ 
+ #======================================
+diff --git a/system/boot/ppc/vmxboot/suse-preinit b/system/boot/ix86/vmxboot/rhel-preinit
+similarity index 83%
+copy from system/boot/ppc/vmxboot/suse-preinit
+copy to system/boot/ix86/vmxboot/rhel-preinit
+index cb1af12..7700bf8 100755
+--- a/system/boot/ppc/vmxboot/suse-preinit
++++ b/system/boot/ix86/vmxboot/rhel-preinit
+@@ -39,17 +39,7 @@ mountSystemFilesystems
+ udevSystemStart
+ 
+ #======================================
+-# 4) update mount table
+-#--------------------------------------
+-updateMTAB
+-
+-#======================================
+-# 5) create framebuffer devices
+-#--------------------------------------
+-createFramebufferDevices
+-
+-#======================================
+-# 6) create /etc/ImagePackages
++# 4) create /etc/ImagePackages
+ #--------------------------------------
+ if [ -x /bin/rpm ];then
+ 	Echo &quot;Creating initial image package info file&quot;
+@@ -57,13 +47,13 @@ if [ -x /bin/rpm ];then
+ fi
+ 
+ #======================================
+-# 7) create initrd on diskful
++# 5) create initrd on diskful
+ #--------------------------------------
+ if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+ 	#======================================
+ 	# use distro initrd via mkinitrd
+ 	#--------------------------------------
+-	setupSUSEInitrd
++	setupRHELInitrd
+ else
+ 	#======================================
+ 	# use kiwi initrd from RW partition
+@@ -72,19 +62,19 @@ else
+ fi
+ 
+ #======================================
+-# 8) Install boot loader if ok
++# 6) Install boot loader if ok
+ #--------------------------------------
+ if [ $bootLoaderOK = 1 ];then
+ 	installBootLoader
+ fi
+ 
+ #======================================
+-# 9) setup console
++# 7) setup console
+ #--------------------------------------
+ setupConsole
+ 
+ #======================================
+-# 10) kill udev
++# 8) kill udev
+ #--------------------------------------
+ udevSystemStop
+ umountSystemFilesystems
+diff --git a/template/ix86/rhel-05.4-JeOS/config.xml b/template/ix86/rhel-05.4-JeOS/config.xml
+index 021fd4c..6a105cc 100644
+--- a/template/ix86/rhel-05.4-JeOS/config.xml
++++ b/template/ix86/rhel-05.4-JeOS/config.xml
+@@ -15,7 +15,16 @@
+ 		&lt;timezone&gt;Europe/Berlin&lt;/timezone&gt;
+ 		&lt;hwclock&gt;utc&lt;/hwclock&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+-		&lt;type image=&quot;iso&quot; boot=&quot;isoboot/rhel-05.4&quot; flags=&quot;clic&quot;/&gt;
++		&lt;type image=&quot;iso&quot; primary=&quot;true&quot; boot=&quot;isoboot/rhel-05.4&quot; flags=&quot;clic&quot;/&gt;
++		&lt;type image=&quot;vmx&quot; boot=&quot;vmxboot/rhel-05.4&quot; filesystem=&quot;ext3&quot; format=&quot;vmdk&quot;&gt;
++			&lt;machine memory=&quot;1024&quot; guestOS=&quot;rhel5&quot;&gt;
++				&lt;vmdisk controller=&quot;scsi&quot; id=&quot;0&quot;/&gt;
++				&lt;vmnic driver=&quot;e1000&quot; interface=&quot;0&quot; mode=&quot;bridged&quot;/&gt;
++			&lt;/machine&gt;
++			&lt;systemdisk name=&quot;Vgroup1&quot;&gt;
++				&lt;volume name=&quot;home&quot; freespace=&quot;200M&quot;/&gt;
++			&lt;/systemdisk&gt;
++		&lt;/type&gt;
+ 	&lt;/preferences&gt;
+ 	&lt;users group=&quot;root&quot;&gt;
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+@@ -36,6 +45,8 @@
+ 		&lt;package name=&quot;selinux-policy-devel&quot;/&gt;
+ 		&lt;package name=&quot;libselinux-utils&quot;/&gt;
+ 		&lt;package name=&quot;dhclient&quot;/&gt;
++		&lt;package name=&quot;parted&quot;/&gt;
++		&lt;package name=&quot;lvm2&quot;/&gt;
+ 		&lt;rhelGroup name=&quot;System Tools&quot;/&gt;
+ 		&lt;rhelGroup name=&quot;Text-based Internet&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot-branding-upstream&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003772.html">[Kiwi-devel] OEM to USB bug
+</A></li>
+	<LI>Next message: <A HREF="003770.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 529208ad838053bad5c93deb9ee656c82c4bebd4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3769">[ date ]</a>
+              <a href="thread.html#3769">[ thread ]</a>
+              <a href="subject.html#3769">[ subject ]</a>
+              <a href="author.html#3769">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

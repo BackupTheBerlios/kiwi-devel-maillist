@@ -1,0 +1,184 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1752 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1752%20-%0A%09kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules&In-Reply-To=%3C200811131136.mADBa8vB017696%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000831.html">
+   <LINK REL="Next"  HREF="000833.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1752 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules</H1>
+    <B>adrians at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1752%20-%0A%09kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules&In-Reply-To=%3C200811131136.mADBa8vB017696%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1752 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules">adrians at mail.berlios.de
+       </A><BR>
+    <I>Thu Nov 13 12:36:08 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000831.html">[Kiwi-devel] r1751 - kiwi-head
+</A></li>
+        <LI>Next message: <A HREF="000833.html">[Kiwi-devel] r1753 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#832">[ date ]</a>
+              <a href="thread.html#832">[ thread ]</a>
+              <a href="subject.html#832">[ subject ]</a>
+              <a href="author.html#832">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: adrians
+Date: 2008-11-13 12:36:06 +0100 (Thu, 13 Nov 2008)
+New Revision: 1752
+
+Modified:
+   kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect_local.pm
+Log:
+* fix handling of additional architectures not part of fallback list.
+* Disable version require handling until bugs are solved.
+* remove obsolete code
+* a bit more debug output
+
+
+Modified: kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect_local.pm
+===================================================================
+--- kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect_local.pm	2008-11-12 14:00:03 UTC (rev 1751)
++++ kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect_local.pm	2008-11-13 11:36:06 UTC (rev 1752)
+@@ -695,44 +695,6 @@
+ 
+ 
+ #==========================================
+-# getPackagesList OBSOLETE REMOVE ME
+-#------------------------------------------
+-sub getPackagesList
+-{
+-  my $this = shift;
+-  my $type = shift;
+-
+-  my $failed = 0;
+-  if(!@_) {
+-    $this-&gt;logMsg(&quot;E&quot;, &quot;getPackagesList called with empty arguments!&quot;);
+-    return -1;
+-  }
+-  
+-  foreach my $pack(@_) {
+-    my $numfail = $this-&gt;fetchFileFrom($pack, $this-&gt;{m_repos}, $type);
+-    if( $numfail == 0) {
+-      $this-&gt;logMsg(&quot;W&quot;, &quot;Package $pack not found in any repository!&quot;);
+-      if($type =~ m{meta}) {
+-	push @{$this-&gt;{m_fmpacks}}, &quot;$pack&quot;;
+-      }
+-      elsif($type =~ m{debug}) {
+-	push @{$this-&gt;{m_fdebugpacks}}, &quot;$pack&quot;;
+-      }
+-      elsif($type =~ m{src}) {
+-	push @{$this-&gt;{m_fsrcpacks}}, &quot;$pack&quot;;
+-      }
+-      else {
+-	push @{$this-&gt;{m_fpacks}}, &quot;$pack&quot;;
+-      }
+-      $failed++;
+-    }
+-  }
+-  return $failed;
+-} # getPackagesList
+-
+-
+-
+-#==========================================
+ # getMetafileList
+ #------------------------------------------
+ # returns:
+@@ -828,11 +790,14 @@
+       my @fallbacklist;
+       if($nofallback==0 &amp;&amp; $mode ne 2) {
+ 	@fallbacklist = $this-&gt;{m_archlist}-&gt;fallbacks($requestedArch);
++        $this-&gt;logMsg(&quot;W&quot;, &quot; Look for fallbacks fallbacks&quot;) if $this-&gt;{m_debug} &gt;= 6;
+       }
+-      else {
++      if ( ! @fallbacklist ) {
++        $nofallback = 1;
+ 	@fallbacklist = ($requestedArch);
++        $this-&gt;logMsg(&quot;W&quot;, &quot;    Run without fallbacks&quot;) if $this-&gt;{m_debug} &gt;= 6;
+       }
+-#      push @fallbacklist, $a; # if $a eq 'src' || $a eq 'nosrc';
++      $this-&gt;logMsg(&quot;W&quot;, &quot;    Use as expanded architectures &gt;&quot;.join(&quot; &quot;, @fallbacklist).&quot;&lt;&quot;) if $this-&gt;{m_debug} &gt;= 5;
+       my $fb_available = 0;
+       FA:foreach my $arch(@fallbacklist) {
+         $this-&gt;logMsg(&quot;W&quot;, &quot;    check architecture $arch &quot;) if $this-&gt;{m_debug} &gt;= 5;
+@@ -854,7 +819,7 @@
+ 	  if ( $packOptions-&gt;{requireVersion}
+                &amp;&amp; $packOptions-&gt;{requireVersion}-&gt;{ $packPointer-&gt;{version}.&quot;-&quot;.$packPointer-&gt;{release} } )
+           {
+-	    $this-&gt;logMsg(&quot;W&quot;, &quot;     =&gt; package &quot;.$packName-$packPointer-&gt;{version}.&quot;-&quot;.$packPointer-&gt;{release}.&quot; not available for arch $arch in repo $packKey&quot;) if $this-&gt;{m_debug} &gt;= 4;
++	    $this-&gt;logMsg(&quot;W&quot;, &quot;     =&gt; package &quot;.$packName-$packPointer-&gt;{version}.&quot;-&quot;.$packPointer-&gt;{release}.&quot; not available for arch $arch in repo $packKey in this version&quot;) if $this-&gt;{m_debug} &gt;= 4;
+             next PACKKEY;
+           }else{
+             # success, but remove key to avoid error message later
+@@ -877,6 +842,7 @@
+           if(!-e &quot;$packOptions-&gt;{'newpath'}/$packOptions-&gt;{'newfile'}&quot; and !link $packPointer-&gt;{'localfile'}, &quot;$packOptions-&gt;{'newpath'}/$packOptions-&gt;{'newfile'}&quot;) {
+             $this-&gt;logMsg(&quot;E&quot;, &quot;  linking file $packPointer-&gt;{'localfile'} to $packOptions-&gt;{'newpath'}/$packOptions-&gt;{'newfile'} failed&quot;);
+           } else {
++            $this-&gt;logMsg(&quot;I&quot;, &quot;  linked file $packPointer-&gt;{'localfile'} to $packOptions-&gt;{'newpath'}/$packOptions-&gt;{'newfile'}&quot;) if $this-&gt;{m_debug} &gt;= 4;
+             if ($this-&gt;{m_debug} &gt;= 2) {
+               if ($arch eq $requestedArch) {
+                 $this-&gt;logMsg(&quot;W&quot;, &quot;  package $packName found for architecture $arch as $packKey&quot;);
+@@ -896,8 +862,8 @@
+                     'onlyarch' =&gt; 'src,nosrc'
+                   };
+                 }
+-                $this-&gt;{m_sourcePacks}-&gt;{$srcname}-&gt;{'requireVersion'} =
+-                     { $packPointer-&gt;{'version'}.&quot;-&quot;.$packPointer-&gt;{'release'} =&gt; 1 };
++#                $this-&gt;{m_sourcePacks}-&gt;{$srcname}-&gt;{'requireVersion'} =
++#                     { $packPointer-&gt;{'version'}.&quot;-&quot;.$packPointer-&gt;{'release'} =&gt; 1 };
+               }
+               if ( defined($this-&gt;{m_debugmedium}) &amp;&amp; $this-&gt;{m_debugmedium} &gt; 0 ) {
+                 # Add debug packages, we do not know, if they exist at all
+@@ -918,10 +884,10 @@
+                     'onlyarch' =&gt; $arch
+                   };
+                 };
+-                $this-&gt;{m_debugPacks}-&gt;{$srcname.&quot;-debuginfo&quot;.$suffix}-&gt;{'requireVersion'} =
+-                     { $packPointer-&gt;{'version'}.&quot;-&quot;.$packPointer-&gt;{'release'} =&gt; 1 };
+-                $this-&gt;{m_debugPacks}-&gt;{$srcname.&quot;-debugsource&quot;.$suffix}-&gt;{'requireVersion'} =
+-                     { $packPointer-&gt;{'version'}.&quot;-&quot;.$packPointer-&gt;{'release'} =&gt; 1 };
++#                $this-&gt;{m_debugPacks}-&gt;{$srcname.&quot;-debuginfo&quot;.$suffix}-&gt;{'requireVersion'} =
++#                     { $packPointer-&gt;{'version'}.&quot;-&quot;.$packPointer-&gt;{'release'} =&gt; 1 };
++#                $this-&gt;{m_debugPacks}-&gt;{$srcname.&quot;-debugsource&quot;.$suffix}-&gt;{'requireVersion'} =
++#                     { $packPointer-&gt;{'version'}.&quot;-&quot;.$packPointer-&gt;{'release'} =&gt; 1 };
+               };
+             }
+           }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000831.html">[Kiwi-devel] r1751 - kiwi-head
+</A></li>
+	<LI>Next message: <A HREF="000833.html">[Kiwi-devel] r1753 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#832">[ date ]</a>
+              <a href="thread.html#832">[ thread ]</a>
+              <a href="subject.html#832">[ subject ]</a>
+              <a href="author.html#832">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

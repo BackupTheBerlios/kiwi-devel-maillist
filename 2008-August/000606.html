@@ -1,0 +1,123 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1524 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1524%20-%20kiwi-head/modules&In-Reply-To=%3C200808201349.m7KDnvRW030944%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000605.html">
+   <LINK REL="Next"  HREF="000607.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1524 - kiwi-head/modules</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1524%20-%20kiwi-head/modules&In-Reply-To=%3C200808201349.m7KDnvRW030944%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1524 - kiwi-head/modules">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Aug 20 15:49:57 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000605.html">[Kiwi-devel] r1523 - in kiwi-head: . modules
+</A></li>
+        <LI>Next message: <A HREF="000607.html">[Kiwi-devel] r1525 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#606">[ date ]</a>
+              <a href="thread.html#606">[ thread ]</a>
+              <a href="subject.html#606">[ subject ]</a>
+              <a href="author.html#606">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-08-20 15:49:51 +0200 (Wed, 20 Aug 2008)
+New Revision: 1524
+
+Modified:
+   kiwi-head/modules/KIWIManager.pm
+Log:
+
+- fixed smart channel cleanup before new channels are added
+
+
+
+Modified: kiwi-head/modules/KIWIManager.pm
+===================================================================
+--- kiwi-head/modules/KIWIManager.pm	2008-08-20 13:37:53 UTC (rev 1523)
++++ kiwi-head/modules/KIWIManager.pm	2008-08-20 13:49:51 UTC (rev 1524)
+@@ -443,7 +443,16 @@
+ 	if ($manager eq &quot;smart&quot;) {
+ 		my $stype  = &quot;private&quot;;
+ 		my $cmds   = &quot;@smart channel --add&quot;;
+-		qxx (&quot;rm -f $dataDir/channels/*&quot;);
++		#==========================================
++		# make sure channel list is clean
++		#------------------------------------------
++		my @chls = qxx (&quot;@smart channel --show | grep ^\'\\[\'|tr -d [] 2&gt;&amp;1&quot;);
++		foreach my $c (@chls) {
++			chomp $c; qxx (&quot;@smart channel --remove $c -y 2&gt;&amp;1&quot;);
++		}
++		#==========================================
++		# re-add new channels
++		#------------------------------------------
+ 		if (! $chroot) {
+ 			$stype = &quot;public&quot;;
+ 			$cmds  = &quot;@smart @rootdir channel --add&quot;;
+@@ -1140,11 +1149,13 @@
+ 			print $fd &quot;function clean { kill \$SPID;&quot;;
+ 			print $fd &quot;echo 1 &gt; $screenCall.exit;exit 1; }\n&quot;;
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+-			print $fd &quot;chroot $root @smart channel --show &amp;\n&quot;;
++			print $fd &quot;chroot $root @smart update &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-			print $fd &quot;chroot $root @smart install @install &quot;;
+-			print $fd &quot;@installOpts &amp;\n&quot;;
++			print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @smart channel --show &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
++			print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @smart install &quot;;
++			print $fd &quot;@install @installOpts &amp;\n&quot;;
++			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
+ 		}
+ 		$fd -&gt; close();
+@@ -1225,6 +1236,9 @@
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+ 			print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+ 			print $fd &quot;export YAST_IS_RUNNING=true\n&quot;;
++			print $fd &quot;chroot $root @zypper refresh &amp;\n&quot;;
++			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
++			print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+ 			if (@install) {
+ 				print $fd &quot;chroot $root @zypper install &quot;;
+ 				print $fd &quot;@installOpts @install &amp;\n&quot;;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000605.html">[Kiwi-devel] r1523 - in kiwi-head: . modules
+</A></li>
+	<LI>Next message: <A HREF="000607.html">[Kiwi-devel] r1525 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#606">[ date ]</a>
+              <a href="thread.html#606">[ thread ]</a>
+              <a href="subject.html#606">[ subject ]</a>
+              <a href="author.html#606">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

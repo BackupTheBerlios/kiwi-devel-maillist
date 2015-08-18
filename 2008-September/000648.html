@@ -1,0 +1,278 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1553 - in kiwi-head: . rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1553%20-%20in%20kiwi-head%3A%20.%20rpm&In-Reply-To=%3C200809090841.m898fqkg021957%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000647.html">
+   <LINK REL="Next"  HREF="000649.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1553 - in kiwi-head: . rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1553%20-%20in%20kiwi-head%3A%20.%20rpm&In-Reply-To=%3C200809090841.m898fqkg021957%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1553 - in kiwi-head: . rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Sep  9 10:41:52 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000647.html">[Kiwi-devel] r1552 - in kiwi-branches/KIWI-265-Studio-Alpha1-Devel:	modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000649.html">[Kiwi-devel] r1554 - kiwi-head
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#648">[ date ]</a>
+              <a href="thread.html#648">[ thread ]</a>
+              <a href="subject.html#648">[ subject ]</a>
+              <a href="author.html#648">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-09-09 10:41:45 +0200 (Tue, 09 Sep 2008)
+New Revision: 1553
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+Log:
+
+- v2.75
+- make create instsource a non root task
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-09-05 14:33:20 UTC (rev 1552)
++++ kiwi-head/kiwi.pl	2008-09-09 08:41:45 UTC (rev 1553)
+@@ -43,7 +43,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;2.74&quot;;
++our $Version       = &quot;2.75&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+ our $ConfigFile    = &quot;$ENV{'HOME'}/.kiwirc&quot;;
+ our $ConfigName    = &quot;config.xml&quot;;
+@@ -245,66 +245,7 @@
+ 			}
+ 		}
+ 	}
+-	#========================================
+-	# Create instsource from meta packages
+-	#----------------------------------------
+-	if (defined $CreateInstSource) {
+-		# This option requires the module &quot;KIWICollect.pm&quot;.
+-		# If it is not available, the option cannot be used.
+-		# kiwi then issues a warning and exits.
+-		eval &quot;require KIWICollect&quot;;
+-		if($@) {
+-			$kiwi-&gt;error(&quot;Module KIWICollect is not available!&quot;);
+-			my $code = kiwiExit (3);
+-			return $code;
+-		}
+-		else {
+-			$kiwi-&gt;info(&quot;Module KIWICollect loaded successfully...&quot;);
+-			$kiwi-&gt;done();
+-		}
+-		$kiwi -&gt; info (&quot;Reading image description for insallation source...&quot;);
+-		my $xml = new KIWIXML ( $kiwi,$CreateInstSource );
+-		if (! defined $xml) {
+-			my $code = kiwiExit (1); return $code;
+-		}
+-		$kiwi -&gt; done();
+-		#==========================================
+-		# Initialize installation source tree
+-		#------------------------------------------
+-		my @root = $xml -&gt; createTmpDirectory ( undef, $RootTree );
+-		my $root = $root[1];
+-		if (! defined $root) {
+-			$kiwi -&gt; error (&quot;Couldn't create instsource root&quot;);
+-			$kiwi -&gt; failed ();
+-			my $code = kiwiExit (1); return $code;
+-		}
+ 
+-		#==========================================
+-		# Create object...
+-		#----------------------------------------
+-		my $collect = new KIWICollect( $kiwi, $xml, $root );
+-		if( !defined( $collect) )
+-		{
+-			$kiwi-&gt;error( &quot;Unable to create KIWICollect module.&quot; );
+-			$kiwi -&gt; failed ();
+-			my $code = kiwiExit( 1 ); return $code;
+-		}
+-		$collect-&gt;Init();
+-		#==========================================
+-		# from now $collect is defined. Call the *CENTRAL* method for it
+-		# ...and work!
+-		#----------------------------------------
+-		if( !defined( $collect-&gt;mainTask() ) )
+-		{
+-			$kiwi-&gt;error( &quot;KIWICollect could not be invoked successfully.&quot; );
+-			$kiwi -&gt; failed ();
+-			my $code = kiwiExit ( 1 ); return $code;
+-		}
+-		$kiwi-&gt;info( &quot;KIWICollect completed successfully.&quot; );
+-		$kiwi-&gt;done();
+-		kiwiExit (0);
+-	}
+-
+ 	#========================================
+ 	# Prepare image and build chroot system
+ 	#----------------------------------------
+@@ -1207,6 +1148,12 @@
+ 		&quot;help|h&quot;                =&gt; \&amp;usage,
+ 		&quot;&lt;&gt;&quot;                    =&gt; \&amp;usage
+ 	);
++	#========================================
++	# non root task: create inst source
++	#----------------------------------------
++	if (defined $CreateInstSource) {
++		createInstSource();
++	}
+ 	#==========================================
+ 	# non root task: create md5 hash
+ 	#------------------------------------------
+@@ -1247,7 +1194,6 @@
+ 		(! defined $Upgrade)            &amp;&amp;
+ 		(! defined $SetupSplash)        &amp;&amp;
+ 		(! defined $BootVMDisk)         &amp;&amp;
+-		(! defined $CreateInstSource)   &amp;&amp;
+ 		(! defined $Migrate)            &amp;&amp;
+ 		(! defined $ListProfiles)       &amp;&amp;
+ 		(! defined $InstallStick)       &amp;&amp;
+@@ -2021,4 +1967,62 @@
+ 	return $config;
+ }
+ 
++#==========================================
++# createInstSource
++#------------------------------------------
++sub createInstSource {
++	# /.../
++	# create instsource requires the module &quot;KIWICollect.pm&quot;.
++	# If it is not available, the option cannot be used.
++	# kiwi then issues a warning and exits.
++	# ----
++	eval &quot;require KIWICollect&quot;;
++	if($@) {
++		$kiwi-&gt;error(&quot;Module KIWICollect is not available!&quot;);
++		my $code = kiwiExit (3);
++		return $code;
++	}
++	else {
++		$kiwi-&gt;info(&quot;Module KIWICollect loaded successfully...&quot;);
++		$kiwi-&gt;done();
++	}
++	$kiwi -&gt; info (&quot;Reading image description for insallation source...&quot;);
++	my $xml = new KIWIXML ( $kiwi,$CreateInstSource );
++	if (! defined $xml) {
++		my $code = kiwiExit (1); return $code;
++	}
++	$kiwi -&gt; done();
++	#==========================================
++	# Initialize installation source tree
++	#------------------------------------------
++	my @root = $xml -&gt; createTmpDirectory ( undef, $RootTree );
++	my $root = $root[1];
++	if (! defined $root) {
++		$kiwi -&gt; error (&quot;Couldn't create instsource root&quot;);
++		$kiwi -&gt; failed ();
++		my $code = kiwiExit (1); return $code;
++	}
++	#==========================================
++	# Create object...
++	#----------------------------------------
++	my $collect = new KIWICollect( $kiwi, $xml, $root );
++	if (! defined( $collect) ) {
++		$kiwi-&gt;error( &quot;Unable to create KIWICollect module.&quot; );
++		$kiwi -&gt; failed ();
++		my $code = kiwiExit( 1 ); return $code;
++	}
++	$collect-&gt;Init();
++	#==========================================
++	# Call the *CENTRAL* method for it...
++	#----------------------------------------
++	if (! defined( $collect-&gt;mainTask() ) ) {
++		$kiwi-&gt;error( &quot;KIWICollect could not be invoked successfully.&quot; );
++		$kiwi -&gt; failed ();
++		my $code = kiwiExit ( 1 ); return $code;
++	}
++	$kiwi-&gt;info( &quot;KIWICollect completed successfully.&quot; );
++	$kiwi-&gt;done();
++	kiwiExit (0);
++}
++
+ main();
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-09-05 14:33:20 UTC (rev 1552)
++++ kiwi-head/rpm/kiwi.changes	2008-09-09 08:41:45 UTC (rev 1553)
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Tue Sep  9 10:40:54 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v2.75
++- make create instsource a non root task
++
++-------------------------------------------------------------------
+ Fri Sep  5 12:13:44 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.74
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-09-05 14:33:20 UTC (rev 1552)
++++ kiwi-head/rpm/kiwi.spec	2008-09-09 08:41:45 UTC (rev 1553)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 2.74
++# spec file for package kiwi (Version 2.75
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        2.74
++Version:        2.75
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000647.html">[Kiwi-devel] r1552 - in kiwi-branches/KIWI-265-Studio-Alpha1-Devel:	modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000649.html">[Kiwi-devel] r1554 - kiwi-head
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#648">[ date ]</a>
+              <a href="thread.html#648">[ thread ]</a>
+              <a href="subject.html#648">[ subject ]</a>
+              <a href="author.html#648">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

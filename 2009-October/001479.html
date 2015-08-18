@@ -1,0 +1,182 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4f45d9538a2bc377fc68e8ffc4e06d9d257e1b65
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204f45d9538a2bc377fc68e8ffc4e06d9d257e1b65&In-Reply-To=%3C200910051029.n95ATaSj003930%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001478.html">
+   <LINK REL="Next"  HREF="001480.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4f45d9538a2bc377fc68e8ffc4e06d9d257e1b65</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204f45d9538a2bc377fc68e8ffc4e06d9d257e1b65&In-Reply-To=%3C200910051029.n95ATaSj003930%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4f45d9538a2bc377fc68e8ffc4e06d9d257e1b65">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Oct  5 12:29:36 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001478.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ecc163e280251ca73935334b6eb1429120ae0c22
+</A></li>
+        <LI>Next message: <A HREF="001480.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5dc7abe170b7243f4b1d882212f1f35000a0bc38
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1479">[ date ]</a>
+              <a href="thread.html#1479">[ thread ]</a>
+              <a href="subject.html#1479">[ subject ]</a>
+              <a href="author.html#1479">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  4f45d9538a2bc377fc68e8ffc4e06d9d257e1b65 (commit)
+      from  ecc163e280251ca73935334b6eb1429120ae0c22 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 4f45d9538a2bc377fc68e8ffc4e06d9d257e1b65
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Oct 5 11:42:38 2009 +0200
+
+    - fixed detection of USB install media
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index e68d423..8c46fcf 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -2014,6 +2014,16 @@ sub setupInstallStick {
+ 			qxx ( &quot;$main::Gzip -d $system&quot; );
+ 			return undef;
+ 		}
++		if (! open (FD,&quot;&gt;$loopdir/config.usbclient&quot;)) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Couldn't create USB install flag file&quot;);
++			$kiwi -&gt; failed ();
++			$this -&gt; cleanLoop ();
++			qxx ( &quot;$main::Gzip -d $system&quot; );
++			return undef;
++		}
++		print FD &quot;IMAGE=$ibasename\n&quot;;
++		close FD;
+ 		main::umount();
+ 		qxx ( &quot;$main::Gzip -d $system&quot; );
+ 		$kiwi -&gt; done();
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 89d31b1..ba2fbe3 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -1938,6 +1938,7 @@ function CDDevice {
+ #--------------------------------------
+ function USBStickDevice {
+ 	stickFound=0
++	local mode=$1
+ 	#======================================
+ 	# search for USB removable devices
+ 	#--------------------------------------
+@@ -1989,12 +1990,27 @@ function USBStickDevice {
+ 					if ! kiwiMount &quot;$dev&quot; &quot;/mnt&quot; &quot;-o ro&quot;;then
+ 						continue
+ 					fi
+-					if \
+-						[ ! -e /mnt/etc/ImageVersion ] &amp;&amp; \
+-						[ ! -e /mnt/config.isoclient ]
+-					then
+-						umountSystem
+-						continue
++					if [ &quot;$mode&quot; = &quot;install&quot; ];then
++						# /.../
++						# USB stick search for install media
++						# created with kiwi
++						# ----
++						if \
++							[ ! -e /mnt/config.isoclient ] &amp;&amp; \
++							[ ! -e /mnt/config.usbclient ]
++						then
++							umountSystem
++							continue
++						fi
++					else
++						# /.../
++						# USB stick search for Linux system tree
++						# created with kiwi
++						# ----
++						if [ ! -e /mnt/etc/ImageVersion ]; then
++							umountSystem
++							continue
++						fi
+ 					fi
+ 					stickFound=1
+ 					umountSystem
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 33cda29..8a99454 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,9 @@
+ -------------------------------------------------------------------
++Mon Oct  5 10:16:11 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed detection of USB install media
++
++-------------------------------------------------------------------
+ Fri Oct  2 14:06:23 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - added import attribute in &lt;profile&gt; section to allow
+diff --git a/system/boot/ix86/oemboot/suse-dump b/system/boot/ix86/oemboot/suse-dump
+index 721b0ed..b346e14 100755
+--- a/system/boot/ix86/oemboot/suse-dump
++++ b/system/boot/ix86/oemboot/suse-dump
+@@ -42,7 +42,7 @@ function OEMInstall {
+ 	#======================================
+ 	# Search CD/DVD/USB stick and mount it
+ 	#--------------------------------------
+-	USBStickDevice
++	USBStickDevice install
+ 	if [ $stickFound = 0 ];then
+ 		Echo &quot;Search for USB stick failed, checking CD/DVD drive&quot;
+ 		CDMount
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001478.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ecc163e280251ca73935334b6eb1429120ae0c22
+</A></li>
+	<LI>Next message: <A HREF="001480.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5dc7abe170b7243f4b1d882212f1f35000a0bc38
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1479">[ date ]</a>
+              <a href="thread.html#1479">[ thread ]</a>
+              <a href="subject.html#1479">[ subject ]</a>
+              <a href="author.html#1479">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

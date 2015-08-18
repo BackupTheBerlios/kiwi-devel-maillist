@@ -1,0 +1,367 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 552b4c55574241d5bc2277c73cf24f02dd4a9feb
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20552b4c55574241d5bc2277c73cf24f02dd4a9feb&In-Reply-To=%3C20110117111646.0A978481299%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002978.html">
+   <LINK REL="Next"  HREF="002981.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 552b4c55574241d5bc2277c73cf24f02dd4a9feb</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20552b4c55574241d5bc2277c73cf24f02dd4a9feb&In-Reply-To=%3C20110117111646.0A978481299%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 552b4c55574241d5bc2277c73cf24f02dd4a9feb">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Jan 17 12:16:45 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002978.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8c1a04d6a39be2af9b457ed4cb1bb98aa52afd72
+</A></li>
+        <LI>Next message: <A HREF="002981.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 438e83976cbd12dde20511ea5d000620082fa066
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2980">[ date ]</a>
+              <a href="thread.html#2980">[ thread ]</a>
+              <a href="subject.html#2980">[ subject ]</a>
+              <a href="author.html#2980">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  552b4c55574241d5bc2277c73cf24f02dd4a9feb (commit)
+      from  8c1a04d6a39be2af9b457ed4cb1bb98aa52afd72 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 552b4c55574241d5bc2277c73cf24f02dd4a9feb
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Jan 17 11:45:40 2011 +0100
+
+    - create private __expandFS() function and eliminate some code
+      duplication by this new function
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index e5281fa..e432193 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -2044,7 +2044,6 @@ sub setupBootDisk {
+ 		}
+ 		$kiwi -&gt; done();
+ 		$result = 0;
+-		undef $status;
+ 		my $mapper = $root;
+ 		my %fsattr = main::checkFileSystem ($root);
+ 		if ($fsattr{type} eq &quot;luks&quot;) {
+@@ -2055,75 +2054,12 @@ sub setupBootDisk {
+ 			}
+ 			%fsattr= main::checkFileSystem ($mapper);
+ 		}
+-		my $locator = new KIWILocator($kiwi);
+-		SWITCH: for ($fsattr{type}) {
+-			/^ext\d/    &amp;&amp; do {
+-				$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
+-				my $resize = $locator -&gt; getExecPath ('resize2fs');
+-				if (! $resize) {
+-					$kiwi -&gt; error ('Could not locate resize2fs');
+-					$kiwi -&gt; failed ();
+-					return undef;
+-				}
+-				$status = qxx (&quot;$resize -f -F -p $mapper 2&gt;&amp;1&quot;);
+-				$result = $? &gt;&gt; 8;
+-				last SWITCH;
+-			};
+-			/^reiserfs/ &amp;&amp; do {
+-				$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
+-				my $resize = $locator -&gt; getExecPath ('resize_reiserfs');
+-				if (! $resize) {
+-					$kiwi -&gt; error ('Could not locate resize_reiserfs');
+-					$kiwi -&gt; failed ();
+-					return undef;
+-				}
+-				$status = qxx (&quot;$resize $mapper 2&gt;&amp;1&quot;);
+-				$result = $? &gt;&gt; 8;
+-				last SWITCH;
+-			};
+-			/^btrfs/    &amp;&amp; do {
+-				$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
+-				my $bfsctl = $locator -&gt; getExecPath('btrfsctl');
+-				if (! $bfsctl) {
+-					$kiwi -&gt; error ('Could not locate btrfsctl');
+-					$kiwi -&gt; failed ();
+-					return undef;
+-				}
+-				my $bctl = &quot;$bfsctl -r max /mnt&quot;;
+-				$status = qxx (&quot;
+-					mount $mapper /mnt &amp;&amp; $bctl; umount /mnt 2&gt;&amp;1&quot;
+-				);
+-				$result = $? &gt;&gt; 8;
+-				last SWITCH;
+-			};
+-			/^xfs/      &amp;&amp; do {
+-				$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
+-				my $xfsGrow = $locator -&gt; getExecPath('xfs_growfs');
+-				if (! $xfsGrow) {
+-					$kiwi -&gt; error ('Could not locate xfs_grow');
+-					$kiwi -&gt; failed ();
+-					return undef;
+-				}
+-				$status = qxx (&quot;
+-					mount $mapper /mnt &amp;&amp; $xfsGrow /mnt; umount /mnt 2&gt;&amp;1&quot;
+-				);
+-				$result = $? &gt;&gt; 8;
+-				last SWITCH;
+-			}
+-		};
+-		if ($result != 0) {
+-			$kiwi -&gt; failed ();
+-			$kiwi -&gt; error  (
+-				&quot;Couldn't resize $fsattr{type} filesystem $status&quot;
+-			);
+-			$kiwi -&gt; failed ();
+-			$this -&gt; luksClose();
++		my $expanded = $this -&gt; __expandFS (
++			$fsattr{type},'system', $mapper
++		);
++		if (! $expanded ) {
+ 			return undef;
+ 		}
+-		$this -&gt; luksClose();
+-		if ($status) {
+-			$kiwi -&gt; done();
+-		}
+ 		if ($haveSplit) {
+ 			$kiwi -&gt; info (&quot;Dumping split read/write part on disk&quot;);
+ 			$root = $deviceMap{2};
+@@ -2138,7 +2074,6 @@ sub setupBootDisk {
+ 			}
+ 			$kiwi -&gt; done();
+ 			$result = 0;
+-			undef $status;
+ 			$mapper = $root;
+ 			my %fsattr = main::checkFileSystem ($root);
+ 			if ($fsattr{type} eq &quot;luks&quot;) {
+@@ -2149,75 +2084,12 @@ sub setupBootDisk {
+ 				}
+ 				%fsattr= main::checkFileSystem ($mapper);
+ 			}
+-			my $locator = new KIWILocator($kiwi);
+-			SWITCH: for ($fsattr{type}) {
+-				/^ext\d/    &amp;&amp; do {
+-					$kiwi -&gt; info (&quot;Resizing split $fsattr{type} filesystem&quot;);
+-					my $resize = $locator -&gt; getExecPath ('resize2fs');
+-					if (! $resize) {
+-						$kiwi -&gt; error ('Could not locate resize2fs');
+-						$kiwi -&gt; failed ();
+-						return undef;
+-					}
+-					$status = qxx (&quot;$resize -f -F -p $mapper 2&gt;&amp;1&quot;);
+-					$result = $? &gt;&gt; 8;
+-					last SWITCH;
+-				};
+-				/^reiserfs/ &amp;&amp; do {
+-					$kiwi -&gt; info (&quot;Resizing split $fsattr{type} filesystem&quot;);
+-					my $resize = $locator -&gt; getExecPath ('resize_reiserfs');
+-					if (! $resize) {
+-						$kiwi -&gt; error ('Could not locate resize_reiserfs');
+-						$kiwi -&gt; failed ();
+-						return undef;
+-					}
+-					$status = qxx (&quot;$resize $mapper 2&gt;&amp;1&quot;);
+-					$result = $? &gt;&gt; 8;
+-					last SWITCH;
+-				};
+-				/^btrfs/    &amp;&amp; do {
+-					$kiwi -&gt; info (&quot;Resizing split $fsattr{type} filesystem&quot;);
+-					my $bfsctl = $locator -&gt; getExecPath('btrfsctl');
+-					if (! $bfsctl) {
+-						$kiwi -&gt; error ('Could not locate btrfsctl');
+-						$kiwi -&gt; failed ();
+-						return undef;
+-					}
+-					my $bctl = &quot;$bfsctl -r max /mnt&quot;;
+-					$status = qxx (&quot;
+-						mount $mapper /mnt&amp;&amp; $bctl; umount /mnt 2&gt;&amp;1&quot;
+-					);
+-					$result = $? &gt;&gt; 8;
+-					last SWITCH;
+-				};
+-				/^xfs/      &amp;&amp; do {
+-					$kiwi -&gt; info (&quot;Resizing split $fsattr{type} filesystem&quot;);
+-					my $xfsGrow = $locator -&gt; getExecPath('xfs_growfs');
+-					if (! $xfsGrow) {
+-						$kiwi -&gt; error ('Could not locate xfs_grow');
+-						$kiwi -&gt; failed ();
+-						return undef;
+-					}
+-					$status = qxx (&quot;
+-					    mount $mapper /mnt &amp;&amp; $xfsGrow /mnt; umount /mnt 2&gt;&amp;1&quot;
+-					);
+-					$result = $? &gt;&gt; 8;
+-					last SWITCH;
+-			}
+-			};
+-			if ($result != 0) {
+-				$kiwi -&gt; failed ();
+-				$kiwi -&gt; error  (
+-					&quot;Couldn't resize $fsattr{type} filesystem: $status&quot;
+-				);
+-				$kiwi -&gt; failed ();
+-				$this -&gt; luksClose();
++			my $expanded = $this -&gt; __expandFS (
++				$fsattr{type},'split', $mapper
++			);
++			if (! $expanded ) {
+ 				return undef;
+ 			}
+-			$this -&gt; luksClose();
+-			if ($status) {
+-				$kiwi -&gt; done();
+-			}
+ 		}
+ 	} else {
+ 		#==========================================
+@@ -5176,4 +5048,96 @@ sub DESTROY {
+ 	return $this;
+ }
+ 
+-1; 
++#==========================================
++# Private methods
++#------------------------------------------
++#==========================================
++# __expandFS
++#------------------------------------------
++sub __expandFS {
++	# ...
++	# Expand the file system to its maximum size
++	# ---
++	my $this      = shift;
++	my $fsType    = shift;
++	my $diskType  = shift;
++	my $mapper    = shift;
++	my $kiwi      = $this-&gt;{kiwi};
++	my $locator   = new KIWILocator($kiwi);
++	my $result    = 1;
++	my $status;
++	$kiwi-&gt;loginfo (&quot;Resize Operation: Device: $mapper\n&quot;);
++	$kiwi-&gt;loginfo (&quot;Resize Operation: Image Disk Type: $diskType\n&quot;);
++	$kiwi-&gt;loginfo (&quot;Resize Operation: Filesystem Type: $fsType\n&quot;);
++	SWITCH: for ($fsType) {
++		/^ext\d/    &amp;&amp; do {
++			$kiwi -&gt; info (&quot;Resizing $diskType $fsType filesystem&quot;);
++			my $resize = $locator -&gt; getExecPath ('resize2fs');
++			if (! $resize) {
++				$kiwi -&gt; error ('Could not locate resize2fs');
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			$status = qxx (&quot;$resize -f -F -p $mapper 2&gt;&amp;1&quot;);
++			$result = $? &gt;&gt; 8;
++			last SWITCH;
++		};
++		/^reiserfs/ &amp;&amp; do {
++			$kiwi -&gt; info (&quot;Resizing $diskType $fsType filesystem&quot;);
++			my $resize = $locator -&gt; getExecPath ('resize_reiserfs');
++			if (! $resize) {
++				$kiwi -&gt; error ('Could not locate resize_reiserfs');
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			$status = qxx (&quot;$resize $mapper 2&gt;&amp;1&quot;);
++			$result = $? &gt;&gt; 8;
++			last SWITCH;
++		};
++		/^btrfs/    &amp;&amp; do {
++			$kiwi -&gt; info (&quot;Resizing $diskType $fsType filesystem&quot;);
++			my $bfsctl = $locator -&gt; getExecPath('btrfsctl');
++			if (! $bfsctl) {
++				$kiwi -&gt; error ('Could not locate btrfsctl');
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			my $bctl = &quot;$bfsctl -r max /mnt&quot;;
++			$status = qxx (&quot;
++					mount $mapper /mnt &amp;&amp; $bctl; umount /mnt 2&gt;&amp;1&quot;
++			);
++			$result = $? &gt;&gt; 8;
++			last SWITCH;
++		};
++		/^xfs/      &amp;&amp; do {
++			$kiwi -&gt; info (&quot;Resizing $diskType $fsType filesystem&quot;);
++			my $xfsGrow = $locator -&gt; getExecPath('xfs_growfs');
++			if (! $xfsGrow) {
++				$kiwi -&gt; error ('Could not locate xfs_grow');
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			$status = qxx (&quot;
++					mount $mapper /mnt &amp;&amp; $xfsGrow /mnt; umount /mnt 2&gt;&amp;1&quot;
++			 );
++			$result = $? &gt;&gt; 8;
++			last SWITCH;
++		};
++		$kiwi-&gt;loginfo (&quot;Resize Operation: no resize\n&quot;);
++		$result = 0;
++	};
++	if ($result != 0) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Couldn't resize $fsType filesystem $status&quot;);
++		$kiwi -&gt; failed ();
++		$this -&gt; luksClose();
++		return undef;
++	}
++	$this -&gt; luksClose();
++	if ($status) {
++		$kiwi -&gt; done();
++	}
++	return $this;
++}
++
++1;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002978.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8c1a04d6a39be2af9b457ed4cb1bb98aa52afd72
+</A></li>
+	<LI>Next message: <A HREF="002981.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 438e83976cbd12dde20511ea5d000620082fa066
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2980">[ date ]</a>
+              <a href="thread.html#2980">[ thread ]</a>
+              <a href="subject.html#2980">[ subject ]</a>
+              <a href="author.html#2980">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

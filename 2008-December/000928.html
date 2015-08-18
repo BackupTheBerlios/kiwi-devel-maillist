@@ -1,0 +1,188 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1812 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1812%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200812040951.mB49pSeg012087%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000927.html">
+   <LINK REL="Next"  HREF="000929.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1812 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1812%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200812040951.mB49pSeg012087%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1812 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Dec  4 10:51:28 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000927.html">[Kiwi-devel] USB Bug in 3.01
+</A></li>
+        <LI>Next message: <A HREF="000929.html">[Kiwi-devel] r1813 - kiwi-branches
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#928">[ date ]</a>
+              <a href="thread.html#928">[ thread ]</a>
+              <a href="subject.html#928">[ subject ]</a>
+              <a href="author.html#928">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-12-04 10:51:27 +0100 (Thu, 04 Dec 2008)
+New Revision: 1812
+
+Modified:
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- move usb device scan to probeUSB function (bnc #455993)
+- call usb device scan only if a usb host controller was
+  found and successfully loaded (bnc #455993)
+
+
+
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-12-03 16:19:06 UTC (rev 1811)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-12-04 09:51:27 UTC (rev 1812)
+@@ -1190,6 +1190,9 @@
+ 	local module=&quot;&quot;
+ 	local stdevs=&quot;&quot;
+ 	local hwicmd=&quot;/usr/sbin/hwinfo&quot;
++	#======================================
++	# load host controller modules
++	#--------------------------------------
+ 	for i in \
+ 		`$hwicmd --usb | grep &quot;Driver [IA]&quot; | 
+ 		sed -es&quot;@modprobe\(.*\)\&quot;@\1%@&quot; | tr -d &quot;\n&quot;`
+@@ -1227,10 +1230,41 @@
+ 		Echo &quot;Probing module: $module&quot;
+ 		modprobe $module &gt;/dev/null
+ 	done
+-	# /.../
+-	# load hid driver manually
+-	# ----
+-	modprobe usbhid &amp;&gt;/dev/null
++	#======================================
++	# check load status for host controller
++	#--------------------------------------
++	if [ -z $stdevs ];then
++		return
++	fi
++	#======================================
++	# manually load storage/input drivers
++	#--------------------------------------
++	for i in usbhid usb-storage;do
++		modprobe $i &amp;&gt;/dev/null
++	done
++	#======================================
++	# wait for device scan to complete
++	#--------------------------------------
++	Echo -n &quot;Waiting for USB devices to settle...&quot;
++	local storage=/sys/bus/usb/drivers/usb-storage
++	while ! [ -d $storage ] &amp;&amp; [ $count -lt 5 ]; do
++		echo -n .
++		sleep 1
++		count=`expr $count + 1`
++	done
++	count=0
++	if [ -d $storage ]; then
++		while \
++			[ $(dmesg|grep -c 'usb-storage: device scan complete') -lt 1 ] &amp;&amp; \
++			[ $count -lt 15 ]
++		do
++			echo -n .
++			sleep 1
++			count=`expr $count + 1`
++		done
++		count=0
++	fi
++	echo
+ }
+ #======================================
+ # probeDevices
+@@ -1300,31 +1334,9 @@
+ 	# ----
+ 	local count=0
+ 	local h=/usr/sbin/hwinfo
+-	for module in \
+-		ehci-hcd uhci-hcd usb-storage sg sd_mod sr_mod \
+-		cdrom ide-cd BusLogic vfat
+-	do
++	for module in sg sd_mod sr_mod cdrom ide-cd BusLogic vfat; do
+ 		/sbin/modprobe $module
+ 	done
+-	Echo -n &quot;Waiting for USB devices to settle...&quot;
+-	while ! [ -d /sys/bus/usb/drivers/usb-storage ] &amp;&amp; [ $count -lt 5 ]; do
+-		echo -n .
+-		sleep 1
+-		count=`expr $count + 1`
+-	done
+-	count=0
+-	if [ -d /sys/bus/usb/drivers/usb-storage ]; then
+-		while \
+-			[ $(dmesg|grep -c 'usb-storage: device scan complete') -lt 1 ] &amp;&amp; \
+-			[ $count -lt 15 ]
+-		do
+-			echo -n .
+-			sleep 1
+-			count=`expr $count + 1`
+-		done
+-		count=0
+-	fi
+-	echo
+ 	Echo -n &quot;Waiting for CD/DVD device(s) to appear...&quot;
+ 	while true;do
+ 		cddevs=`$h --cdrom | grep &quot;Device File:&quot;|sed -e&quot;s@(.*)@@&quot; | cut -f2 -d:`
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-12-03 16:19:06 UTC (rev 1811)
++++ kiwi-head/rpm/kiwi.changes	2008-12-04 09:51:27 UTC (rev 1812)
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Thu Dec  4 11:47:00 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- move usb device scan to probeUSB function (bnc #455993)
++- call usb device scan only if a usb host controller was
++  found and successfully loaded (bnc #455993)
++
++-------------------------------------------------------------------
+ Wed Dec  3 15:49:46 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed unified/split based oem second boot phase (bnc #450780)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000927.html">[Kiwi-devel] USB Bug in 3.01
+</A></li>
+	<LI>Next message: <A HREF="000929.html">[Kiwi-devel] r1813 - kiwi-branches
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#928">[ date ]</a>
+              <a href="thread.html#928">[ thread ]</a>
+              <a href="subject.html#928">[ subject ]</a>
+              <a href="author.html#928">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

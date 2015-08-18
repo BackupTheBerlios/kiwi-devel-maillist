@@ -1,0 +1,141 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 05cffa76c192078eb79c57181c7405040ba0958c
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2005cffa76c192078eb79c57181c7405040ba0958c&In-Reply-To=%3C200908120813.n7C8DH00021135%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001404.html">
+   <LINK REL="Next"  HREF="001406.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 05cffa76c192078eb79c57181c7405040ba0958c</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2005cffa76c192078eb79c57181c7405040ba0958c&In-Reply-To=%3C200908120813.n7C8DH00021135%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 05cffa76c192078eb79c57181c7405040ba0958c">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Aug 12 10:13:17 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001404.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 012c514311e2152686ec75c1cf910ec77af4e492
+</A></li>
+        <LI>Next message: <A HREF="001406.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. aaee0dad4a72f95bb7d24ada33abbf373e446d12
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1405">[ date ]</a>
+              <a href="thread.html#1405">[ thread ]</a>
+              <a href="subject.html#1405">[ subject ]</a>
+              <a href="author.html#1405">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  05cffa76c192078eb79c57181c7405040ba0958c (commit)
+      from  012c514311e2152686ec75c1cf910ec77af4e492 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 05cffa76c192078eb79c57181c7405040ba0958c
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Aug 12 10:13:06 2009 +0200
+
+    - fixed VMFindSystem function in xenboot (bnc #530200)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 3e391a6..35259aa 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -2,6 +2,7 @@
+ Tue Aug 11 18:33:29 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.74
++- fixed VMFindSystem function in xenboot (bnc #530200)
+ - use resize2fs -M if possible ( &gt;= v1.41 )
+ 
+ -------------------------------------------------------------------
+diff --git a/system/boot/ix86/xenboot/suse-linuxrc b/system/boot/ix86/xenboot/suse-linuxrc
+index 2a9fe44..048111f 100755
+--- a/system/boot/ix86/xenboot/suse-linuxrc
++++ b/system/boot/ix86/xenboot/suse-linuxrc
+@@ -38,32 +38,13 @@ export systemIntegrity=clean
+ # Functions...
+ #--------------------------------------
+ VMFindSystem () {
+-	local haveSDA=0
+-	local haveHDA=0
+-	local devices=&quot;&quot;
+-	waitForStorageDevice /dev/sda1
+-	if [ ! -e /dev/sda1 ];then
+-		waitForStorageDevice /dev/hda1
+-		if [ -e /dev/hda1 ];then
+-			haveHDA=1
+-			devices=&quot;/dev/hda1 /dev/hda&quot;
+-		fi
+-	else
+-		haveSDA=1
+-		devices=&quot;/dev/sda1 /dev/sda&quot;
+-	fi
+-	if [ $haveSDA = 0 ] &amp;&amp; [ $haveHDA = 0 ];then
++	imageRootDevice=&quot;/dev/&quot;$root
++	waitForStorageDevice $imageRootDevice
++	if [ ! -e $imageRootDevice ];then
+ 		systemException \
+-			&quot;Couldn't find any storage device... abort&quot; \
++			&quot;Couldn't find storage device... abort&quot; \
+ 		&quot;reboot&quot;
+ 	fi
+-	for rdevice in $devices;do
+-		imageRootDevice=$rdevice
+-		if kiwiMount $imageRootDevice &quot;/mnt&quot; &amp;&gt;/dev/null;then
+-			umount /mnt
+-			break
+-		fi
+-	done
+ }
+ #======================================
+ # Beautify Startup
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001404.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 012c514311e2152686ec75c1cf910ec77af4e492
+</A></li>
+	<LI>Next message: <A HREF="001406.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. aaee0dad4a72f95bb7d24ada33abbf373e446d12
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1405">[ date ]</a>
+              <a href="thread.html#1405">[ thread ]</a>
+              <a href="subject.html#1405">[ subject ]</a>
+              <a href="author.html#1405">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

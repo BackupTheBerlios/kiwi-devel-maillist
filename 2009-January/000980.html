@@ -1,0 +1,105 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1864 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1864%20-%0A%09kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool&In-Reply-To=%3C200901261723.n0QHNjWm023536%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000979.html">
+   <LINK REL="Next"  HREF="000991.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1864 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1864%20-%0A%09kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool&In-Reply-To=%3C200901261723.n0QHNjWm023536%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1864 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Mon Jan 26 18:23:45 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000979.html">[Kiwi-devel] r1863 - kiwi-head/tools/cdtool
+</A></li>
+        <LI>Next message: <A HREF="000991.html">[Kiwi-devel] r1865 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#980">[ date ]</a>
+              <a href="thread.html#980">[ thread ]</a>
+              <a href="subject.html#980">[ subject ]</a>
+              <a href="author.html#980">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2009-01-26 18:23:44 +0100 (Mon, 26 Jan 2009)
+New Revision: 1864
+
+Modified:
+   kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool/suse-isolinux
+Log:
+- keep this file in sync with trunk
+
+
+Modified: kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool/suse-isolinux
+===================================================================
+--- kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool/suse-isolinux	2009-01-22 15:05:37 UTC (rev 1863)
++++ kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/tools/cdtool/suse-isolinux	2009-01-26 17:23:44 UTC (rev 1864)
+@@ -100,6 +100,19 @@
+ 			if [ -f $SOURCE/$BOOT_BASE_DIR/efi ]; then
+ 				PARAMS=&quot;$PARAMS -eltorito-alt-boot -no-emul-boot -boot-load-size 1 -b $BOOT_BASE_DIR/efi&quot;
+ 			fi
++			echo &quot;is it an S/390...?&quot;
++			echo &quot;Looking for &lt;$SOURCE&gt;/&lt;$BOOT_BASE_DIR_Z&gt;/&lt;vmrdr.ikr&gt;&quot;
++			if [ -f $SOURCE/$BOOT_BASE_DIR_Z/vmrdr.ikr ]; then
++				echo &quot;found &lt;vmrdr.ikr&gt;&quot;
++				PARAMS=&quot;$PARAMS -eltorito-alt-boot -no-emul-boot&quot;
++				SOURCE2=`mktemp -d /var/tmp/m_cd-XXXXXX`
++				mkdir -p $SOURCE2/$BOOT_BASE_DIR_Z
++				PARMFILE_NAME=$SOURCE/$BOOT_BASE_DIR_Z/parmfile
++				test -e ${PARMFILE_NAME}.cd &amp;&amp; PARMFILE_NAME=${PARMFILE_NAME}.cd
++				gen-s390-cd-kernel.pl --initrd=$SOURCE/$BOOT_BASE_DIR_Z/initrd --parmfile=$PARMFILE_NAME \
++				--kernel=$SOURCE/$BOOT_BASE_DIR_Z/vmrdr.ikr --outfile=$SOURCE2/$BOOT_BASE_DIR_Z/cd.ikr
++				PARAMS=&quot;$PARAMS -b $BOOT_BASE_DIR_Z/cd.ikr&quot;
++			fi
+ 		elif [ -d $SOURCE/ppc ]; then
+ 		if [ -f $SOURCE/ppc/bootinfo.txt ] ; then
+ 		# assume thats a pSeries/iSeries CD
+@@ -220,7 +233,7 @@
+ 			MEDIANUMBER=${MEDIADIR##$SOURCE/media.}
+ 		done
+ 		VOL=&quot;0$MEDIANUMBER&quot;
+-                APPID=`sed -n -e &quot;s/^LABEL[ ]*\(.*\)/\1/p&quot; &quot;$SOURCE/content&quot; | sed -e &quot;s/ /-/g&quot;`
++                APPID=`sed -n -e &quot;s/^LABEL[^.][ ]*\(.*\)/\1/p&quot; &quot;$SOURCE/content&quot; | sed -e &quot;s/ /-/g&quot;`
+ 	elif test -f $SOURCE/.S.u.S.E-disk-* ; then
+ 		BASE=`basename $SOURCE/.S.u.S.E-disk-*`
+ 		VOL=`echo $BASE | cut -c 16-17`
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000979.html">[Kiwi-devel] r1863 - kiwi-head/tools/cdtool
+</A></li>
+	<LI>Next message: <A HREF="000991.html">[Kiwi-devel] r1865 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#980">[ date ]</a>
+              <a href="thread.html#980">[ thread ]</a>
+              <a href="subject.html#980">[ subject ]</a>
+              <a href="author.html#980">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

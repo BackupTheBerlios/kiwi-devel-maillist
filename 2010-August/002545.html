@@ -1,0 +1,152 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 25f2369ef8b5660367e7d40851fa7bf6c0d7a1eb
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2025f2369ef8b5660367e7d40851fa7bf6c0d7a1eb&In-Reply-To=%3C20100810143711.BE0B4480E8B%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002544.html">
+   <LINK REL="Next"  HREF="002546.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 25f2369ef8b5660367e7d40851fa7bf6c0d7a1eb</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2025f2369ef8b5660367e7d40851fa7bf6c0d7a1eb&In-Reply-To=%3C20100810143711.BE0B4480E8B%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 25f2369ef8b5660367e7d40851fa7bf6c0d7a1eb">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Aug 10 16:37:11 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002544.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. deaa0ac97ad804d755e5a67f04b878d743902823
+</A></li>
+        <LI>Next message: <A HREF="002546.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 67e284219dbf8015680877c8501715ba4a4a621a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2545">[ date ]</a>
+              <a href="thread.html#2545">[ thread ]</a>
+              <a href="subject.html#2545">[ subject ]</a>
+              <a href="author.html#2545">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  25f2369ef8b5660367e7d40851fa7bf6c0d7a1eb (commit)
+      from  4847491e895a4554b90b07d902646fc84bcd0309 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 25f2369ef8b5660367e7d40851fa7bf6c0d7a1eb
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Aug 10 16:24:57 2010 +0200
+
+    - make use of the --recursive feature of insserv and remove
+      my own recursice insserv implementation which has to parse
+      the insserv output and therefore always fail if that output
+      changes (bnc #627480)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 3e10fb2..fee76d9 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -41,22 +41,13 @@ function suseInsertService {
+ 	# required for this service it will be inserted first
+ 	# -----
+ 	local service=$1
+-	local result
+-	while true;do
+-		result=`/sbin/insserv $service 2&gt;&amp;1 | grep &quot;^insserv: Service&quot;`
+-		if [ $? = 0 ];then
+-			echo &quot;Service $service inserted&quot;
+-			break
+-		else
+-			result=`echo $result | head -n 1 | cut -f3 -d &quot; &quot;`
+-			if [ -f /etc/init.d/$result ];then
+-				suseInsertService /etc/init.d/$result
+-			else
+-				echo &quot;$service: required service: $result not found...skipped&quot;
+-				break
+-			fi
++	if /sbin/insserv $service;then
++		echo &quot;Service $service inserted&quot;
++	else
++		if ! /sbin/insserv --recursive $service;then
++			echo &quot;$service: recursive insertion failed...skipped&quot;
+ 		fi
+-	done
++	fi
+ }
+ 
+ #======================================
+@@ -68,21 +59,13 @@ function suseRemoveService {
+ 	# using insserv -r
+ 	# ----
+ 	local service=/etc/init.d/$1
+-	while true;do
+-		/sbin/insserv -r $service &amp;&gt;/dev/null
+-		if [ $? = 0 ];then
+-			echo &quot;Service $service removed&quot;
+-			break
+-		else
+-			result=`/sbin/insserv -r $service 2&gt;&amp;1|tail -n 2|cut -f10 -d &quot; &quot;`
+-			if [ -f /etc/init.d/$result ];then
+-				suseRemoveService $result
+-			else
+-				echo &quot;$service: $result not found...skipped&quot;
+-				break
+-			fi
++	if /sbin/insserv -r $service;then
++		echo &quot;Service $service removed&quot;
++	else
++		if ! /sbin/insserv --recursive -r $service;then
++			echo &quot;$service: recursive removal failed...skipped&quot;
+ 		fi
+-	done
++	fi
+ }
+ 
+ #======================================
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002544.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. deaa0ac97ad804d755e5a67f04b878d743902823
+</A></li>
+	<LI>Next message: <A HREF="002546.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 67e284219dbf8015680877c8501715ba4a4a621a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2545">[ date ]</a>
+              <a href="thread.html#2545">[ thread ]</a>
+              <a href="subject.html#2545">[ subject ]</a>
+              <a href="author.html#2545">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,305 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9e183d7eda22658e9d21425e6291e3c4b995ad9e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%209e183d7eda22658e9d21425e6291e3c4b995ad9e&In-Reply-To=%3C201004271139.o3RBdTgX005420%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002130.html">
+   <LINK REL="Next"  HREF="002132.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9e183d7eda22658e9d21425e6291e3c4b995ad9e</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%209e183d7eda22658e9d21425e6291e3c4b995ad9e&In-Reply-To=%3C201004271139.o3RBdTgX005420%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9e183d7eda22658e9d21425e6291e3c4b995ad9e">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Apr 27 13:39:29 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002130.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a2a8bacf80a7ed15846033dd65515c5c2656564a
+</A></li>
+        <LI>Next message: <A HREF="002132.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b560853a88a4110843d10f5a252b0d9506b083ec
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2131">[ date ]</a>
+              <a href="thread.html#2131">[ thread ]</a>
+              <a href="subject.html#2131">[ subject ]</a>
+              <a href="author.html#2131">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  9e183d7eda22658e9d21425e6291e3c4b995ad9e (commit)
+      from  a2a8bacf80a7ed15846033dd65515c5c2656564a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 9e183d7eda22658e9d21425e6291e3c4b995ad9e
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Apr 27 13:39:14 2010 +0200
+
+    - support new createrepo repomd.xml metadata information.
+      kiwi now reads the repomd.xml if it exists and parses the
+      primary data section in order to get all metadata file names
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIMigrate.pm b/modules/KIWIMigrate.pm
+index 04c2a8a..eec9412 100644
+--- a/modules/KIWIMigrate.pm
++++ b/modules/KIWIMigrate.pm
+@@ -810,6 +810,13 @@ sub getPackageList {
+ 	my %packages = ();
+ 	my @twice = ();
+ 	for (my $i=0;$i&lt;@ilist;$i++) {
++		my $inskip = 0;
++		foreach my $s (@{$skip}) {
++			if ($ilist[$i] =~ /$s/) {
++				$inskip = 1; last;
++			}
++		}
++		next if $inskip;
+ 		$packages{$ilist[$i]}++;
+ 	}
+ 	foreach my $installed (keys %packages) {
+diff --git a/modules/KIWISatSolver.pm b/modules/KIWISatSolver.pm
+index f4b6087..e3998f4 100644
+--- a/modules/KIWISatSolver.pm
++++ b/modules/KIWISatSolver.pm
+@@ -123,21 +123,28 @@ sub new {
+ 	$pool -&gt; initializeLookupTable();
+ 	$queue = new KIWI::SaT::Queue;
+ 	foreach my $p (@{$pref}) {
+-		my $name = $p;
++		my @names = $p;
+ 		if (! defined $solvep) {
+-			$name = &quot;pattern:&quot;.$p;
++			push (@names, &quot;pattern:&quot;.$p);
++			push (@names, &quot;patterns-openSUSE-&quot;.$p);
++		}
++		my $id   = 0;
++		my $item = &quot;&quot;;
++		foreach my $name (@names) {
++			$id = $pool -&gt; selectSolvable ($repo,$solver,$name);
++			$item = $name;
++			next if ! $id;
++			$queue -&gt; queuePush ( $KIWI::SaT::SOLVER_INSTALL_SOLVABLE );
++			$queue -&gt; queuePush ( $id );
++			last;
+ 		}
+-		my $id = $pool -&gt; selectSolvable ($repo,$solver,$name);
+ 		if (! $id) {
+ 			if (! defined $quiet) {
+-				$kiwi -&gt; warning (&quot;--&gt; Failed to queue job: $name&quot;);
++				$kiwi -&gt; warning (&quot;--&gt; Failed to queue job: $item&quot;);
+ 				$kiwi -&gt; skipped ();
+ 			}
+-			push @jobFailed, $name;
+-			next;
++			push @jobFailed, $item;
+ 		}
+-		$queue -&gt; queuePush ( $KIWI::SaT::SOLVER_INSTALL_SOLVABLE );
+-		$queue -&gt; queuePush ( $id );
+ 	}
+ 	#==========================================
+ 	# Store object data
+@@ -323,4 +330,13 @@ sub getPackages {
+ 	return @result;
+ }
+ 
++#==========================================
++# Destructor
++#------------------------------------------
++sub DESTROY {
++	my $this = shift;
++	unlink $this-&gt;{solfile};
++	return $this;
++}
++
+ 1;
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 947928d..8592799 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -3537,7 +3537,7 @@ sub getInstSourceSatSolvable {
+ 	my $count = 0;
+ 	my $solv;
+ 	#==========================================
+-	# check/create main solvable file
++	# check/create main solvable file name
+ 	#------------------------------------------
+ 	foreach my $repo (@{$repos}) {
+ 		push (@index,$repo);
+@@ -3548,9 +3548,6 @@ sub getInstSourceSatSolvable {
+ 	$solv = qxx (&quot;echo $solv | md5sum | cut -f1 -d-&quot;);
+ 	$solv = $sdir.&quot;/&quot;.$solv; chomp $solv;
+ 	$solv =~ s/ +$//;
+-	if (-f $solv) {
+-		return $solv;
+-	}
+ 	#==========================================
+ 	# create one solvable per repo
+ 	#------------------------------------------
+@@ -3593,6 +3590,12 @@ sub getSingleInstSourceSatSolvable {
+ 	my $repo = shift;
+ 	$kiwi -&gt; info (&quot;--&gt; Loading $repo...&quot;);
+ 	#==========================================
++	# one of the following for repo metadata
++	#------------------------------------------
++	my %repoxml;
++	$repoxml{&quot;/suse/repodata/repomd.xml&quot;} = &quot;repoxml&quot;;
++	$repoxml{&quot;/repodata/repomd.xml&quot;}      = &quot;repoxml&quot;;
++	#==========================================
+ 	# one of the following for a base solvable
+ 	#------------------------------------------
+ 	my %distro;
+@@ -3614,6 +3617,7 @@ sub getSingleInstSourceSatSolvable {
+ 	my $index    = 0;
+ 	my @index    = ();
+ 	my $error    = 0;
++	my $RXML;
+ 	#==========================================
+ 	# check for sat tools
+ 	#------------------------------------------
+@@ -3650,7 +3654,7 @@ sub getSingleInstSourceSatSolvable {
+ 	$index = qxx (&quot;echo $index | md5sum | cut -f1 -d-&quot;);
+ 	$index = $sdir.&quot;/&quot;.$index; chomp $index;
+ 	$index=~ s/ +$//;
+-	if (-f $index) {
++	if ((-f $index) &amp;&amp; (! -f &quot;$index.timestamp&quot;)) {
+ 		$kiwi -&gt; done();
+ 		return $index;
+ 	}
+@@ -3663,6 +3667,66 @@ sub getSingleInstSourceSatSolvable {
+ 	my $destfile;
+ 	my $scommand;
+ 	#==========================================
++	# download repo XML metadata
++	#------------------------------------------
++	my $repoMD = $sdir.&quot;/repomd.xml&quot;; unlink $repoMD;
++	foreach my $md (keys %repoxml) {
++		if (KIWIXML::getInstSourceFile ($kiwi,$repo.$md,$repoMD)) {
++			last if -e $repoMD;
++		}
++	}
++	if (-e $repoMD) {
++		if (! open ($RXML,&quot;cat $repoMD|&quot;)) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error (&quot;--&gt; Failed to open file $repoMD&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		binmode $RXML;
++		my $rxml = new XML::LibXML;
++		my $tree = $rxml -&gt; parse_fh ( $RXML );
++		my $nodes= $tree -&gt; getElementsByTagName (&quot;data&quot;);
++		my $path;
++		my $time;
++		for (my $i=1;$i&lt;= $nodes-&gt;size();$i++) {
++			my $node = $nodes-&gt; get_node($i);
++			my $type = $node -&gt; getAttribute (&quot;type&quot;);
++			if ($type ne &quot;primary&quot;) {
++				next;
++			}
++			$path = $node -&gt; getElementsByTagName (&quot;location&quot;)
++				-&gt; get_node(1) -&gt; getAttribute (&quot;href&quot;);
++			$time = $node -&gt; getElementsByTagName (&quot;timestamp&quot;)
++				-&gt; get_node(1) -&gt; string_value();
++			last;
++		}
++		close $RXML;
++		#==========================================
++		# Compare the repo timestamp
++		#------------------------------------------
++		if (open (my $FD,&quot;$index.timestamp&quot;)) {
++			my $curstamp = &lt;$FD&gt;; chomp $curstamp;
++			if ($curstamp eq $time) {
++				$kiwi -&gt; done();
++				return $index;
++			}
++		}
++		#==========================================
++		# Store distro path and new time stamp
++		#------------------------------------------
++		undef %distro;
++		$distro{&quot;/&quot;.$path}      = &quot;distxml&quot;;
++		$distro{&quot;/suse/&quot;.$path} = &quot;distxml&quot;;
++		if (! open ($RXML,&quot;&gt;$index.timestamp&quot;)) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error (&quot;--&gt; Failed to create timestamp: $!&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		print $RXML $time;
++		close $RXML;
++	}
++	#==========================================
+ 	# download distro solvable(s)
+ 	#------------------------------------------
+ 	my $foundDist = 0;
+@@ -3818,6 +3882,7 @@ sub getSingleInstSourceSatSolvable {
+ 	#==========================================
+ 	# cleanup cache dir
+ 	#------------------------------------------
++	qxx (&quot;rm -f $sdir/repomd.xml&quot;);
+ 	qxx (&quot;rm -f $sdir/primary-*&quot;);
+ 	qxx (&quot;rm -f $sdir/projectxml-*&quot;);
+ 	qxx (&quot;rm -f $sdir/distxml-*&quot;);
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index d7a36f4..302b2a4 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,6 +1,9 @@
+ -------------------------------------------------------------------
+ Fri Apr 23 10:53:37 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- support new createrepo repomd.xml metadata information.
++  kiwi now reads the repomd.xml if it exists and parses the
++  primary data section in order to get all metadata file names
+ - automatically skip the gpg-pubkey packages during migration
+ - removed kiwi's own pattern solving module. The satsolver
+   approach is the preferred solution to implement this
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002130.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a2a8bacf80a7ed15846033dd65515c5c2656564a
+</A></li>
+	<LI>Next message: <A HREF="002132.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b560853a88a4110843d10f5a252b0d9506b083ec
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2131">[ date ]</a>
+              <a href="thread.html#2131">[ thread ]</a>
+              <a href="subject.html#2131">[ subject ]</a>
+              <a href="author.html#2131">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

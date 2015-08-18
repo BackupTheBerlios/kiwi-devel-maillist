@@ -1,0 +1,173 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ac3879b2ff77ad59b353b4b719bd7def777db34f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ac3879b2ff77ad59b353b4b719bd7def777db34f&In-Reply-To=%3C200909161305.n8GD5FIO015153%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001444.html">
+   <LINK REL="Next"  HREF="001446.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ac3879b2ff77ad59b353b4b719bd7def777db34f</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ac3879b2ff77ad59b353b4b719bd7def777db34f&In-Reply-To=%3C200909161305.n8GD5FIO015153%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ac3879b2ff77ad59b353b4b719bd7def777db34f">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Sep 16 15:05:15 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001444.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1831fb74834ba5455cc3a05eb633e1315217c410
+</A></li>
+        <LI>Next message: <A HREF="001446.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8e302d88134abf49ba7c205ea0afcc173332650e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1445">[ date ]</a>
+              <a href="thread.html#1445">[ thread ]</a>
+              <a href="subject.html#1445">[ subject ]</a>
+              <a href="author.html#1445">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  ac3879b2ff77ad59b353b4b719bd7def777db34f (commit)
+      from  1831fb74834ba5455cc3a05eb633e1315217c410 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ac3879b2ff77ad59b353b4b719bd7def777db34f
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Sep 16 15:05:00 2009 +0200
+
+    - added backup MBR to 0x800 if --grub-chainload is in use
+      also added FDST flag to 0x190 for preload setup. We need
+      to take care for that value if other preloads requires
+      something similar it should be an option (bnc #539505)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index effaca7..b3c599e 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -3932,9 +3932,14 @@ sub installBootLoader {
+ 			# /.../
+ 			# chainload grub with master-boot-code
+ 			# zero out sectors between 0x200 - 0x3f0 for preload process
++			# store a copy of the master-boot-code at 0x800
++			# write FDST flag at 0x190
+ 			# ---
+ 			my $mbr = &quot;/usr/lib/boot/master-boot-code&quot;;
+ 			my $opt = &quot;conv=notrunc&quot;;
++			#==========================================
++			# write master-boot-code
++			#------------------------------------------
+ 			$status = qxx (
+ 				&quot;dd if=$mbr of=$diskname bs=1 count=446 $opt 2&gt;&amp;1&quot;
+ 			);
+@@ -3945,6 +3950,47 @@ sub installBootLoader {
+ 				$kiwi -&gt; failed ();
+ 				return undef;
+ 			}
++			#==========================================
++			# write backup MBR with partition table
++			#------------------------------------------
++			my $bmbr= $diskname.&quot;.mbr&quot;;
++			$status = qxx (
++				&quot;dd if=$diskname of=$bmbr bs=1 count=512 2&gt;&amp;1&quot;
++			);
++			$result= $? &gt;&gt; 8;
++			if ($result != 0) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;Couldn't store master boot code backup: $status&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			$status = qxx (
++				&quot;dd if=$bmbr of=$diskname bs=1 count=512 seek=0x800 $opt 2&gt;&amp;1&quot;
++			);
++			#==========================================
++			# write FDST flag
++			#------------------------------------------
++			my $flag= &quot;FDST&quot;;
++			my $fdst = pack &quot;A4&quot;, eval $flag;
++			if (! open (FD,&quot;+&lt;$diskname&quot;)) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;MBR: failed to open file: $diskname: $!&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			seek FD,400,0;
++			my $done = syswrite (FD,$fdst,4);
++			if ($done != 4) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;MBR: only $done bytes written&quot;);
++				$kiwi -&gt; failed ();
++				seek FD,0,2; close FD;
++				return undef;
++			}
++			seek FD,0,2; close FD;
++			#==========================================
++			# zero out preload range
++			#------------------------------------------
+ 			$status = qxx (
+ 				&quot;dd if=/dev/zero of=$diskname bs=1 count=496 seek=512 $opt 2&gt;&amp;1&quot;
+ 			);
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 65aba2d..e735317 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,6 +1,10 @@
+ -------------------------------------------------------------------
+ Tue Sep 15 15:40:25 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- added backup MBR to 0x800 if --grub-chainload is in use
++  also added FDST flag to 0x190 for preload setup. We need
++  to take care for that value if other preloads requires
++  something similar it should be an option (bnc #539505)
+ - added cross-directory-hard-link filter
+ 
+ -------------------------------------------------------------------
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001444.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1831fb74834ba5455cc3a05eb633e1315217c410
+</A></li>
+	<LI>Next message: <A HREF="001446.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8e302d88134abf49ba7c205ea0afcc173332650e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1445">[ date ]</a>
+              <a href="thread.html#1445">[ thread ]</a>
+              <a href="subject.html#1445">[ subject ]</a>
+              <a href="author.html#1445">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

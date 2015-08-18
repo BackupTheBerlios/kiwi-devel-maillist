@@ -1,0 +1,772 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Patch to support openSUSE Products
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Patch%20to%20support%20openSUSE%20Products&In-Reply-To=%3C1220271827.314.85.camel%40megam.ott1.byward.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000625.html">
+   <LINK REL="Next"  HREF="000628.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Patch to support openSUSE Products</H1>
+    <B>Peter Bowen</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Patch%20to%20support%20openSUSE%20Products&In-Reply-To=%3C1220271827.314.85.camel%40megam.ott1.byward.net%3E"
+       TITLE="[Kiwi-devel] Patch to support openSUSE Products">pzb at novell.com
+       </A><BR>
+    <I>Mon Sep  1 14:23:47 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000625.html">[Kiwi-devel] r1537 - in kiwi-head: . modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000628.html">[Kiwi-devel] Patch to support openSUSE Products
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#626">[ date ]</a>
+              <a href="thread.html#626">[ thread ]</a>
+              <a href="subject.html#626">[ subject ]</a>
+              <a href="author.html#626">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Kiwi already supports packages and patterns.  This adds support for
+products.
+
+It does the following things:
+- Adds support for the opensuseProduct tag
+- Changes the install order to be products, patterns, packages
+  (It was packages, patterns which is backwards)
+- Add Product support to KIWIPattern.pm
+  (Products can require patterns, so creating KIWIProduct.pm didn't 
+   make a lot of sense, IMHO)
+- Fixes KIWIPattern to include Recommends when including Suggest
+
+I have been unable to test the KIWIPattern changes, as it seems that it
+never has worked with openSUSE 11.0.  This is because, in 11.0, the
+patterns were concatenated into one long file, so kiwi can't find them.
+
+Thanks.
+Peter
+
+Index: doc/LaTex/description.tex
+===================================================================
+--- doc/LaTex/description.tex	(revision 1536)
++++ doc/LaTex/description.tex	(working copy)
+@@ -512,6 +512,8 @@
+ \hspace*{1cm}&lt;package .../&gt;\\
+ \hspace*{1cm}&lt;opensusePattern name=&quot;name&quot;/&gt;\\
+ \hspace*{1cm}&lt;opensusePattern .../&gt;\\
++\hspace*{1cm}&lt;opensuseProduct name=&quot;name&quot;/&gt;\\
++\hspace*{1cm}&lt;opensuseProduct .../&gt;\\
+ \hspace*{1cm}&lt;ignore name=&quot;name&quot;/&gt;\\
+ \hspace*{1cm}&lt;ignore .../&gt;\\
+ &lt;/packages&gt;
+Index: modules/KIWISatSolver.pm
+===================================================================
+--- modules/KIWISatSolver.pm	(revision 1536)
++++ modules/KIWISatSolver.pm	(working copy)
+@@ -50,7 +50,7 @@
+ sub new {
+ 	# ...
+ 	# Construct a new KIWISatSolver object if satsolver is present.
+-	# The solver object is used to queue pattern and package solve
++	# The solver object is used to queue product, pattern, and package solve
+ 	# requests which gets solved by the contents of a sat solvable
+ 	# which is either created by the repository metadata contents
+ 	# or used directly from the repository if it is provided
+@@ -89,7 +89,7 @@
+ 		return undef;
+ 	}
+ 	if (! defined $pref) {
+-		$kiwi -&gt; error (&quot;--&gt; Invalid package/pattern reference&quot;);
++		$kiwi -&gt; error (&quot;--&gt; Invalid package/pattern/product reference&quot;);
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+ 	}
+@@ -141,8 +141,8 @@
+ 	$solver -&gt; solve ($queue);
+ 	my $list = $solver -&gt; getInstallList ($pool);
+ 	foreach my $name (@{$list}) {
+-		if ($name =~ /^pattern:(.*)/) {
+-			$kiwi -&gt; info (&quot;Including pattern: $1&quot;);
++		if ($name =~ /^((pattern|product):.*)/) {
++			$kiwi -&gt; info (&quot;Including $1&quot;);
+ 			$kiwi -&gt; done ();
+ 		} else {
+ 			push (@solved,$name);
+Index: modules/KIWIXML.pm
+===================================================================
+--- modules/KIWIXML.pm	(revision 1536)
++++ modules/KIWIXML.pm	(working copy)
+@@ -2267,15 +2284,23 @@
+ 		# Check for pattern descriptions
+ 		#------------------------------------------
+ 		if ($type ne &quot;metapackages&quot;) {
+-			my @slist = $node -&gt; getElementsByTagName (&quot;opensusePattern&quot;);
+ 			my @pattlist = ();
+ 			my $manager  = $this -&gt; getPackageManager();
++			my @slist = $node -&gt; getElementsByTagName (&quot;opensuseProduct&quot;);
++			foreach my $element (@slist) {
++				my $product = $element -&gt; getAttribute (&quot;name&quot;);
++				if (! defined $product) {
++					next;
++				}
++				push @pattlist,&quot;product:&quot;.$product;
++			}
++			my @slist = $node -&gt; getElementsByTagName (&quot;opensusePattern&quot;);
+ 			foreach my $element (@slist) {
+ 				my $pattern = $element -&gt; getAttribute (&quot;name&quot;);
+ 				if (! defined $pattern) {
+ 					next;
+ 				}
+-				push @pattlist,$pattern;
++				push @pattlist,&quot;pattern:&quot;.$pattern;
+ 			}
+ 			if (@pattlist) {
+ 				if ($manager ne &quot;zypper&quot;) {
+@@ -2284,7 +2309,7 @@
+ 					#------------------------------------------
+ 					# 1) try to use libsatsolver...
+ 					my $psolve = new KIWISatSolver (
+-						$kiwi,\@pattlist,$this-&gt;{urllist}
++						$kiwi,\@pattlist,$this-&gt;{urllist},&quot;solve-patterns&quot;
+ 					);
+ 					if (! defined $psolve) {
+ 						# 2) use generic pattern module
+@@ -2298,8 +2323,8 @@
+ 						);
+ 					}
+ 					if (! defined $psolve) {
+-						my $e1 =&quot;Pattern match failed for arch: $this-&gt;{arch}&quot;;
+-						my $e2 =&quot;Check if the pattern is written correctly?&quot;;
++						my $e1 =&quot;Pattern or product match failed for arch: $this-&gt;{arch}&quot;;
++						my $e2 =&quot;Check if the pattern or product is written correctly?&quot;;
+ 						my $e3 =&quot;Check if the arch is provided by the repo(s)?&quot;;
+ 						$kiwi -&gt; warning (&quot;$e1\n&quot;);
+ 						$kiwi -&gt; warning (&quot;    a) $e2\n&quot;);
+@@ -2313,8 +2338,8 @@
+ 					# zypper knows about patterns
+ 					#------------------------------------------
+ 					foreach my $pname (@pattlist) {
+-						$kiwi -&gt; info (&quot;--&gt; Requesting pattern: $pname&quot;);
+-						push @result,&quot;pattern:&quot;.$pname;
++						$kiwi -&gt; info (&quot;--&gt; Requesting $pname&quot;);
++						push @result,$pname;
+ 						$kiwi -&gt; done();
+ 					}
+ 				}
+Index: modules/KIWIManager.pm
+===================================================================
+--- modules/KIWIManager.pm	(revision 1536)
++++ modules/KIWIManager.pm	(working copy)
+@@ -994,10 +1099,13 @@
+ 		if (defined $addPacks) {
+ 			my @addonPackages = @{$addPacks};
+ 			my @newpatts = ();
++			my @newprods = ();
+ 			my @newpacks = ();
+ 			foreach my $pac (@addonPackages) {
+ 				if ($pac =~ /^pattern:(.*)/) {
+ 					push @newpatts,$1;
++				} elsif ($pac =~ /^product:(.*)/) {
++					push @newprods,$1;
+ 				} else {
+ 					push @newpacks,$pac;
+ 				}
+@@ -1005,9 +1113,9 @@
+ 			@addonPackages = @newpacks;
+ 			print $fd &quot;chroot $root @zypper dist-upgrade &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-			if (@addonPackages) {
++			if (@newprods) {
+ 				print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @zypper install &quot;;
+-				print $fd &quot;@installOpts @addonPackages &amp;\n&quot;;
++				print $fd &quot;@installOpts -t product @newprods &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+ 			if (@newpatts) {
+@@ -1015,6 +1123,11 @@
+ 				print $fd &quot;@installOpts -t pattern @newpatts &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
++			if (@addonPackages) {
++				print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @zypper install &quot;;
++				print $fd &quot;@installOpts @addonPackages &amp;\n&quot;;
++				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
++			}
+ 		} else {
+ 			print $fd &quot;chroot $root @zypper dist-upgrade &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+@@ -1213,9 +1326,12 @@
+ 			#------------------------------------------
+ 			my @newpacks = ();
+ 			my @newpatts = ();
++			my @newprods = ();
+ 			foreach my $pac (@packs) {
+ 				if ($pac =~ /^pattern:(.*)/) {
+ 					push @newpatts,$1;
++				} elsif ($pac =~ /^product:(.*)/) {
++					push @newprods,$1;
+ 				} else {
+ 					push @newpacks,$pac;
+ 				}
+@@ -1233,19 +1349,27 @@
+ 			print $fd &quot;@zypper --root $root refresh &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+-			if (@packs) {
++			if (@newprods) {
+ 				print $fd &quot;@zypper --root $root install &quot;;
+-				print $fd &quot;@installOpts @packs &amp;\n&quot;;
++				print $fd &quot;@installOpts -t product @newprods &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+ 			if (@newpatts) {
+-				if (@packs) {
++				if (@newprods) {
+ 					print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+ 				}
+ 				print $fd &quot;@zypper --root $root install &quot;;
+ 				print $fd &quot;@installOpts -t pattern @newpatts &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
++			if (@packs) {
++				if (@newpatts || @newprods) {
++					print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
++				}
++				print $fd &quot;@zypper --root $root install &quot;;
++				print $fd &quot;@installOpts @packs &amp;\n&quot;;
++				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
++			}
+ 			print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
+ 		} else {
+ 			#==========================================
+@@ -1253,10 +1377,14 @@
+ 			#------------------------------------------
+ 			my @install   = ();
+ 			my @newpatts  = ();
++			my @newprods  = ();
+ 			foreach my $need (@packs) {
+ 				if ($need =~ /^pattern:(.*)/) {
+ 					push @newpatts,$1;
+ 					next;
++				} elsif ($need =~ /^product:(.*)/) {
++					push @newprods,$1;
++					next;
+ 				}
+ 				push @install,$need;
+ 			}
+@@ -1284,19 +1412,27 @@
+ 			print $fd &quot;chroot $root @zypper refresh &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+-			if (@install) {
++			if (@newprods) {
+ 				print $fd &quot;chroot $root @zypper install &quot;;
+-				print $fd &quot;@installOpts @install &amp;\n&quot;;
++				print $fd &quot;@installOpts -t product @newprods &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+ 			if (@newpatts) {
+-				if (@install) {
++				if (@newprods) {
+ 					print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+ 				}
+ 				print $fd &quot;chroot $root @zypper install &quot;;
+ 				print $fd &quot;@installOpts -t pattern @newpatts &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
++			if (@install) {
++				if (@newpatts || @newprods) {
++					print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
++				}
++				print $fd &quot;chroot $root @zypper install &quot;;
++				print $fd &quot;@installOpts @install &amp;\n&quot;;
++				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
++			}
+ 			print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
+ 		}
+ 		$fd -&gt; close();
+Index: modules/KIWIScheme.rnc
+===================================================================
+--- modules/KIWIScheme.rnc	(revision 1536)
++++ modules/KIWIScheme.rnc	(working copy)
+@@ -491,6 +491,20 @@
+ }
+ 
+ #==========================================
++# common element &lt;opensuseProduct&gt;
++#
++div {
++	k.opensuseproduct.name.attribute = k.name.attribute
++	k.opensuseproduct.attlist = k.opensuseproduct.name.attribute
++	k.opensuseproduct =
++		## Name of a Product From openSUSE
++		element opensuseProduct {
++			k.opensuseproduct.attlist,
++			empty
++		}
++}
++
++#==========================================
+ # common element &lt;repopackage&gt;
+ #
+ div {
+@@ -1664,6 +1678,7 @@
+ 			k.packages.attlist &amp;
+ 			k.package* &amp;
+ 			k.opensusepattern* &amp;
++			k.opensuseproduct* &amp;
+ 			k.ignore*
+ 		}
+ }
+Index: modules/KIWIPattern.pm
+===================================================================
+--- modules/KIWIPattern.pm	(revision 1536)
++++ modules/KIWIPattern.pm	(working copy)
+@@ -58,10 +58,21 @@
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+ 	}
+-	my @pattern = ();
++	my @products = ();
++	my @patterns = ();
++	my @packages = ();
+ 	foreach my $p (@{$pattref}) {
+-		my $pname = quotemeta $p;
+-		push (@pattern,$pname);
++		if ($p =~ /^product:(.*)/) {
++			$p = $1;
++			my $pname = &quot;product:&quot; . quotemeta $p;
++			push(@products, $pname);
++		} elsif ($p =~ /^pattern:(.*)/) {
++			$p = $1;
++			my $pname = &quot;pattern:&quot; . quotemeta $p;
++			push(@patterns, $pname);
++		} else {
++			push (@packages,$p);
++		}
+ 	}
+ 	if (! defined $urlref) {
+ 		$kiwi -&gt; error (&quot;No URL list for pattern search&quot;);
+@@ -90,18 +101,37 @@
+ 	$this-&gt;{infomessage} = $this-&gt;{infodefault};
+ 	$this-&gt;{kiwi}        = $kiwi;
+ 	$this-&gt;{urllist}     = \@urllist;
+-	$this-&gt;{pattern}     = \@pattern;
++	$this-&gt;{patterns}     = \@patterns;
++	$this-&gt;{products}     = \@products;
++	$this-&gt;{packages}     = \@packages;
+ 	$this-&gt;{pattype}     = $pattype;
+ 	$this-&gt;{patpactype}  = $patpactype;
+ 	$this-&gt;{arch}        = $arch;
+ 	#==========================================
+ 	# Initial check for pattern contents
+ 	#------------------------------------------
+-	my @patdata = $this -&gt; getPatternContents (\@pattern);
+-	if (! @patdata) {
++	my $nothing = 1;
++	if (@products) {
++		$nothing = 0;
++		my @proddata = $this -&gt; getProductContents (\@products);
++		if (! @proddata) {
++			return undef;
++		}
++	}
++	if (@patterns) {
++		$nothing = 0;
++		my @patdata = $this -&gt; getPatternContents (\@patterns);
++		if (! @patdata) {
++			return undef;
++		}
++		push ( @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">data, at patdata</A> );
++	}
++	if (@packages) {
++		$nothing = 0;
++	}
++	if ($nothing) {
+ 		return undef;
+ 	}
+-	push ( @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">data, at patdata</A> );
+ 	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
+@@ -117,12 +147,15 @@
+ 	my $pattref = shift;
+ 	my $kiwi    = $this-&gt;{kiwi};
+ 	my @urllist = @{$this-&gt;{urllist}};
+-	my @pattern = @{$pattref};
++	my @patterns = @{$pattref};
+ 	my $content;
+-	foreach my $pat (@pattern) {
++	foreach my $pat (@patterns) {
+ 		my $result;
+ 		my @errors;
+ 		my $printinfo = 0;
++		if ($pat =~ /^pattern:(.*)/) {
++			$pat = $1;
++		}
+ 		if (! defined $this-&gt;{cache}{$pat}) {
+ 			$printinfo = 1;
+ 		}
+@@ -421,8 +454,8 @@
+ 	my $pattref = shift;
+ 	my $kiwi    = $this-&gt;{kiwi};
+ 	my $pattype = $this-&gt;{pattype};
+-	my @pattern = @{$pattref};
+-	my @patdata = $this -&gt; getPatternContents (\@pattern);
++	my @patterns = @{$pattref};
++	my @patdata = $this -&gt; getPatternContents (\@patterns);
+ 	my @reqs;
+ 	if ($pattype eq &quot;onlyRequired&quot;) {
+ 		@reqs = $this -&gt; getSection (
+@@ -430,7 +463,7 @@
+ 		);
+ 	} elsif ($pattype eq &quot;plusSuggested&quot;) {
+ 		@reqs = $this -&gt; getSection (
+-			'^(\+Req:|\+Sug:)','^(\-Req:|\-Sug:)',\@patdata
++			'^\+(Re[qc]:|Sug:)','^\-(Re[qc]:|Sug:)',\@patdata
+ 		);
+ 	} else {
+ 		@reqs = $this -&gt; getSection (
+@@ -464,13 +497,286 @@
+ }
+ 
+ #==========================================
++# getProductContents
++#------------------------------------------
++sub getProductContents {
++	my $this    = shift;
++	my $prodref = shift;
++	my $kiwi    = $this-&gt;{kiwi};
++	my @urllist = @{$this-&gt;{urllist}};
++	my @product = @{$prodref};
++	my $content;
++	foreach my $prd (@product) {
++		my $result;
++		my @errors;
++		my $printinfo = 0;
++		if (! defined $this-&gt;{cache}{$prd}) {
++			$printinfo = 1;
++		}
++		if ($printinfo) {
++			$kiwi -&gt; info (&quot;$this-&gt;{infomessage}: $prd&quot;);
++		}
++		foreach my $url (@urllist) {
++			my @load = $this -&gt; downloadProduct ( $url,$prd );
++			if ($load[0]) {
++				$result .= $load[0];
++			}
++			push (@errors,&quot;[$url] -&gt; $load[1]&quot;);
++		}
++		if (! $result) {
++			if ($printinfo) {
++				$kiwi -&gt; failed ();
++				my $count = 1;
++				foreach my $error (@errors) {
++					$kiwi -&gt; error  (&quot;    $count) $error&quot;);
++					$kiwi -&gt; failed ();
++					$count++;
++				}
++			}
++			return ();
++		}
++		$content .= $result;
++		if ($printinfo) {
++			$kiwi -&gt; done ();
++		}
++	}
++	my @prddata = split (/\n/,$content);
++	return @prddata;
++}
++
++#==========================================
++# downloadProduct
++#------------------------------------------
++sub downloadProduct {
++	my $this    = shift;
++	my $url     = shift;
++	my $product = shift;
++	my $arch    = $this-&gt;{arch};
++	my $kiwi    = $this-&gt;{kiwi};
++	my $content;
++	my $pfile;
++	my $message;
++	if (defined $this-&gt;{cache}{$product}) {
++		return $this-&gt;{cache}{$product};
++	}
++	if ($url =~ /^\//) {
++		#==========================================
++		# local product check
++		#------------------------------------------
++		my $cfile = $url.&quot;/content&quot;;
++		if (! open (FD,$cfile)) {
++			$message = &quot;couldn't open \$url/content file&quot;;
++			return (undef,&quot;local[content]: $message: $!&quot;);
++		}
++		local $/; $content .= &lt;FD&gt;; close FD;
++	} else {
++		#==========================================
++		# remote product check
++		#------------------------------------------
++		my $urlHandler  = new KIWIURL ($kiwi,undef);
++		my $publics_url = $url;
++		my $highlvl_url = $urlHandler -&gt; openSUSEpath ($publics_url);
++		if (defined $highlvl_url) {
++			$publics_url = $highlvl_url;
++		}
++		my $browser  = LWP::UserAgent-&gt;new;
++		my $location = $publics_url.&quot;/content&quot;;
++		my $request  = HTTP::Request-&gt;new (GET =&gt; $location);
++		my $response = $browser  -&gt; request ( $request );
++		$content     = $response -&gt; content ();
++	}
++	$pfile = $this-&gt;providesProduct($content,$product);
++	if (! defined $pfile) {
++		$message = &quot;product match in content failed&quot;;
++		return (undef, &quot;local[content]: $message: $product&quot;);
++	}
++	$this-&gt;{cache}{$product} = $content;
++	return ($content,$this);
++}
++
++
++#==========================================
++# providesProduct
++#------------------------------------------
++sub providesProduct {
++	my $this    = shift;
++	my $content = shift;
++	my $product = shift;
++	#==========================================
++	# check content...
++	#------------------------------------------
++	if (! $content) {
++		return undef;
++	}
++	# are we or do we provide the product?
++	#==========================================
++	# check content: PRODUCT...
++	#------------------------------------------
++	my $perr   = 1;
++	my $result;
++	my @plines = split (/\n/,$content);
++	my $prodname;
++	foreach my $line (@plines) {
++		$prodname = $line; $prodname =~ s/^<A HREF="product://;">product://;</A>
++		if ($line =~ /PRODUCT (.*)/) {
++			if ($1 eq $prodname) {
++				$result = $1;
++				$perr = 0;
++				last;
++			}
++		}
++		if ($line =~ /PROVIDES (.*)/) {
++			foreach my $prv ($this-&gt;parseRelString($1)) {
++				if ($prv eq $product) {
++					$result = $prv;
++					$perr = 0;
++					last;
++				}
++			}
++		}
++	}
++	if ($perr) {
++		return undef;
++	}
++	return $result;
++}
++
++
++#==========================================
++# parseRelString
++#------------------------------------------
++sub parseRelString {
++	my $this = shift;
++	my $str = shift;
++	my $skipnext = 0;
++	my @reqs = ();
++	foreach my $tok (split (/\s+/,$str)) {
++		if ($skipnext) {
++			$skipnext = 0;
++			next;
++		}
++		if ($tok =~ /^[&lt;&gt;=]+$/) {
++			$skipnext = 1;
++			next;
++		}
++		push(@reqs,$tok);
++	}
++	return @reqs;
++}
++
++
++#==========================================
++# getProductRequirements
++#------------------------------------------
++sub getProductRequirements {
++	my $this    = shift;
++	my $location= shift;
++	my $content = shift;
++	my $product = shift;
++	my $arch    = $this-&gt;{arch};
++	#==========================================
++	# check content...
++	#------------------------------------------
++	if (! $content) {
++		return undef;
++	}
++	#==========================================
++	# check content: REQUIRES...
++	#------------------------------------------
++	my $perr   = 1;
++	my $result;
++	my @reqs = ();
++	my @plines = split (/\n/,$content);
++	foreach my $line (@plines) {
++		if ($line =~ /REQUIRES (.*)/) {
++			$result = $1;
++			$perr = 0;
++			my @r = $this-&gt;parseRelString($result);
++			push(@<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">reqs, at r</A>);
++		}
++	}
++	if ($perr) {
++		return undef;
++	}
++	return @reqs;
++}
++
++#==========================================
++# getRequiredProducts
++#------------------------------------------
++sub getRequiredProducts {
++	my $this    = shift;
++	my $prodref = shift;
++	my $kiwi    = $this-&gt;{kiwi};
++	my $pattype = $this-&gt;{pattype};
++	my @products = @{$prodref};
++	my @prddata = $this -&gt; getProductContents (\@products);
++	my @reqs = $this -&gt; getProductRequirements (\@prddata);
++	my @prdreqs = ();
++	my @patreqs = ();
++	my @pkgreqs = ();
++	foreach my $r (@reqs) {
++		if ($r =~ /^product:(.*)/) {
++			$r = $1;
++			my $pname = &quot;product:&quot; . quotemeta $r;
++			push(@prdreqs, $pname);
++		} elsif ($r =~ /^pattern:(.*)/) {
++			$r = $1;
++			my $pname = &quot;pattern:&quot; . quotemeta $r;
++			push(@patreqs, $pname);
++		} else {
++			push (@pkgreqs,$r);
++		}
++	}
++	foreach my $rproduct (@prdreqs) {
++		if (defined $this-&gt;{prddone}{$rproduct}) {
++			next;
++		}
++		$this-&gt;{infomessage} = &quot;--&gt; Including required product&quot;;
++		my @prddata = $this -&gt; getProductContents ([$rproduct]);
++		$this-&gt;{infomessage} = $this-&gt;{infodefault};
++		if (! @prddata) {
++			$kiwi -&gt; warning (&quot;Couldn't find required product: $rproduct&quot;);
++			$kiwi -&gt; skipped ();
++			$this-&gt;{patdone}{$rproduct} = $rproduct;
++			next;
++		}
++		$this-&gt;{prddone}{$rproduct} = $rproduct;
++		$this -&gt; getRequiredProducts ([$rproduct]);
++	}
++	foreach my $rpattern (@patreqs) {
++		if (defined $this-&gt;{patdone}{$rpattern}) {
++			next;
++		}
++		$this-&gt;{infomessage} = &quot;--&gt; Including required pattern&quot;;
++		my @patdata = $this -&gt; getPatternContents ([$rpattern]);
++		$this-&gt;{infomessage} = $this-&gt;{infodefault};
++		if (! @patdata) {
++			$kiwi -&gt; warning (&quot;Couldn't find required pattern: $rpattern&quot;);
++			$kiwi -&gt; skipped ();
++			$this-&gt;{patdone}{$rpattern} = $rpattern;
++			next;
++		}
++		push ( @{$this-&gt;{data}} , @patdata );
++		$this-&gt;{patdone}{$rpattern} = $rpattern;
++		$this -&gt; getRequiredPatterns ([$rpattern]);
++	}
++	return @pkgreqs;
++}
++
++#==========================================
+ # getPackages
+ #------------------------------------------
+ sub getPackages {
+ 	my $this = shift;
+ 	my $pattype = $this-&gt;{patpactype};
+ 	my %result;
+-	my @reqs = $this -&gt; getRequiredPatterns ($this-&gt;{pattern});
++	my @packages = $this-&gt;{packages};
++
++	my @prodpkgreqs = $this -&gt; getRequiredProducts ($this-&gt;{products});
++	push (@packages, @prodpkgreqs);
++
++	my @reqs = $this -&gt; getRequiredPatterns ($this-&gt;{patterns});
+ 	my @pacs;
+ 	if ($pattype eq &quot;onlyRequired&quot;) {
+ 		@pacs = $this -&gt; getSection (
+@@ -478,14 +784,18 @@
+ 		);
+ 	} elsif ($pattype eq &quot;plusSuggested&quot;) {
+ 		@pacs = $this -&gt; getSection (
+-			'^(\+Prq:|\+Psg:)','^(\-Prq:|\-Psg:)'
++			'^\+(Pr[qc]:|Psg:)','^\-(Pr[qc]:|Psg:)'
+ 		);
+ 	} else {
+ 		@pacs = $this -&gt; getSection (
+ 			'^\+Pr[qc]:','^\-Pr[qc]:'
+ 		);
+ 	}
+-	return @pacs;
++	push(@packages, @pacs);
++
++	@packages = sort @packages;
++	my $prev = '__none__';
++	return grep($_ ne $prev &amp;&amp; (($prev) = $_), @packages);
+ }
+ 
+ 1;
+
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000625.html">[Kiwi-devel] r1537 - in kiwi-head: . modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000628.html">[Kiwi-devel] Patch to support openSUSE Products
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#626">[ date ]</a>
+              <a href="thread.html#626">[ thread ]</a>
+              <a href="subject.html#626">[ subject ]</a>
+              <a href="author.html#626">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,149 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1566 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1566%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200809151156.m8FBuABe021788%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000662.html">
+   <LINK REL="Next"  HREF="000664.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1566 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1566%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200809151156.m8FBuABe021788%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1566 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Sep 15 13:56:10 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000662.html">[Kiwi-devel] r1565 - in kiwi-head: . modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000664.html">[Kiwi-devel] r1567 - in kiwi-head: . modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#663">[ date ]</a>
+              <a href="thread.html#663">[ thread ]</a>
+              <a href="subject.html#663">[ subject ]</a>
+              <a href="author.html#663">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-09-15 13:56:06 +0200 (Mon, 15 Sep 2008)
+New Revision: 1566
+
+Modified:
+   kiwi-head/modules/KIWIMigrate.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- added checkBrokenLinks() function (bnc #419219)
+
+
+
+Modified: kiwi-head/modules/KIWIMigrate.pm
+===================================================================
+--- kiwi-head/modules/KIWIMigrate.pm	2008-09-15 10:07:29 UTC (rev 1565)
++++ kiwi-head/modules/KIWIMigrate.pm	2008-09-15 11:56:06 UTC (rev 1566)
+@@ -725,6 +725,9 @@
+ 		$kiwi -&gt; note (&quot;\n&quot;);
+ 		$kiwi -&gt; doNorm ();
+ 		$kiwi -&gt; cursorON();
++		$kiwi -&gt; info (&quot;Checking for broken links in custom root tree...&quot;);
++		$this -&gt; checkBrokenLinks();
++		$kiwi -&gt; done();
+ 		$kiwi -&gt; info (&quot;Setting up initial deployment workflow...&quot;);
+ 		if (! $this -&gt; setInitialSetup()) {
+ 			return undef;
+@@ -876,4 +879,46 @@
+ 	return $this;
+ }
+ 
++#==========================================
++# checkBrokenLinks
++#------------------------------------------
++sub checkBrokenLinks {
++	# ...
++	# the tree could contain broken symbolic links because
++	# the target is unmodified and part of a package. The
++	# broken links will be removed in this function and it
++	# is assumed that a post install script of the package
++	# creates this links when the package gets installed
++	# in the kiwi prepare mode. If the links are created
++	# manually or by an application at system installation
++	# for example the links needs to be created in a
++	# separate image description config.sh script 
++	# ---	
++	my $this = shift;
++	my $dest = $this-&gt;{dest};
++	my $kiwi = $this-&gt;{kiwi};
++	my @link = qxx (&quot;find $dest/root -type l&quot;);
++	my $returnok = 1;
++	my $dir;
++	foreach my $linkfile (@link) {
++		chomp $linkfile;
++		my $ref = readlink ($linkfile);
++		if ($ref !~ /^\//) {
++			$dir = dirname ($linkfile);
++			$dir.= &quot;/&quot;;
++		} else {
++			$dir = $dest.&quot;/root&quot;;
++		}
++		if (! -e $dir.$ref) {
++			$kiwi -&gt; loginfo (&quot;Broken link: $linkfile -&gt; $ref [ REMOVED ]&quot;);
++			unlink $linkfile;
++			$returnok = 0;
++		}
++	}
++	if ($returnok) {
++		return $this;
++	}
++	checkBrokenLinks();
++}
++
+ 1;
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-09-15 10:07:29 UTC (rev 1565)
++++ kiwi-head/rpm/kiwi.changes	2008-09-15 11:56:06 UTC (rev 1566)
+@@ -4,6 +4,7 @@
+ - v2.76
+ - fixed files (-f) check in migration mode (bnc #419219)
+ - added quoting for excluded param values (bnc #419219)
++- added checkBrokenLinks() function (bnc #419219)
+ 
+ -------------------------------------------------------------------
+ Tue Sep  9 10:40:54 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000662.html">[Kiwi-devel] r1565 - in kiwi-head: . modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000664.html">[Kiwi-devel] r1567 - in kiwi-head: . modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#663">[ date ]</a>
+              <a href="thread.html#663">[ thread ]</a>
+              <a href="subject.html#663">[ subject ]</a>
+              <a href="author.html#663">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

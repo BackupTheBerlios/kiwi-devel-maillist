@@ -1,0 +1,221 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1685 - in kiwi-head: modules rpm tools/satplugin
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1685%20-%20in%20kiwi-head%3A%20modules%20rpm%20tools/satplugin&In-Reply-To=%3C200810271404.m9RE4bb3014361%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000776.html">
+   <LINK REL="Next"  HREF="000777.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1685 - in kiwi-head: modules rpm tools/satplugin</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1685%20-%20in%20kiwi-head%3A%20modules%20rpm%20tools/satplugin&In-Reply-To=%3C200810271404.m9RE4bb3014361%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1685 - in kiwi-head: modules rpm tools/satplugin">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Oct 27 15:04:37 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000776.html">[Kiwi-devel] r1684 - in kiwi-head: . modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000777.html">[Kiwi-devel] r1686 - kiwi-head
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#779">[ date ]</a>
+              <a href="thread.html#779">[ thread ]</a>
+              <a href="subject.html#779">[ subject ]</a>
+              <a href="author.html#779">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-27 15:03:34 +0100 (Mon, 27 Oct 2008)
+New Revision: 1685
+
+Modified:
+   kiwi-head/modules/KIWISatSolver.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/tools/satplugin/SaT.i
+   kiwi-head/tools/satplugin/example.pl
+   kiwi-head/tools/satplugin/sat.c
+Log:
+
+- fixed SaT plugin due to API changes (bnc #436249)
+
+
+
+Modified: kiwi-head/modules/KIWISatSolver.pm
+===================================================================
+--- kiwi-head/modules/KIWISatSolver.pm	2008-10-27 09:59:03 UTC (rev 1684)
++++ kiwi-head/modules/KIWISatSolver.pm	2008-10-27 14:03:34 UTC (rev 1685)
+@@ -120,7 +120,7 @@
+ 		$repo -&gt; addSolvable (*FD); close FD;
+ 	}
+ 	$solver = new KIWI::SaT::Solver ($pool);
+-	$pool -&gt; createWhatProvides();
++	$pool -&gt; initializeLookupTable();
+ 	$queue = new KIWI::SaT::Queue;
+ 	foreach my $p (@{$pref}) {
+ 		my $name = $p;
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-27 09:59:03 UTC (rev 1684)
++++ kiwi-head/rpm/kiwi.changes	2008-10-27 14:03:34 UTC (rev 1685)
+@@ -2,6 +2,7 @@
+ Mon Oct 27 10:47:35 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.97
++- fixed SaT plugin due to API changes (bnc #436249)
+ - added the same padding to tagmedia as used with mkisofs
+   by default this are 150 sectors (bnc #434563)
+ 
+
+Modified: kiwi-head/tools/satplugin/SaT.i
+===================================================================
+--- kiwi-head/tools/satplugin/SaT.i	2008-10-27 09:59:03 UTC (rev 1684)
++++ kiwi-head/tools/satplugin/SaT.i	2008-10-27 14:03:34 UTC (rev 1685)
+@@ -72,6 +72,14 @@
+         pool_createwhatprovides(self);
+     }
+ 
++    void initializeLookupTable (Repo *installed = 0) {
++        #ifdef SOLV_VERSION_8
++        pool_set_installed (self, installed);
++        pool_addfileprovides (self);
++        #endif
++        pool_createwhatprovides (self);
++    }
++
+     Solvable *id2solvable(Id p) {
+         return pool_id2solvable(self, p);
+     }
+@@ -187,7 +195,11 @@
+ //----------------------------------
+ %extend Solver {
+     Solver ( Pool *pool, Repo *installed = 0 ) {
++        #ifdef SOLV_VERSION_8
++        return solver_create(pool);
++        #else
+         return solver_create(pool, installed);
++        #endif
+     }
+ 
+     ~Solver() { solver_free(self); }
+
+Modified: kiwi-head/tools/satplugin/example.pl
+===================================================================
+--- kiwi-head/tools/satplugin/example.pl	2008-10-27 09:59:03 UTC (rev 1684)
++++ kiwi-head/tools/satplugin/example.pl	2008-10-27 14:03:34 UTC (rev 1685)
+@@ -3,13 +3,13 @@
+ use lib './blib/arch/auto/KIWI/SaT';
+ 
+ use strict;
+-use SaT;
++use KIWI::SaT;
+ 
+ # Open Solvable file
+-open(F, &quot;cat /var/cache/kiwi/satsolver/35e8a611a8c39fc131f9b9b0ec07cd22 |&quot;) || die;
++open(F, &quot;cat /var/cache/kiwi/satsolver/12e185e932ba137e4535d33ae2b97db4 |&quot;) || die;
+ 
+ # Create Pool and Repository 
+-my $pool = new SaT::_Pool;
++my $pool = new KIWI::SaT::_Pool;
+ my $repo = $pool -&gt; createRepo('repo');
+ 
+ # Add Solvable to Repository
+@@ -17,13 +17,13 @@
+ close(F) || die;
+ 
+ # Create Solver
+-my $solver = new SaT::Solver ($pool);
++my $solver = new KIWI::SaT::Solver ($pool);
+ 
+ # Create dependencies to provides table
+-$pool -&gt; createWhatProvides();
++$pool -&gt; initializeLookupTable();
+ 
+ # Create Queue
+-my $queue = new SaT::Queue;
++my $queue = new KIWI::SaT::Queue;
+ 
+ my @pats = qw(apparmor apparmor_opt base devel_C_C++ devel_qt4);
+ #my @pats = qw(mono_everything);
+@@ -36,7 +36,7 @@
+ 		print (&quot;failed to push job: $p\n&quot;);
+ 		next;
+ 	}
+-	$queue -&gt; queuePush ( $SaT::SOLVER_INSTALL_SOLVABLE );
++	$queue -&gt; queuePush ( $KIWI::SaT::SOLVER_INSTALL_SOLVABLE );
+ 	$queue -&gt; queuePush ( $id );
+ }
+ 
+
+Modified: kiwi-head/tools/satplugin/sat.c
+===================================================================
+--- kiwi-head/tools/satplugin/sat.c	2008-10-27 09:59:03 UTC (rev 1684)
++++ kiwi-head/tools/satplugin/sat.c	2008-10-27 14:03:34 UTC (rev 1685)
+@@ -15,7 +15,7 @@
+ 	FILE   *fp     = 0;
+ 	int b;
+ 	Queue  queue;
+-	int fd = open (&quot;/var/cache/kiwi/satsolver/b3f8141972e5f21eed2392c2ee8f581b&quot;, O_RDONLY);
++	int fd = open (&quot;/var/cache/kiwi/satsolver/12e185e932ba137e4535d33ae2b97db4&quot;, O_RDONLY);
+ 	if (fd == -1) {
+ 		return 1;
+ 	}
+@@ -30,6 +30,10 @@
+ 
+ 	Repo *empty_installed = repo_create(pool, &quot;empty&quot;);
+ 
++	#ifdef SOLV_VERSION_8
++	pool_set_installed (pool, empty_installed);
++	pool_addfileprovides (pool);
++	#endif
+ 	pool_createwhatprovides(pool);
+ 
+ 	queue_init (&amp;queue);
+@@ -44,7 +48,11 @@
+ 	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+ 	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:devel_qt4&quot;));
+ 
++	#ifdef SOLV_VERSION_8
++	solver = solver_create (pool);
++	#else
+ 	solver = solver_create (pool,empty_installed);
++	#endif
+ 
+ 	solver_solve (solver, &amp;queue);
+ 	
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000776.html">[Kiwi-devel] r1684 - in kiwi-head: . modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000777.html">[Kiwi-devel] r1686 - kiwi-head
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#779">[ date ]</a>
+              <a href="thread.html#779">[ thread ]</a>
+              <a href="subject.html#779">[ subject ]</a>
+              <a href="author.html#779">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

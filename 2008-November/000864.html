@@ -1,0 +1,131 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1771 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1771%20-%20kiwi-head/modules&In-Reply-To=%3C200811191659.mAJGx41s030238%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000863.html">
+   <LINK REL="Next"  HREF="000865.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1771 - kiwi-head/modules</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1771%20-%20kiwi-head/modules&In-Reply-To=%3C200811191659.mAJGx41s030238%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1771 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Wed Nov 19 17:59:04 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000863.html">[Kiwi-devel] r1770 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+        <LI>Next message: <A HREF="000865.html">[Kiwi-devel] r1772 - kiwi-head/rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#864">[ date ]</a>
+              <a href="thread.html#864">[ thread ]</a>
+              <a href="subject.html#864">[ subject ]</a>
+              <a href="author.html#864">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2008-11-19 17:59:02 +0100 (Wed, 19 Nov 2008)
+New Revision: 1771
+
+Modified:
+   kiwi-head/modules/KIWICollect.pm
+   kiwi-head/modules/KIWICollect_local.pm
+Log:
+- changed cp commands to preserve timestamps (bnc#445734)
+
+
+Modified: kiwi-head/modules/KIWICollect.pm
+===================================================================
+--- kiwi-head/modules/KIWICollect.pm	2008-11-19 16:56:42 UTC (rev 1770)
++++ kiwi-head/modules/KIWICollect.pm	2008-11-19 16:59:02 UTC (rev 1771)
+@@ -1107,11 +1107,11 @@
+ 
+       $this-&gt;{m_util}-&gt;unpac_package($this-&gt;{m_metaPackages}-&gt;{$metapack}-&gt;{$arch}-&gt;{'source'}, &quot;$tmp&quot;);
+       ## all metapackages contain at least a CD1 dir and _may_ contain another /usr/share/&lt;name&gt; dir
+-      qx(cp -r $tmp/CD1/* $this-&gt;{m_basesubdir}-&gt;{$medium});
+-      for my $sub(&quot;usr&quot;, &quot;etc&quot;) {
+-	if(-d &quot;$tmp/$sub&quot;) {
+-	  qx(cp -r $tmp/$sub $this-&gt;{m_basesubdir}-&gt;{$medium});
+-	}
++      qx(cp -a $tmp/CD1/* $this-&gt;{m_basesubdir}-&gt;{$medium});
++      #for my $sub(&quot;usr&quot;, &quot;etc&quot;) {
++	#if(-d &quot;$tmp/$sub&quot;) {
++	#  qx(cp -a $tmp/$sub $this-&gt;{m_basesubdir}-&gt;{$medium});
++	#}
+ 	if(-f &quot;$tmp/usr/share/mini-iso-rmlist&quot;) {
+ 	  if(!open(RMLIST, &quot;$tmp/usr/share/mini-iso-rmlist&quot;)) {
+ 	    $this-&gt;logMsg(&quot;W&quot;, &quot;cant open &lt;$tmp/usr/share/mini-iso-rmlist&gt;&quot;);
+@@ -1123,11 +1123,11 @@
+ 	    close RMLIST;
+ 	  }
+         }
+-      }
++      #}
+       ## copy content of CD2 ... CD&lt;i&gt; subdirs if exists:
+       for(2..10) {
+ 	if(-d &quot;$tmp/CD$_&quot; and defined $this-&gt;{m_basesubdir}-&gt;{$_}) {
+-	  qx(cp -r $tmp/CD$_/* $this-&gt;{m_basesubdir}-&gt;{$_});
++	  qx(cp -a $tmp/CD$_/* $this-&gt;{m_basesubdir}-&gt;{$_});
+ 	}
+ 	## add handling for &quot;DVD&lt;i&gt;&quot; subdirs if necessary FIXME
+       }
+
+Modified: kiwi-head/modules/KIWICollect_local.pm
+===================================================================
+--- kiwi-head/modules/KIWICollect_local.pm	2008-11-19 16:56:42 UTC (rev 1770)
++++ kiwi-head/modules/KIWICollect_local.pm	2008-11-19 16:59:02 UTC (rev 1771)
+@@ -1103,7 +1103,7 @@
+           $this-&gt;{m_util}-&gt;unpac_package($packPointer-&gt;{'localfile'}, &quot;$tmp&quot;);
+           ## all metapackages contain at least a CD1 dir and _may_ contain another /usr/share/&lt;name&gt; dir
+           if ( -d &quot;$tmp/CD1&quot;) {
+-            qx(cp -r $tmp/CD1/* $this-&gt;{m_basesubdir}-&gt;{$medium});
++            qx(cp -a $tmp/CD1/* $this-&gt;{m_basesubdir}-&gt;{$medium});
+           }
+ 	  else {
+             $this-&gt;logMsg(&quot;W&quot;, &quot;No CD1 directory on $packPointer-&gt;{name}&quot;);
+@@ -1127,7 +1127,7 @@
+           ## copy content of CD2 ... CD&lt;i&gt; subdirs if exists:
+           for(2..10) {
+             if(-d &quot;$tmp/CD$_&quot; and defined $this-&gt;{m_basesubdir}-&gt;{$_}) {
+-              qx(cp -r $tmp/CD$_/* $this-&gt;{m_basesubdir}-&gt;{$_});
++              qx(cp -a $tmp/CD$_/* $this-&gt;{m_basesubdir}-&gt;{$_});
+               $this-&gt;logMsg(&quot;W&quot;, &quot;Unpack CD$_ for $packPointer-&gt;{name} &quot;);
+             }
+             ## add handling for &quot;DVD&lt;i&gt;&quot; subdirs if necessary FIXME
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000863.html">[Kiwi-devel] r1770 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+	<LI>Next message: <A HREF="000865.html">[Kiwi-devel] r1772 - kiwi-head/rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#864">[ date ]</a>
+              <a href="thread.html#864">[ thread ]</a>
+              <a href="subject.html#864">[ subject ]</a>
+              <a href="author.html#864">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

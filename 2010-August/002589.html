@@ -1,0 +1,262 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 067df34571c31dc4cf219542fff45167b7eada93
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20067df34571c31dc4cf219542fff45167b7eada93&In-Reply-To=%3C20100825110448.E6E58480E99%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002597.html">
+   <LINK REL="Next"  HREF="002590.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 067df34571c31dc4cf219542fff45167b7eada93</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20067df34571c31dc4cf219542fff45167b7eada93&In-Reply-To=%3C20100825110448.E6E58480E99%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 067df34571c31dc4cf219542fff45167b7eada93">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Aug 25 13:04:48 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002597.html">[Kiwi-devel] incompatible squash versions between the host	the	kernel installed in the image.
+</A></li>
+        <LI>Next message: <A HREF="002590.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c451f091a0a60e114c2c224bf516d28d092ee4d6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2589">[ date ]</a>
+              <a href="thread.html#2589">[ thread ]</a>
+              <a href="subject.html#2589">[ subject ]</a>
+              <a href="author.html#2589">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  067df34571c31dc4cf219542fff45167b7eada93 (commit)
+       via  f692f6bb1feb1b1731f4c51b1f45406eae648ec5 (commit)
+       via  5986f2ddd8ec94c0f46ca786c7ccb92fe426dcaa (commit)
+      from  448c478f095f1f0907e4779c349081d601ea4c7c (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 067df34571c31dc4cf219542fff45167b7eada93
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Aug 25 13:03:05 2010 +0200
+
+    - call dhcpcd with the option --noipv4ll to be able to check the
+      return code of dhcpcd and to prevent the interface from an ip address
+      if there was a DHCP timeout (bnc #634057)
+
+commit f692f6bb1feb1b1731f4c51b1f45406eae648ec5
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Aug 25 12:15:55 2010 +0200
+
+    - added package/group check before yum is called to install
+      packages/groups. This is done because there are yum versions
+      which silently ignore missing items and proceed installing
+      the rest.
+
+commit 5986f2ddd8ec94c0f46ca786c7ccb92fe426dcaa
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Aug 24 17:07:49 2010 +0200
+
+    - fixed message about package installation when using ensconce
+      The problem was that it prints always the same message about
+      installing bootstrap packages even in non-chroot mode
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index b9bd2f1..a81bd79 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -3090,7 +3090,6 @@ function setupNetwork {
+ 	local index=0
+ 	local hwicmd=/usr/sbin/hwinfo
+ 	local iface=eth0
+-	local setup=0
+ 	for i in `$hwicmd --netcard`;do
+ 		IFS=$IFS_ORIG
+ 		if echo $i | grep -q &quot;HW Address:&quot;;then
+@@ -3127,17 +3126,20 @@ function setupNetwork {
+ 		done
+ 	fi
+ 	export PXE_IFACE=$iface
+-	dhcpcd -p $PXE_IFACE 1&gt;&amp;2
++	if ! dhcpcd --noipv4ll -p $PXE_IFACE 1&gt;&amp;2;then
++		systemException \
++			&quot;Failed to setup DHCP network interface !&quot; \
++		&quot;reboot&quot;
++	fi
+ 	for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20;do
+ 		if [ -s /var/lib/dhcpcd/dhcpcd-$PXE_IFACE.info ];then
+-			setup=1
+ 			break
+ 		fi
+ 		sleep 2
+ 	done
+-	if [ $setup = 0 ];then
++	if [ ! -s /var/lib/dhcpcd/dhcpcd-$PXE_IFACE.info ];then
+ 		systemException \
+-			&quot;Failed to setup DHCP network interface !&quot; \
++			&quot;Can't find DHCP info file: dhcpcd-$PXE_IFACE.info !&quot; \
+ 		&quot;reboot&quot;
+ 	fi
+ 	ifconfig lo 127.0.0.1 netmask 255.0.0.0 up
+diff --git a/modules/KIWIManager.pm b/modules/KIWIManager.pm
+index 1b8a299..fe69de0 100644
+--- a/modules/KIWIManager.pm
++++ b/modules/KIWIManager.pm
+@@ -1184,6 +1184,13 @@ sub installPackages {
+ 		print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;done\n&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
++		print $fd &quot;for i in @@addonPackages;do\n&quot;;
++		print $fd &quot;\tif ! @yum list available \$i;then\n&quot;;
++		print $fd &quot;\t\tECODE=1\n&quot;;
++		print $fd &quot;\t\techo \$ECODE &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;\t\texit \$ECODE\n&quot;;
++		print $fd &quot;\tfi\n&quot;;
++		print $fd &quot;done\n&quot;;
+ 		print $fd &quot;@kchroot @yum install @addonPackages &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		print $fd &quot;ECODE=\$?\n&quot;;
+@@ -1540,10 +1547,24 @@ sub setupUpgrade {
+ 			print $fd &quot;@kchroot @yum upgrade &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			if (@newpatts) {
++				print $fd &quot;for i in @newpatts;do\n&quot;;
++				print $fd &quot;\tif ! @kchroot @yum grouplist | grep -q \&quot;\$i\&quot;;then\n&quot;;
++				print $fd &quot;\t\tECODE=1\n&quot;;
++				print $fd &quot;\t\techo \$ECODE &gt; $screenCall.exit\n&quot;;
++				print $fd &quot;\t\texit \$ECODE\n&quot;;
++				print $fd &quot;\tfi\n&quot;;
++				print $fd &quot;done\n&quot;;
+ 				print $fd &quot;test \$? = 0 &amp;&amp; @kchroot @yum groupinstall @newpatts &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+ 			if (@addonPackages) {
++				print $fd &quot;for i in @@addonPackages;do\n&quot;;
++				print $fd &quot;\tif ! @yum list available \$i;then\n&quot;;
++				print $fd &quot;\t\tECODE=1\n&quot;;
++				print $fd &quot;\t\techo \$ECODE &gt; $screenCall.exit\n&quot;;
++				print $fd &quot;\t\texit \$ECODE\n&quot;;
++				print $fd &quot;\tfi\n&quot;;
++				print $fd &quot;done\n&quot;;
+ 				print $fd &quot;test \$? = 0 &amp;&amp; @kchroot @yum install @addonPackages &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+@@ -1974,8 +1995,12 @@ sub setupRootSystem {
+ 			# Ensconce options
+ 			#------------------------------------------
+ 			$ensconce_args = &quot;bootstrap&quot;;
+-		} 
+-		$kiwi -&gt; info (&quot;Installing bootstrap packages...&quot;);
++		}
++		if (! $chroot) {
++			$kiwi -&gt; info (&quot;Initializing image system on: $root...&quot;);
++		} else {
++			$kiwi -&gt; info (&quot;Installing image packages...&quot;);
++		}
+ 		print $fd &quot;function clean { kill \$SPID; &quot;;
+ 		print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;&quot;;
+ 		print $fd &quot;if [ \&quot;\$c\&quot; = 5 ];then kill \$SPID;break;fi;&quot;; 
+@@ -2036,6 +2061,13 @@ sub setupRootSystem {
+ 			print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+ 			if (@newpatts) {
++				print $fd &quot;for i in @newpatts;do\n&quot;;
++				print $fd &quot;\tif ! @yum grouplist | grep -q \&quot;\$i\&quot;;then\n&quot;;
++				print $fd &quot;\t\tECODE=1\n&quot;;
++				print $fd &quot;\t\techo \$ECODE &gt; $screenCall.exit\n&quot;;
++				print $fd &quot;\t\texit \$ECODE\n&quot;;
++				print $fd &quot;\tfi\n&quot;;
++				print $fd &quot;done\n&quot;;
+ 				print $fd &quot;@yum --installroot=$root groupinstall @newpatts &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+@@ -2043,7 +2075,14 @@ sub setupRootSystem {
+ 				if (@newpatts) {
+ 					print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+ 				}
+-				print $fd &quot;@yum --installroot=$root install @packs &amp;\n&quot;;
++				print $fd &quot;for i in @newpacks;do\n&quot;;
++				print $fd &quot;\tif ! @yum list available \$i;then\n&quot;;
++				print $fd &quot;\t\tECODE=1\n&quot;;
++				print $fd &quot;\t\techo \$ECODE &gt; $screenCall.exit\n&quot;;
++				print $fd &quot;\t\texit \$ECODE\n&quot;;
++				print $fd &quot;\tfi\n&quot;;
++				print $fd &quot;done\n&quot;;
++				print $fd &quot;@yum --installroot=$root install @newpacks &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+ 			print $fd &quot;ECODE=\$?\n&quot;;
+@@ -2077,6 +2116,13 @@ sub setupRootSystem {
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+ 			if (@newpatts) {
++				print $fd &quot;for i in @newpatts;do\n&quot;;
++				print $fd &quot;\tif ! @kchroot @yum grouplist | grep -q \&quot;\$i\&quot;;then\n&quot;;
++				print $fd &quot;\t\tECODE=1\n&quot;;
++				print $fd &quot;\t\techo \$ECODE &gt; $screenCall.exit\n&quot;;
++				print $fd &quot;\t\texit \$ECODE\n&quot;;
++				print $fd &quot;\tfi\n&quot;;
++				print $fd &quot;done\n&quot;;
+ 				print $fd &quot;@kchroot @yum groupinstall @newpatts &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+@@ -2084,6 +2130,13 @@ sub setupRootSystem {
+ 				if (@newpatts) {
+ 					print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+ 				}
++				print $fd &quot;for i in @install;do\n&quot;;
++				print $fd &quot;\tif ! @yum list available \$i;then\n&quot;;
++				print $fd &quot;\t\tECODE=1\n&quot;;
++				print $fd &quot;\t\techo \$ECODE &gt; $screenCall.exit\n&quot;;
++				print $fd &quot;\t\texit \$ECODE\n&quot;;
++				print $fd &quot;\tfi\n&quot;;
++				print $fd &quot;done\n&quot;;
+ 				print $fd &quot;@kchroot @yum install @install &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002597.html">[Kiwi-devel] incompatible squash versions between the host	the	kernel installed in the image.
+</A></li>
+	<LI>Next message: <A HREF="002590.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c451f091a0a60e114c2c224bf516d28d092ee4d6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2589">[ date ]</a>
+              <a href="thread.html#2589">[ thread ]</a>
+              <a href="subject.html#2589">[ subject ]</a>
+              <a href="author.html#2589">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

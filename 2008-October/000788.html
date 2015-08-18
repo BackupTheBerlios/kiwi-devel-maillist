@@ -1,0 +1,368 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1700 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1700%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200810301525.m9UFP6ZH011314%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000787.html">
+   <LINK REL="Next"  HREF="000789.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1700 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1700%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200810301525.m9UFP6ZH011314%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1700 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Oct 30 16:25:06 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000787.html">[Kiwi-devel] r1698 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+        <LI>Next message: <A HREF="000789.html">[Kiwi-devel] r1701 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#788">[ date ]</a>
+              <a href="thread.html#788">[ thread ]</a>
+              <a href="subject.html#788">[ subject ]</a>
+              <a href="author.html#788">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-30 16:24:38 +0100 (Thu, 30 Oct 2008)
+New Revision: 1700
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIManager.pm
+   kiwi-head/modules/KIWIRoot.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+Log:
+
+- v2.98
+- added support for zypper's target architecture. kiwi allows
+  to set the option --target-arch to one of the following
+  values: i586, x86_64, armv5tel or ppc. This option should be
+  used for building cross arch images. Please note:
+  --
+  * Installing packages for another than the build machines
+    architecture additionally requires an environment setup which
+    allows running binaries of that architecture.
+  * One approach to do this is to use QEMU in user mode. Just copy
+    the static qemu binaries from /usr/bin/qemu* into the root/usr/bin
+    directory of your image description. Last step before calling
+    qemu is to run the /usr/sbin/qemu-binfmt-conf.sh script to
+    prepare the environment
+  --
+  Thanks to Jan-Simon M?\195?\182ller, Martin Mohring and Michael Andres
+  for their effort
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-10-30 15:10:58 UTC (rev 1699)
++++ kiwi-head/kiwi.pl	2008-10-30 15:24:38 UTC (rev 1700)
+@@ -44,7 +44,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;2.97&quot;;
++our $Version       = &quot;2.98&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+@@ -194,6 +194,7 @@
+ our $FSInodeSize;           # filesystem inode size
+ our $FSJournalSize;         # filesystem journal size
+ our $Verbosity = 0;         # control the verbosity level
++our $TargetArch;            # target architecture -&gt; writes zypp.conf
+ our $kiwi;                  # global logging handler object
+ 
+ #============================================
+@@ -354,7 +355,8 @@
+ 		#------------------------------------------
+ 		$root = new KIWIRoot (
+ 			$kiwi,$xml,$Prepare,$RootTree,
+-			&quot;/base-system&quot;,undef,undef,$BaseRoot,$BaseRootMode
++			&quot;/base-system&quot;,undef,undef,$BaseRoot,
++			$BaseRootMode,$TargetArch
+ 		);
+ 		if (! defined $root) {
+ 			$kiwi -&gt; error (&quot;Couldn't create root object&quot;);
+@@ -724,7 +726,8 @@
+ 			#------------------------------------------
+ 			$root = new KIWIRoot (
+ 				$kiwi,$xml,$RunTestSuite,undef,
+-				&quot;/base-system&quot;,$RunTestSuite,undef,$BaseRoot,$BaseRootMode
++				&quot;/base-system&quot;,$RunTestSuite,undef,$BaseRoot,
++				$BaseRootMode,$TargetArch
+ 			);
+ 			if (! defined $root) {
+ 				$kiwi -&gt; error (&quot;Couldn't create root object&quot;);
+@@ -744,7 +747,8 @@
+ 		# create package manager for operations
+ 		#------------------------------------------
+ 		my $manager = new KIWIManager (
+-			$kiwi,$xml,$xml,$RunTestSuite,$xml -&gt; getPackageManager()
++			$kiwi,$xml,$xml,$RunTestSuite,
++			$xml-&gt;getPackageManager(),$TargetArch
+ 		);
+ 		#==========================================
+ 		# set default tests if no names are set
+@@ -872,7 +876,8 @@
+ 		#------------------------------------------
+ 		$root = new KIWIRoot (
+ 			$kiwi,$xml,$Upgrade,undef,
+-			&quot;/base-system&quot;,$Upgrade,\@AddPackage,$BaseRoot,$BaseRootMode
++			&quot;/base-system&quot;,$Upgrade,\@AddPackage,$BaseRoot,
++			$BaseRootMode,$TargetArch
+ 		);
+ 		if (! defined $root) {
+ 			$kiwi -&gt; error (&quot;Couldn't create root object&quot;);
+@@ -1150,6 +1155,7 @@
+ 		&quot;fs-journalsize=i&quot;      =&gt; \$FSJournalSize,
+ 		&quot;fs-inodesize=i&quot;        =&gt; \$FSInodeSize,
+ 		&quot;partitioner=s&quot;         =&gt; \$Partitioner,
++		&quot;target-arch=s&quot;         =&gt; \$TargetArch,
+ 		&quot;help|h&quot;                =&gt; \&amp;usage,
+ 		&quot;&lt;&gt;&quot;                    =&gt; \&amp;usage
+ 	);
+@@ -1482,10 +1488,15 @@
+ 	print &quot;    the inode size in bytes. This option has no effect if the\n&quot;;
+ 	print &quot;    reiser filesystem is used\n&quot;;
+ 	print &quot;\n&quot;;
+-	print &quot;  [ --partitioner &lt;fdisk|parted ]\n&quot;;
++	print &quot;  [ --partitioner &lt;fdisk|parted&gt; ]\n&quot;;
+ 	print &quot;    Select the tool to create partition tables. Supported are\n&quot;;
+ 	print &quot;    fdisk (sfdisk) and parted. By default fdisk is used\n&quot;;
+ 	print &quot;\n&quot;;
++	print &quot;  [ -A | --target-arch &lt;i586|x86_64|armv5tel|ppc&gt; ]\n&quot;;
++	print &quot;    Set a special target-architecture. This overrides the \n&quot;;
++	print &quot;    used architecture for the image-packages in zypp.conf.\n&quot;;
++	print &quot;    When used with smart this option doesn't have any effect.\n&quot;;
++	print &quot;\n&quot;;
+ 	print &quot;  [ -v | --verbose &lt;1|2|3&gt; ]\n&quot;;
+ 	print &quot;    Control the verbosity level. At the moment this option\n&quot;;
+ 	print &quot;    has an effect on the create-instsource module only\n&quot;;
+
+Modified: kiwi-head/modules/KIWIManager.pm
+===================================================================
+--- kiwi-head/modules/KIWIManager.pm	2008-10-30 15:10:58 UTC (rev 1699)
++++ kiwi-head/modules/KIWIManager.pm	2008-10-30 15:24:38 UTC (rev 1700)
+@@ -59,11 +59,12 @@
+ 	#==========================================
+ 	# Module Parameters
+ 	#------------------------------------------
+-	my $kiwi      = shift;
+-	my $xml       = shift;
+-	my $sourceRef = shift;
+-	my $root      = shift;
+-	my $manager   = shift;
++	my $kiwi       = shift;
++	my $xml        = shift;
++	my $sourceRef  = shift;
++	my $root       = shift;
++	my $manager    = shift;
++	my $targetArch = shift;
+ 	#==========================================
+ 	# Constructor setup
+ 	#------------------------------------------
+@@ -93,14 +94,24 @@
+ 	if (! -d $dataDir) {
+ 		qxx (&quot;mkdir -p $dataDir&quot;);
+ 	}
+-	my $zyppConf = &quot;/var/cache/kiwi/zypp.conf&quot;;
+-	if (! -f $zyppConf) {
+-		qxx (&quot;echo '[main]' &gt; $zyppConf&quot;);
+-	}
++	my $zyppConf = &quot;/var/cache/kiwi/zypp.conf.$$&quot;;
++	qxx (&quot;rm -f /var/cache/kiwi/zypp.conf*&quot;);
++	qxx (&quot;echo '[main]' &gt; $zyppConf&quot;);
+ 	$ENV{ZYPP_CONF} = $zyppConf;	
+ 	my $zconfig = new Config::IniFiles (
+ 		-file =&gt; $zyppConf, -allowedcommentchars =&gt; '#'
+ 	);
++	if (defined $targetArch) {
++		if ($manager eq &quot;zypper&quot;) {
++			$kiwi -&gt; info (&quot;Setting target architecture to: $targetArch&quot;);
++			$zconfig-&gt;setval('main', 'arch', $targetArch);
++			$zconfig-&gt;RewriteConfig;
++			$kiwi -&gt; done ();
++		} else {
++			$kiwi -&gt; warning (&quot;Target architecture not supported for $manager&quot;);
++			$kiwi -&gt; skipped ();
++		}
++	}
+ 	my @channelList = ();
+ 	#==========================================
+ 	# Store object data
+@@ -117,6 +128,7 @@
+ 	$this-&gt;{screenCtrl}  = $root.&quot;/screenrc.ctrls&quot;;
+ 	$this-&gt;{screenLogs}  = $kiwi -&gt; getRootLog();
+ 	$this-&gt;{dataDir}     = $dataDir;
++	$this-&gt;{zyppconf}    = $zyppConf;
+ 	$this-&gt;{zconfig}     = $zconfig;
+ 	$this-&gt;{smart}       = [
+ 		$packageManager{smart},
+@@ -954,7 +966,7 @@
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+ 		print $fd &quot;export YAST_IS_RUNNING=true\n&quot;;
+-		print $fd &quot;export ZYPP_CONF=/var/cache/kiwi/zypp.conf\n&quot;;
++		print $fd &quot;export ZYPP_CONF=&quot;.$this-&gt;{zyppconf}.&quot;\n&quot;;
+ 		print $fd &quot;chroot $root @zypper refresh &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @zypper install &quot;;
+@@ -1053,7 +1065,7 @@
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+ 		print $fd &quot;export YAST_IS_RUNNING=true\n&quot;;
+-		print $fd &quot;export ZYPP_CONF=/var/cache/kiwi/zypp.conf\n&quot;;
++		print $fd &quot;export ZYPP_CONF=&quot;.$this-&gt;{zyppconf}.&quot;\n&quot;;
+ 		print $fd &quot;chroot $root @zypper refresh &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @zypper remove &quot;;
+@@ -1172,7 +1184,7 @@
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+ 		print $fd &quot;export YAST_IS_RUNNING=true\n&quot;;
+-		print $fd &quot;export ZYPP_CONF=/var/cache/kiwi/zypp.conf\n&quot;;
++		print $fd &quot;export ZYPP_CONF=&quot;.$this-&gt;{zyppconf}.&quot;\n&quot;;
+ 		print $fd &quot;chroot $root @zypper refresh &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+@@ -1432,7 +1444,7 @@
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+ 			print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+ 			print $fd &quot;export YAST_IS_RUNNING=true\n&quot;;
+-			print $fd &quot;export ZYPP_CONF=$root/var/cache/kiwi/zypp.conf\n&quot;;
++			print $fd &quot;export ZYPP_CONF=&quot;.$root.&quot;/&quot;.$this-&gt;{zyppconf}.&quot;\n&quot;;
+ 			print $fd &quot;@zypper --root $root refresh &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+@@ -1498,7 +1510,7 @@
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+ 			print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+ 			print $fd &quot;export YAST_IS_RUNNING=true\n&quot;;
+-			print $fd &quot;export ZYPP_CONF=/var/cache/kiwi/zypp.conf\n&quot;;
++			print $fd &quot;export ZYPP_CONF=&quot;.$this-&gt;{zyppconf}.&quot;\n&quot;;
+ 			print $fd &quot;chroot $root @zypper refresh &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+
+Modified: kiwi-head/modules/KIWIRoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIRoot.pm	2008-10-30 15:10:58 UTC (rev 1699)
++++ kiwi-head/modules/KIWIRoot.pm	2008-10-30 15:24:38 UTC (rev 1700)
+@@ -54,6 +54,7 @@
+ 	my $addPacks     = shift;
+ 	my $baseRoot     = shift;
+ 	my $baseRootMode = shift;
++	my $targetArch   = shift;
+ 	#==========================================
+ 	# Constructor setup
+ 	#------------------------------------------
+@@ -213,7 +214,7 @@
+ 	# Create package manager object
+ 	#------------------------------------------
+ 	my $manager = new KIWIManager (
+-		$kiwi,$xml,\%sourceChannel,$root,$pmgr
++		$kiwi,$xml,\%sourceChannel,$root,$pmgr,$targetArch
+ 	);
+ 	if (! defined $manager) {
+ 		if (defined $overlay) {
+@@ -307,6 +308,8 @@
+ 	# for smart we need the dpkg default file
+ 	qxx (&quot;mkdir -p $root/var/lib/dpkg&quot;);
+ 	qxx (&quot;touch $root/var/lib/dpkg/status&quot;);
++	qxx (&quot;mkdir -p $root/var/lib/dpkg/updates&quot;);
++	qxx (&quot;touch $root/var/lib/dpkg/available&quot;);
+ 	# for building in suse autobuild we need the following file
+ 	qxx (&quot;touch $root/.buildenv&quot;);
+ 	# need mtab at least empty for mount calls
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-30 15:10:58 UTC (rev 1699)
++++ kiwi-head/rpm/kiwi.changes	2008-10-30 15:24:38 UTC (rev 1700)
+@@ -1,4 +1,25 @@
+ -------------------------------------------------------------------
++Thu Oct 30 12:18:23 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v2.98
++- added support for zypper's target architecture. kiwi allows
++  to set the option --target-arch to one of the following
++  values: i586, x86_64, armv5tel or ppc. This option should be
++  used for building cross arch images. Please note:
++  --
++  * Installing packages for another than the build machines
++    architecture additionally requires an environment setup which
++    allows running binaries of that architecture.
++  * One approach to do this is to use QEMU in user mode. Just copy
++    the static qemu binaries from /usr/bin/qemu* into the root/usr/bin
++    directory of your image description. Last step before calling
++    qemu is to run the /usr/sbin/qemu-binfmt-conf.sh script to
++    prepare the environment
++  --
++  Thanks to Jan-Simon M&#246;ller, Martin Mohring and Michael Andres
++  for their effort
++
++-------------------------------------------------------------------
+ Mon Oct 27 10:47:35 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.97
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-10-30 15:10:58 UTC (rev 1699)
++++ kiwi-head/rpm/kiwi.spec	2008-10-30 15:24:38 UTC (rev 1700)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 2.97
++# spec file for package kiwi (Version 2.98
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        2.97
++Version:        2.98
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000787.html">[Kiwi-devel] r1698 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+	<LI>Next message: <A HREF="000789.html">[Kiwi-devel] r1701 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#788">[ date ]</a>
+              <a href="thread.html#788">[ thread ]</a>
+              <a href="subject.html#788">[ subject ]</a>
+              <a href="author.html#788">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

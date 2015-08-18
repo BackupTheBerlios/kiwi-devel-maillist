@@ -1,0 +1,474 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a4122efc4b1cf1f9ac9e3b697aee74c509ffe295
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a4122efc4b1cf1f9ac9e3b697aee74c509ffe295&In-Reply-To=%3C20101124151850.52B50480EF1%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002840.html">
+   <LINK REL="Next"  HREF="002841.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a4122efc4b1cf1f9ac9e3b697aee74c509ffe295</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a4122efc4b1cf1f9ac9e3b697aee74c509ffe295&In-Reply-To=%3C20101124151850.52B50480EF1%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a4122efc4b1cf1f9ac9e3b697aee74c509ffe295">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Nov 24 16:18:50 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002840.html">[Kiwi-devel] XML processing - patch one of many
+</A></li>
+        <LI>Next message: <A HREF="002841.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2839">[ date ]</a>
+              <a href="thread.html#2839">[ thread ]</a>
+              <a href="subject.html#2839">[ subject ]</a>
+              <a href="author.html#2839">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  a4122efc4b1cf1f9ac9e3b697aee74c509ffe295 (commit)
+      from  5ffce07110ad2737b308fd55290bf082238078c2 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit a4122efc4b1cf1f9ac9e3b697aee74c509ffe295
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Nov 24 15:20:26 2010 +0100
+
+    - added the following consistency checks:
+      * only 1 profile may be marked as default via import=&quot;true&quot;
+      * only 1 type per &lt;preference&gt; spec may be set as default via primary=&quot;true&quot;
+      * only 1 &lt;preference&gt; spec may reference 1 &lt;profile&gt;
+      * only 1 &lt;preference&gt; specification without a profiles=... attribute
+      * check that all references used via profiles=&quot;aName&quot; attribute have
+        a definition of &lt;profile name=&quot;aName&quot;.../&gt;
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 8ac2861..dbb0601 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -18,6 +18,7 @@ package KIWIXML;
+ # Modules
+ #------------------------------------------
+ use strict;
++use warnings;
+ require Exporter;
+ use Carp qw (cluck);
+ use File::Glob ':glob';
+@@ -150,6 +151,12 @@ sub new {
+ 		return undef;
+ 	}
+ 	#==========================================
++	# Check data consistentcy
++	#==========================================
++	if (! $this -&gt; __validateConsistency ()) {
++		return undef;
++	}
++	#==========================================
+ 	# Read main XML sections
+ 	#------------------------------------------
+ 	my $imgnameNodeList = $systemTree -&gt; getElementsByTagName (&quot;image&quot;);
+@@ -408,12 +415,6 @@ sub new {
+ 	# Store object data (create URL list)
+ 	#------------------------------------------
+ 	$this -&gt; createURLList ();
+-	#==========================================
+-	# Check data consistentcy
+-	#==========================================
+-	if (! $this -&gt; __validateConsistency ()) {
+-		return undef;
+-	}
+ 	return $this;
+ }
+ 
+@@ -710,6 +711,9 @@ sub getImageDefaultRoot {
+ # getImageTypeAndAttributes
+ #------------------------------------------
+ sub getImageTypeAndAttributes {
++	# TODO
++	# This method is should be removed in an effort
++	# to remove state from the XML representation
+ 	# ...
+ 	# Get the image type and its attributes for beeing
+ 	# able to create the appropriate logical extend
+@@ -1922,8 +1926,10 @@ sub getProfiles {
+ 		my $name = $element -&gt; getAttribute (&quot;name&quot;);
+ 		my $desc = $element -&gt; getAttribute (&quot;description&quot;);
+ 		my $incl = $element -&gt; getAttribute (&quot;import&quot;);
+-		if ((defined $import) &amp;&amp; (&quot;$incl&quot; ne &quot;true&quot;)) {
+-			next;
++		if (defined $import) {
++			if ((defined $incl) &amp;&amp; (&quot;$incl&quot; ne &quot;true&quot;)) {
++				next;
++			}
+ 		}
+ 		my %profile = ();
+ 		$profile{name} = $name;
+@@ -1937,6 +1943,9 @@ sub getProfiles {
+ # setDefaultProfiles
+ #------------------------------------------
+ sub setDefaultProfiles {
++	# TODO
++	# This method should be removed in an effort to
++	# remove state from the XML representattion
+ 	# ...
+ 	# import default profiles if no other profiles
+ 	# were set on the commandline
+@@ -2586,7 +2595,9 @@ sub getImageConfig {
+ 	if (@tstp) {
+ 		$result{kiwi_testing} = join(&quot; &quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">, at tstp</A>);
+ 	}
+-	if ((%type) &amp;&amp; ($type{compressed} eq &quot;true&quot;)) {
++	if ((%type)
++		&amp;&amp; (defined $type{compressed})
++		&amp;&amp; ($type{compressed} eq &quot;true&quot;)) {
+ 		$result{kiwi_compressed} = &quot;yes&quot;;
+ 	}
+ 	if (%type) {
+@@ -2604,13 +2615,19 @@ sub getImageConfig {
+ 	if ((%type) &amp;&amp; ($type{installboot})) {
+ 		$result{kiwi_installboot} = $type{installboot};
+ 	}
+-	if ((%type) &amp;&amp; ($type{luks} eq &quot;true&quot;)) {
++	if ((%type)
++		&amp;&amp; (defined $type{luks})
++		&amp;&amp; ($type{luks} eq &quot;true&quot;)) {
+ 		$result{kiwi_luks} = &quot;yes&quot;;
+ 	}
+-	if ((%type) &amp;&amp; ($type{hybrid} eq &quot;true&quot;)) {
++	if ((%type)
++		&amp;&amp; (defined $type{hybrid})
++		&amp;&amp; ($type{hybrid} eq &quot;true&quot;)) {
+ 		$result{kiwi_hybrid} = &quot;yes&quot;;
+ 	}
+-	if ((%type) &amp;&amp; ($type{hybridpersistent} eq &quot;true&quot;)) {
++	if ((%type)
++		&amp;&amp; (defined $type{hybridpersistent})
++		&amp;&amp; ($type{hybridpersistent} eq &quot;true&quot;)) {
+ 		$result{kiwi_hybridpersistent} = &quot;yes&quot;;
+ 	}
+ 	if ((%type) &amp;&amp; ($type{lvm})) {
+@@ -2711,17 +2728,18 @@ sub getImageConfig {
+ 		my $oemrecoid= $node -&gt; getElementsByTagName (&quot;oem-recoveryID&quot;);
+ 		my $inplace  = $node -&gt; getElementsByTagName (&quot;oem-inplace-recovery&quot;);
+ 		if ((defined $oempinst) &amp;&amp; (&quot;$oempinst&quot; eq &quot;true&quot;)) {
+-			$result{kiwi_oempartition_install} = &quot;yes&quot;;
++			$result{kiwi_oempartition_install} = $oempinst;
+ 		}
+-		if ((defined $oemswap) &amp;&amp; (&quot;$oemswap&quot; eq &quot;false&quot;)) {
+-			$result{kiwi_oemswap} = &quot;no&quot;;
+-		} elsif ((defined $oemswapMB) &amp;&amp; (&quot;$oemswapMB&quot; &gt; 0)) {
+-			$result{kiwi_oemswapMB} = $oemswapMB;
++		if ((defined $oemswap) &amp;&amp; (&quot;$oemswap&quot; eq &quot;true&quot;)) {
++			$result{kiwi_oemswap} = $oemswap;
++			if ((defined $oemswapMB) &amp;&amp; (int($oemswapMB) &gt; 0)) {
++				$result{kiwi_oemswapMB} = $oemswapMB;
++			}
+ 		}
+ 		if ((defined $oemalign) &amp;&amp; (&quot;$oemalign&quot; eq &quot;true&quot;)) {
+ 			$result{kiwi_oemalign} = $oemalign;
+ 		}
+-		if ((defined $oemrootMB) &amp;&amp; (&quot;$oemrootMB&quot; &gt; 0)) {
++		if ((defined $oemrootMB) &amp;&amp; ((int &quot;$oemrootMB&quot;) &gt; 0)) {
+ 			$result{kiwi_oemrootMB} = $oemrootMB;
+ 		}
+ 		if ((defined $oemtitle) &amp;&amp; (&quot;$oemtitle&quot; ne &quot;&quot;)) {
+@@ -4442,6 +4460,65 @@ sub getVMConfigOpts {
+ # Private helper methods
+ #------------------------------------------
+ #==========================================
++# __checkDefaultProfSetting
++#------------------------------------------
++sub __checkDefaultProfSetting {
++	# ...
++	# Make sure only one profile is marked as default.
++	# ---
++	my $this        = shift;
++	my $numDefProfs = 0;
++	my $systemTree  = $this-&gt;{systemTree};
++	my @profiles    = $systemTree -&gt; getElementsByTagName('profile');
++	for my $profile (@profiles) {
++		my $import = $profile -&gt; getAttribute('import');
++		if (defined $import &amp;&amp; $import eq 'true') {
++			$numDefProfs++;
++		}
++		if ($numDefProfs &gt; 1) {
++			my $kiwi = $this-&gt;{kiwi};
++			my $msg = 'Only one profile may be set as the dafault profile by '
++			. 'using the &quot;import&quot; attrinute.';
++			$kiwi -&gt; error($msg);
++			$kiwi -&gt; failed();
++			return undef;
++		}
++	}
++	return 1;
++}
++
++#==========================================
++# __checkDefaultTypeSetting
++#------------------------------------------
++sub __checkDefaultTypeSetting {
++	# ...
++	# Check that only one type is marked as primary per profile
++	# ---
++	my $this        = shift;
++	my $systemTree  = $this-&gt;{systemTree};
++	my @preferences = $systemTree -&gt; getElementsByTagName('preferences');
++	for my $pref (@preferences) {
++		my $hasPrimary = 0;
++		my @types = $pref -&gt; getChildrenByTagName('type');
++		for my $typeN (@types) {
++			my $primary = $typeN -&gt; getAttribute('primary');
++			if (defined $primary &amp;&amp; $primary eq 'true') {
++				$hasPrimary++;
++			}
++			if ($hasPrimary &gt; 1) {
++				my $kiwi = $this-&gt;{kiwi};
++				my $msg = 'Only one primary type my be specified per '
++				. 'preferences section.';
++				$kiwi -&gt; error ($msg);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++		}
++	}
++	return 1;
++}
++
++#==========================================
+ # __checkFilesysSpec
+ #------------------------------------------
+ sub __checkFilesysSpec {
+@@ -4453,7 +4530,7 @@ sub __checkFilesysSpec {
+ 	my $isInvalid;
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my @typeNodes = $this-&gt;{systemTree} -&gt; getElementsByTagName(&quot;type&quot;);
+-	my @typesReqFS = qw /oem usb vmx/;
++	my @typesReqFS = qw /oem pxe usb vmx/;
+ 	for my $typeN (@typeNodes) {
+ 		my $imgType = $typeN -&gt; getAttribute( &quot;image&quot; );
+ 		if (grep /$imgType/, @typesReqFS) {
+@@ -4484,8 +4561,7 @@ sub __checkPostDumpAction {
+ 	# ---
+ 	my $this = shift;
+ 	my @confNodes = $this-&gt;{systemTree} -&gt; getElementsByTagName(&quot;oemconfig&quot;);
+-	if (@confNodes) {
+-		my $oemconfig = $confNodes[0];
++	for my $oemconfig (@confNodes) {
+ 		my @postDumOpts = qw
+ 		/oem-bootwait oem-reboot
+ 		 oem-reboot-interactive
+@@ -4515,6 +4591,83 @@ sub __checkPostDumpAction {
+ }
+ 
+ #==========================================
++# __checkPreferencesDefinition
++#------------------------------------------
++sub __checkPreferencesDefinition {
++	# ...
++	# Check that only one &lt;preference&gt; definition exists without
++	# use of the profiles attribute.
++	#
++	my $this            = shift;
++	my $kiwi            = $this-&gt;{kiwi};
++	my $numProfilesAttr = 0;
++	my $systemTree      = $this-&gt;{systemTree};
++	my @preferences     = $systemTree -&gt; getElementsByTagName('preferences');
++	my @usedProfs       = ();
++	for my $pref (@preferences) {
++		my $profName = $pref -&gt; getAttribute('profiles');
++		if (! $profName) {
++			$numProfilesAttr++;
++		} else {
++			if (grep /$profName/, @usedProfs) {
++				my $msg = 'Only one &lt;preferences&gt; element may reference a '
++				. &quot;given profile. $profName referenced multiple times.&quot;;
++				$kiwi -&gt; error ($msg);
++				$kiwi -&gt; failed ();
++				return undef;
++			} else {
++				push @usedProfs, $profName;
++			}
++		}
++		if ($numProfilesAttr &gt; 1) {
++			my $msg = 'Specify only one &lt;preferences&gt; element without using '
++			. 'the &quot;profiles&quot; attribute.';
++			$kiwi -&gt; error ($msg);
++			$kiwi -&gt; failed();
++			return undef;
++		}
++	}
++	return 1;
++}
++
++#==========================================
++# __checkReferencedProfDefined
++#------------------------------------------
++sub __checkReferencedProfDefined {
++	# ...
++	# Check that any reference of profiles has a defined target, i.e. the
++	# profile must be defined
++	# ---
++	my $this       = shift;
++	my $kiwi       = $this-&gt;{kiwi};
++	my $status     = 1;
++	my $systemTree = $this-&gt;{systemTree};
++	my @profiles = $systemTree -&gt; getElementsByTagName('profile');
++	my @profNames = ();
++	for my $prof (@profiles) {
++		push @profNames, $prof -&gt; getAttribute('name');
++	}
++	my @nodes = ();
++	push @nodes, $systemTree -&gt; getElementsByTagName('drivers');
++	push @nodes, $systemTree -&gt; getElementsByTagName('packages');
++	push @nodes, $systemTree -&gt; getElementsByTagName('preferences');
++	push @nodes, $systemTree -&gt; getElementsByTagName('repository');
++	for my $node (@nodes) {
++		my $refProf = $node -&gt; getAttribute('profiles');
++		if (defined $refProf) {
++			if (! grep /$refProf/, @profNames) {
++				my $msg = &quot;Found reference to profile $refProf &quot;
++				. 'but this profile does not exist.';
++				$kiwi -&gt; error ($msg);
++				$kiwi -&gt; failed ();
++				$status = undef;
++			}
++		}
++	}
++	return $status;
++}
++
++#==========================================
+ # __checkRevision
+ #------------------------------------------
+ sub __checkRevision {
+@@ -4523,9 +4676,11 @@ sub __checkRevision {
+ 	# ---
+ 	my $this = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
++	my $systemTree = $this-&gt;{systemTree};
++	my $imgnameNodeList = $systemTree -&gt; getElementsByTagName (&quot;image&quot;);
+ 	if (open (my $FD,$main::Revision)) {
+ 		my $cur_rev = &lt;$FD&gt;; close $FD;
+-		my $req_rev = $this-&gt;{imgnameNodeList}
++		my $req_rev = $imgnameNodeList
+ 			-&gt; get_node(1) -&gt; getAttribute (&quot;kiwirevision&quot;);
+ 		if ((defined $req_rev) &amp;&amp; ($cur_rev &lt; $req_rev)) {
+ 			$kiwi -&gt; failed ();
+@@ -4540,9 +4695,9 @@ sub __checkRevision {
+ }
+ 
+ #==========================================
+-# __checkVersionFormat
++# __checkVersionDefinition
+ #------------------------------------------
+-sub __checkVersionFormat {
++sub __checkVersionDefinition {
+ 	# ...
+ 	# Check image version format
+ 	# This check should be implemented in the schema but there is a
+@@ -4550,7 +4705,16 @@ sub __checkVersionFormat {
+ 	# ---
+ 	my $this = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+-	my $version = $this -&gt; getImageVersion();
++	my $systemTree = $this-&gt;{systemTree};
++	my @versions = $systemTree -&gt; getElementsByTagName(&quot;version&quot;);
++	my $numVersions = @versions;
++	if ($numVersions &gt; 1) {
++		my $msg = &quot;Only one &lt;version&gt; definition expected, found $numVersions&quot;;
++		$kiwi -&gt; error  ($msg);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	my $version = $versions[0] -&gt; textContent();
+ 	if ($version !~ /^\d+\.\d+\.\d+$/) {
+ 		$kiwi -&gt; error  (&quot;Invalid version format: $version&quot;);
+ 		$kiwi -&gt; failed ();
+@@ -4623,18 +4787,34 @@ sub __validateConsistency {
+ 	# Validate XML data that cannot be validated through Schema and
+ 	# structure validation. This includes conditional presence of
+ 	# elements and attributes as well as certain values.
++	# Note that any checks need to work off $this-&gt;{systemTree}. The
++	# consistency check occurs prior to this object being porpulated
++	# with XML data. This allows us to basically have no error checking
++	# in any code that populates this object from XML data.
+ 	# ---
+ 	my $this = shift;
+-	if (! $this -&gt; __checkRevision()) {
++	if (! $this -&gt; __checkDefaultProfSetting()) {
++		return undef;
++	}
++	if (! $this -&gt; __checkDefaultTypeSetting()){
+ 		return undef;
+ 	}
+-	if (! $this -&gt; __checkVersionFormat()) {
++	if (! $this -&gt; __checkFilesysSpec()) {
+ 		return undef;
+ 	}
+ 	if (! $this -&gt; __checkPostDumpAction()) {
+ 		return undef;
+ 	}
+-	if (! $this -&gt; __checkFilesysSpec()) {
++	if (! $this -&gt; __checkPreferencesDefinition()) {
++		return undef;
++	}
++	if (! $this -&gt; __checkReferencedProfDefined()) {
++		return undef;
++	}
++	if (! $this -&gt; __checkRevision()) {
++		return undef;
++	}
++	if (! $this -&gt; __checkVersionDefinition()) {
+ 		return undef;
+ 	}
+ 	return 1;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002840.html">[Kiwi-devel] XML processing - patch one of many
+</A></li>
+	<LI>Next message: <A HREF="002841.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2839">[ date ]</a>
+              <a href="thread.html#2839">[ thread ]</a>
+              <a href="subject.html#2839">[ subject ]</a>
+              <a href="author.html#2839">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

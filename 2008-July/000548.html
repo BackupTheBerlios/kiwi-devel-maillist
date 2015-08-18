@@ -1,0 +1,216 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1464 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1464%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200807160925.m6G9PqUv019327%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000547.html">
+   <LINK REL="Next"  HREF="000549.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1464 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1464%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200807160925.m6G9PqUv019327%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1464 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jul 16 11:25:52 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000547.html">[Kiwi-devel] r1463 - kiwi-head/rpm
+</A></li>
+        <LI>Next message: <A HREF="000549.html">[Kiwi-devel] r1465 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#548">[ date ]</a>
+              <a href="thread.html#548">[ thread ]</a>
+              <a href="subject.html#548">[ subject ]</a>
+              <a href="author.html#548">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-07-16 11:25:45 +0200 (Wed, 16 Jul 2008)
+New Revision: 1464
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIConfig.sh
+   kiwi-head/modules/KIWIImage.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+Log:
+
+- fixed suseStripKernel function to work with ppc
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-07-15 14:13:29 UTC (rev 1463)
++++ kiwi-head/kiwi.pl	2008-07-16 09:25:45 UTC (rev 1464)
+@@ -43,7 +43,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;2.58&quot;;
++our $Version       = &quot;2.59&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+ our $ConfigFile    = &quot;$ENV{'HOME'}/.kiwirc&quot;;
+ our $ConfigName    = &quot;config.xml&quot;;
+
+Modified: kiwi-head/modules/KIWIConfig.sh
+===================================================================
+--- kiwi-head/modules/KIWIConfig.sh	2008-07-15 14:13:29 UTC (rev 1463)
++++ kiwi-head/modules/KIWIConfig.sh	2008-07-16 09:25:45 UTC (rev 1464)
+@@ -931,7 +931,7 @@
+ 				continue
+ 			fi
+ 			VERSION=$(/usr/bin/basename $i)
+-			echo &quot;Stripping kernel $p: Image [$name]...&quot;
++			echo &quot;Stripping kernel $p: Image [$kiwi_iname]...&quot;
+ 			#==========================================
+ 			# move interesting stuff to /tmp
+ 			#------------------------------------------
+@@ -1055,8 +1055,13 @@
+ 			# create common kernel files, last wins !
+ 			#------------------------------------------
+ 			pushd /boot
+-			mv vmlinux-$VERSION.gz vmlinux.gz
+-			mv vmlinuz-$VERSION vmlinuz
++			if [ -f vmlinux-$VERSION.gz ];then
++				mv vmlinux-$VERSION.gz vmlinux.gz
++				mv vmlinuz-$VERSION vmlinuz
++			else
++				cp vmlinux-$VERSION vmlinux
++				mv vmlinux-$VERSION vmlinuz
++			fi
+ 			popd
+ 		done
+ 	done
+
+Modified: kiwi-head/modules/KIWIImage.pm
+===================================================================
+--- kiwi-head/modules/KIWIImage.pm	2008-07-15 14:13:29 UTC (rev 1463)
++++ kiwi-head/modules/KIWIImage.pm	2008-07-16 09:25:45 UTC (rev 1464)
+@@ -2982,7 +2982,7 @@
+ 	# extract kernel from physical extend
+ 	#------------------------------------------
+ 	# This is done for boot images only. Therefore we check
+-	# if the file vmlinux.gz exists which was created by the
++	# if the file vmlinux[.gz] exists which was created by the
+ 	# suseStripKernel() function
+ 	# ---
+ 	if (! defined $name) {
+@@ -3021,7 +3021,7 @@
+ 			last SWITCH;
+ 		};
+ 	}
+-	if (-f &quot;$imageTree/boot/vmlinux.gz&quot;) {
++	if ((-f &quot;$imageTree/boot/vmlinux.gz&quot;) || (-f &quot;$imageTree/boot/vmlinux&quot;)) {
+ 		$kiwi -&gt; info (&quot;Extracting kernel...&quot;);
+ 		my $pwd = qxx (&quot;pwd&quot;); chomp $pwd;
+ 		my $file = &quot;$imageDest/$name.kernel&quot;;
+@@ -3039,20 +3039,27 @@
+ 			$kiwi -&gt; failed ();
+ 			return undef;
+ 		}
+-		my $gzfile;
++		my $kfile;
++		my $zipped = 1;
+ 		if (-f &quot;$imageTree/boot/vmlinux.gz&quot;) {
+-			$gzfile = &quot;$imageTree/boot/vmlinux.gz&quot;;
++			$kfile = &quot;$imageTree/boot/vmlinux.gz&quot;;
+ 		} elsif (-f &quot;$imageTree/boot/xen.gz&quot;) {
+-			$gzfile = &quot;$imageTree/boot/xen.gz&quot;;
++			$kfile = &quot;$imageTree/boot/xen.gz&quot;;
++		} elsif (-f &quot;$imageTree/boot/vmlinux&quot;) {
++			$kfile = &quot;$imageTree/boot/vmlinux&quot;;
++			$zipped= 0;
+ 		} else {
+ 			$kiwi -&gt; failed ();
+-			$kiwi -&gt; info   (&quot;Couldn't find compressed kernel&quot;);
++			$kiwi -&gt; info   (&quot;Couldn't find kernel file&quot;);
+ 			$kiwi -&gt; failed ();
+ 			return undef;
+ 		}
+-		my $kernel = qxx (
+-			&quot;$main::Gzip -dc $gzfile | strings | grep $lx | cut $sp&quot;
+-		);
++		my $kernel;
++		if ($zipped) {
++			$kernel = qxx (&quot;$main::Gzip -dc $kfile| strings| grep $lx|cut $sp&quot;);
++		} else {
++			$kernel = qxx (&quot;cat $kfile| strings| grep $lx| cut $sp&quot;);
++		}
+ 		chomp $kernel;
+ 		qxx (&quot;rm -f $file.$kernel&quot;);
+ 		qxx (&quot;mv $file $file.$kernel &amp;&amp; ln -s $file.$kernel $file &quot;);
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-07-15 14:13:29 UTC (rev 1463)
++++ kiwi-head/rpm/kiwi.changes	2008-07-16 09:25:45 UTC (rev 1464)
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Wed Jul 16 10:58:08 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v2.59
++- fixed suseStripKernel function to work with ppc
++
++-------------------------------------------------------------------
+ Mon Jul 14 11:30:50 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.58
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-07-15 14:13:29 UTC (rev 1463)
++++ kiwi-head/rpm/kiwi.spec	2008-07-16 09:25:45 UTC (rev 1464)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 2.58
++# spec file for package kiwi (Version 2.59
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -42,7 +42,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        2.58
++Version:        2.59
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000547.html">[Kiwi-devel] r1463 - kiwi-head/rpm
+</A></li>
+	<LI>Next message: <A HREF="000549.html">[Kiwi-devel] r1465 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#548">[ date ]</a>
+              <a href="thread.html#548">[ thread ]</a>
+              <a href="subject.html#548">[ subject ]</a>
+              <a href="author.html#548">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

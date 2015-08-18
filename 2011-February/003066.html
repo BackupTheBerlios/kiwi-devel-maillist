@@ -1,0 +1,140 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2e43b9ad0d173a2dddd5e4625914b25e4da588d7
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%202e43b9ad0d173a2dddd5e4625914b25e4da588d7&In-Reply-To=%3C20110215164111.E2E8D4813D6%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003065.html">
+   <LINK REL="Next"  HREF="003067.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2e43b9ad0d173a2dddd5e4625914b25e4da588d7</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%202e43b9ad0d173a2dddd5e4625914b25e4da588d7&In-Reply-To=%3C20110215164111.E2E8D4813D6%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2e43b9ad0d173a2dddd5e4625914b25e4da588d7">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Feb 15 17:41:11 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003065.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. 0f1f74933d942881dee4ab0782c7126069c77301
+</A></li>
+        <LI>Next message: <A HREF="003067.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. adc906c9e2bdc0eb057a419ca8fca290111def55
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3066">[ date ]</a>
+              <a href="thread.html#3066">[ thread ]</a>
+              <a href="subject.html#3066">[ subject ]</a>
+              <a href="author.html#3066">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  2e43b9ad0d173a2dddd5e4625914b25e4da588d7 (commit)
+      from  4c7ab03f795f2337fd8be774898efc0dcca44d43 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 2e43b9ad0d173a2dddd5e4625914b25e4da588d7
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Feb 15 17:38:59 2011 +0100
+
+    - fixed createSnapshotMap() to be able to setup snapshot tables
+      multiple times in a row. this requires unique table names
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIOverlay.pm b/modules/KIWIOverlay.pm
+index 08e046f..4ddf357 100644
+--- a/modules/KIWIOverlay.pm
++++ b/modules/KIWIOverlay.pm
+@@ -289,6 +289,8 @@ sub createSnapshotMap {
+ 	my $code;
+ 	my %result;
+ 	my $table;
++	my $range = 0xfe;
++	my $tsalt = 1 + int (rand($range));
+ 	#======================================
+ 	# create root filesystem loop device
+ 	#--------------------------------------
+@@ -325,24 +327,24 @@ sub createSnapshotMap {
+ 	# setup device mapper tables
+ 	#--------------------------------------
+ 	$orig_s =qxx (&quot;blockdev --getsize $imageLoop&quot;); chomp $orig_s;
+-	qxx (&quot;echo '0 $orig_s linear $imageLoop 0' | dmsetup create ms_data&quot;);
+-	push (@releaseList,&quot;dmsetup remove ms_data&quot;);
+-	qxx (&quot;dmsetup create ms_origin --notable&quot;);
+-	push (@releaseList,&quot;dmsetup remove ms_origin&quot;);
+-	qxx (&quot;dmsetup table ms_data | dmsetup load ms_origin&quot;);
+-	qxx (&quot;dmsetup resume ms_origin&quot;);
+-	qxx (&quot;dmsetup create ms_snap --notable&quot;);
+-	push (@releaseList,&quot;dmsetup remove ms_snap&quot;);
++	qxx (&quot;echo '0 $orig_s linear $imageLoop 0'|dmsetup create ms_data_$tsalt&quot;);
++	push (@releaseList,&quot;dmsetup remove ms_data_$tsalt&quot;);
++	qxx (&quot;dmsetup create ms_origin_$tsalt --notable&quot;);
++	push (@releaseList,&quot;dmsetup remove ms_origin_$tsalt&quot;);
++	qxx (&quot;dmsetup table ms_data_$tsalt | dmsetup load ms_origin_$tsalt&quot;);
++	qxx (&quot;dmsetup resume ms_origin_$tsalt&quot;);
++	qxx (&quot;dmsetup create ms_snap_$tsalt --notable&quot;);
++	push (@releaseList,&quot;dmsetup remove ms_snap_$tsalt&quot;);
+ 	$table = &quot;0 $orig_s snapshot $imageLoop $snapLoop p $snapshotChunk&quot;;
+-	qxx (&quot;echo '$table' | dmsetup load ms_snap&quot;);
++	qxx (&quot;echo '$table' | dmsetup load ms_snap_$tsalt&quot;);
+ 	$table = &quot;0 $orig_s snapshot-origin $imageLoop&quot;;
+-	qxx (&quot;echo '$table' | dmsetup load ms_data&quot;);
+-	qxx (&quot;dmsetup resume ms_snap&quot;);
+-	qxx (&quot;dmsetup resume ms_data&quot;);
++	qxx (&quot;echo '$table' | dmsetup load ms_data_$tsalt&quot;);
++	qxx (&quot;dmsetup resume ms_snap_$tsalt&quot;);
++	qxx (&quot;dmsetup resume ms_data_$tsalt&quot;);
+ 	#======================================
+ 	# return result
+ 	#--------------------------------------
+-	$snapshotMap = &quot;/dev/mapper/ms_snap&quot;;
++	$snapshotMap = &quot;/dev/mapper/ms_snap_$tsalt&quot;;
+ 	$result{mount} = $snapshotMap;
+ 	$result{stack} = \@releaseList;
+ 	return %result;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003065.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. 0f1f74933d942881dee4ab0782c7126069c77301
+</A></li>
+	<LI>Next message: <A HREF="003067.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. adc906c9e2bdc0eb057a419ca8fca290111def55
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3066">[ date ]</a>
+              <a href="thread.html#3066">[ thread ]</a>
+              <a href="subject.html#3066">[ subject ]</a>
+              <a href="author.html#3066">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

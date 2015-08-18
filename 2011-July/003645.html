@@ -1,0 +1,483 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b6147ab71dac5f1c2e410bcbe04931e20ba19b81
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b6147ab71dac5f1c2e410bcbe04931e20ba19b81&In-Reply-To=%3C20110726152951.1AC3148148B%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003644.html">
+   <LINK REL="Next"  HREF="003648.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b6147ab71dac5f1c2e410bcbe04931e20ba19b81</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b6147ab71dac5f1c2e410bcbe04931e20ba19b81&In-Reply-To=%3C20110726152951.1AC3148148B%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b6147ab71dac5f1c2e410bcbe04931e20ba19b81">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jul 26 17:29:50 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003644.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 699ac9a598d47ef18e374a68da80cf98e6721839
+</A></li>
+        <LI>Next message: <A HREF="003648.html">[Kiwi-devel] Support bootwait action with other post dump actions
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3645">[ date ]</a>
+              <a href="thread.html#3645">[ thread ]</a>
+              <a href="subject.html#3645">[ subject ]</a>
+              <a href="author.html#3645">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  b6147ab71dac5f1c2e410bcbe04931e20ba19b81 (commit)
+      from  699ac9a598d47ef18e374a68da80cf98e6721839 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b6147ab71dac5f1c2e410bcbe04931e20ba19b81
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Jul 26 17:28:06 2011 +0200
+
+    - increased performance of the splash creation. Instead of
+      ripping the splash information out from the created initrd
+      cpio archive, the splash files are now obtained from the
+      unpacked tree and stored in a .spl file for appending it
+      later to the final initrd (bnc #708357)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index c724a16..879528f 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -2488,58 +2488,6 @@ sub setupBootDisk {
+ }
+ 
+ #==========================================
+-# extractCPIO
+-#------------------------------------------
+-sub extractCPIO {
+-	my $this = shift;
+-	my $file = shift;
+-	if (! open FD,$file) {
+-		return 0;
+-	}
+-	local $/;
+-	my $data   = &lt;FD&gt;; close FD;
+-	my @data   = split (//,$data);
+-	my $stream = &quot;&quot;;
+-	my $count  = 0;
+-	my $start  = 0;
+-	my $pos1   = -1;
+-	my $pos2   = -1;
+-	my @index;
+-	while (1) {
+-		my $pos1 = index ($data,&quot;TRAILER!!!&quot;,$start);
+-		if ($pos1 &gt;= $start) {
+-			$pos2 = index ($data,&quot;07070&quot;,$pos1);
+-		} else {
+-			last;
+-		}
+-		if ($pos2 &gt;= $pos1) {
+-			$pos2--;
+-			push (@index,$pos2);
+-			#print &quot;$start -&gt; $pos2\n&quot;;
+-			$start = $pos2;
+-		} else {
+-			$pos2 = @data; $pos2--;
+-			push (@index,$pos2);
+-			#print &quot;$start -&gt; $pos2\n&quot;;
+-			last;
+-		}
+-	}
+-	for (my $i=0;$i&lt;@data;$i++) {
+-		$stream .= $data[$i];
+-		if ($i == $index[$count]) {
+-			$count++;
+-			if (! open FD,&quot;&gt;$file.$count&quot;) {
+-				return 0;
+-			}
+-			print FD $stream;
+-			close FD;
+-			$stream = &quot;&quot;;
+-		}
+-	}
+-	return $count;
+-}
+-
+-#==========================================
+ # setupInstallFlags
+ #------------------------------------------
+ sub setupInstallFlags {
+@@ -2629,18 +2577,22 @@ sub setupSplash {
+ 	my $kiwi   = $this-&gt;{kiwi};
+ 	my $initrd = $this-&gt;{initrd};
+ 	my $zipped = 0;
++	my $status;
+ 	my $newird;
++	my $splfile;
+ 	my $result;
+ 	#==========================================
+-	# check if compressed and setup splash.gz
++	# setup file names
+ 	#------------------------------------------
+ 	if ($initrd =~ /\.gz$/) {
+ 		$zipped = 1;
+ 	}
+ 	if ($zipped) {
+ 		$newird = $initrd; $newird =~ s/\.gz/\.splash.gz/;
++		$splfile= $initrd; $splfile =~ s/\.gz/\.spl/;
+ 	} else {
+ 		$newird = $initrd.&quot;.splash.gz&quot;;
++		$splfile= $initrd.&quot;.spl&quot;;
+ 	}
+ 	#==========================================
+ 	# check if splash initrd is already there
+@@ -2649,50 +2601,19 @@ sub setupSplash {
+ 		# splash initrd already created...
+ 		return $newird;
+ 	}
+-	#==========================================
+-	# create temp dir for operations
+-	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Setting up splash screen...&quot;);
+-	my $spldir = qxx (&quot;mktemp -q -d /tmp/kiwisplash.XXXXXX&quot;);
+-	my $status = $? &gt;&gt; 8;
+-	if ($status != 0) {
+-		$kiwi -&gt; skipped ();
+-		$kiwi -&gt; warning  (&quot;Failed to create splash directory: $!&quot;);
+-		$kiwi -&gt; skipped ();
+-		return $initrd;
+-	}
+-	chomp $spldir;
+-	my $irddir = &quot;$spldir/initrd&quot;;
+-	#==========================================
+-	# unpack initrd files
+-	#------------------------------------------
+-	mkdir $irddir;
+-	my $unzip  = &quot;$this-&gt;{gdata}-&gt;{Gzip} -cd $initrd 2&gt;&amp;1&quot;;
+-	if ($zipped) {
+-		$status = qxx (&quot;$unzip | (cd $irddir &amp;&amp; cpio -di 2&gt;&amp;1)&quot;);
+-	} else {
+-		$status = qxx (&quot;cat $initrd | (cd $irddir &amp;&amp; cpio -di 2&gt;&amp;1)&quot;);
+-	}
+-	$result = $? &gt;&gt; 8;
+-	if ($result != 0) {
+-		$kiwi -&gt; skipped ();
+-		$kiwi -&gt; warning (&quot;Failed to extract data: $!&quot;);
+-		$kiwi -&gt; skipped ();
+-		qxx (&quot;rm -rf $spldir&quot;);
+-		return $initrd;
+-	}
+ 	#==========================================
+-	# check for splash system
++	# setup splash in initrd
+ 	#------------------------------------------
+-	if (-x $irddir.&quot;/usr/sbin/splashy&quot;) {
+-		$status = $this -&gt; setupSplashy ($newird);
++	if (-f $splfile) {
++		qxx (&quot;cat $initrd $splfile &gt; $newird&quot;);
++		$status = &quot;ok&quot;;
+ 	} else {
+-		$status = $this -&gt; setupSplashForGrub ($spldir,$newird);
++		$status = &quot;Can't find splash file: $splfile&quot;;
+ 	}
+ 	#==========================================
+-	# cleanup
++	# check status and return
+ 	#------------------------------------------
+-	qxx (&quot;rm -rf $spldir&quot;);
+ 	if ($status ne &quot;ok&quot;) {
+ 		$kiwi -&gt; skipped ();
+ 		$kiwi -&gt; warning ($status);
+@@ -2748,86 +2669,6 @@ sub setupSplashLink {
+ }
+ 
+ #==========================================
+-# setupSplashy
+-#------------------------------------------
+-sub setupSplashy {
+-	# ...
+-	# when booting with splashy no changes to the initrd are
+-	# required. This function only makes sure the .splash.gz
+-	# file exists. This is done by creating a link to the
+-	# original initrd file
+-	# ---
+-	my $this   = shift;
+-	my $newird = shift;
+-	my $status = $this -&gt; setupSplashLink ($newird);
+-	return $status;
+-}
+-
+-#==========================================
+-# setupSplashForGrub
+-#------------------------------------------
+-sub setupSplashForGrub {
+-	# ...
+-	# when booting with grub it is required to append the splash
+-	# files (cpio data) at the end of the boot image (initrd)
+-	# --- 
+-	my $this   = shift;
+-	my $spldir = shift;
+-	my $newird = shift;
+-	my $newspl = &quot;$spldir/splash&quot;;
+-	my $irddir = &quot;$spldir/initrd&quot;;
+-	my $zipper = $this-&gt;{gdata}-&gt;{Gzip};
+-	my $status;
+-	my $result;
+-	#==========================================
+-	# move splash files
+-	#------------------------------------------
+-	mkdir $newspl;
+-	$status = qxx (&quot;mv $irddir/image/loader/*.spl $newspl 2&gt;&amp;1&quot;);
+-	$result = $? &gt;&gt; 8;
+-	if ($result != 0) {
+-		return (&quot;No splash files found in initrd&quot;);		
+-	}
+-	#==========================================
+-	# create new splash with all pictures
+-	#------------------------------------------
+-	while (my $splash = glob(&quot;$newspl/*.spl&quot;)) {
+-		mkdir &quot;$splash.dir&quot;;
+-		qxx (&quot;$zipper -cd $splash &gt; $splash.bob&quot;);
+-		my $count = $this -&gt; extractCPIO ( $splash.&quot;.bob&quot; );
+-		for (my $id=1; $id &lt;= $count; $id++) {
+-			qxx (&quot;cat $splash.bob.$id |(cd $splash.dir &amp;&amp; cpio -i 2&gt;&amp;1)&quot;);
+-		}
+-		qxx (&quot;cp -a $splash.dir/etc $newspl&quot;);
+-		$result = 1;
+-		if (-e &quot;$splash.dir/bootsplash&quot;) {
+-			qxx (&quot;cat $splash.dir/bootsplash &gt;&gt; $newspl/bootsplash&quot;);
+-			$result = $? &gt;&gt; 8;
+-		}
+-		qxx (&quot;rm -rf $splash.dir&quot;);
+-		qxx (&quot;rm -f  $splash.bob*&quot;);
+-		qxx (&quot;rm -f  $splash&quot;);
+-		if ($result != 0) {
+-			my $splfile = basename ($splash);
+-			return (&quot;No bootsplash file found in $splfile cpio&quot;);
+-		}
+-	}
+-	qxx (
+-		&quot;(cd $newspl &amp;&amp; \
+-		find|cpio --quiet -oH newc | $zipper) &gt; $spldir/all.spl&quot;
+-	);
+-	qxx (
+-		&quot;rm -f $newird &amp;&amp; \
+-		(cd $irddir &amp;&amp; find | cpio --quiet -oH newc | $zipper) &gt; $newird&quot;
+-	);
+-	#==========================================
+-	# create splash initrd
+-	#------------------------------------------
+-	qxx (&quot;cat $spldir/all.spl &gt;&gt; $newird&quot;);
+-	return &quot;ok&quot;;
+-}
+-
+-#==========================================
+ # cleanLoop
+ #------------------------------------------
+ sub cleanLoop {
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index b34090d..3eaa0df 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -877,6 +877,7 @@ sub createImageCPIO {
+ 	#==========================================
+ 	# PRE Create filesystem on extend
+ 	#------------------------------------------
++	$kiwi -&gt; info (&quot;Creating cpio archive...&quot;);
+ 	my $pwd  = qxx (&quot;pwd&quot;); chomp $pwd;
+ 	my @cpio = (&quot;--create&quot;, &quot;--format=newc&quot;, &quot;--quiet&quot;);
+ 	my $dest = $this-&gt;{imageDest}.&quot;/&quot;.$name.&quot;.gz&quot;;
+@@ -906,11 +907,13 @@ sub createImageCPIO {
+ 	}
+ 	my $code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
++		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;Couldn't create cpio archive&quot;);
+ 		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  ($data);
+ 		return undef;
+ 	}
++	$kiwi -&gt; done();
+ 	#==========================================
+ 	# PRE filesystem setup
+ 	#------------------------------------------
+@@ -3280,6 +3283,7 @@ sub setupLogicalExtend {
+ 		if (! $this -&gt; extractKernel ($name)) {
+ 			return undef;
+ 		}
++		$this -&gt; extractSplash ($name);
+ 	}
+ 	#==========================================
+ 	# Strip if specified
+@@ -3372,6 +3376,66 @@ sub mountLogicalExtend {
+ }
+ 
+ #==========================================
++# extractSplash
++#------------------------------------------
++sub extractSplash {
++	my $this = shift;
++	my $name = shift;
++	my $kiwi = $this-&gt;{kiwi};
++	my $imageTree = $this-&gt;{imageTree};
++	my $imageDest = $this-&gt;{imageDest};
++	my $zipper    = $this-&gt;{gdata}-&gt;{Gzip};
++	my $newspl    = $imageDest.&quot;/splash&quot;;
++	#==========================================
++	# move out all splash files
++	#------------------------------------------
++	$kiwi -&gt; info (&quot;Extracting splash files...&quot;);
++	mkdir $newspl;
++	my $status = qxx (&quot;mv $imageTree/image/loader/*.spl $newspl 2&gt;&amp;1&quot;);
++	my $result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; skipped ();
++		$kiwi -&gt; info (&quot;No splash files found in initrd&quot;);
++		$kiwi -&gt; skipped ();
++		unlink $newspl;
++		return $this;
++	}
++	#==========================================
++	# create new splash with all pictures
++	#------------------------------------------
++	while (my $splash = glob(&quot;$newspl/*.spl&quot;)) {
++		mkdir &quot;$splash.dir&quot;;
++		qxx (&quot;$zipper -cd $splash &gt; $splash.bob&quot;);
++		my $count = $this -&gt; extractCPIO ( $splash.&quot;.bob&quot; );
++		for (my $id=1; $id &lt;= $count; $id++) {
++			qxx (&quot;cat $splash.bob.$id |(cd $splash.dir &amp;&amp; cpio -i 2&gt;&amp;1)&quot;);
++		}
++		qxx (&quot;cp -a $splash.dir/etc $newspl&quot;);
++		$result = 1;
++		if (-e &quot;$splash.dir/bootsplash&quot;) {
++			qxx (&quot;cat $splash.dir/bootsplash &gt;&gt; $newspl/bootsplash&quot;);
++			$result = $? &gt;&gt; 8;
++		}
++		qxx (&quot;rm -rf $splash.dir&quot;);
++		qxx (&quot;rm -f  $splash.bob*&quot;);
++		qxx (&quot;rm -f  $splash&quot;);
++		if ($result != 0) {
++			my $splfile = basename ($splash);
++			$kiwi -&gt; skipped ();
++			$kiwi -&gt; info (&quot;No bootsplash file found in $splfile cpio&quot;);
++			$kiwi -&gt; skipped ();
++			return $this;
++		}
++	}
++	qxx (&quot;(cd $newspl &amp;&amp; \
++		find|cpio --quiet -oH newc | $zipper) &gt; $imageDest/$name.spl&quot;
++	);
++	qxx (&quot;rm -rf $newspl&quot;);
++	$kiwi -&gt; done();
++	return $this;
++}
++
++#==========================================
+ # extractKernel
+ #------------------------------------------
+ sub extractKernel {
+@@ -4221,6 +4285,58 @@ sub buildImageName {
+ }
+ 
+ #==========================================
++# extractCPIO
++#------------------------------------------
++sub extractCPIO {
++	my $this = shift;
++	my $file = shift;
++	if (! open FD,$file) {
++		return 0;
++	}
++	local $/;
++	my $data   = &lt;FD&gt;; close FD;
++	my @data   = split (//,$data);
++	my $stream = &quot;&quot;;
++	my $count  = 0;
++	my $start  = 0;
++	my $pos1   = -1;
++	my $pos2   = -1;
++	my @index;
++	while (1) {
++		my $pos1 = index ($data,&quot;TRAILER!!!&quot;,$start);
++		if ($pos1 &gt;= $start) {
++			$pos2 = index ($data,&quot;07070&quot;,$pos1);
++		} else {
++			last;
++		}
++		if ($pos2 &gt;= $pos1) {
++			$pos2--;
++			push (@index,$pos2);
++			#print &quot;$start -&gt; $pos2\n&quot;;
++			$start = $pos2;
++		} else {
++			$pos2 = @data; $pos2--;
++			push (@index,$pos2);
++			#print &quot;$start -&gt; $pos2\n&quot;;
++			last;
++		}
++	}
++	for (my $i=0;$i&lt;@data;$i++) {
++		$stream .= $data[$i];
++		if ($i == $index[$count]) {
++			$count++;
++			if (! open FD,&quot;&gt;$file.$count&quot;) {
++				return 0;
++			}
++			print FD $stream;
++			close FD;
++			$stream = &quot;&quot;;
++		}
++	}
++	return $count;
++}
++
++#==========================================
+ # makeLabel
+ #------------------------------------------
+ sub makeLabel {
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003644.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 699ac9a598d47ef18e374a68da80cf98e6721839
+</A></li>
+	<LI>Next message: <A HREF="003648.html">[Kiwi-devel] Support bootwait action with other post dump actions
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3645">[ date ]</a>
+              <a href="thread.html#3645">[ thread ]</a>
+              <a href="subject.html#3645">[ subject ]</a>
+              <a href="author.html#3645">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

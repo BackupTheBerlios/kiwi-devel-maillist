@@ -1,0 +1,185 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6f3912ef47fa6ec3680cd949c6778d57d5f11031
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%206f3912ef47fa6ec3680cd949c6778d57d5f11031&In-Reply-To=%3C201006091057.o59AvhBQ017419%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002283.html">
+   <LINK REL="Next"  HREF="002281.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6f3912ef47fa6ec3680cd949c6778d57d5f11031</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%206f3912ef47fa6ec3680cd949c6778d57d5f11031&In-Reply-To=%3C201006091057.o59AvhBQ017419%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6f3912ef47fa6ec3680cd949c6778d57d5f11031">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jun  9 12:57:43 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002283.html">[Kiwi-devel] Reducing scope of eval
+</A></li>
+        <LI>Next message: <A HREF="002281.html">[Kiwi-devel] XML error reporting
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2280">[ date ]</a>
+              <a href="thread.html#2280">[ thread ]</a>
+              <a href="subject.html#2280">[ subject ]</a>
+              <a href="author.html#2280">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  6f3912ef47fa6ec3680cd949c6778d57d5f11031 (commit)
+      from  7f9bde16730804af871fbde3a00f68831a0790f0 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 6f3912ef47fa6ec3680cd949c6778d57d5f11031
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jun 9 12:57:32 2010 +0200
+
+    - also search for pattern file name in repomd.xml
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 8428112..0cc8be8 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -3736,19 +3736,22 @@ sub getSingleInstSourceSatSolvable {
+ 		my $rxml = new XML::LibXML;
+ 		my $tree = $rxml -&gt; parse_fh ( $RXML );
+ 		my $nodes= $tree -&gt; getElementsByTagName (&quot;data&quot;);
+-		my $path;
++		my $primary;
++		my $pattern;
+ 		my $time;
+ 		for (my $i=1;$i&lt;= $nodes-&gt;size();$i++) {
+ 			my $node = $nodes-&gt; get_node($i);
+ 			my $type = $node -&gt; getAttribute (&quot;type&quot;);
+-			if ($type ne &quot;primary&quot;) {
+-				next;
++			if ($type eq &quot;primary&quot;) {
++				$primary = $node -&gt; getElementsByTagName (&quot;location&quot;)
++					-&gt; get_node(1) -&gt; getAttribute (&quot;href&quot;);
++				$time = $node -&gt; getElementsByTagName (&quot;timestamp&quot;)
++					-&gt; get_node(1) -&gt; string_value();
++			}
++			if ($type eq &quot;patterns&quot;) {
++				$pattern = $node -&gt; getElementsByTagName (&quot;location&quot;)
++					-&gt; get_node(1) -&gt; getAttribute (&quot;href&quot;);
+ 			}
+-			$path = $node -&gt; getElementsByTagName (&quot;location&quot;)
+-				-&gt; get_node(1) -&gt; getAttribute (&quot;href&quot;);
+-			$time = $node -&gt; getElementsByTagName (&quot;timestamp&quot;)
+-				-&gt; get_node(1) -&gt; string_value();
+-			last;
+ 		}
+ 		close $RXML;
+ 		#==========================================
+@@ -3762,18 +3765,38 @@ sub getSingleInstSourceSatSolvable {
+ 			}
+ 		}
+ 		#==========================================
+-		# Store distro path and new time stamp
++		# Store distro/pattern path
+ 		#------------------------------------------
+-		my %newdistro = ();
+-		foreach my $key (keys %distro) {
+-			if ($distro{$key} ne &quot;distxml&quot;) {
+-				$newdistro{$key} = $distro{$key};
++		my %newdistro   = ();
++		my %newpatterns = ();
++		if ($primary) {
++			foreach my $key (keys %distro) {
++				if ($distro{$key} ne &quot;distxml&quot;) {
++					$newdistro{$key} = $distro{$key};
++				}
++			}
++			$newdistro{&quot;/&quot;.$primary}      = &quot;distxml&quot;;
++			$newdistro{&quot;/suse/&quot;.$primary} = &quot;distxml&quot;;
++		}
++		if ($pattern) {
++			foreach my $key (keys %patterns) {
++				if ($patterns{$key} ne &quot;projectxml&quot;) {
++					$newpatterns{$key} = $patterns{$key};
++				}
+ 			}
++			$newpatterns{&quot;/&quot;.$pattern} = &quot;projectxml&quot;;
++		}
++		if (%newdistro) {
++			undef %distro;
++			%distro = %newdistro;
++		}
++		if (%newpatterns) {
++			undef %patterns;
++			%patterns = %newpatterns;
+ 		}
+-		$newdistro{&quot;/&quot;.$path}      = &quot;distxml&quot;;
+-		$newdistro{&quot;/suse/&quot;.$path} = &quot;distxml&quot;;
+-		undef %distro;
+-		%distro = %newdistro;
++		#==========================================
++		# Store new time stamp
++		#------------------------------------------
+ 		if (! open ($RXML,&quot;&gt;$index.timestamp&quot;)) {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error (&quot;--&gt; Failed to create timestamp: $!&quot;);
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 563833a..e1293ac 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,9 @@
+ -------------------------------------------------------------------
++Wed Jun  9 12:40:39 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- also search for pattern file name in repomd.xml
++
++-------------------------------------------------------------------
+ Mon Jun  7 16:21:43 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v4.40
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002283.html">[Kiwi-devel] Reducing scope of eval
+</A></li>
+	<LI>Next message: <A HREF="002281.html">[Kiwi-devel] XML error reporting
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2280">[ date ]</a>
+              <a href="thread.html#2280">[ thread ]</a>
+              <a href="subject.html#2280">[ subject ]</a>
+              <a href="author.html#2280">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

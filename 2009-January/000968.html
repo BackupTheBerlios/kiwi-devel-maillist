@@ -1,0 +1,229 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1852 - in kiwi-head: . doc doc/LaTex modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1852%20-%20in%20kiwi-head%3A%20.%20doc%20doc/LaTex%20modules%20rpm&In-Reply-To=%3C200901161551.n0GFpXi6013860%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000967.html">
+   <LINK REL="Next"  HREF="000969.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1852 - in kiwi-head: . doc doc/LaTex modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1852%20-%20in%20kiwi-head%3A%20.%20doc%20doc/LaTex%20modules%20rpm&In-Reply-To=%3C200901161551.n0GFpXi6013860%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1852 - in kiwi-head: . doc doc/LaTex modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Jan 16 16:51:33 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000967.html">[Kiwi-devel] r1851 - kiwi-head/doc/LaTex
+</A></li>
+        <LI>Next message: <A HREF="000969.html">[Kiwi-devel] r1853 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#968">[ date ]</a>
+              <a href="thread.html#968">[ thread ]</a>
+              <a href="subject.html#968">[ subject ]</a>
+              <a href="author.html#968">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-01-16 16:50:59 +0100 (Fri, 16 Jan 2009)
+New Revision: 1852
+
+Modified:
+   kiwi-head/doc/LaTex/Revision.txt
+   kiwi-head/doc/kiwi.pdf
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/modules/KIWIImage.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+Log:
+
+- v3.05
+- fixed KIWIXML object construction in KIWIBoot.pm. The image
+  type parameter was unknown to the xml instances
+- added Documentation for inst-source creation by Jan
+- KIWICollect_local fix: FLAVOR became a variable instead of
+  info. Patch by Adrian
+
+
+
+
+Modified: kiwi-head/doc/LaTex/Revision.txt
+===================================================================
+--- kiwi-head/doc/LaTex/Revision.txt	2009-01-16 15:47:48 UTC (rev 1851)
++++ kiwi-head/doc/LaTex/Revision.txt	2009-01-16 15:50:59 UTC (rev 1852)
+@@ -1 +1 @@
+-3.03
+\ No newline at end of file
++3.05
+\ No newline at end of file
+
+Modified: kiwi-head/doc/kiwi.pdf
+===================================================================
+(Binary files differ)
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2009-01-16 15:47:48 UTC (rev 1851)
++++ kiwi-head/kiwi.pl	2009-01-16 15:50:59 UTC (rev 1852)
+@@ -44,7 +44,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.04&quot;;
++our $Version       = &quot;3.05&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2009-01-16 15:47:48 UTC (rev 1851)
++++ kiwi-head/modules/KIWIBoot.pm	2009-01-16 15:50:59 UTC (rev 1852)
+@@ -182,7 +182,9 @@
+ 	#------------------------------------------
+ 	if (defined $system) {
+ 		if (-d $system) {
+-			$xml = new KIWIXML ($kiwi,$system.&quot;/image&quot;);
++			$xml = new KIWIXML (
++				$kiwi,$system.&quot;/image&quot;,undef,$main::SetImageType
++			);
+ 		} else {
+ 			my %fsattr = main::checkFileSystem ($system);
+ 			if ((! $fsattr{type}) || ($fsattr{type} eq &quot;auto&quot;)) {
+@@ -227,7 +229,9 @@
+ 				#==========================================
+ 				# read disk image XML description
+ 				#------------------------------------------
+-				$xml = new KIWIXML ( $kiwi,$tmpdir.&quot;/image&quot;);
++				$xml = new KIWIXML (
++					$kiwi,$tmpdir.&quot;/image&quot;,undef,$main::SetImageType
++				);
+ 				#==========================================
+ 				# clean up
+ 				#------------------------------------------
+@@ -251,7 +255,9 @@
+ 				#==========================================
+ 				# read disk image XML description
+ 				#------------------------------------------
+-				$xml = new KIWIXML ( $kiwi,$tmpdir.&quot;/image&quot;);
++				$xml = new KIWIXML (
++					$kiwi,$tmpdir.&quot;/image&quot;,undef,$main::SetImageType
++				);
+ 				#==========================================
+ 				# clean up
+ 				#------------------------------------------
+
+Modified: kiwi-head/modules/KIWIImage.pm
+===================================================================
+--- kiwi-head/modules/KIWIImage.pm	2009-01-16 15:47:48 UTC (rev 1851)
++++ kiwi-head/modules/KIWIImage.pm	2009-01-16 15:50:59 UTC (rev 1852)
+@@ -794,6 +794,7 @@
+ 	$main::ForeignRepo{&quot;create&quot;}  = $main::Create;
+ 	$main::Compress = &quot;no&quot;;
+ 	$main::Create   = $main::RootTree;
++	my $imageTypeSaved = $main::SetImageType;
+ 	undef $main::SetImageType;
+ 	$kiwi -&gt; info (&quot;Checking for pre-built boot image&quot;);
+ 	if ((! $pblt) || ($pblt eq &quot;false&quot;) || ($pblt eq &quot;0&quot;)) {
+@@ -905,6 +906,7 @@
+ 	#==========================================
+ 	# Store meta data for subsequent calls
+ 	#------------------------------------------
++	$main::SetImageType = $imageTypeSaved;
+ 	$result{bootImage} = $main::ImageName;
+ 	if ($text eq &quot;VMX&quot;) {
+ 		$result{format} = $type{format};
+@@ -2450,6 +2452,7 @@
+ 		return undef;
+ 	}
+ 	my $iname = $xml -&gt; getImageName();
++	my $imageTypeSaved = $main::SetImageType;
+ 	undef $main::SetImageType;
+ 	$kiwi -&gt; info (&quot;Checking for pre-built boot image&quot;);
+ 
+@@ -2542,6 +2545,7 @@
+ 	#==========================================
+ 	# Check further actions due to boot image
+ 	#------------------------------------------
++	$main::SetImageType = $imageTypeSaved;
+ 	$name-&gt;{bootImage} = $main::ImageName;
+ 	$name-&gt;{format} = $type{format};
+ 	undef %main::ForeignRepo;
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2009-01-16 15:47:48 UTC (rev 1851)
++++ kiwi-head/rpm/kiwi.changes	2009-01-16 15:50:59 UTC (rev 1852)
+@@ -1,4 +1,14 @@
+ -------------------------------------------------------------------
++Fri Jan 16 17:22:25 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.05
++- fixed KIWIXML object construction in KIWIBoot.pm. The image
++  type parameter was unknown to the xml instances
++- added Documentation for inst-source creation by Jan
++- KIWICollect_local fix: FLAVOR became a variable instead of
++  info. Patch by Adrian
++
++-------------------------------------------------------------------
+ Thu Jan 15 09:58:23 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.04
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2009-01-16 15:47:48 UTC (rev 1851)
++++ kiwi-head/rpm/kiwi.spec	2009-01-16 15:50:59 UTC (rev 1852)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.04
++# spec file for package kiwi (Version 3.05
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.04
++Version:        3.05
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000967.html">[Kiwi-devel] r1851 - kiwi-head/doc/LaTex
+</A></li>
+	<LI>Next message: <A HREF="000969.html">[Kiwi-devel] r1853 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#968">[ date ]</a>
+              <a href="thread.html#968">[ thread ]</a>
+              <a href="subject.html#968">[ subject ]</a>
+              <a href="author.html#968">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

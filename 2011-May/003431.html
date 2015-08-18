@@ -1,0 +1,652 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b72e68e32a0209266106c32f547fd4de61206537
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b72e68e32a0209266106c32f547fd4de61206537&In-Reply-To=%3C20110517153001.2F33F481359%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003430.html">
+   <LINK REL="Next"  HREF="003433.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b72e68e32a0209266106c32f547fd4de61206537</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b72e68e32a0209266106c32f547fd4de61206537&In-Reply-To=%3C20110517153001.2F33F481359%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b72e68e32a0209266106c32f547fd4de61206537">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue May 17 17:30:00 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003430.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 57a5229ed7d9e83393fdba0be33c7b9ab8552045
+</A></li>
+        <LI>Next message: <A HREF="003433.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 355b5388e7b5138ebd67aa14f4a675c935462d6f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3431">[ date ]</a>
+              <a href="thread.html#3431">[ thread ]</a>
+              <a href="subject.html#3431">[ subject ]</a>
+              <a href="author.html#3431">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  b72e68e32a0209266106c32f547fd4de61206537 (commit)
+      from  57a5229ed7d9e83393fdba0be33c7b9ab8552045 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b72e68e32a0209266106c32f547fd4de61206537
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue May 17 17:28:38 2011 +0200
+
+    - fixed caching if used for boot images. Also fixed the check
+      between the initial prepare with cache and the remount of a
+      prepared tree with cache
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index ed58f77..2c01d49 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -561,7 +561,7 @@ sub main {
+ 		#------------------------------------------
+ 		$image = new KIWIImage (
+ 			$kiwi,$xml,$Create,$Destination,$StripImage,
+-			&quot;/base-system&quot;,$Create
++			&quot;/base-system&quot;,$Create,undef,$cmdL
+ 		);
+ 		if (! defined $image) {
+ 			my $code = kiwiExit (1); return $code;
+@@ -1219,7 +1219,7 @@ sub init {
+ 	# check for specified cache location
+ 	#----------------------------------------
+ 	if (defined $ImageCache) {
+-		$cmdL -&gt; setCacheDir($ImageCache)
++		$cmdL -&gt; setCacheDir($ImageCache);
+ 	}
+ 	#========================================
+ 	# check if a specifc logfile has been defined
+diff --git a/modules/KIWICache.pm b/modules/KIWICache.pm
+index 1510862..cd2540d 100644
+--- a/modules/KIWICache.pm
++++ b/modules/KIWICache.pm
+@@ -302,7 +302,7 @@ sub createCache {
+ 		# ----
+ 		my $image = new KIWIImage (
+ 			$kiwi,$cxml,$root,$imageCacheDir,
+-			undef,&quot;/base-system&quot;,undef,&quot;active&quot;
++			undef,&quot;/base-system&quot;,undef,&quot;active&quot;,$cmdL
+ 		);
+ 		if (! defined $image) {
+ 			undef $kic; return undef;
+diff --git a/modules/KIWICommandLine.pm b/modules/KIWICommandLine.pm
+index 5ba6a24..d46c4b5 100644
+--- a/modules/KIWICommandLine.pm
++++ b/modules/KIWICommandLine.pm
+@@ -177,6 +177,17 @@ sub getConfigDir {
+ }
+ 
+ #==========================================
++# getInitrdConfigDir
++#------------------------------------------
++sub getInitrdConfigDir {
++	# ...
++	# Return location of the configuration tree
++	# ---
++	my $this = shift;
++	return $this -&gt; {configInitrdDir};
++}
++
++#==========================================
+ # getIgnoreRepos
+ #------------------------------------------
+ sub getIgnoreRepos {
+@@ -277,6 +288,17 @@ sub getRootTargetDir {
+ }
+ 
+ #==========================================
++# getInitrdRootTargetDir
++#------------------------------------------
++sub getInitrdRootTargetDir {
++	# ...
++	# Return the location for the unpacked initrd image directory
++	# ---
++	my $this = shift;
++	return $this -&gt; {rootInitrdTgtDir};
++}
++
++#==========================================
+ # setAdditionalPackages
+ #------------------------------------------
+ sub setAdditionalPackages {
+@@ -526,6 +548,15 @@ sub setCacheDir {
+ }
+ 
+ #==========================================
++# setInitrdConfigDir
++#------------------------------------------
++sub setInitrdConfigDir {
++	my $this = shift;
++	my $dir  = shift;
++	return $this -&gt; setConfigDir ($dir,&quot;initrd&quot;);
++}
++
++#==========================================
+ # setConfigDir
+ #------------------------------------------
+ sub setConfigDir {
+@@ -534,6 +565,7 @@ sub setConfigDir {
+ 	# ---
+ 	my $this = shift;
+ 	my $dir  = shift;
++	my $boot = shift;
+ 	if (! $dir) {
+ 		my $msg = 'setConfigDir method called without specifying a '
+ 			. 'configuration directory.';
+@@ -557,7 +589,11 @@ sub setConfigDir {
+ 		$this -&gt; {kiwi} -&gt; failed();
+ 		return undef;
+ 	}
+-	$this -&gt; {configDir} = $dir;
++	if ($boot) {
++		$this -&gt; {configInitrdDir} = $dir;
++	} else {
++		$this -&gt; {configDir} = $dir;
++	}
+ 	return 1;
+ }
+ 
+@@ -763,6 +799,15 @@ sub setReplacementRepo {
+ }
+ 
+ #==========================================
++# setInitrdRootTargetDir
++#------------------------------------------
++sub setInitrdRootTargetDir {
++	my $this = shift;
++	my $dir  = shift;
++	return $this -&gt; setRootTargetDir ($dir,&quot;initrd&quot;);
++}
++
++#==========================================
+ # setRootTargetDir
+ #------------------------------------------
+ sub setRootTargetDir {
+@@ -771,7 +816,8 @@ sub setRootTargetDir {
+ 	# ---
+ 	my $this    = shift;
+ 	my $rootTgt = shift;
+-	my $kiwi = $this -&gt; {kiwi};
++	my $boot    = shift;
++	my $kiwi    = $this -&gt; {kiwi};
+ 	if (! $rootTgt) {
+ 		my $msg = 'setRootTargetDir method called without specifying '
+ 			. 'a target directory';
+@@ -791,7 +837,11 @@ sub setRootTargetDir {
+ 		$this -&gt; {recycleRootDir} = $rootTgt;
+ 		$this -&gt; {setRecycleRoot} = 0;
+ 	}
+-	$this -&gt; {rootTgtDir} = $rootTgt;
++	if ($boot) {
++		$this -&gt; {rootInitrdTgtDir} = $rootTgt;
++	} else {
++		$this -&gt; {rootTgtDir} = $rootTgt;
++	}
+ 	return 1;
+ }
+ 
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index c80ba48..f85e903 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -64,6 +64,7 @@ sub new {
+ 	my $baseSystem = shift;
+ 	my $imageOrig  = shift;
+ 	my $initCache  = shift;
++	my $cmdL       = shift;
+ 	my $configFile = $xml -&gt; getConfigName();
+ 	#==========================================
+ 	# Use absolute path for image destination
+@@ -78,6 +79,11 @@ sub new {
+ 	if (! defined $kiwi) {
+ 		$kiwi = new KIWILog(&quot;tiny&quot;);
+ 	}
++	if (! defined $cmdL) {
++		$kiwi -&gt; error (&quot;No Commandline reference specified&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
+ 	if (! defined $xml) {
+ 		$kiwi -&gt; error (&quot;No XML reference specified&quot;);
+ 		$kiwi -&gt; failed ();
+@@ -142,6 +148,7 @@ sub new {
+ 	# Store object data
+ 	#------------------------------------------
+ 	$this-&gt;{kiwi}       = $kiwi;
++	$this-&gt;{cmdL}       = $cmdL;
+ 	$this-&gt;{initCache}  = $initCache;
+ 	$this-&gt;{xml}        = $xml;
+ 	$this-&gt;{imageTree}  = $imageTree;
+@@ -902,6 +909,7 @@ sub createImageRootAndBoot {
+ 	my $text       = shift;
+ 	my $kiwi       = $this-&gt;{kiwi};
+ 	my $sxml       = $this-&gt;{xml};
++	my $cmdL       = $this-&gt;{cmdL};
+ 	my %stype      = %{$sxml-&gt;getImageTypeAndAttributes()};
+ 	my $imageTree  = $this-&gt;{imageTree};
+ 	my $baseSystem = $this-&gt;{baseSystem};
+@@ -1027,11 +1035,10 @@ sub createImageRootAndBoot {
+ 			$configDir = $stype{boot};
+ 		}
+ 		my $rootTarget = &quot;$tmpdir/kiwi-&quot;.$text.&quot;boot-$$&quot;;
+-		my $cmdL = new KIWICommandLine ($kiwi);
+-		$cmdL -&gt; setConfigDir ($configDir);
+-		$cmdL -&gt; setRootTargetDir ($rootTarget);
++		$cmdL -&gt; setInitrdConfigDir ($configDir);
++		$cmdL -&gt; setInitrdRootTargetDir ($rootTarget);
+ 		my $kic = new KIWIImageCreator ($kiwi, $cmdL);
+-		if ((! $kic) || (! $kic-&gt;prepareBootImage($configDir, $rootTarget))) {
++		if ((! $kic) || (! $kic-&gt;prepareBootImage())) {
+ 			undef $kic;
+ 			if (! -d $main::RootTree.$baseSystem) {
+ 				qxx (&quot;rm -rf $tmpdir&quot;);
+@@ -1039,6 +1046,7 @@ sub createImageRootAndBoot {
+ 			&amp;{$this-&gt;{resetvars}};
+ 			return undef;
+ 		}
++		undef %main::XMLChangeSet;
+ 		$main::Create   = $rootTarget;
+ 		$main::RootTree = $rootTarget;
+ 		$main::Survive  = &quot;yes&quot;;
+@@ -1215,6 +1223,7 @@ sub createImageLiveCD {
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $arch = $this-&gt;{arch};
+ 	my $sxml = $this-&gt;{xml};
++	my $cmdL = $this-&gt;{cmdL};
+ 	my $imageTree = $this-&gt;{imageTree};
+ 	my $baseSystem= $this-&gt;{baseSystem};
+ 	my @bootdata;
+@@ -1519,11 +1528,10 @@ sub createImageLiveCD {
+ 			$configDir = $stype{boot};
+ 		}
+ 		my $rootTarget = &quot;$tmpdir/kiwi-isoboot-$$&quot;;
+-		my $cmdL = new KIWICommandLine ($kiwi);
+-		$cmdL -&gt; setConfigDir ($configDir);
+-		$cmdL -&gt; setRootTargetDir ($rootTarget);
++		$cmdL -&gt; setInitrdConfigDir ($configDir);
++		$cmdL -&gt; setInitrdRootTargetDir ($rootTarget);
+ 		my $kic = new KIWIImageCreator ($kiwi, $cmdL);
+-		if ((! $kic) || (! $kic-&gt;prepareBootImage($configDir, $rootTarget))) {
++		if ((! $kic) || (! $kic-&gt;prepareBootImage())) {
+ 			undef $kic;
+ 			if (! -d $main::RootTree.$baseSystem) {
+ 				qxx (&quot;rm -rf $tmpdir&quot;);
+@@ -1531,6 +1539,7 @@ sub createImageLiveCD {
+ 			&amp;{$this-&gt;{resetvars}};
+ 			return undef;
+ 		}
++		undef %main::XMLChangeSet;
+ 		$main::Create   = $rootTarget;
+ 		$main::RootTree = $rootTarget;
+ 		$main::Survive  = &quot;yes&quot;;
+@@ -1976,6 +1985,7 @@ sub createImageSplit {
+ 	my $imageTree = $this-&gt;{imageTree};
+ 	my $baseSystem= $this-&gt;{baseSystem};
+ 	my $sxml = $this-&gt;{xml};
++	my $cmdL = $this-&gt;{cmdL};
+ 	my %xenc = $sxml-&gt;getXenConfig();
+ 	my $FSTypeRW;
+ 	my $FSTypeRO;
+@@ -2568,11 +2578,10 @@ sub createImageSplit {
+ 			$configDir = $type{boot};
+ 		}
+ 		my $rootTarget = &quot;$tmpdir/kiwi-splitboot-$$&quot;;
+-		my $cmdL = new KIWICommandLine ($kiwi);
+-		$cmdL -&gt; setConfigDir ($configDir);
+-		$cmdL -&gt; setRootTargetDir ($rootTarget);
++		$cmdL -&gt; setInitrdConfigDir ($configDir);
++		$cmdL -&gt; setInitrdRootTargetDir ($rootTarget);
+ 		my $kic = new KIWIImageCreator ($kiwi, $cmdL);
+-		if ((! $kic) || (! $kic-&gt;prepareBootImage($configDir, $rootTarget))) {
++		if ((! $kic) || (! $kic-&gt;prepareBootImage())) {
+ 			undef $kic;
+ 			if (! -d $main::RootTree.$baseSystem) {
+ 				qxx (&quot;rm -rf $tmpdir&quot;);
+@@ -2580,6 +2589,7 @@ sub createImageSplit {
+ 			&amp;{$this-&gt;{resetvars}};
+ 			return undef;
+ 		}
++		undef %main::XMLChangeSet;
+ 		$main::Create   = $rootTarget;
+ 		$main::RootTree = $rootTarget;
+ 		$main::Survive  = &quot;yes&quot;;
+diff --git a/modules/KIWIImageCreator.pm b/modules/KIWIImageCreator.pm
+index 94f3366..f7b0d7f 100644
+--- a/modules/KIWIImageCreator.pm
++++ b/modules/KIWIImageCreator.pm
+@@ -76,26 +76,28 @@ sub new {
+ 	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
+-	$this-&gt;{addlPackages}   = $cmdL -&gt; getAdditionalPackages();
+-	$this-&gt;{addlPatterns}   = $cmdL -&gt; getAdditionalPatterns();
+-	$this-&gt;{addlRepos}      = $cmdL -&gt; getAdditionalRepos();
+-	$this-&gt;{buildProfiles}  = $cmdL -&gt; getBuildProfiles();
+-	$this-&gt;{cacheDir}       = $cmdL -&gt; getCacheDir();
+-	$this-&gt;{ignoreRepos}    = $cmdL -&gt; getIgnoreRepos();
+-	$this-&gt;{imageArch}      = $cmdL -&gt; getImageArchitecture();
+-	$this-&gt;{packageManager} = $cmdL -&gt; getPackageManager();
+-	$this-&gt;{recycleRootDir} = $cmdL -&gt; getRecycleRootDir();
+-	$this-&gt;{removePackages} = $cmdL -&gt; getPackagesToRemove();
+-	$this-&gt;{replRepo}       = $cmdL -&gt; getReplacementRepo();
+-	$this-&gt;{rootTgtDir}     = $cmdL -&gt; getRootTargetDir();
+-	$this-&gt;{initrd}         = $cmdL -&gt; getInitrdFile();
+-	$this-&gt;{sysloc}         = $cmdL -&gt; getSystemLocation();
+-	$this-&gt;{disksize}       = $cmdL -&gt; getImageDiskSize();
+-	$this-&gt;{targetdevice}   = $cmdL -&gt; getImageTargetDevice();
+-	$this-&gt;{format}         = $cmdL -&gt; getImageFormat();
+-	$this-&gt;{configDir}      = $cmdL -&gt; getConfigDir();
+-	$this-&gt;{kiwi}           = $kiwi;
+-	$this-&gt;{cmdL}           = $cmdL;
++	$this-&gt;{addlPackages}     = $cmdL -&gt; getAdditionalPackages();
++	$this-&gt;{addlPatterns}     = $cmdL -&gt; getAdditionalPatterns();
++	$this-&gt;{addlRepos}        = $cmdL -&gt; getAdditionalRepos();
++	$this-&gt;{buildProfiles}    = $cmdL -&gt; getBuildProfiles();
++	$this-&gt;{cacheDir}         = $cmdL -&gt; getCacheDir();
++	$this-&gt;{ignoreRepos}      = $cmdL -&gt; getIgnoreRepos();
++	$this-&gt;{imageArch}        = $cmdL -&gt; getImageArchitecture();
++	$this-&gt;{packageManager}   = $cmdL -&gt; getPackageManager();
++	$this-&gt;{recycleRootDir}   = $cmdL -&gt; getRecycleRootDir();
++	$this-&gt;{removePackages}   = $cmdL -&gt; getPackagesToRemove();
++	$this-&gt;{replRepo}         = $cmdL -&gt; getReplacementRepo();
++	$this-&gt;{rootTgtDir}       = $cmdL -&gt; getRootTargetDir();
++	$this-&gt;{rootInitrdTgtDir} = $cmdL -&gt; getInitrdRootTargetDir();
++	$this-&gt;{initrd}           = $cmdL -&gt; getInitrdFile();
++	$this-&gt;{sysloc}           = $cmdL -&gt; getSystemLocation();
++	$this-&gt;{disksize}         = $cmdL -&gt; getImageDiskSize();
++	$this-&gt;{targetdevice}     = $cmdL -&gt; getImageTargetDevice();
++	$this-&gt;{format}           = $cmdL -&gt; getImageFormat();
++	$this-&gt;{configDir}        = $cmdL -&gt; getConfigDir();
++	$this-&gt;{configInitrdDir}  = $cmdL -&gt; getInitrdConfigDir();
++	$this-&gt;{kiwi}             = $kiwi;
++	$this-&gt;{cmdL}             = $cmdL;
+ 	return $this;
+ }
+ 
+@@ -125,9 +127,11 @@ sub prepareBootImage {
+ 	# Prepare the boot image
+ 	# ---
+ 	my $this       = shift;
+-	my $configDir  = shift;
+-	my $rootTgtDir = shift;
+-	my $kiwi      = $this -&gt; {kiwi};
++	my $configDir  = $this-&gt;{configInitrdDir};
++	my $rootTgtDir = $this-&gt;{rootInitrdTgtDir};
++	my $kiwi       = $this-&gt;{kiwi};
++	my $ignore     = $this -&gt; {ignoreRepos};
++	my $pkgMgr    = $this -&gt; {packageManager};
+ 	if (! $configDir) {
+ 		$kiwi -&gt; error ('prepareBootImage: no configuration directory defined');
+ 		$kiwi -&gt; failed ();
+@@ -148,11 +152,44 @@ sub prepareBootImage {
+ 	}
+ 	$kiwi -&gt; info (&quot;Prepare boot image (initrd)...\n&quot;);
+ 	my $xml = new KIWIXML (
+-		$kiwi, $configDir, undef, undef
++		$kiwi,$configDir,undef,undef
+ 	);
+ 	if (! defined $xml) {
+ 		return undef;
+ 	}
++	my $krc = new KIWIRuntimeChecker (
++		$kiwi, $this -&gt; {cmdL}, $xml
++	);
++	#==========================================
++	# Apply XML over rides from command line
++	#------------------------------------------
++	if ($pkgMgr) {
++		$xml -&gt; setPackageManager($pkgMgr);
++	}
++	if ($ignore) {
++		$xml -&gt; ignoreRepositories ();
++	}
++	if ($this -&gt; {addlRepos}) {
++		my %addlRepos = %{$this -&gt; {addlRepos}};
++		$xml -&gt; addRepository (
++			$addlRepos{repositoryTypes},
++			$addlRepos{repositories},
++			$addlRepos{repositoryAlia},
++			$addlRepos{repositoryPriorities}
++		);
++	}
++	if ($this -&gt; {replRepo}) {
++		my %replRepo = %{$this -&gt; {replRepo}};
++		$xml -&gt; setRepository (
++			$replRepo{repositoryType},
++			$replRepo{repository},
++			$replRepo{repositoryAlias},
++			$replRepo{respositoryPriority}
++		);
++	}
++	if (! $krc -&gt; prepareChecks()) {
++		return undef;
++	}
+ 	return $this -&gt; __prepareTree (
+ 		$xml, $configDir, $rootTgtDir
+ 	);
+@@ -580,10 +617,11 @@ sub __upgradeTree {
+ 	my $configDir = shift;
+ 	my $kiwi      = $this -&gt; {kiwi};
+ 	my $cmdL      = $this -&gt; {cmdL};
++	my $cacheMode = &quot;remount&quot;;
+ 	#==========================================
+ 	# Select cache if requested and exists
+ 	#------------------------------------------
+-	my $cacheRoot = $this -&gt; __selectCache ($xml,$configDir);
++	my $cacheRoot = $this -&gt; __selectCache ($xml,$configDir,$cacheMode);
+ 	#==========================================
+ 	# Initialize root system
+ 	#------------------------------------------
+@@ -621,11 +659,15 @@ sub __selectCache {
+ 	my $this      = shift;
+ 	my $xml       = shift;
+ 	my $configDir = shift;
++	my $cacheMode = shift;
+ 	my $kiwi = $this -&gt; {kiwi};
+ 	my $cmdL = $this -&gt; {cmdL};
+ 	if ( ! $this -&gt; {cacheDir}) {
+ 		return undef;
+ 	}
++	if (($cacheMode eq &quot;remount&quot;) &amp;&amp; (! -f &quot;$configDir/kiwi-root.cache&quot;)) {
++		return undef;
++	}
+ 	my $icache = new KIWICache (
+ 		$kiwi,$xml,$this-&gt;{cacheDir},$main::BasePath,
+ 		$this-&gt;{buildProfiles},$configDir
+@@ -651,13 +693,14 @@ sub __prepareTree {
+ 	my $xml        = shift;
+ 	my $configDir  = shift;
+ 	my $rootTgtDir = shift;
+-	my $kiwi = $this -&gt; {kiwi};
+-	my $cmdL = $this -&gt; {cmdL};
+-	my %attr = %{$xml-&gt;getImageTypeAndAttributes()};
++	my $kiwi       = $this -&gt; {kiwi};
++	my $cmdL       = $this -&gt; {cmdL};
++	my %attr       = %{$xml-&gt;getImageTypeAndAttributes()};
++	my $cacheMode  = &quot;initial&quot;;
+ 	#==========================================
+ 	# Select cache if requested and exists
+ 	#------------------------------------------
+-	my $cacheRoot = $this -&gt; __selectCache ($xml,$configDir);
++	my $cacheRoot = $this -&gt; __selectCache ($xml,$configDir,$cacheMode);
+ 	if ($cacheRoot) {
+ 		#==========================================
+ 		# Add bootstrap packages to image section
+diff --git a/modules/KIWILocator.pm b/modules/KIWILocator.pm
+index 5fbc4ac..be58194 100644
+--- a/modules/KIWILocator.pm
++++ b/modules/KIWILocator.pm
+@@ -126,9 +126,13 @@ sub getControlFile {
+ 	# This function receives a directory as parameter
+ 	# and searches for a kiwi xml description in it.
+ 	# ----
+-	my $this   = shift;
+-	my $dir    = shift;
+-	my $kiwi   = $this-&gt;{kiwi};
++	my $this    = shift;
++	my $dir     = shift;
++	my $kiwi    = $this-&gt;{kiwi};
++	my @subdirs = (&quot;/&quot;,&quot;/image/&quot;);
++	my $found   = 0;
++	my @globsearch;
++	my $config;
+ 	if (! -d $dir) {
+ 		my $msg = &quot;Expected a directory at $dir.\nSpecify a directory&quot;;
+ 		$msg .= ' as the configuration base.';
+@@ -136,28 +140,35 @@ sub getControlFile {
+ 		$kiwi -&gt; failed();
+ 		return undef;
+ 	}
+-	my $config = &quot;$dir/&quot; . $this-&gt;{configName};
+-	if (-f $config) {
+-		return $config;
++	foreach my $search (@subdirs) {
++		$config = $dir.$search.$this-&gt;{configName};
++		if (-f $config) {
++			$found = 1; last;
++		}
++		@globsearch = glob ($dir.&quot;/*.kiwi&quot;);
++		my $globitems  = @globsearch;
++		if ($globitems == 0) {
++			next;
++		} elsif ($globitems &gt; 1) {
++			$found = 2; last;
++		} else {
++			$config = pop @globsearch; last;
++		}
+ 	}
+-	my @globsearch = glob ($dir.&quot;/*.kiwi&quot;);
+-	my $globitems  = @globsearch;
+-	if ($globitems == 0) {
+-		$kiwi -&gt; error ( &quot;Could not locate a configuration file in $dir&quot;);
+-		$kiwi -&gt; failed();
+-		return undef;
+-	} elsif ($globitems &gt; 1) {
++	if ($found == 1) {
++		return $config;
++	} elsif ($found == 2) {
+ 		my $msg = &quot;Found multiple control files in $dir\n&quot;;
+ 		for my $item (@globsearch) {
+ 			$msg .= &quot;\t$item\n&quot;;
+ 		}
+ 		$kiwi -&gt; error ($msg);
+ 		$kiwi -&gt; failed();
+-		return undef;
+ 	} else {
+-		$config = pop @globsearch;
++		$kiwi -&gt; error ( &quot;Could not locate a configuration file in $dir&quot;);
++		$kiwi -&gt; failed();
+ 	}
+-	return $config;
++	return undef;
+ }
+ 
+ #============================================
+diff --git a/modules/KIWIOverlay.pm b/modules/KIWIOverlay.pm
+index ab6b209..e449b54 100644
+--- a/modules/KIWIOverlay.pm
++++ b/modules/KIWIOverlay.pm
+@@ -57,6 +57,14 @@ sub new {
+ 	#==========================================
+ 	# Check rootRW structure
+ 	#------------------------------------------
++	$this-&gt;{initial} = 0;
++	if (defined $baseRO) {
++		# ...
++		# base read-only path specified, means this is an initial
++		# prepare call using a cache
++		# ---
++		$this-&gt;{initial} = 1;
++	}
+ 	if (-f &quot;$rootRW/kiwi-root.cache&quot;) {
+ 		my $FD; if (! open ($FD,&quot;$rootRW/kiwi-root.cache&quot;)) {
+ 			$kiwi -&gt; error  (&quot;Can't open cache root meta data&quot;);
+@@ -171,7 +179,7 @@ sub unionOverlay {
+ 	#------------------------------------------
+ 	if (! $haveCow) {
+ 		qxx (&quot;echo $this-&gt;{baseRO} &gt; $rootRW/kiwi-root.cache&quot;);
+-		if ($main::Prepare) {
++		if ($this-&gt;{initial}) {
+ 			$main::OverlayRootTree = &quot;$rootRW/image&quot;;
+ 		}
+ 	}
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 25da43a..393c9e7 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -167,7 +167,6 @@ sub new {
+ 	if (%main::XMLChangeSet) {
+ 		$this -&gt; __populateImageTypeAndNode();
+ 		$this -&gt; __updateDescriptionFromChangeSet (\%main::XMLChangeSet);
+-		undef %main::XMLChangeSet;
+ 	}
+ 	#==========================================
+ 	# Populate default profiles from XML if set
+diff --git a/modules/KIWIXMLInfo.pm b/modules/KIWIXMLInfo.pm
+index 9c0db31..00053cf 100644
+--- a/modules/KIWIXMLInfo.pm
++++ b/modules/KIWIXMLInfo.pm
+@@ -243,6 +243,9 @@ sub __getTree {
+ 	my $requests = shift;
+ 	my $kiwi = $this -&gt; {kiwi};
+ 	my $xml = $this -&gt; __xmlSetup();
++	if (! $xml) {
++		return undef;
++	}
+ 	my $mountDirs = $this -&gt; __setupRepoMounts($xml);
+ 	if (! $mountDirs) {
+ 		return undef;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003430.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 57a5229ed7d9e83393fdba0be33c7b9ab8552045
+</A></li>
+	<LI>Next message: <A HREF="003433.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 355b5388e7b5138ebd67aa14f4a675c935462d6f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3431">[ date ]</a>
+              <a href="thread.html#3431">[ thread ]</a>
+              <a href="subject.html#3431">[ subject ]</a>
+              <a href="author.html#3431">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

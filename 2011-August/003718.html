@@ -1,0 +1,229 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. d144f1b97070388bc9d547f327f499d888554edc
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-485-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20d144f1b97070388bc9d547f327f499d888554edc&In-Reply-To=%3C20110823080700.B978D481416%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003717.html">
+   <LINK REL="Next"  HREF="003719.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. d144f1b97070388bc9d547f327f499d888554edc</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-485-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20d144f1b97070388bc9d547f327f499d888554edc&In-Reply-To=%3C20110823080700.B978D481416%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. d144f1b97070388bc9d547f327f499d888554edc">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Aug 23 10:07:00 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003717.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 554e30641791b6c6dc6e7303469de2a8e6ccc95c
+</A></li>
+        <LI>Next message: <A HREF="003719.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. dba1d36701285c5a885e9c767aa942584d028f2e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3718">[ date ]</a>
+              <a href="thread.html#3718">[ thread ]</a>
+              <a href="subject.html#3718">[ subject ]</a>
+              <a href="author.html#3718">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-485-SuSE-11-1-SLE-SP-Devel has been updated
+       via  d144f1b97070388bc9d547f327f499d888554edc (commit)
+       via  5d0433f3f0bd42b5f93c4841987f1600dd9af276 (commit)
+      from  814803bc25d28d308c614d57439bb78df77a55d3 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit d144f1b97070388bc9d547f327f499d888554edc
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Aug 23 10:06:46 2011 +0200
+
+    - added changelog entry for last commit
+
+commit 5d0433f3f0bd42b5f93c4841987f1600dd9af276
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Aug 23 09:59:47 2011 +0200
+
+    - added atftpProgress() function which implements the progress
+      information for atftp by watching the atftp trace output.
+      atftp seeks in the output stream which forbids the use of
+      pipes for the progress information (bnc #713167)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 4dc9b68..8edddde 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -4845,6 +4845,67 @@ function waitForBlockDevice {
+ }
+ 
+ #======================================
++# atftpProgress
++#--------------------------------------
++function atftpProgress {
++	# /.../
++	# atftp doesn't use a stream based download and sometimes
++	# seek back and forth which makes it hard to use pipes for
++	# progress indication. Therefore we watch the trace output
++	# ----
++	local imgsize=$1    # image size in MB
++	local prefix=$2     # line prefix text
++	local file=$3       # file with progress data
++	local bytes=0       # log lines multiplied by blocksize
++	local lines=0       # log lines
++	local percent=0     # in percent of all
++	local size=0        # log file size
++	local size_prev=-1  # previos log file size
++	local blocksize=512 # blocksize use for download
++	local all=$((imgsize * 1024 * 1024))
++	#======================================
++	# setup blocksize
++	#--------------------------------------
++	while true;do
++		if head -n 20 $file | grep -q 'block: 1,';then
++			if head $file | grep -q 'blksize =' ;then
++				blocksize=$(head $file | grep &quot;blksize =&quot; | cut -f2 -d=)
++			fi
++			break
++		fi
++		sleep 1
++	done
++	#======================================
++	# print progress information
++	#--------------------------------------
++	while true;do
++		# /.../
++		# the trace logs two lines indicating one download block of
++		# blocksize bytes. We assume only full blocks. At the end
++		# it might happen that only a part of blocksize bytes is
++		# required. The function does not precisely calculate them
++		# and assumes blocksize bytes. imho that's ok for the progress
++		# bar. In order to be exact the function would have to sum
++		# up all bytes from the trace log for each iteration which
++		# would cause the download to pause because it has to wait
++		# for the progress bar to get ready
++		# ----
++		size=$(stat -c %s $file)
++		if [ $size_prev -eq $size ];then
++			echo; break
++		fi
++		size_prev=$size
++		lines=$(cat $file | wc -l)
++		lines=$((lines / 2))
++		bytes=$((lines * $blocksize))
++		percent=$(echo &quot;scale=2; $bytes * 100&quot;  | bc)
++		percent=$(echo &quot;scale=0; $percent / $all&quot; | bc)
++		echo -en &quot;$prefix ( $percent%)\r&quot;
++		sleep 1
++	done
++}
++
++#======================================
+ # fetchFile
+ #--------------------------------------
+ function fetchFile {
+@@ -4888,7 +4949,6 @@ function fetchFile {
+ 	# setup progress meta information
+ 	#--------------------------------------
+ 	dump=&quot;dd bs=$chunk of=$dest&quot;
+-	dump_atftp=$dump
+ 	showProgress=0
+ 	if [ -x /usr/bin/dcounter ] &amp;&amp; [ -f /etc/image.md5 ];then
+ 		showProgress=1
+@@ -4898,7 +4958,6 @@ function fetchFile {
+ 		progressBaseName=$(basename $path)
+ 		TEXT_LOAD=$(getText &quot;Loading %1&quot; &quot;$progressBaseName&quot;)
+ 		dump=&quot;dcounter -s $needMByte -l \&quot;$TEXT_LOAD \&quot; 2&gt;/progress | $dump&quot;
+-		dump_atftp=&quot;dcounter -s $needMByte -l \&quot;$TEXT_LOAD \&quot; 2&gt;/progress &gt;$dest&quot;
+ 	fi
+ 	#======================================
+ 	# build download command
+@@ -4952,8 +5011,8 @@ function fetchFile {
+ 				call=&quot;atftp \
+ 					--option \&quot;$multicast_atftp\&quot;  \
+ 					--option \&quot;blksize $imageBlkSize\&quot; \
+-					-g -r $path -l &gt;($dump_atftp) \
+-					$host &amp;&gt; $TRANSFER_ERRORS_FILE&quot;
++					-g -r $path -l $dest $host &amp;&gt; $TRANSFER_ERRORS_FILE \
++					--trace 2&gt;/tmp/atftp_trace&quot;
+ 			fi
+ 			;;
+ 		*)
+@@ -4965,6 +5024,14 @@ function fetchFile {
+ 	#--------------------------------------
+ 	if [ $showProgress -eq 1 ];then
+ 		test -e /progress || mkfifo /progress
++		if [ &quot;$type&quot; = &quot;tftp&quot; ] &amp;&amp; [ ! &quot;$izip&quot; = &quot;compressed&quot; ];then
++			cat &gt; /tmp/atftp_trace &lt; /dev/null
++			(
++				atftpProgress \
++					$needMByte &quot;$TEXT_LOAD&quot; /tmp/atftp_trace \
++				&gt; /progress
++			)&amp;
++		fi
+ 		errorLogStop
+ 		(
+ 			eval $call &amp;&gt;/dev/null
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 4aeb61c..cd5f3ad 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,12 @@
+ -------------------------------------------------------------------
++Tue Aug 23 10:06:24 CEST 2011 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- added atftpProgress() function which implements the progress
++  information for atftp by watching the atftp trace output.
++  atftp seeks in the output stream which forbids the use of
++  pipes for the progress information (bnc #713167)
++
++-------------------------------------------------------------------
+ Mon Aug 22 16:37:52 CEST 2011 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - make sure fribidi stays installed in netboot. It's required for
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003717.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 554e30641791b6c6dc6e7303469de2a8e6ccc95c
+</A></li>
+	<LI>Next message: <A HREF="003719.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. dba1d36701285c5a885e9c767aa942584d028f2e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3718">[ date ]</a>
+              <a href="thread.html#3718">[ thread ]</a>
+              <a href="subject.html#3718">[ subject ]</a>
+              <a href="author.html#3718">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

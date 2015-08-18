@@ -1,0 +1,142 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 61c97a1155d45cd8c0a4dd233729d575ba728466
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2061c97a1155d45cd8c0a4dd233729d575ba728466&In-Reply-To=%3C20110316193210.CD284480EF1%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003210.html">
+   <LINK REL="Next"  HREF="003212.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 61c97a1155d45cd8c0a4dd233729d575ba728466</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2061c97a1155d45cd8c0a4dd233729d575ba728466&In-Reply-To=%3C20110316193210.CD284480EF1%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 61c97a1155d45cd8c0a4dd233729d575ba728466">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Mar 16 20:32:10 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003210.html">[Kiwi-devel] Fix for 680148
+</A></li>
+        <LI>Next message: <A HREF="003212.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6c059597a6192f849f3d641601b8cdb1b892b5de
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3211">[ date ]</a>
+              <a href="thread.html#3211">[ thread ]</a>
+              <a href="subject.html#3211">[ subject ]</a>
+              <a href="author.html#3211">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  61c97a1155d45cd8c0a4dd233729d575ba728466 (commit)
+      from  23d112fc35ea8ce837fbd5c56d699c35b37eb5b4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 61c97a1155d45cd8c0a4dd233729d575ba728466
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Mar 16 20:30:15 2011 +0100
+
+    - The ISO generation code allows for either genisoimage or mkisofs.
+      The checker does not support this. The patch addresses this problem
+      and the checker no will be happy if either genisoimage or mkisofs
+      is found (bnc #680148)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIIsoLinux.pm b/modules/KIWIIsoLinux.pm
+index 68b50b2..bf04012 100644
+--- a/modules/KIWIIsoLinux.pm
++++ b/modules/KIWIIsoLinux.pm
+@@ -23,6 +23,7 @@ use Carp qw (cluck);
+ use Fcntl; # needed for some constants for sysopen
+ use File::Find;
+ use File::Basename;
++use KIWILocator;
+ use KIWILog;
+ use KIWIQX;
+ 
+@@ -85,10 +86,13 @@ sub new {
+ 	#==========================================
+ 	# Find iso tool to use on this system
+ 	#------------------------------------------
+-	if (-x &quot;/usr/bin/genisoimage&quot;) {
+-		$tool = &quot;/usr/bin/genisoimage&quot;;
+-	} elsif (-x &quot;/usr/bin/mkisofs&quot;) {
+-		$tool = &quot;/usr/bin/mkisofs&quot;;
++	my $locator = new KIWILocator($kiwi);
++	my $genTool = $locator -&gt; getExecPath('genisoimage');
++	my $mkTool = $locator -&gt; getExecPath('mkisofs');
++	if ($genTool &amp;&amp; -x $genTool) {
++		$tool = $genTool;
++	} elsif ($mkTool &amp;&amp; -x $mkTool) {
++		$tool = $mkTool;
+ 	} else {
+ 		$kiwi -&gt; error  (&quot;No ISO creation tool found&quot;);
+ 		$kiwi -&gt; failed ();
+diff --git a/modules/KIWIRuntimeChecker.pm b/modules/KIWIRuntimeChecker.pm
+index 745497b..0f7b3a7 100644
+--- a/modules/KIWIRuntimeChecker.pm
++++ b/modules/KIWIRuntimeChecker.pm
+@@ -180,11 +180,13 @@ sub __checkFilesystemTool {
+ 			$toolError = 1;
+ 		}
+ 	} elsif ($typeName eq 'iso') {
+-		my $haveTool = $this -&gt; {locator} -&gt; getExecPath('mkisofs');
+-		if (! $haveTool) {
+-			$checkedFS = 'mkisofs';
++        my $genTool = $this -&gt; {locator} -&gt; getExecPath('genisoimage');
++		my $mkTool = $this -&gt; {locator} -&gt; getExecPath('mkisofs');
++		if ((! $genTool) &amp;&amp; (! $mkTool)) {
++			$checkedFS = 'iso';
+ 			$toolError = 1;
+ 		}
++		my $haveTool;
+ 		if ($flag &amp;&amp; $flag eq 'clic') {
+ 			$haveTool = $this -&gt; __isFsToolAvailable('clicfs');
+ 			$checkedFS = 'clicfs';
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003210.html">[Kiwi-devel] Fix for 680148
+</A></li>
+	<LI>Next message: <A HREF="003212.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6c059597a6192f849f3d641601b8cdb1b892b5de
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3211">[ date ]</a>
+              <a href="thread.html#3211">[ thread ]</a>
+              <a href="subject.html#3211">[ subject ]</a>
+              <a href="author.html#3211">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,242 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d7b9a98d9d990afe307639c5366db9f98005d2b2
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20d7b9a98d9d990afe307639c5366db9f98005d2b2&In-Reply-To=%3C20110127090532.514904812FF%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003004.html">
+   <LINK REL="Next"  HREF="003006.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d7b9a98d9d990afe307639c5366db9f98005d2b2</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20d7b9a98d9d990afe307639c5366db9f98005d2b2&In-Reply-To=%3C20110127090532.514904812FF%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d7b9a98d9d990afe307639c5366db9f98005d2b2">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jan 27 10:05:31 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003004.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 908dbd9350d2a2b24eb00aa80fcc9eedcd63f31d
+</A></li>
+        <LI>Next message: <A HREF="003006.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c05818d3faedb0110f8dfa66f445a747934683bb
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3005">[ date ]</a>
+              <a href="thread.html#3005">[ thread ]</a>
+              <a href="subject.html#3005">[ subject ]</a>
+              <a href="author.html#3005">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  d7b9a98d9d990afe307639c5366db9f98005d2b2 (commit)
+       via  cbdfe2a79e8e390d4f842229f82417eee9b3ae7f (commit)
+      from  908dbd9350d2a2b24eb00aa80fcc9eedcd63f31d (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit d7b9a98d9d990afe307639c5366db9f98005d2b2
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Jan 27 10:03:21 2011 +0100
+
+    - added filesystem mktool vs. kernel module version check for the
+      squashfs filesystem. The check has been added in the checkType()
+      function
+
+commit cbdfe2a79e8e390d4f842229f82417eee9b3ae7f
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Jan 27 08:46:33 2011 +0100
+
+    - add support for <A HREF="smb://">smb://</A> type urls by supporting cifs mount
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index ad3ff84..ec9678f 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -623,7 +623,7 @@ sub main {
+ 		#==========================================
+ 		# Check tool set
+ 		#------------------------------------------
+-		my $para = checkType ( \%attr );
++		my $para = checkType ( \%attr,$Create );
+ 		if (! defined $para) {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
+@@ -2418,6 +2418,7 @@ sub createHash {
+ #------------------------------------------
+ sub checkType {
+ 	my (%type) = %{$_[0]};
++	my $root   = $_[1];
+ 	my $para   = &quot;ok&quot;;
+ 	#==========================================
+ 	# check for required filesystem tool(s)
+@@ -2450,6 +2451,48 @@ sub checkType {
+ 		}
+ 	}
+ 	#==========================================
++	# check tool/driver compatibility
++	#------------------------------------------
++	my $check_mksquashfs = 0;
++	if ($type{type} eq &quot;squashfs&quot;) {
++		$check_mksquashfs = 1;
++	}
++	if (($type{installiso}) || ($type{installstick})) {
++		$check_mksquashfs = 1;
++	}
++	if (($fs) &amp;&amp; ($fs =~ /squashfs/)) {
++		$check_mksquashfs = 1;
++	}
++	if (($flags) &amp;&amp; ($flags =~ /compressed|unified/)) {
++		$check_mksquashfs = 1;
++	}
++	#==========================================
++	# squashfs...
++	#------------------------------------------
++	if ($check_mksquashfs) {
++		my $km = glob (&quot;$root/lib/modules/*/kernel/fs/squashfs/squashfs.ko&quot;);
++		my $mktool_vs = qxx (&quot;mksquashfs -version 2&gt;&amp;1 | head -n 1&quot;);
++		my $module_vs = qxx (&quot;modinfo -d $km 2&gt;&amp;1&quot;);
++		my $error = 0;
++		if ($mktool_vs =~ /^mksquashfs version (.*) \(/) {
++			$mktool_vs = $1;
++			$error++;
++		}
++		if ($module_vs =~ /^squashfs (.*),/) {
++			$module_vs = $1;
++			$error++;
++		}
++		$kiwi -&gt; loginfo (&quot;squashfs mktool version: $mktool_vs\n&quot;);
++		$kiwi -&gt; loginfo (&quot;squashfs module version: $module_vs\n&quot;);
++		if (($error == 2) &amp;&amp; ($mktool_vs ne $module_vs)) {
++			$kiwi -&gt; error (
++				&quot;--&gt; squashfs tool/driver mismatch: $mktool_vs vs $module_vs&quot;
++			);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++	}
++	#==========================================
+ 	# build and check KIWIImage method params
+ 	#------------------------------------------
+ 	SWITCH: for ($type{type}) {
+diff --git a/modules/KIWIURL.pm b/modules/KIWIURL.pm
+index 070305b..99132df 100644
+--- a/modules/KIWIURL.pm
++++ b/modules/KIWIURL.pm
+@@ -100,6 +100,10 @@ sub normalizePath {
+ 	if (defined $path) {
+ 		return $path;
+ 	}
++	$path = $this -&gt; smbPath ($module);
++	if (defined $path) {
++		return $path;
++	}
+ 	$path = $this -&gt; dirPath ($module);
+ 	if (defined $path) {
+ 		return $path;
+@@ -262,6 +266,59 @@ sub dirPath {
+ }
+ 
+ #==========================================
++# smbPath
++#------------------------------------------
++sub smbPath {
++	# ...
++	# This method pass along the smb mount path to the
++	# packagemanager. The smb prefix will only work for
++	# zypper at the moment
++	# ---
++	my $this   = shift;
++	my $module = shift;
++	my $kiwi   = $this-&gt;{kiwi};
++	my $root   = $this-&gt;{root};
++	my $result;
++	my $status;
++	my $name;
++	my $tmpdir;
++	#==========================================
++	# normalize URL data
++	#------------------------------------------
++	if ((! defined $module) || ($module !~ /^smb:\/\//)) {
++		return undef;
++	}
++	$module =~ s/^smb:\/\///;
++	$name   = basename ($module);
++	$tmpdir = &quot;/tmp/kiwimount-$name&quot;;
++	#==========================================
++	# create SMB mount point and perform mount
++	#------------------------------------------
++	if (! defined $root) {
++		return $tmpdir;
++	}
++	$status = qxx (&quot;mkdir -p $tmpdir 2&gt;&amp;1&quot;);
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; warning (&quot;Couldn't create tmp dir for smb mount: $status: $!&quot;);
++		$kiwi -&gt; skipped ();
++		return undef;
++	}
++	$status = qxx (&quot;mount -t cifs $module $tmpdir 2&gt;&amp;1&quot;);
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; warning (&quot;Failed to mount share $module: $status&quot;);
++		$kiwi -&gt; skipped ();
++		return undef;
++	}
++	#==========================================
++	# add mount to mount list of root obj
++	#------------------------------------------
++	$root -&gt; addToMountList ($tmpdir);
++	return $tmpdir;
++}
++
++#==========================================
+ # obsPath
+ #------------------------------------------
+ sub obsPath {
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003004.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 908dbd9350d2a2b24eb00aa80fcc9eedcd63f31d
+</A></li>
+	<LI>Next message: <A HREF="003006.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c05818d3faedb0110f8dfa66f445a747934683bb
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3005">[ date ]</a>
+              <a href="thread.html#3005">[ thread ]</a>
+              <a href="subject.html#3005">[ subject ]</a>
+              <a href="author.html#3005">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

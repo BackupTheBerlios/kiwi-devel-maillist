@@ -1,0 +1,179 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1310 - in kiwi-head: . rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1310%20-%20in%20kiwi-head%3A%20.%20rpm&In-Reply-To=%3C200806051324.m55DO9ic023255%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000399.html">
+   <LINK REL="Next"  HREF="000401.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1310 - in kiwi-head: . rpm</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1310%20-%20in%20kiwi-head%3A%20.%20rpm&In-Reply-To=%3C200806051324.m55DO9ic023255%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1310 - in kiwi-head: . rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jun  5 15:24:09 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000399.html">[Kiwi-devel] [SVN:KIWI-Team] r1309 - in kiwi-head: rpm	system/boot/isoboot/suse-10.1/cdboot	system/boot/isoboot/suse-10.2/cdboot	system/boot/isoboot/suse-10.3/cdboot	system/boot/isoboot/suse-11.0/cdboot	system/boot/isoboot/suse-SLED10-SP1/cdboot	system/boot/isoboot/suse-SLED10/cdboot	system/boot/isoboot/suse-SLES10-SP1/cdboot	system/boot/isoboot/suse-SLES10/cdboot
+</A></li>
+        <LI>Next message: <A HREF="000401.html">[Kiwi-devel] [SVN:KIWI-Team] r1311 - in kiwi-head: rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#400">[ date ]</a>
+              <a href="thread.html#400">[ thread ]</a>
+              <a href="subject.html#400">[ subject ]</a>
+              <a href="author.html#400">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: Thu Jun  5 15:23:59 2008
+New Revision: 1310
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIManager.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+
+Log:
+
+- fixed smart call in setupSignatureCheck (bnc #397365)
+
+
+
+Modified: kiwi-head/kiwi.pl
+==============================================================================
+--- kiwi-head/kiwi.pl	(original)
++++ kiwi-head/kiwi.pl	Thu Jun  5 15:23:59 2008
+@@ -208,6 +208,12 @@
+ 		$kiwi = new KIWILog();
+ 	}
+ 	#==========================================
++	# remove pre-defined smart channels
++	#------------------------------------------
++	if (glob (&quot;/etc/smart/channels/*&quot;)) {
++		qxx ( &quot;rm -f /etc/smart/channels/*&quot; );
++	}
++	#==========================================
+ 	# Check for nocolor option
+ 	#------------------------------------------
+ 	if (defined $NoColor) {
+@@ -1301,10 +1307,6 @@
+ 		$kiwi -&gt; failed ();
+ 		my $code = kiwiExit (1); return $code;
+ 	}
+-	#==========================================
+-	# remove pre-defined smart channels
+-	#------------------------------------------
+-	qxx ( &quot;rm -f /etc/smart/channels/*&quot; );
+ }
+ 
+ #==========================================
+
+Modified: kiwi-head/modules/KIWIManager.pm
+==============================================================================
+--- kiwi-head/modules/KIWIManager.pm	(original)
++++ kiwi-head/modules/KIWIManager.pm	Thu Jun  5 15:23:59 2008
+@@ -120,6 +120,12 @@
+ 	$this-&gt;{ensconce}    = [
+ 		&quot;ensconce&quot;, &quot;-r /&quot;
+ 	];
++	#==========================================
++	# remove pre-defined smart channels
++	#------------------------------------------
++	if (glob (&quot;$root//etc/smart/channels/*&quot;)) {
++		qxx ( &quot;rm -f $root/etc/smart/channels/*&quot; );
++	}
+ 	return $this;
+ }
+ 
+@@ -311,7 +317,7 @@
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
+ 		my $optionName  = &quot;rpm-check-signatures&quot;;
+-		my $curCheckSig = qxx (&quot;smart config --show $optionName|tr -d '\\n'&quot;);
++		my $curCheckSig = qxx (&quot;@smart config --show $optionName|tr -d '\\n'&quot;);
+ 		$this-&gt;{curCheckSig} = $curCheckSig;
+ 		if (defined $imgCheckSig) {
+ 			my $option = &quot;$optionName=$imgCheckSig&quot;;
+@@ -323,7 +329,7 @@
+ 				$this -&gt; freeLock();
+ 			} else {
+ 				$kiwi -&gt; info (&quot;Setting RPM signature check to: $imgCheckSig&quot;);
+-				$data = qxx (&quot;chroot \&quot;$root\&quot; smart config --set $option 2&gt;&amp;1&quot;);
++				$data =qxx (&quot;chroot \&quot;$root\&quot; smart config --set $option 2&gt;&amp;1&quot;);
+ 			}
+ 			$code = $? &gt;&gt; 8;
+ 			if ($code != 0) {
+@@ -382,7 +388,7 @@
+ 				$this -&gt; freeLock();
+ 			} else {
+ 				$kiwi -&gt; info (&quot;Reset RPM signature check to: $curCheckSig&quot;);
+-				$data = qxx (&quot;chroot \&quot;$root\&quot; smart config --set $option 2&gt;&amp;1&quot;);
++				$data =qxx (&quot;chroot \&quot;$root\&quot; smart config --set $option 2&gt;&amp;1&quot;);
+ 			}
+ 			$code = $? &gt;&gt; 8;
+ 			if ($code != 0) {
+
+Modified: kiwi-head/rpm/kiwi.changes
+==============================================================================
+--- kiwi-head/rpm/kiwi.changes	(original)
++++ kiwi-head/rpm/kiwi.changes	Thu Jun  5 15:23:59 2008
+@@ -1,4 +1,9 @@
+ -------------------------------------------------------------------
++Thu Jun  5 12:29:04 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed smart call in setupSignatureCheck (bnc #397365)
++
++-------------------------------------------------------------------
+ Wed Jun  4 14:32:01 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed isolinux text boot message (bnc #396759)
+
+Modified: kiwi-head/rpm/kiwi.spec
+==============================================================================
+--- kiwi-head/rpm/kiwi.spec	(original)
++++ kiwi-head/rpm/kiwi.spec	Thu Jun  5 15:23:59 2008
+@@ -43,7 +43,7 @@
+ Provides:       kiwi2 = 2.14
+ Obsoletes:      kiwi2 = 2.14
+ Version:        2.38
+-Release:        77
++Release:        78
+ Group:          System/Management
+ License:        GPL v2 or later
+ Source:         %{name}.tar.bz2
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000399.html">[Kiwi-devel] [SVN:KIWI-Team] r1309 - in kiwi-head: rpm	system/boot/isoboot/suse-10.1/cdboot	system/boot/isoboot/suse-10.2/cdboot	system/boot/isoboot/suse-10.3/cdboot	system/boot/isoboot/suse-11.0/cdboot	system/boot/isoboot/suse-SLED10-SP1/cdboot	system/boot/isoboot/suse-SLED10/cdboot	system/boot/isoboot/suse-SLES10-SP1/cdboot	system/boot/isoboot/suse-SLES10/cdboot
+</A></li>
+	<LI>Next message: <A HREF="000401.html">[Kiwi-devel] [SVN:KIWI-Team] r1311 - in kiwi-head: rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#400">[ date ]</a>
+              <a href="thread.html#400">[ thread ]</a>
+              <a href="subject.html#400">[ subject ]</a>
+              <a href="author.html#400">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

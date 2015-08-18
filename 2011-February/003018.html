@@ -1,0 +1,418 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1ce6fcfa13512c8df05f2e7b9f77fecd8981b2c0
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%201ce6fcfa13512c8df05f2e7b9f77fecd8981b2c0&In-Reply-To=%3C20110203121010.BE38348134F%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003017.html">
+   <LINK REL="Next"  HREF="003019.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1ce6fcfa13512c8df05f2e7b9f77fecd8981b2c0</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%201ce6fcfa13512c8df05f2e7b9f77fecd8981b2c0&In-Reply-To=%3C20110203121010.BE38348134F%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1ce6fcfa13512c8df05f2e7b9f77fecd8981b2c0">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Feb  3 13:10:07 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003017.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 84d7f48c77a05d8a3617742b04be1925139a79df
+</A></li>
+        <LI>Next message: <A HREF="003019.html">[Kiwi-devel] Updated examples and doc for EC2 - related to #667303
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3018">[ date ]</a>
+              <a href="thread.html#3018">[ thread ]</a>
+              <a href="subject.html#3018">[ subject ]</a>
+              <a href="author.html#3018">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  1ce6fcfa13512c8df05f2e7b9f77fecd8981b2c0 (commit)
+      from  84d7f48c77a05d8a3617742b04be1925139a79df (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 1ce6fcfa13512c8df05f2e7b9f77fecd8981b2c0
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Feb 3 13:09:15 2011 +0100
+
+    - improved ec2 format creation per request in #667303
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index b003770..8319ddc 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -742,25 +742,31 @@ sub main {
+ 		# Initialize logical image extend
+ 		#------------------------------------------
+ 		my $ok;
++		my $checkFormat = 0;
+ 		SWITCH: for ($attr{type}) {
+ 			/^ext2/     &amp;&amp; do {
+ 				$ok = $image -&gt; createImageEXT2 ( $targetDevice );
++				$checkFormat = 1;
+ 				last SWITCH;
+ 			};
+ 			/^ext3/     &amp;&amp; do {
+ 				$ok = $image -&gt; createImageEXT3 ( $targetDevice );
++				$checkFormat = 1;
+ 				last SWITCH;
+ 			};
+ 			/^ext4/     &amp;&amp; do {
+ 				$ok = $image -&gt; createImageEXT4 ( $targetDevice );
++				$checkFormat = 1;
+ 				last SWITCH;
+ 			};
+ 			/^reiserfs/ &amp;&amp; do {
+ 				$ok = $image -&gt; createImageReiserFS ( $targetDevice );
++				$checkFormat = 1;
+ 				last SWITCH;
+ 			};
+ 			/^btrfs/    &amp;&amp; do {
+ 				$ok = $image -&gt; createImageBTRFS ( $targetDevice );
++				$checkFormat = 1;
+ 				last SWITCH;
+ 			};
+ 			/^squashfs/ &amp;&amp; do {
+@@ -801,6 +807,7 @@ sub main {
+ 			};
+ 			/^xfs/    &amp;&amp; do {
+ 				$ok = $image -&gt; createImageXFS ();
++				$checkFormat = 1;
+ 				last SWITCH;
+ 			};
+ 			$kiwi -&gt; error  (&quot;Unsupported type: $attr{type}&quot;);
+@@ -808,10 +815,22 @@ sub main {
+ 			undef $image;
+ 			my $code = kiwiExit (1); return $code;
+ 		}
+-		undef $image;
+ 		if ($ok) {
++			if (($checkFormat) &amp;&amp; ($attr{format})) {
++				my $haveFormat = $attr{format};
++				my $imgfile= $main::Destination.&quot;/&quot;.$image -&gt; buildImageName();
++				my $format = new KIWIImageFormat ($kiwi,$imgfile,$haveFormat);
++				if (! $format) {
++					my $code = kiwiExit (1); return $code;
++				}
++				if (! $format -&gt; createFormat()) {
++					my $code = kiwiExit (1); return $code;
++				}
++			}
++			undef $image;
+ 			my $code = kiwiExit (0); return $code;
+ 		} else {
++			undef $image;
+ 			my $code = kiwiExit (1); return $code;
+ 		}
+ 	}
+diff --git a/modules/KIWIImageFormat.pm b/modules/KIWIImageFormat.pm
+index 7d8c5d3..b818c11 100644
+--- a/modules/KIWIImageFormat.pm
++++ b/modules/KIWIImageFormat.pm
+@@ -131,7 +131,7 @@ sub createFormat {
+ 		my $data = qxx (&quot;parted $image print 2&gt;&amp;1&quot;);
+ 		my $code = $? &gt;&gt; 8;
+ 		if ($code != 0) {
+-			$kiwi -&gt; error  (&quot;system image is not a disk&quot;);
++			$kiwi -&gt; error  (&quot;system image is not a disk or filesystem&quot;);
+ 			$kiwi -&gt; failed ();
+ 			return undef
+ 		}
+@@ -343,14 +343,19 @@ sub createEC2 {
+ 	my $format = $this-&gt;{format};
+ 	my $target = $source;
+ 	my $aminame= basename $source;
++	my $destdir= dirname  $source;
+ 	my $status;
+ 	my $result;
++	my $tmpdir;
++	my $FD;
+ 	#==========================================
+ 	# Check AWS account information
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Creating $format image...&quot;);
+-	$target =~ s/\.raw$/\.$format/;
+-	$aminame=~ s/\.raw$/\.ami/;
++	$target  =~ s/\/$//;
++	$target .= &quot;.$format&quot;;
++	$aminame.= &quot;.ami&quot;;
++	my $title= $xml -&gt; getImageDisplayName();
+ 	my $arch = qxx (&quot;uname -m&quot;); chomp ( $arch );
+ 	my %type = %{$xml-&gt;getImageTypeAndAttributes()};
+ 	my %ec2  = $xml-&gt;getEc2Config();
+@@ -392,6 +397,182 @@ sub createEC2 {
+ 		return undef;
+ 	}
+ 	#==========================================
++	# loop mount root image and create config
++	#------------------------------------------
++	$tmpdir = qxx (&quot;mktemp -q -d $destdir/ec2.XXXXXX&quot;); chomp $tmpdir;
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Couldn't create tmp dir: $tmpdir: $!&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	$status = qxx (&quot;mount -o loop $source $tmpdir 2&gt;&amp;1&quot;);
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Couldn't loop mount $source: $status&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	sub clean_loop {
++		my $dir = shift;
++		qxx (&quot;umount $dir 2&gt;&amp;1&quot;);
++		qxx (&quot;rmdir  $dir 2&gt;&amp;1&quot;);
++	}
++	#==========================================
++	# setup Xen console as serial tty
++	#------------------------------------------
++	$this -&gt; __copy_origin (&quot;$tmpdir/etc/inittab&quot;);
++	if (! open $FD, &quot;&gt;&gt;$tmpdir/etc/inittab&quot;) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Failed to open $tmpdir/etc/inittab: $!&quot;);
++		$kiwi -&gt; failed ();
++		clean_loop $tmpdir;
++		return undef;
++	}
++	print $FD &quot;\n&quot;;
++	print $FD 'X0:12345:respawn:/sbin/agetty -L 9600 xvc0 xterm'.&quot;\n&quot;;
++	close $FD;
++	if (! open $FD, &quot;&gt;&gt;$tmpdir/etc/securetty&quot;) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Failed to open $tmpdir/etc/securetty: $!&quot;);
++		$kiwi -&gt; failed ();
++		clean_loop $tmpdir;
++		return undef;
++	}
++	print $FD &quot;\n&quot;;
++	print $FD 'xvc0'.&quot;\n&quot;;
++	close $FD;
++	#==========================================
++	# create initrd
++	#------------------------------------------
++	if (! open $FD, &quot;&gt;$tmpdir/create_initrd.sh&quot;) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Failed to open $tmpdir/create_initrd.sh: $!&quot;);
++		$kiwi -&gt; failed ();
++		clean_loop $tmpdir;
++		return undef;
++	}
++	print $FD 'export rootdev=/dev/sda1'.&quot;\n&quot;;
++	print $FD 'export rootfstype='.$type{type}.&quot;\n&quot;;
++	print $FD 'mknod /dev/sda1 b 8 1'.&quot;\n&quot;;
++	print $FD 'mkinitrd -B -A'.&quot;\n&quot;;
++	print $FD 'touch /boot/.rebuild-initrd'.&quot;\n&quot;;
++	close $FD;
++	qxx (&quot;chmod u+x $tmpdir/create_initrd.sh&quot;);
++	$status = qxx (&quot;chroot $tmpdir bash -c ./create_initrd.sh 2&gt;&amp;1&quot;);
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Failed to create initrd: $status&quot;);
++		$kiwi -&gt; failed ();
++		clean_loop $tmpdir;
++		return undef;
++	}
++	qxx (&quot;rm -f $tmpdir/create_initrd.sh&quot;);
++	#==========================================
++	# create grub bootloader setup
++	#------------------------------------------
++	# copy grub image files
++	qxx (&quot;cp $tmpdir/usr/lib/grub/* $tmpdir/boot/grub&quot;);
++	# boot/grub/device.map
++	if (! open $FD, &quot;&gt;$tmpdir/boot/grub/device.map&quot;) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Failed to open $tmpdir/boot/grub/device.map: $!&quot;);
++		$kiwi -&gt; failed ();
++		clean_loop $tmpdir;
++		return undef;
++	}
++	print $FD '(hd0)'.&quot;\t&quot;.'/dev/sda1'.&quot;\n&quot;; 
++	close $FD;
++	# etc/grub.conf
++	if (! open $FD, &quot;&gt;$tmpdir/etc/grub.conf&quot;) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Failed to open $tmpdir/etc/grub.conf: $!&quot;);
++		$kiwi -&gt; failed ();
++		clean_loop $tmpdir;
++		return undef;
++	}
++	print $FD 'setup --stage2=/boot/grub/stage2 --force-lba (hd0) (hd0)'.&quot;\n&quot;;
++	print $FD 'quit'.&quot;\n&quot;;
++	close $FD;
++	# boot/grub/menu.lst
++	my $args=&quot;xencons=xvc0 console=xvc0 splash=silent showopts&quot;;
++	if (! open $FD, &quot;&gt;$tmpdir/create_bootmenu.sh&quot;) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Failed to open $tmpdir/create_bootmenu.sh: $!&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	print $FD 'file=/boot/grub/menu.lst'.&quot;\n&quot;;
++	print $FD 'args=&quot;'.$args.'&quot;'.&quot;\n&quot;;
++	print $FD 'echo &quot;serial --unit=0 --speed=9600&quot; &gt; $file'.&quot;\n&quot;;
++	print $FD 'echo &quot;terminal --dumb serial&quot; &gt;&gt; $file'.&quot;\n&quot;;
++	print $FD 'echo &quot;default 0&quot; &gt;&gt; $file'.&quot;\n&quot;;
++	print $FD 'echo &quot;timeout 0&quot; &gt;&gt; $file'.&quot;\n&quot;;
++	print $FD 'echo &quot;hiddenmenu&quot; &gt;&gt; $file'.&quot;\n&quot;;
++	print $FD 'ls /lib/modules | while read D; do'.&quot;\n&quot;;
++	print $FD '   [ -d &quot;/lib/modules/$D&quot; ] || continue'.&quot;\n&quot;;
++	print $FD '   echo &quot;$D&quot;'.&quot;\n&quot;;
++	print $FD 'done | /usr/lib/rpm/rpmsort | tac | while read D; do'.&quot;\n&quot;;
++	print $FD '   for K in /boot/vmlinu[zx]-$D; do'.&quot;\n&quot;;
++	print $FD '      [ -f &quot;$K&quot; ] || continue'.&quot;\n&quot;;
++	print $FD '      echo &gt;&gt; $file'.&quot;\n&quot;;
++	print $FD '      echo &quot;title '.$title.'&quot; &gt;&gt; $file'.&quot;\n&quot;;
++	print $FD '      echo &quot;    root (hd0)&quot; &gt;&gt; $file'.&quot;\n&quot;;
++	print $FD '      echo &quot;    kernel $K root=/devsda1 $args&quot; &gt;&gt; $file'.&quot;\n&quot;;
++	print $FD '      if [ -f &quot;/boot/initrd-$D&quot; ]; then'.&quot;\n&quot;;
++	print $FD '         echo &quot;    initrd /boot/initrd-$D&quot; &gt;&gt; $file'.&quot;\n&quot;;
++	print $FD '      fi'.&quot;\n&quot;;
++	print $FD '   done'.&quot;\n&quot;;
++	print $FD 'done'.&quot;\n&quot;;
++	close $FD;
++	qxx (&quot;chmod u+x $tmpdir/create_bootmenu.sh&quot;);
++	$status = qxx (&quot;chroot $tmpdir bash -c ./create_bootmenu.sh 2&gt;&amp;1&quot;);
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Failed to create boot menu: $status&quot;);
++		$kiwi -&gt; failed ();
++		clean_loop $tmpdir;
++		return undef;
++	}
++	qxx (&quot;rm -f $tmpdir/create_bootmenu.sh&quot;);
++	# etc/sysconfig/bootloader
++	if (open $FD, &quot;$tmpdir/etc/sysconfig/bootloader&quot;) {
++		my @lines = &lt;$FD&gt;; close $FD;
++		$this -&gt; __ensure_key (\@lines, &quot;LOADER_TYPE&quot;      , &quot;grub&quot;);
++		$this -&gt; __ensure_key (\@lines, &quot;DEFAULT_NAME&quot;     , $title);
++		$this -&gt; __ensure_key (\@lines, &quot;DEFAULT_APPEND&quot;   , $args );
++		$this -&gt; __ensure_key (\@lines, &quot;DEFAULT_VGA&quot;      , &quot;&quot;    );
++		$this -&gt; __ensure_key (\@lines, &quot;FAILSAFE_APPEND&quot;  , $args );
++		$this -&gt; __ensure_key (\@lines, &quot;FAILSAFE_VGA&quot;     , &quot;&quot;    );
++		$this -&gt; __ensure_key (\@lines, &quot;XEN_KERNEL_APPEND&quot;, $args );
++		$this -&gt; __ensure_key (\@lines, &quot;XEN_APPEND&quot;       , &quot;&quot;    );
++		$this -&gt; __ensure_key (\@lines, &quot;XEN_VGA&quot;          , &quot;&quot;    );
++		open  $FD, &quot;&gt;$tmpdir/etc/sysconfig/bootloader&quot;;
++		print $FD @lines;
++		close $FD;
++	}
++	#==========================================
++	# setup fstab
++	#------------------------------------------
++	$this -&gt; __copy_origin (&quot;$tmpdir/etc/fstab&quot;);
++	if (! open $FD, &quot;&gt;&gt;$tmpdir/etc/fstab&quot;) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Failed to open $tmpdir/etc/fstab: $!&quot;);
++		$kiwi -&gt; failed ();
++		clean_loop $tmpdir;
++		return undef;
++	}
++	print $FD '/dev/sda1 / none defaults 0 0'.&quot;\n&quot;;
++	close $FD;
++	#==========================================
++	# cleanup loop
++	#------------------------------------------
++	clean_loop $tmpdir;
++	#==========================================
+ 	# call ec2-bundle-image (Amazon toolkit)
+ 	#------------------------------------------
+ 	my $pk = $ec2{EC2PrivateKeyFile};
+@@ -707,6 +888,43 @@ sub createOVFConfiguration {
+ 	return $this;
+ }
+ 
++#==========================================
++# helper functions
++#------------------------------------------
++#==========================================
++# __ensure_key
++#------------------------------------------
++sub __ensure_key {
++	my $this = shift;
++	my $lines= shift;
++	my $key  = shift;
++	my $val  = shift;
++	my $found= 0;
++	my $i = 0;
++	for ($i=0;$i&lt;@{$lines};$i++) {
++		if ($lines-&gt;[$i] =~ /^$key/) {
++			$lines-&gt;[$i] = &quot;$key=\&quot;$val\&quot;&quot;;
++			$found = 1;
++			last;
++		}
++	}
++	if (! $found) {
++		$lines-&gt;[$i] = &quot;$key=\&quot;$val\&quot;\n&quot;;
++	}
++}
++#==========================================
++# __copy_origin
++#------------------------------------------
++sub __copy_origin {
++	my $this = shift;
++	my $file = shift;
++	if (-f &quot;$file.orig&quot;) {
++		qxx (&quot;cp $file.orig $file&quot;);
++	} else {
++		qxx (&quot;cp $file $file.orig&quot;);
++	}
++}
++
+ 1;
+ 
+ # vim: set noexpandtab:
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003017.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 84d7f48c77a05d8a3617742b04be1925139a79df
+</A></li>
+	<LI>Next message: <A HREF="003019.html">[Kiwi-devel] Updated examples and doc for EC2 - related to #667303
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3018">[ date ]</a>
+              <a href="thread.html#3018">[ thread ]</a>
+              <a href="subject.html#3018">[ subject ]</a>
+              <a href="author.html#3018">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

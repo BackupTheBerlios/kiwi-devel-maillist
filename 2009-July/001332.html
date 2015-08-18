@@ -1,0 +1,217 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 54606b9ea536de612f5428f8148c21450d69d48a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2054606b9ea536de612f5428f8148c21450d69d48a&In-Reply-To=%3C200907081101.n68B1CgM005557%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001331.html">
+   <LINK REL="Next"  HREF="001333.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 54606b9ea536de612f5428f8148c21450d69d48a</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2054606b9ea536de612f5428f8148c21450d69d48a&In-Reply-To=%3C200907081101.n68B1CgM005557%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 54606b9ea536de612f5428f8148c21450d69d48a">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jul  8 13:01:12 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001331.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1cd4bbd3fec2a6d9ef109b38686305dbe013a321
+</A></li>
+        <LI>Next message: <A HREF="001333.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7eede8d5a5fb665084b8585e761dd23a5f89d3e1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1332">[ date ]</a>
+              <a href="thread.html#1332">[ thread ]</a>
+              <a href="subject.html#1332">[ subject ]</a>
+              <a href="author.html#1332">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  54606b9ea536de612f5428f8148c21450d69d48a (commit)
+      from  1cd4bbd3fec2a6d9ef109b38686305dbe013a321 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 54606b9ea536de612f5428f8148c21450d69d48a
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jul 8 13:00:23 2009 +0200
+
+    - fixed bootloader setup for luks mode
+    - fixed default split file
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 53c6d39..18d2074 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -1021,6 +1021,8 @@ function setupBootLoaderGrub {
+ 		gnum=1
+ 	elif [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
+ 		gnum=2
++	elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
++		:
+ 	elif [ ! -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ $gnum -gt 0 ]; then
+ 		rwDevice=`echo $UNIONFS_CONFIG | cut -d , -f 1`
+ 		gnum=`echo $rwDevice | sed -e &quot;s/\/dev.*\([0-9]\)/\\1/&quot;`
+@@ -1242,6 +1244,8 @@ function setupBootLoaderLilo {
+ 		lnum=1
+ 	elif [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
+ 		lnum=2
++	elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
++		:
+ 	elif [ ! -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ $gnum -gt 0 ]; then
+ 		rwDevice=`echo $UNIONFS_CONFIG | cut -d , -f 1`
+ 		lnum=`echo $rwDevice | sed -e &quot;s/\/dev.*\([0-9]\)/\\1/&quot;`
+@@ -3557,6 +3561,10 @@ function mountSystemCombined {
+ 			ln -s /mnt/read-write /read-write &gt;/dev/null
+ 		fi
+ 	fi
++	if [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
++		mkdir -p /mnt/luksboot
++		( cd /mnt &amp;&amp; rm boot &amp;&amp; ln -sf luksboot/boot boot )
++	fi
+ }
+ #======================================
+ # mountSystemStandard
+diff --git a/modules/KIWISplit.txt b/modules/KIWISplit.txt
+index fbcbb3c..4a4217f 100644
+--- a/modules/KIWISplit.txt
++++ b/modules/KIWISplit.txt
+@@ -1,6 +1,12 @@
+ &lt;split&gt;
+-	&lt;temporary&gt;
++	&lt;persistent&gt;
+ 		&lt;file name=&quot;/var&quot;/&gt;
+ 		&lt;file name=&quot;/var/*&quot;/&gt;
+-	&lt;/temporary&gt;
++		&lt;file name=&quot;/boot&quot;/&gt;
++		&lt;file name=&quot;/boot/*&quot;/&gt;
++		&lt;file name=&quot;/etc&quot;/&gt;
++		&lt;file name=&quot;/etc/*&quot;/&gt;
++		&lt;file name=&quot;/home&quot;/&gt;
++		&lt;file name=&quot;/home/*&quot;/&gt;
++	&lt;/persistent&gt;
+ &lt;/split&gt;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 7bfb052..e46b041 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -2,9 +2,9 @@
+ Sun Jul  5 19:59:26 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.62
+-- fixed combined mount with luks encoded read-write part
+-- added support for luks extension for oem image type
+-- fixed CD eject in oem CD/DVD install mode
++- fixed combined mount with luks encoded read-write part (bnc #505782)
++- added support for luks extension for oem image type (bnc #505782)
++- fixed CD eject in oem CD/DVD install mode (bnc #519654)
+ 
+ -------------------------------------------------------------------
+ Tue Jun 30 10:11:11 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index 0bc08b5..d3240f1 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -432,7 +432,7 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ]; then
+ 			bootid=2
+ 		fi
+ 		mount $imageBootDevice /mnt/luksboot
+-		cp -a /mnt/boot /mnt/luksboot
++		cp -a -L /mnt/boot /mnt/luksboot
+ 		test -f /tmp/linux.vmx  &amp;&amp; mv /tmp/linux.vmx  /mnt/luksboot/boot
+ 		test -f /tmp/initrd.vmx &amp;&amp; mv /tmp/initrd.vmx /mnt/luksboot/boot
+ 		test -f /tmp/mbrid &amp;&amp; mv /tmp/mbrid /mnt/luksboot/boot/grub
+diff --git a/system/boot/ix86/oemboot/suse-repart b/system/boot/ix86/oemboot/suse-repart
+index 5d3bdf9..db15948 100755
+--- a/system/boot/ix86/oemboot/suse-repart
++++ b/system/boot/ix86/oemboot/suse-repart
+@@ -372,14 +372,14 @@ function OEMRepartOverlayed {
+ 			bootid=1
+ 		fi
+ 		activateBootPartition
+-	fi
+-	#======================================
+-	# Create bootfs if DM squash setup
+-	#--------------------------------------
+-	if [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
+-		export imageBootDevice=$imageDiskDevice&quot;3&quot;
+-		if ! mke2fs -T ext2 -q $imageBootDevice &gt;/dev/null 2&gt;&amp;1;then
+-			systemException &quot;Failed to create Boot filesystem&quot; &quot;reboot&quot;
++		#======================================
++		# Create bootfs if DM squash setup
++		#--------------------------------------
++		if [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
++			export imageBootDevice=$imageDiskDevice&quot;3&quot;
++			if ! mke2fs -T ext2 -q $imageBootDevice &gt;/dev/null 2&gt;&amp;1;then
++				systemException &quot;Failed to create Boot filesystem&quot; &quot;reboot&quot;
++			fi
+ 		fi
+ 	fi
+ }
+@@ -704,12 +704,12 @@ function OEMRepartLuks {
+ 			export imageRWDevice=$imageIOWRDevice
+ 			export imageRODevice=$imageRootDevice
+ 		fi
+-	fi
+-	#======================================
+-	# Create bootfs if DM squash setup
+-	#--------------------------------------
+-	if ! mke2fs -T ext2 -q $imageBootDevice &gt;/dev/null 2&gt;&amp;1;then
+-		systemException &quot;Failed to create Boot filesystem&quot; &quot;reboot&quot;
++		#======================================
++		# Create bootfs if DM squash setup
++		#--------------------------------------
++		if ! mke2fs -T ext2 -q $imageBootDevice &gt;/dev/null 2&gt;&amp;1;then
++			systemException &quot;Failed to create Boot filesystem&quot; &quot;reboot&quot;
++		fi
+ 	fi
+ }
+ 
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001331.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1cd4bbd3fec2a6d9ef109b38686305dbe013a321
+</A></li>
+	<LI>Next message: <A HREF="001333.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7eede8d5a5fb665084b8585e761dd23a5f89d3e1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1332">[ date ]</a>
+              <a href="thread.html#1332">[ thread ]</a>
+              <a href="subject.html#1332">[ subject ]</a>
+              <a href="author.html#1332">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

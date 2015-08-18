@@ -1,0 +1,405 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1808 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1808%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200812021133.mB2BX95T029658%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="000922.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1808 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1808%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200812021133.mB2BX95T029658%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1808 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Dec  2 12:33:09 CET 2008</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="000922.html">[Kiwi-devel] r1809 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#921">[ date ]</a>
+              <a href="thread.html#921">[ thread ]</a>
+              <a href="subject.html#921">[ subject ]</a>
+              <a href="author.html#921">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-12-02 12:32:59 +0100 (Tue, 02 Dec 2008)
+New Revision: 1808
+
+Modified:
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- added deviceMap to allow custom partition device names by id
+- fixed sfdiskGetPartitionSize to report the correct size if
+  called on a whole disk and not on a partition
+
+
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2008-11-28 15:35:26 UTC (rev 1807)
++++ kiwi-head/modules/KIWIBoot.pm	2008-12-02 11:32:59 UTC (rev 1808)
+@@ -483,6 +483,7 @@
+ 	my $zipped    = $this-&gt;{zipped};
+ 	my $isxen     = $this-&gt;{isxen};
+ 	my $xengz     = $this-&gt;{xengz};
++	my %deviceMap = ();
+ 	my @commands  = ();
+ 	my $imgtype   = &quot;usb&quot;;
+ 	my $haveSplit = 0;
+@@ -729,8 +730,15 @@
+ 			$this -&gt; cleanTmp ();
+ 			return undef;
+ 		}
++		#==========================================
++		# Create default device mapping table
++		#------------------------------------------
++		%deviceMap = $this -&gt; setDefaultDeviceMap ($stick);
++		#==========================================
++		# Umount possible mounted stick partitions
++		#------------------------------------------
+ 		for (my $i=1;$i&lt;=2;$i++) {
+-			qxx ( &quot;umount $stick$i 2&gt;&amp;1&quot; );
++			qxx ( &quot;umount $deviceMap{$i} 2&gt;&amp;1&quot; );
+ 		}
+ 		$status = qxx ( &quot;/sbin/blockdev --rereadpt $stick 2&gt;&amp;1&quot; );
+ 		$result = $? &gt;&gt; 8;
+@@ -751,7 +759,7 @@
+ 		#------------------------------------------
+ 		if ((defined $system) &amp;&amp; (($syszip) || ($haveSplit))) {
+ 			my $sizeOK = 1;
+-			my $systemPSize = $this -&gt; getStorageSize ($stick.&quot;1&quot;);
++			my $systemPSize = $this -&gt; getStorageSize ($deviceMap{1});
+ 			my $systemISize = -s $system; $systemISize /= 1024;
+ 			chomp $systemPSize;
+ 			#print &quot;_______A $systemPSize : $systemISize\n&quot;;
+@@ -779,9 +787,9 @@
+ 	#------------------------------------------
+ 	if (! $haveTree) {
+ 		$kiwi -&gt; info (&quot;Dumping system image to stick&quot;);
+-		$status = qxx ( &quot;umount $stick'1' 2&gt;&amp;1&quot; );
+-		$status = qxx ( &quot;umount $stick'2' 2&gt;&amp;1&quot; );
+-		$status = qxx (&quot;dd if=$system of=$stick'1' bs=32k 2&gt;&amp;1&quot;);
++		$status = qxx ( &quot;umount $deviceMap{1} 2&gt;&amp;1&quot; );
++		$status = qxx ( &quot;umount $deviceMap{2} 2&gt;&amp;1&quot; );
++		$status = qxx (&quot;dd if=$system of=$deviceMap{1} bs=32k 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; failed ();
+@@ -794,7 +802,7 @@
+ 		$kiwi -&gt; done();
+ 		if ($haveSplit) {
+ 			$kiwi -&gt; info (&quot;Dumping split read/write part to stick&quot;);
+-			$status = qxx (&quot;dd if=$splitfile of=$stick'2' bs=32k 2&gt;&amp;1&quot;);
++			$status = qxx (&quot;dd if=$splitfile of=$deviceMap{2} bs=32k 2&gt;&amp;1&quot;);
+ 			$result = $? &gt;&gt; 8;
+ 			if ($result != 0) {
+ 				$kiwi -&gt; failed ();
+@@ -810,7 +818,7 @@
+ 			my %FSopts = main::checkFSOptions();
+ 			my $fsopts = $FSopts{ext3};
+ 			$fsopts.= &quot;-j -F&quot;;
+-			$status = qxx (&quot;/sbin/mke2fs $fsopts $stick'2' 2&gt;&amp;1&quot;);
++			$status = qxx (&quot;/sbin/mke2fs $fsopts $deviceMap{2} 2&gt;&amp;1&quot;);
+ 			$result = $? &gt;&gt; 8;
+ 			if ($result != 0) {
+ 				$kiwi -&gt; failed ();
+@@ -832,7 +840,7 @@
+ 				$kiwi -&gt; info (&quot;Creating ext2 root filesystem&quot;);
+ 				my $fsopts = $FSopts{ext2};
+ 				$fsopts.= &quot;-F&quot;;
+-				$status = qxx (&quot;/sbin/mke2fs $fsopts $stick'1' 2&gt;&amp;1&quot;);
++				$status = qxx (&quot;/sbin/mke2fs $fsopts $deviceMap{1} 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+ 			};
+@@ -840,7 +848,7 @@
+ 				$kiwi -&gt; info (&quot;Creating ext3 root filesystem&quot;);
+ 				my $fsopts = $FSopts{ext3};
+ 				$fsopts.= &quot;-j -F&quot;;
+-				$status = qxx (&quot;/sbin/mke2fs $fsopts $stick'1' 2&gt;&amp;1&quot;);
++				$status = qxx (&quot;/sbin/mke2fs $fsopts $deviceMap{1} 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+ 			};
+@@ -849,7 +857,7 @@
+ 				my $fsopts = $FSopts{reiserfs};
+ 				$fsopts.= &quot;-f&quot;;
+ 				$status = qxx (
+-					&quot;/sbin/mkreiserfs $fsopts $stick'1' 2&gt;&amp;1&quot;
++					&quot;/sbin/mkreiserfs $fsopts $deviceMap{1} 2&gt;&amp;1&quot;
+ 				);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+@@ -872,7 +880,7 @@
+ 		#==========================================
+ 		# Mount system image partition
+ 		#------------------------------------------
+-		$status = qxx (&quot;mount $stick'1' $loopdir 2&gt;&amp;1&quot;);
++		$status = qxx (&quot;mount $deviceMap{1} $loopdir 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; failed ();
+@@ -910,13 +918,13 @@
+ 	SWITCH: for ($FSTypeRO) {
+ 		/^ext\d/    &amp;&amp; do {
+ 			$kiwi -&gt; info (&quot;Resizing system $FSTypeRO filesystem&quot;);
+-			$status = qxx (&quot;/sbin/resize2fs -f -F -p $stick'1' 2&gt;&amp;1&quot;);
++			$status = qxx (&quot;/sbin/resize2fs -f -F -p $deviceMap{1} 2&gt;&amp;1&quot;);
+ 			$result = $? &gt;&gt; 8;
+ 			last SWITCH;
+ 		};
+ 		/^reiserfs/ &amp;&amp; do {
+ 			$kiwi -&gt; info (&quot;Resizing system $FSTypeRO filesystem&quot;);
+-			$status = qxx (&quot;/sbin/resize_reiserfs $stick'1' 2&gt;&amp;1&quot;);
++			$status = qxx (&quot;/sbin/resize_reiserfs $deviceMap{1} 2&gt;&amp;1&quot;);
+ 			$result = $? &gt;&gt; 8;
+ 			last SWITCH;
+ 		}
+@@ -938,13 +946,13 @@
+ 		SWITCH: for ($FSTypeRW) {
+ 			/^ext\d/    &amp;&amp; do {
+ 				$kiwi -&gt; info (&quot;Resizing split $FSTypeRW filesystem&quot;);
+-				$status = qxx (&quot;/sbin/resize2fs -f -F -p $stick'2' 2&gt;&amp;1&quot;);
++				$status = qxx (&quot;/sbin/resize2fs -f -F -p $deviceMap{2} 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+ 			};
+ 			/^reiserfs/ &amp;&amp; do {
+ 				$kiwi -&gt; info (&quot;Resizing split $FSTypeRW filesystem&quot;);
+-				$status = qxx (&quot;/sbin/resize_reiserfs $stick'2' 2&gt;&amp;1&quot;);
++				$status = qxx (&quot;/sbin/resize_reiserfs $deviceMap{2} 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+ 			}
+@@ -966,10 +974,10 @@
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Copying boot data to stick&quot;);
+ 	if (($syszip) || ($haveSplit)) {
+-		$status = qxx (&quot;mount $stick'2' $loopdir 2&gt;&amp;1&quot;);
++		$status = qxx (&quot;mount $deviceMap{2} $loopdir 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 	} else {
+-		$status = qxx (&quot;mount $stick'1' $loopdir 2&gt;&amp;1&quot;);
++		$status = qxx (&quot;mount $deviceMap{1} $loopdir 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 	}
+ 	if ($result != 0) {
+@@ -1005,7 +1013,7 @@
+ 	#------------------------------------------
+ 	qxx (&quot;rm -rf $tmpdir&quot;);
+ 	#==========================================
+-	# Remove dbus lock for $stick
++	# Remove dbus lock on stick
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Removing HAL lock&quot;);
+ 	$this -&gt; cleanDbus();
+@@ -1239,6 +1247,7 @@
+ 	my $isxen     = $this-&gt;{isxen};
+ 	my $xengz     = $this-&gt;{xengz};
+ 	my $diskname  = $system.&quot;.install.raw&quot;;
++	my %deviceMap = ();
+ 	my @commands  = ();
+ 	my $imgtype   = &quot;oem&quot;;
+ 	my $gotsys    = 1;
+@@ -1434,6 +1443,10 @@
+ 	}
+ 	$kiwi -&gt; done();
+ 	#==========================================
++	# Create loop device mapping table
++	#------------------------------------------
++	%deviceMap = $this -&gt; setLoopDeviceMap ($this-&gt;{loop});
++	#==========================================
+ 	# setup device mapper
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Setup device mapper for virtual partition access&quot;);
+@@ -1446,11 +1459,10 @@
+ 		$this -&gt; cleanLoop ();
+ 		return undef;
+ 	}
+-	my $dmap = $this-&gt;{loop}; $dmap =~ s/dev\///;
+-	my $boot = &quot;/dev/mapper&quot;.$dmap.&quot;p1&quot;;
++	my $boot = $deviceMap{1};
+ 	my $data;
+ 	if ($gotsys) {
+-		$data = &quot;/dev/mapper&quot;.$dmap.&quot;p2&quot;;
++		$data = $deviceMap{2};
+ 	}
+ 	$kiwi -&gt; done();
+ 	#==========================================
+@@ -1565,6 +1577,7 @@
+ 	my $isxen     = $this-&gt;{isxen};
+ 	my $xengz     = $this-&gt;{xengz};
+ 	my $diskname  = $system.&quot;.raw&quot;;
++	my %deviceMap = ();
+ 	my @commands  = ();
+ 	my $imgtype   = &quot;vmx&quot;;
+ 	my $bootfix   = &quot;VMX&quot;;
+@@ -1770,6 +1783,10 @@
+ 			return undef;
+ 		}
+ 		#==========================================
++		# Create loop device mapping table
++		#------------------------------------------
++		%deviceMap = $this -&gt; setLoopDeviceMap ($this-&gt;{loop});
++		#==========================================
+ 		# setup device mapper
+ 		#------------------------------------------
+ 		$status = qxx ( &quot;/sbin/kpartx -a $this-&gt;{loop} 2&gt;&amp;1&quot; );
+@@ -1781,14 +1798,13 @@
+ 			$this -&gt; cleanLoop ();
+ 			return undef;
+ 		}
+-		$dmap = $this-&gt;{loop}; $dmap =~ s/dev\///;
+-		$root = &quot;/dev/mapper&quot;.$dmap.&quot;p1&quot;;
++		$root = $deviceMap{1};
+ 		#==========================================
+ 		# check partition sizes
+ 		#------------------------------------------
+ 		if ($syszip &gt; 0) {
+ 			my $sizeOK = 1;
+-			my $systemPSize = $this-&gt;getStorageSize (&quot;/dev/mapper&quot;.$dmap.&quot;p1&quot;);
++			my $systemPSize = $this-&gt;getStorageSize ($deviceMap{1});
+ 			my $systemISize = -s $system; $systemISize /= 1024;
+ 			chomp $systemPSize;
+ 			#print &quot;_______A $systemPSize : $systemISize\n&quot;;
+@@ -1860,7 +1876,7 @@
+ 		}
+ 		if ($haveSplit) {
+ 			$kiwi -&gt; info (&quot;Dumping split read/write part on virtual disk&quot;);
+-			$root = &quot;/dev/mapper&quot;.$dmap.&quot;p2&quot;;
++			$root = $deviceMap{2};
+ 			$status = qxx (&quot;dd if=$splitfile of=$root bs=32k 2&gt;&amp;1&quot;);
+ 			$result = $? &gt;&gt; 8;
+ 			if ($result != 0) {
+@@ -1978,7 +1994,7 @@
+ 	# create read/write filesystem if needed
+ 	#------------------------------------------
+ 	if (($syszip) || ($haveSplit)) {
+-		$root = &quot;/dev/mapper&quot;.$dmap.&quot;p2&quot;;
++		$root = $deviceMap{2};
+ 		if (! $haveSplit) {
+ 			$kiwi -&gt; info (&quot;Creating ext2 read-write filesystem&quot;);
+ 			my %FSopts = main::checkFSOptions();
+@@ -3374,4 +3390,45 @@
+ 	return 0;
+ }
+ 
++#==========================================
++# setDefaultDeviceMap
++#------------------------------------------
++sub setDefaultDeviceMap {
++	# ...
++	# set default device map which creates a mapping for
++	# device names to a number
++	# ---
++	my $this   = shift;
++	my $device = shift;
++	my %result;
++	if (! defined $device) {
++		return undef;
++	}
++	for (my $i=1;$i&lt;=2;$i++) {
++		$result{$i} = $device.$i;
++	}
++	return %result;
++}
++
++#==========================================
++# setLoopDeviceMap
++#------------------------------------------
++sub setLoopDeviceMap {
++	# ...
++	# set loop device map which creates a mapping for
++	# /dev/mapper loop device names to a number
++	# ---
++	my $this   = shift;
++	my $device = shift;
++	my %result;
++	if (! defined $device) {
++		return undef;
++	}
++	my $dmap = $device; $dmap =~ s/dev\///;
++	for (my $i=1;$i&lt;=2;$i++) {
++		$result{$i} = &quot;/dev/mapper&quot;.$dmap.&quot;p$i&quot;;
++	}
++	return %result;
++}
++
+ 1; 
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-11-28 15:35:26 UTC (rev 1807)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-12-02 11:32:59 UTC (rev 1808)
+@@ -1859,7 +1859,13 @@
+ 	# /.../
+ 	# prints the partition or disk size in kB
+ 	# ----
+-	sfdisk -s $1
++	local cyl_count=`sfdisk -g $1 2&gt;&amp;1 | cut -f2 -d: | cut -f2 -d&quot; &quot;`
++	local cyl_bsize=`sfdisk -l $1 2&gt;&amp;1 | grep Units | cut -f5 -d&quot; &quot;`
++	if [ ! -z &quot;$cyl_bsize&quot; ];then
++		expr $cyl_count \* $cyl_bsize / 1024
++	else
++		sfdisk -s $1
++	fi
+ }
+ #======================================
+ # sfdiskPartitionCount
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-11-28 15:35:26 UTC (rev 1807)
++++ kiwi-head/rpm/kiwi.changes	2008-12-02 11:32:59 UTC (rev 1808)
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Tue Dec  2 12:38:57 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- added deviceMap to allow custom partition device names by id 
++- fixed sfdiskGetPartitionSize to report the correct size if
++  called on a whole disk and not on a partition
++
++-------------------------------------------------------------------
+ Fri Nov 28 16:16:25 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed build
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="000922.html">[Kiwi-devel] r1809 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#921">[ date ]</a>
+              <a href="thread.html#921">[ thread ]</a>
+              <a href="subject.html#921">[ subject ]</a>
+              <a href="author.html#921">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

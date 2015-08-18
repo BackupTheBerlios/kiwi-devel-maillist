@@ -1,0 +1,369 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bc50e69543a06052fbada19fe2be510b95ab8d7e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20bc50e69543a06052fbada19fe2be510b95ab8d7e&In-Reply-To=%3C20110728134053.B6D5848146F%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003660.html">
+   <LINK REL="Next"  HREF="003664.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bc50e69543a06052fbada19fe2be510b95ab8d7e</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20bc50e69543a06052fbada19fe2be510b95ab8d7e&In-Reply-To=%3C20110728134053.B6D5848146F%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bc50e69543a06052fbada19fe2be510b95ab8d7e">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jul 28 15:40:53 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003660.html">[Kiwi-devel] [PATCH] add netboot for ppc factory. (OBS worker uses	it)
+</A></li>
+        <LI>Next message: <A HREF="003664.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ebd8893921c64778cfbbfc49f1a949aeeb024ac7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3663">[ date ]</a>
+              <a href="thread.html#3663">[ thread ]</a>
+              <a href="subject.html#3663">[ subject ]</a>
+              <a href="author.html#3663">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  bc50e69543a06052fbada19fe2be510b95ab8d7e (commit)
+       via  f0957fc72ee5806bd777191d12c8a2ea1d7b4130 (commit)
+      from  08ff933258fc66f7aca73a538c496d8dcfbd3d91 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit bc50e69543a06052fbada19fe2be510b95ab8d7e
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Jul 28 15:39:17 2011 +0200
+
+    - setup INITRD_MODULES for ppc correctly as ipr module is not
+      included there by default.
+    - includes only needed scsi and network modules for ppc based
+      boot images
+
+commit f0957fc72ee5806bd777191d12c8a2ea1d7b4130
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Jul 28 15:37:56 2011 +0200
+
+    - setup serial console on JS21 ppc blade with correct baud rate
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 71a86b3..aba978d 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -7266,6 +7266,12 @@ function setupConsole {
+ 	if [ ! -e /sys/class/tty/ttyS0 ];then
+ 		cat $itab | grep -vi 'ttyS0' &gt; $itab.new &amp;&amp; mv $itab.new $itab
+ 	fi
++	if [ &quot;$arch&quot; = &quot;ppc64&quot; ];then
++		if [ -e /sys/class/tty/ttyS0 -a ! -e /sys/class/tty/hvc0 ];then
++			cat $itab | grep -vi 'ttyS0' &gt; $itab.new &amp;&amp; mv $itab.new $itab
++			echo &quot;S0:12345:respawn:/sbin/agetty -L 19200 ttyS0 vt102&quot; &gt;&gt; $itab
++		fi
++	fi
+ }
+ #======================================
+ # cleanPartitionTable
+diff --git a/system/boot/ppc/netboot/suse-SLES11/config.xml b/system/boot/ppc/netboot/suse-SLES11/config.xml
+index cb9902a..afcd033 100644
+--- a/system/boot/ppc/netboot/suse-SLES11/config.xml
++++ b/system/boot/ppc/netboot/suse-SLES11/config.xml
+@@ -31,43 +31,39 @@
+ 		&lt;file name=&quot;usb/storage/usb-storage.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
+ 	&lt;drivers type=&quot;drivers&quot; profiles=&quot;default,xen,ppc64&quot;&gt;
+-		&lt;file name=&quot;drivers/gpu/drm/i915/i915.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/char/agp/intel-agp.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/hid/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
++		&lt;file name=&quot;drivers/usb/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/loop.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/brd.ko&quot;/&gt;
+ 		&lt;file name=&quot;net/packet/*&quot;/&gt;
++		&lt;file name=&quot;lib/zlib_deflate/zlib_deflate.ko&quot;/&gt;
++		&lt;file name=&quot;lib/libcrc32c.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
++		&lt;file name=&quot;fs/ext4/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext2/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/binfmt_aout.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/binfmt_misc.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/mbcache.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/quota_v1.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/quota_v2.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/jbd/*&quot;/&gt;
+-		&lt;file name=&quot;fs/fat/*&quot;/&gt;
+-		&lt;file name=&quot;fs/vfat/*&quot;/&gt;
+-		&lt;file name=&quot;fs/hfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/exportfs/*&quot;/&gt;
++		&lt;file name=&quot;fs/jbd2/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/squashfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/reiserfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/nfs/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/fuse/*&quot;/&gt;
+-		&lt;file name=&quot;net/sunrpc/*&quot;/&gt;
++		&lt;file name=&quot;fs/xfs/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/lockd/*&quot;/&gt;
+-		&lt;file name=&quot;fs/nfs_common/*&quot;/&gt;
+ 		&lt;file name=&quot;net/ipv6/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/ata/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/scsi/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/message/fusion/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/nbd.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/aoe/aoe.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/parport/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/char/lp.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/scsi_mod.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/scsi_transport_srp.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/sd_mod.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/scsi_tgt.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/ibmvscsi&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/ibmvscsi/ibmvscsic.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/ipr.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/lpfc/*&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/scsi_transport_fc.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/ibmveth.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/veth.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/tg3.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/ehea/ehea.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/e1000e/e1000e.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/e1000/e1000.ko&quot;/&gt;
++		&lt;file name=&quot;lib/crc-t10dif.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
+ 	&lt;drivers type=&quot;drivers&quot; profiles=&quot;diskless&quot;&gt;
+ 		&lt;file name=&quot;drivers/gpu/drm/i915/i915.ko&quot;/&gt;
+diff --git a/system/boot/ppc/netboot/suse-linuxrc b/system/boot/ppc/netboot/suse-linuxrc
+index 4f02a6b..f24fca3 100755
+--- a/system/boot/ppc/netboot/suse-linuxrc
++++ b/system/boot/ppc/netboot/suse-linuxrc
+@@ -29,7 +29,7 @@ export DEBUG=0
+ # Exports (Booting)
+ #--------------------------------------
+ export DOMURD_MODULES=&quot;xennet xenblk&quot;
+-export INITRD_MODULES=&quot;&quot;
++export INITRD_MODULES=&quot;ipr lpfc ibmvscsic&quot;
+ export LOCAL_BOOT=&quot;no&quot;
+ export KERNEL_LIST
+ 
+diff --git a/system/boot/ppc/oemboot/suse-SLES11/config.xml b/system/boot/ppc/oemboot/suse-SLES11/config.xml
+index 68b809a..3603f46 100644
+--- a/system/boot/ppc/oemboot/suse-SLES11/config.xml
++++ b/system/boot/ppc/oemboot/suse-SLES11/config.xml
+@@ -7,7 +7,7 @@
+ 		&lt;specification&gt;boot/initrd image used on OEM VMX disk&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+-		&lt;type image=&quot;cpio&quot; bootprofile=&quot;default&quot; bootkernel=&quot;ppc64&quot;/&gt;
++		&lt;type image=&quot;cpio&quot; bootprofile=&quot;ppc64&quot; bootkernel=&quot;ppc64&quot;/&gt;
+ 		&lt;version&gt;2.7.1&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -23,46 +23,39 @@
+ 		&lt;profile name=&quot;ppc64&quot; description=&quot;KERNEL: ppc64 kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
+-		&lt;file name=&quot;crypto/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/thermal/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/hwmon/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/acpi/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/usb/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/virtio/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/virtio_blk.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/char/hw_random/virtio-rng.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/*&quot;/&gt;
+-		&lt;file name=&quot;net/packet/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/loop.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/hid/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
++		&lt;file name=&quot;net/packet/*&quot;/&gt;
++		&lt;file name=&quot;lib/zlib_deflate/zlib_deflate.ko&quot;/&gt;
++		&lt;file name=&quot;lib/libcrc32c.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
++		&lt;file name=&quot;fs/ext4/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext2/*&quot;/&gt;
+-		&lt;file name=&quot;fs/fat/*&quot;/&gt;
+-		&lt;file name=&quot;fs/vfat/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/binfmt_aout.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/binfmt_misc.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/mbcache.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/quota_v1.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/quota_v2.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/jbd/*&quot;/&gt;
+-		&lt;file name=&quot;fs/hfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/exportfs/*&quot;/&gt;
++		&lt;file name=&quot;fs/jbd2/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/squashfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/nls/nls_utf8.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/nls/nls_cp437.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/nls/nls_iso8859-1.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/fuse/*&quot;/&gt;
+-		&lt;file name=&quot;fs/udf/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/ata/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/scsi/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/message/fusion/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/cdrom/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/parport/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/char/lp.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/acpi/dock.ko&quot;/&gt;
+-		&lt;file name=&quot;drivers/firmware/edd.ko&quot;/&gt;
++		&lt;file name=&quot;fs/xfs/*&quot;/&gt;
++		&lt;file name=&quot;fs/lockd/*&quot;/&gt;
++		&lt;file name=&quot;net/ipv6/*&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/scsi_mod.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/scsi_transport_srp.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/sd_mod.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/scsi_tgt.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/ibmvscsi&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/ibmvscsi/ibmvscsic.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/ipr.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/lpfc/*&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/scsi_transport_fc.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/ibmveth.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/veth.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/tg3.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/ehea/ehea.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/e1000e/e1000e.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/e1000/e1000.ko&quot;/&gt;
++		&lt;file name=&quot;lib/crc-t10dif.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
+ 	&lt;drivers type=&quot;drivers&quot; profiles=&quot;xen&quot;&gt;
+ 		&lt;file name=&quot;drivers/xen/*&quot;/&gt;
+diff --git a/system/boot/ppc/oemboot/suse-linuxrc b/system/boot/ppc/oemboot/suse-linuxrc
+index 400aaba..43ce61e 100755
+--- a/system/boot/ppc/oemboot/suse-linuxrc
++++ b/system/boot/ppc/oemboot/suse-linuxrc
+@@ -28,7 +28,7 @@ export DOBACKUP=1
+ # Exports (Booting)
+ #--------------------------------------
+ export DOMURD_MODULES=&quot;xennet xenblk&quot;
+-export INITRD_MODULES=&quot;&quot;
++export INITRD_MODULES=&quot;ipr lpfc ibmvscsic&quot;
+ export LOCAL_BOOT=no
+ export systemIntegrity=&quot;clean&quot;
+ 
+diff --git a/system/boot/ppc/vmxboot/suse-SLES11/config.xml b/system/boot/ppc/vmxboot/suse-SLES11/config.xml
+index d6877a0..7e1192c 100644
+--- a/system/boot/ppc/vmxboot/suse-SLES11/config.xml
++++ b/system/boot/ppc/vmxboot/suse-SLES11/config.xml
+@@ -17,30 +17,39 @@
+ 		&lt;profile name=&quot;ppc64&quot; description=&quot;KERNEL: ppc64 kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
+-		&lt;file name=&quot;crypto/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/virtio/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/char/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/net/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/scsi/*&quot;/&gt;
++		&lt;file name=&quot;drivers/usb/*&quot;/&gt;
++		&lt;file name=&quot;drivers/block/loop.ko&quot;/&gt;
++		&lt;file name=&quot;net/packet/*&quot;/&gt;
++		&lt;file name=&quot;lib/zlib_deflate/zlib_deflate.ko&quot;/&gt;
++		&lt;file name=&quot;lib/libcrc32c.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
++		&lt;file name=&quot;fs/ext4/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext2/*&quot;/&gt;
+-		&lt;file name=&quot;fs/fat/*&quot;/&gt;
+-		&lt;file name=&quot;fs/vfat/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/binfmt_aout.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/binfmt_misc.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/mbcache.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/quota_v1.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/quota_v2.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/jbd/*&quot;/&gt;
+-		&lt;file name=&quot;fs/hfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/exportfs/*&quot;/&gt;
++		&lt;file name=&quot;fs/jbd2/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/squashfs/*&quot;/&gt;
+-		&lt;file name=&quot;fs/nls/nls_utf8.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/nls/nls_cp437.ko&quot;/&gt;
+-		&lt;file name=&quot;fs/nls/nls_iso8859-1.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/fuse/*&quot;/&gt;
++		&lt;file name=&quot;fs/xfs/*&quot;/&gt;
++		&lt;file name=&quot;fs/lockd/*&quot;/&gt;
++		&lt;file name=&quot;net/ipv6/*&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/scsi_mod.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/scsi_transport_srp.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/sd_mod.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/scsi_tgt.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/ibmvscsi&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/ibmvscsi/ibmvscsic.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/ipr.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/lpfc/*&quot;/&gt;
++		&lt;file name=&quot;drivers/scsi/scsi_transport_fc.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/ibmveth.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/veth.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/tg3.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/ehea/ehea.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/e1000e/e1000e.ko&quot;/&gt;
++		&lt;file name=&quot;drivers/net/e1000/e1000.ko&quot;/&gt;
++		&lt;file name=&quot;lib/crc-t10dif.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
+ 	&lt;repository type=&quot;yast2&quot; status=&quot;replaceable&quot;&gt;
+ 		&lt;source path=&quot;<A HREF="http://download.suse.de/install/SLP/SLES-11-SP1-GM/%arch/DVD1/">http://download.suse.de/install/SLP/SLES-11-SP1-GM/%arch/DVD1/</A>&quot;/&gt;
+diff --git a/system/boot/ppc/vmxboot/suse-linuxrc b/system/boot/ppc/vmxboot/suse-linuxrc
+index 77ec94a..9b45336 100755
+--- a/system/boot/ppc/vmxboot/suse-linuxrc
++++ b/system/boot/ppc/vmxboot/suse-linuxrc
+@@ -28,7 +28,7 @@ export DEBUG=0
+ # Exports (Booting)
+ #--------------------------------------
+ export DOMURD_MODULES=&quot;xennet xenblk&quot;
+-export INITRD_MODULES=&quot;&quot;
++export INITRD_MODULES=&quot;ipr lpfc ibmvscsic&quot;
+ export LOCAL_BOOT=&quot;no&quot;
+ export systemIntegrity=&quot;clean&quot;
+ export KERNEL_LIST
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003660.html">[Kiwi-devel] [PATCH] add netboot for ppc factory. (OBS worker uses	it)
+</A></li>
+	<LI>Next message: <A HREF="003664.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ebd8893921c64778cfbbfc49f1a949aeeb024ac7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3663">[ date ]</a>
+              <a href="thread.html#3663">[ thread ]</a>
+              <a href="subject.html#3663">[ subject ]</a>
+              <a href="author.html#3663">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

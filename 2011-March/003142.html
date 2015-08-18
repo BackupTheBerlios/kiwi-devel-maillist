@@ -1,0 +1,600 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-480-SuSE-11.4-Devel,	updated. d9d969b26cebf3f046a8857356d823a6b9b58858
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-480-SuSE-11.4-Devel%2C%0A%09updated.%20d9d969b26cebf3f046a8857356d823a6b9b58858&In-Reply-To=%3C20110302144140.7997E48135E%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003141.html">
+   <LINK REL="Next"  HREF="003143.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-480-SuSE-11.4-Devel,	updated. d9d969b26cebf3f046a8857356d823a6b9b58858</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-480-SuSE-11.4-Devel%2C%0A%09updated.%20d9d969b26cebf3f046a8857356d823a6b9b58858&In-Reply-To=%3C20110302144140.7997E48135E%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-480-SuSE-11.4-Devel,	updated. d9d969b26cebf3f046a8857356d823a6b9b58858">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Mar  2 15:41:39 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003141.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-480-SuSE-11.4-Devel,	created. caaa89e8c7eb31705802807864eaaaca56988573
+</A></li>
+        <LI>Next message: <A HREF="003143.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, ppc,	updated. fdc7c1f8c6ef2c38c223ad03a80a2e8ccc4e4b9c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3142">[ date ]</a>
+              <a href="thread.html#3142">[ thread ]</a>
+              <a href="subject.html#3142">[ subject ]</a>
+              <a href="author.html#3142">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-480-SuSE-11.4-Devel has been updated
+       via  d9d969b26cebf3f046a8857356d823a6b9b58858 (commit)
+      from  caaa89e8c7eb31705802807864eaaaca56988573 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit d9d969b26cebf3f046a8857356d823a6b9b58858
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Mar 2 12:36:12 2011 +0100
+
+    - removed smart packages
+    - export PBL_SKIP_BOOT_TEST=1 to allow mkinitrd to install
+    - changed SLE10 JeOS example:
+      * all packages in bootstrap to allow the use of zypper
+      * remove installiso option which doesn't work because no squashfs
+    - added an updated version of parted for SLE10
+    - added a zypper version check for the kiwi upgrade mode
+    - changed all SLE10 boot image descriptions to put packages
+      into the bootstrap section to allow the use of zypper
+    - adapt README of SLE10 JeOS, smart is not required
+    - adapt kiwi.spec to recommend zypper only
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIManager.pm b/modules/KIWIManager.pm
+index 72b5141..d7e579a 100644
+--- a/modules/KIWIManager.pm
++++ b/modules/KIWIManager.pm
+@@ -223,6 +223,11 @@ sub setupScreen {
+ 	$cd -&gt; close();
+ 
+ 	#==========================================
++	# Global exports
++	#------------------------------------------
++	print $fd &quot;export PBL_SKIP_BOOT_TEST=1&quot;.&quot;\n&quot;;
++
++	#==========================================
+ 	# return screen call file handle
+ 	#------------------------------------------
+ 	return $fd;
+@@ -772,8 +777,16 @@ sub setupInstallationSource {
+ 				$code = $? &gt;&gt; 8;
+ 			} else {
+ 				$kiwi -&gt; info (&quot;Adding chroot zypper service: $alias&quot;);
+-				$data = qxx (&quot;@kchroot @zypper $sadd 2&gt;&amp;1&quot;);
+-				$code = $? &gt;&gt; 8;
++				$data = qxx (&quot;@kchroot zypper --version 2&gt;&amp;1 | cut -c 8&quot;);
++				if ($data &gt;= 1) {
++					$data = qxx (&quot;@kchroot @zypper $sadd 2&gt;&amp;1&quot;);
++					$code = $? &gt;&gt; 8;
++				} else {
++					$kiwi -&gt; skipped ();
++					$kiwi -&gt; info (&quot;image zypper version is too old&quot;);
++					$kiwi -&gt; skipped ();
++					return $this;
++				}
+ 			}
+ 			if ($code != 0) {
+ 				$kiwi -&gt; failed ();
+@@ -1414,6 +1427,13 @@ sub setupUpgrade {
+ 		if ($pattr{patternType} ne &quot;plusRecommended&quot;) {
+ 			push (@installOpts,&quot;--no-recommends&quot;);
+ 		}
++		print $fd &quot;ZV=\$(@kchroot zypper --version 2&gt;&amp;1 | cut -c 8)&quot;.&quot;\n&quot;;
++		print $fd 'if [ $ZV = 0 ];then'.&quot;\n&quot;;
++		print $fd &quot;\t&quot;.'echo &quot;image zypper version is too old, upgrade skipped&quot;'.&quot;\n&quot;;
++		print $fd &quot;\t&quot;.&quot;ECODE=0\n&quot;;
++		print $fd &quot;\t&quot;.&quot;echo \$ECODE &gt; $screenCall.exit\n&quot;;
++		print $fd &quot;\t&quot;.&quot;exit \$ECODE\n&quot;;
++		print $fd &quot;fi&quot;.&quot;\n&quot;;
+ 		print $fd &quot;function clean { kill \$SPID;&quot;;
+ 		print $fd &quot;while kill -0 \$SPID &amp;&gt;/dev/null; do sleep 1;&quot;;
+ 		print $fd &quot;if [ \&quot;\$c\&quot; = 5 ];then kill \$SPID;break;fi;&quot;; 
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index 4f03de0..90fb2c7 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -73,7 +73,7 @@ Source1:        %{name}-rpmlintrc
+ Source2:        %{name}-docu.tar.bz2
+ Source3:        %{name}-repo.tar.bz2
+ BuildRoot:      %{_tmppath}/%{name}-%{version}-build
+-Recommends:     smart zypper
++Recommends:     zypper
+ 
+ %description
+ The OpenSuSE KIWI Image System provides a complete operating system
+diff --git a/system/boot/ix86/isoboot/suse-SLED10/config.xml b/system/boot/ix86/isoboot/suse-SLED10/config.xml
+index 31b68d1..a3a3a74 100644
+--- a/system/boot/ix86/isoboot/suse-SLED10/config.xml
++++ b/system/boot/ix86/isoboot/suse-SLED10/config.xml
+@@ -54,13 +54,13 @@
+ 	&lt;repository type=&quot;rpm-dir&quot; status=&quot;fixed&quot;&gt;
+ 		&lt;source path=&quot;/usr/share/kiwi/repo/suse-repo/suse-sle10-repo&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;std&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;smp&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;smp&quot;&gt;
+ 		&lt;package name=&quot;kernel-smp&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;bind-libs&quot;/&gt;
+ 		&lt;package name=&quot;bind-utils&quot;/&gt;
+@@ -90,8 +90,6 @@
+ 		&lt;package name=&quot;tar&quot;/&gt;
+ 		&lt;package name=&quot;checkmedia&quot;/&gt;
+ 		&lt;package name=&quot;parted&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/system/boot/ix86/isoboot/suse-SLES10/config.xml b/system/boot/ix86/isoboot/suse-SLES10/config.xml
+index 1262ff1..0df5842 100644
+--- a/system/boot/ix86/isoboot/suse-SLES10/config.xml
++++ b/system/boot/ix86/isoboot/suse-SLES10/config.xml
+@@ -54,13 +54,13 @@
+ 	&lt;repository type=&quot;rpm-dir&quot; status=&quot;fixed&quot;&gt;
+ 		&lt;source path=&quot;/usr/share/kiwi/repo/suse-repo/suse-sle10-repo&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;std&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;smp&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;smp&quot;&gt;
+ 		&lt;package name=&quot;kernel-smp&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;adaptec-firmware&quot;/&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;bind-libs&quot;/&gt;
+@@ -91,8 +91,6 @@
+ 		&lt;package name=&quot;tar&quot;/&gt;
+ 		&lt;package name=&quot;checkmedia&quot;/&gt;
+ 		&lt;package name=&quot;parted&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/system/boot/ix86/netboot/suse-SLED10/config.xml b/system/boot/ix86/netboot/suse-SLED10/config.xml
+index 360356e..3987451 100644
+--- a/system/boot/ix86/netboot/suse-SLED10/config.xml
++++ b/system/boot/ix86/netboot/suse-SLED10/config.xml
+@@ -57,13 +57,13 @@
+ 	&lt;repository type=&quot;rpm-dir&quot; status=&quot;fixed&quot;&gt;
+ 		&lt;source path=&quot;/usr/share/kiwi/repo/suse-repo/suse-sle10-repo&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;std&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;smp&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;smp&quot;&gt;
+ 		&lt;package name=&quot;kernel-smp&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;bc&quot;/&gt;
+ 		&lt;package name=&quot;curl&quot;/&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+@@ -91,8 +91,6 @@
+ 		&lt;package name=&quot;bootsplash&quot;/&gt;
+ 		&lt;package name=&quot;tar&quot;/&gt;
+ 		&lt;package name=&quot;cyrus-sasl&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/system/boot/ix86/netboot/suse-SLES10/config.xml b/system/boot/ix86/netboot/suse-SLES10/config.xml
+index b0476bd..413a727 100644
+--- a/system/boot/ix86/netboot/suse-SLES10/config.xml
++++ b/system/boot/ix86/netboot/suse-SLES10/config.xml
+@@ -57,13 +57,13 @@
+ 	&lt;repository type=&quot;rpm-dir&quot; status=&quot;fixed&quot;&gt;
+ 		&lt;source path=&quot;/usr/share/kiwi/repo/suse-repo/suse-sle10-repo&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;std&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;smp&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;smp&quot;&gt;
+ 		&lt;package name=&quot;kernel-smp&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;bc&quot;/&gt;
+ 		&lt;package name=&quot;adaptec-firmware&quot;/&gt;
+ 		&lt;package name=&quot;curl&quot;/&gt;
+@@ -93,8 +93,6 @@
+ 		&lt;package name=&quot;bootsplash&quot;/&gt;
+ 		&lt;package name=&quot;tar&quot;/&gt;
+ 		&lt;package name=&quot;cyrus-sasl&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLED10/config.xml b/system/boot/ix86/oemboot/suse-SLED10/config.xml
+index 7ae230c..59900f1 100644
+--- a/system/boot/ix86/oemboot/suse-SLED10/config.xml
++++ b/system/boot/ix86/oemboot/suse-SLED10/config.xml
+@@ -60,18 +60,18 @@
+ 	&lt;repository type=&quot;rpm-dir&quot; status=&quot;fixed&quot;&gt;
+ 		&lt;source path=&quot;/usr/share/kiwi/repo/suse-repo/suse-sle10-repo&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;std&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;smp&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;smp&quot;&gt;
+ 		&lt;package name=&quot;kernel-smp&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenk&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;xenk&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; arch=&quot;x86_64&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xenpae&quot; arch=&quot;i686&quot;/&gt;
+ 		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;curl&quot;/&gt;
+ 		&lt;package name=&quot;atftp&quot;/&gt;
+ 		&lt;package name=&quot;busybox&quot;/&gt;
+@@ -107,8 +107,6 @@
+ 		&lt;package name=&quot;gettext&quot;/&gt;
+ 		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;dosfstools&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLES10/config.xml b/system/boot/ix86/oemboot/suse-SLES10/config.xml
+index 0d167da..45fd5f2 100644
+--- a/system/boot/ix86/oemboot/suse-SLES10/config.xml
++++ b/system/boot/ix86/oemboot/suse-SLES10/config.xml
+@@ -60,18 +60,18 @@
+ 	&lt;repository type=&quot;rpm-dir&quot; status=&quot;fixed&quot;&gt;
+ 		&lt;source path=&quot;/usr/share/kiwi/repo/suse-repo/suse-sle10-repo&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;std&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;smp&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;smp&quot;&gt;
+ 		&lt;package name=&quot;kernel-smp&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenk&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;xenk&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; arch=&quot;x86_64&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xenpae&quot; arch=&quot;i686&quot;/&gt;
+ 		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;curl&quot;/&gt;
+ 		&lt;package name=&quot;atftp&quot;/&gt;
+ 		&lt;package name=&quot;busybox&quot;/&gt;
+@@ -109,8 +109,6 @@
+ 		&lt;package name=&quot;kexec-tools&quot;/&gt;
+ 		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;dosfstools&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-SLED10/config.xml b/system/boot/ix86/usbboot/suse-SLED10/config.xml
+index 7a6362a..9d898cc 100644
+--- a/system/boot/ix86/usbboot/suse-SLED10/config.xml
++++ b/system/boot/ix86/usbboot/suse-SLED10/config.xml
+@@ -59,18 +59,18 @@
+ 	&lt;repository type=&quot;rpm-dir&quot; status=&quot;fixed&quot;&gt;
+ 		&lt;source path=&quot;/usr/share/kiwi/repo/suse-repo/suse-sle10-repo&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;std&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;smp&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;smp&quot;&gt;
+ 		&lt;package name=&quot;kernel-smp&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenk&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;xenk&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; arch=&quot;x86_64&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xenpae&quot; arch=&quot;i686&quot;/&gt;
+ 		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;e2fsprogs&quot;/&gt;
+ 		&lt;package name=&quot;file&quot;/&gt;
+@@ -91,8 +91,6 @@
+ 		&lt;package name=&quot;parted&quot;/&gt;
+ 		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;gettext&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-SLES10/config.xml b/system/boot/ix86/usbboot/suse-SLES10/config.xml
+index 5411bec..bdec734 100644
+--- a/system/boot/ix86/usbboot/suse-SLES10/config.xml
++++ b/system/boot/ix86/usbboot/suse-SLES10/config.xml
+@@ -59,18 +59,18 @@
+ 	&lt;repository type=&quot;rpm-dir&quot; status=&quot;fixed&quot;&gt;
+ 		&lt;source path=&quot;/usr/share/kiwi/repo/suse-repo/suse-sle10-repo&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;std&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;smp&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;smp&quot;&gt;
+ 		&lt;package name=&quot;kernel-smp&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenk&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;xenk&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; arch=&quot;x86_64&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xenpae&quot; arch=&quot;i686&quot;/&gt;
+ 		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;e2fsprogs&quot;/&gt;
+ 		&lt;package name=&quot;file&quot;/&gt;
+@@ -91,8 +91,6 @@
+ 		&lt;package name=&quot;parted&quot;/&gt;
+ 		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;gettext&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/system/boot/ix86/vmxboot/suse-SLED10/config.xml b/system/boot/ix86/vmxboot/suse-SLED10/config.xml
+index f057e02..a5d72a1 100644
+--- a/system/boot/ix86/vmxboot/suse-SLED10/config.xml
++++ b/system/boot/ix86/vmxboot/suse-SLED10/config.xml
+@@ -53,18 +53,18 @@
+ 	&lt;repository type=&quot;rpm-dir&quot; status=&quot;fixed&quot;&gt;
+ 		&lt;source path=&quot;/usr/share/kiwi/repo/suse-repo/suse-sle10-repo&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;std&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;smp&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;smp&quot;&gt;
+ 		&lt;package name=&quot;kernel-smp&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenk&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;xenk&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; arch=&quot;x86_64&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xenpae&quot; arch=&quot;i686&quot;/&gt;
+ 		&lt;package name=&quot;xen&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;bind-libs&quot;/&gt;
+ 		&lt;package name=&quot;bind-utils&quot;/&gt;
+@@ -91,8 +91,6 @@
+ 		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;fbiterm&quot;/&gt;
+ 		&lt;package name=&quot;gettext&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/system/boot/ix86/vmxboot/suse-SLES10/config.xml b/system/boot/ix86/vmxboot/suse-SLES10/config.xml
+index a7b9553..03f6bdd 100644
+--- a/system/boot/ix86/vmxboot/suse-SLES10/config.xml
++++ b/system/boot/ix86/vmxboot/suse-SLES10/config.xml
+@@ -53,17 +53,17 @@
+ 	&lt;repository type=&quot;rpm-dir&quot; status=&quot;fixed&quot;&gt;
+ 		&lt;source path=&quot;/usr/share/kiwi/repo/suse-repo/suse-sle10-repo&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;std&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;smp&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;smp&quot;&gt;
+ 		&lt;package name=&quot;kernel-smp&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenk&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;xenk&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; arch=&quot;x86_64&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xenpae&quot; arch=&quot;i686&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;bind-libs&quot;/&gt;
+ 		&lt;package name=&quot;bind-utils&quot;/&gt;
+@@ -91,8 +91,6 @@
+ 		&lt;package name=&quot;parted&quot;/&gt;
+ 		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;fbiterm&quot;/&gt;
+-	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+diff --git a/system/repo/ix86/suse-repo/suse-sle10-repo/parted-1.8.7-40.i586.rpm b/system/repo/ix86/suse-repo/suse-sle10-repo/parted-1.8.7-40.i586.rpm
+new file mode 100644
+index 0000000..ba41629
+Binary files /dev/null and b/system/repo/ix86/suse-repo/suse-sle10-repo/parted-1.8.7-40.i586.rpm differ
+diff --git a/system/repo/ix86/suse-repo/suse-sle10-repo/parted-1.8.7-40.x86_64.rpm b/system/repo/ix86/suse-repo/suse-sle10-repo/parted-1.8.7-40.x86_64.rpm
+new file mode 100644
+index 0000000..cdf7c12
+Binary files /dev/null and b/system/repo/ix86/suse-repo/suse-sle10-repo/parted-1.8.7-40.x86_64.rpm differ
+diff --git a/system/repo/ix86/suse-repo/suse-sle10-repo/smart-0.41-23.4.i586.rpm b/system/repo/ix86/suse-repo/suse-sle10-repo/smart-0.41-23.4.i586.rpm
+deleted file mode 100644
+index 4ce0725..0000000
+Binary files a/system/repo/ix86/suse-repo/suse-sle10-repo/smart-0.41-23.4.i586.rpm and /dev/null differ
+diff --git a/system/repo/ix86/suse-repo/suse-sle10-repo/smart-0.41-23.4.x86_64.rpm b/system/repo/ix86/suse-repo/suse-sle10-repo/smart-0.41-23.4.x86_64.rpm
+deleted file mode 100644
+index 0b39c17..0000000
+Binary files a/system/repo/ix86/suse-repo/suse-sle10-repo/smart-0.41-23.4.x86_64.rpm and /dev/null differ
+diff --git a/template/ix86/suse-SLE10-JeOS/README b/template/ix86/suse-SLE10-JeOS/README
+index 287465d..99d1c12 100644
+--- a/template/ix86/suse-SLE10-JeOS/README
++++ b/template/ix86/suse-SLE10-JeOS/README
+@@ -1,8 +1,5 @@
+ Build instructions for local build
+ ==================================
+-* make sure you have the smart packagemanager installed
+-  <A HREF="http://download.opensuse.org/repositories/smart">http://download.opensuse.org/repositories/smart</A>
+-
+ * create a SLES10 installation source below /path/to/SLE10/repo
+   tip: copy SLE10 DVD
+ 
+diff --git a/template/ix86/suse-SLE10-JeOS/config.xml b/template/ix86/suse-SLE10-JeOS/config.xml
+index 534218b..184b70d 100644
+--- a/template/ix86/suse-SLE10-JeOS/config.xml
++++ b/template/ix86/suse-SLE10-JeOS/config.xml
+@@ -12,7 +12,7 @@
+ 	&lt;/profiles&gt;
+ 	&lt;preferences&gt;
+ 		&lt;version&gt;1.1.0&lt;/version&gt;
+-		&lt;packagemanager&gt;smart&lt;/packagemanager&gt;
++		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;boot-theme&gt;SLES&lt;/boot-theme&gt;
+ 		&lt;rpm-excludedocs&gt;true&lt;/rpm-excludedocs&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -28,7 +28,7 @@
+ 				&lt;vmnic interface=&quot;&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+-		&lt;type image=&quot;oem&quot; filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-SLES10&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;xenk&quot; installiso=&quot;true&quot;&gt;
++		&lt;type image=&quot;oem&quot; filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-SLES10&quot; bootprofile=&quot;xen&quot; bootkernel=&quot;xenk&quot;&gt;
+ 			&lt;oemconfig&gt;
+ 				&lt;oem-systemsize&gt;2048&lt;/oem-systemsize&gt;
+ 			&lt;/oemconfig&gt;
+@@ -42,7 +42,7 @@
+ 				&lt;vmnic driver=&quot;e1000&quot; interface=&quot;0&quot; mode=&quot;bridged&quot;/&gt;
+ 			&lt;/machine&gt;
+ 		&lt;/type&gt;
+-		&lt;type image=&quot;oem&quot; filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-SLES10&quot; installiso=&quot;true&quot;&gt;
++		&lt;type image=&quot;oem&quot; filesystem=&quot;ext3&quot; boot=&quot;oemboot/suse-SLES10&quot;&gt;
+ 			&lt;oemconfig&gt;
+ 				&lt;oem-systemsize&gt;2048&lt;/oem-systemsize&gt;
+ 			&lt;/oemconfig&gt;
+@@ -70,7 +70,7 @@
+ 	&lt;repository type=&quot;rpm-dir&quot;&gt;
+ 		&lt;source path=&quot;/usr/share/kiwi/repo/suse-repo/suse-sle10-repo&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;aaa_base&quot;/&gt;
+ 		&lt;package name=&quot;parted&quot;/&gt;
+ 		&lt;package name=&quot;dhcpcd&quot;/&gt;
+@@ -102,16 +102,21 @@
+ 		&lt;package name=&quot;sed&quot;/&gt;
+ 		&lt;package name=&quot;w3m&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
++		&lt;package name=&quot;filesystem&quot;/&gt;
++		&lt;package name=&quot;glibc-locale&quot;/&gt;
++		&lt;package name=&quot;procps&quot;/&gt;
++		&lt;package name=&quot;cracklib&quot;/&gt;
++		&lt;package name=&quot;openssl&quot;/&gt;
+ 		&lt;package name=&quot;bootsplash-theme-SuSE-SLES&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 		&lt;package name=&quot;gfxboot&quot; bootinclude=&quot;true&quot; bootdelete=&quot;true&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;xenFlavour&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;xenFlavour&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; arch=&quot;x86_64&quot; replaces=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;kernel-xenpae&quot; arch=&quot;i686&quot; replaces=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;xen-tools-domU&quot; replaces=&quot;&quot;/&gt;
+ 		&lt;package name=&quot;xen&quot; replaces=&quot;&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;vmxFlavour&quot;&gt;
++	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;vmxFlavour&quot;&gt;
+ 		&lt;package name=&quot;kernel-default&quot; arch=&quot;x86_64&quot; replaces=&quot;kernel-xen&quot;/&gt;
+ 		&lt;package name=&quot;kernel-default&quot; arch=&quot;i686&quot; replaces=&quot;kernel-xenpae&quot;/&gt;
+ 		&lt;package name=&quot;kernel-default&quot; replaces=&quot;xen-tools-domU&quot;/&gt;
+@@ -120,11 +125,4 @@
+ 	&lt;packages type=&quot;delete&quot;&gt;
+ 		&lt;package name=&quot;patch&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot;&gt;
+-		&lt;package name=&quot;filesystem&quot;/&gt;
+-		&lt;package name=&quot;glibc-locale&quot;/&gt;
+-		&lt;package name=&quot;procps&quot;/&gt;
+-		&lt;package name=&quot;cracklib&quot;/&gt;
+-		&lt;package name=&quot;openssl&quot;/&gt;
+-	&lt;/packages&gt;
+ &lt;/image&gt;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003141.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-480-SuSE-11.4-Devel,	created. caaa89e8c7eb31705802807864eaaaca56988573
+</A></li>
+	<LI>Next message: <A HREF="003143.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, ppc,	updated. fdc7c1f8c6ef2c38c223ad03a80a2e8ccc4e4b9c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3142">[ date ]</a>
+              <a href="thread.html#3142">[ thread ]</a>
+              <a href="subject.html#3142">[ subject ]</a>
+              <a href="author.html#3142">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

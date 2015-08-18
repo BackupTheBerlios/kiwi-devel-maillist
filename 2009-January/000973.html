@@ -1,0 +1,142 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1857 - in kiwi-head: modules rpm	system/boot/ix86/oemboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1857%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ix86/oemboot&In-Reply-To=%3C200901191616.n0JGGPuv007100%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000972.html">
+   <LINK REL="Next"  HREF="000974.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1857 - in kiwi-head: modules rpm	system/boot/ix86/oemboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1857%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ix86/oemboot&In-Reply-To=%3C200901191616.n0JGGPuv007100%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1857 - in kiwi-head: modules rpm	system/boot/ix86/oemboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Jan 19 17:16:25 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000972.html">[Kiwi-devel] r1856 - in kiwi-head: . modules rpm	system/boot/ix86/oemboot
+</A></li>
+        <LI>Next message: <A HREF="000974.html">[Kiwi-devel] r1858 - in kiwi-head/doc: . LaTex
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#973">[ date ]</a>
+              <a href="thread.html#973">[ thread ]</a>
+              <a href="subject.html#973">[ subject ]</a>
+              <a href="author.html#973">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-01-19 17:16:20 +0100 (Mon, 19 Jan 2009)
+New Revision: 1857
+
+Modified:
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/system/boot/ix86/oemboot/suse-dump
+Log:
+
+- fixed installation mode, incomplete MBR ID check
+
+
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2009-01-19 16:04:18 UTC (rev 1856)
++++ kiwi-head/modules/KIWILinuxRC.sh	2009-01-19 16:16:20 UTC (rev 1857)
+@@ -1543,8 +1543,7 @@
+ 	done
+ 	for curd in $ddevs;do
+ 		mbrM=`dd if=$curd bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
+-		export mbrI=0
+-		export mbrM
++		mbrI=0
+ 		for id in 1 2;do
+ 			if mount $curd$id /mnt;then
+ 				if [ -f /mnt/boot/grub/mbrid ];then
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2009-01-19 16:04:18 UTC (rev 1856)
++++ kiwi-head/rpm/kiwi.changes	2009-01-19 16:16:20 UTC (rev 1857)
+@@ -2,7 +2,7 @@
+ Mon Jan 19 17:03:24 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.08
+-- fixed installation mode from CD, mbrid check not applicable
++- fixed installation mode, incomplete MBR ID check
+ 
+ -------------------------------------------------------------------
+ Mon Jan 19 11:45:35 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-dump
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-dump	2009-01-19 16:04:18 UTC (rev 1856)
++++ kiwi-head/system/boot/ix86/oemboot/suse-dump	2009-01-19 16:16:20 UTC (rev 1857)
+@@ -91,15 +91,6 @@
+ 	#--------------------------------------
+ 	importFile &lt; $VMX_SYSTEM
+ 	#======================================
+-	# Check MBR ID of installed OS
+-	#--------------------------------------
+-	mbrM=`dd if=$instDisk bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
+-	if [ $mbrM = $mbrI ];then
+-		systemException \
+-			&quot;Base system already installed&quot; \
+-		&quot;reboot&quot;
+-	fi
+-	#======================================
+ 	# Install disk system
+ 	#--------------------------------------
+ 	# install virtual disk image from the CD/DVD onto the
+@@ -146,6 +137,16 @@
+ 		needKByte=`expr $needBytes / 1024`
+ 	fi
+ 	#======================================
++	# Check MBR ID's...
++	#--------------------------------------
++	mbrM=`dd if=$instDisk  bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
++	mbrI=`dd if=$imageName bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
++	if [ $mbrM = $mbrI ];then
++		systemException \
++			&quot;Base system already installed&quot; \
++		&quot;reboot&quot;
++	fi	
++	#======================================
+ 	# Check disk space...
+ 	#--------------------------------------
+ 	haveMByte=`expr $haveKByte / 1024`
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000972.html">[Kiwi-devel] r1856 - in kiwi-head: . modules rpm	system/boot/ix86/oemboot
+</A></li>
+	<LI>Next message: <A HREF="000974.html">[Kiwi-devel] r1858 - in kiwi-head/doc: . LaTex
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#973">[ date ]</a>
+              <a href="thread.html#973">[ thread ]</a>
+              <a href="subject.html#973">[ subject ]</a>
+              <a href="author.html#973">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

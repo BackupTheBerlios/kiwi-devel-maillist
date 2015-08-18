@@ -1,0 +1,253 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1e881bc955e961e1a336d1de6db0de880788153d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%201e881bc955e961e1a336d1de6db0de880788153d&In-Reply-To=%3C200907031515.n63FFfTL031822%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001328.html">
+   <LINK REL="Next"  HREF="001330.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1e881bc955e961e1a336d1de6db0de880788153d</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%201e881bc955e961e1a336d1de6db0de880788153d&In-Reply-To=%3C200907031515.n63FFfTL031822%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1e881bc955e961e1a336d1de6db0de880788153d">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Jul  3 17:15:41 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001328.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6f9aa912923c751dfc7af74d7f69b4d5b8aa9a00
+</A></li>
+        <LI>Next message: <A HREF="001330.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4a22528c995db91712aface86bbf17a1de00df36
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1329">[ date ]</a>
+              <a href="thread.html#1329">[ thread ]</a>
+              <a href="subject.html#1329">[ subject ]</a>
+              <a href="author.html#1329">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  1e881bc955e961e1a336d1de6db0de880788153d (commit)
+      from  6f9aa912923c751dfc7af74d7f69b4d5b8aa9a00 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 1e881bc955e961e1a336d1de6db0de880788153d
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Jul 3 17:14:03 2009 +0200
+
+    - added basic support for LUKS extension for vmx image type
+      with compressed root filesystem.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index da48bb5..a173e36 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -1245,7 +1245,31 @@ sub setupBootStick {
+ 	#------------------------------------------
+ 	if (($syszip) &amp;&amp; (! $haveSplit) &amp;&amp; (! $dmapper)) {
+ 		$root = $deviceMap{2};
+-		$kiwi -&gt; info (&quot;Creating ext3 read-write filesystem&quot;);
++		if ($haveluks) {
++			my $cipher = $type{luks};
++			my $name   = &quot;luksReadWrite&quot;;
++			$kiwi -&gt; info (&quot;Creating LUKS-&gt;ext3 read-write filesystem&quot;);
++			$status = qxx (&quot;echo $cipher|cryptsetup -q luksFormat $root 2&gt;&amp;1&quot;);
++			$result = $? &gt;&gt; 8;
++			if ($status != 0) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;Couldn't setup luks format: $root&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			$status = qxx (&quot;echo $cipher|cryptsetup luksOpen $root $name 2&gt;&amp;1&quot;);
++			$result = $? &gt;&gt; 8;
++			if ($result != 0) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;Couldn't open luks device: $status&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			$root = &quot;/dev/mapper/$name&quot;;
++			$this-&gt;{luks} = $name;
++		} else {
++			$kiwi -&gt; info (&quot;Creating ext3 read-write filesystem&quot;);
++		}
+ 		my %FSopts = main::checkFSOptions();
+ 		my $fsopts = $FSopts{ext3};
+ 		$fsopts.= &quot;-F&quot;;
+@@ -1255,9 +1279,11 @@ sub setupBootStick {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error  (&quot;Couldn't create filesystem: $status&quot;);
+ 			$kiwi -&gt; failed ();
++			$this -&gt; luksClose();
+ 			$this -&gt; cleanLoop ();
+ 			return undef;
+ 		}
++		$this -&gt; luksClose();
+ 		$kiwi -&gt; done();
+ 	}
+ 	#==========================================
+@@ -2649,7 +2675,31 @@ sub setupBootDisk {
+ 	#------------------------------------------
+ 	if (($syszip) &amp;&amp; (! $haveSplit) &amp;&amp; (! $dmapper)) {
+ 		$root = $deviceMap{2};
+-		$kiwi -&gt; info (&quot;Creating ext3 read-write filesystem&quot;);
++		if ($haveluks) {
++			my $cipher = $type{luks};
++			my $name   = &quot;luksReadWrite&quot;;
++			$kiwi -&gt; info (&quot;Creating LUKS-&gt;ext3 read-write filesystem&quot;);
++			$status = qxx (&quot;echo $cipher|cryptsetup -q luksFormat $root 2&gt;&amp;1&quot;);
++			$result = $? &gt;&gt; 8;
++			if ($status != 0) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;Couldn't setup luks format: $root&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			$status = qxx (&quot;echo $cipher|cryptsetup luksOpen $root $name 2&gt;&amp;1&quot;);
++			$result = $? &gt;&gt; 8;
++			if ($result != 0) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;Couldn't open luks device: $status&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			$root = &quot;/dev/mapper/$name&quot;;
++			$this-&gt;{luks} = $name;
++		} else {
++			$kiwi -&gt; info (&quot;Creating ext3 read-write filesystem&quot;);
++		}
+ 		my %FSopts = main::checkFSOptions();
+ 		my $fsopts = $FSopts{ext3};
+ 		$fsopts.= &quot;-F&quot;;
+@@ -2659,9 +2709,11 @@ sub setupBootDisk {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error  (&quot;Couldn't create filesystem: $status&quot;);
+ 			$kiwi -&gt; failed ();
++			$this -&gt; luksClose();
+ 			$this -&gt; cleanLoop ();
+ 			return undef;
+ 		}
++		$this -&gt; luksClose();
+ 		$kiwi -&gt; done();
+ 	}
+ 	#==========================================
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 9838d65..f2c3077 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -3473,11 +3473,11 @@ function mountSystemOverlay {
+ 	if [ $unionFST = &quot;aufs&quot; ];then
+ 		mount -t tmpfs tmpfs $xiDir &gt;/dev/null || retval=1
+ 		mount -t aufs \
+-			-o dirs=$rwDir=rw:$roDir=ro,xino=$xiDir/.aufs.xino none /mnt \
++			-o dirs=$rwDir=rw:$roDir=ro,xino=$xiDir/.aufs.xino aufs /mnt \
+ 		&gt;/dev/null || return 1
+ 	else
+ 		mount -t unionfs \
+-			-o dirs=$rwDir=rw:$roDir=ro none /mnt
++			-o dirs=$rwDir=rw:$roDir=ro unionfs /mnt
+ 		&gt;/dev/null || return 1
+ 	fi
+ 	usleep 500000
+@@ -4013,7 +4013,7 @@ function getDiskDevice {
+ 	# ID label into the /dev/ device name
+ 	# ----
+ 	local device=`readlink $1`
+-	if [ -z $device ];then
++	if [ -z &quot;$device&quot; ];then
+ 		echo $1
+ 		return
+ 	fi
+@@ -4220,6 +4220,16 @@ function setupUnionFS {
+ 	local rwDevice=`getDiskID $1`
+ 	local roDevice=`getDiskID $2`
+ 	local unionFST=$3
++	rwDeviceLuks=$(luksOpen $rwDevice luksReadWrite)
++	roDeviceLuks=$(luksOpen $roDevice luksReadOnly)
++	if [ ! $rwDeviceLuks = $rwDevice ];then
++		rwDevice=$rwDeviceLuks
++		export haveLuks=&quot;yes&quot;
++	fi
++	if [ ! $roDeviceLuks = $roDevice ];then
++		roDevice=$roDeviceLuks
++		export haveLuks=&quot;yes&quot;
++	fi
+ 	export UNIONFS_CONFIG=&quot;$rwDevice,$roDevice,$unionFST&quot;
+ }
+ #======================================
+@@ -4355,6 +4365,10 @@ function luksOpen {
+ 	# ----
+ 	local ldev=$1
+ 	local name=$2
++	if [ -e /dev/mapper/$name ];then
++		echo /dev/mapper/$name
++		return
++	fi
+ 	if ! cryptsetup isLuks $ldev &amp;&gt;/dev/null;then
+ 		echo $ldev; return
+ 	fi
+diff --git a/system/boot/ix86/vmxboot/suse-linuxrc b/system/boot/ix86/vmxboot/suse-linuxrc
+index acf0036..346f013 100755
+--- a/system/boot/ix86/vmxboot/suse-linuxrc
++++ b/system/boot/ix86/vmxboot/suse-linuxrc
+@@ -237,7 +237,9 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 			imageBootDevice=$imageDiskDevice&quot;2&quot;
+ 		fi
+ 		mount $imageBootDevice /mnt/luksboot
+-		cp -a  /mnt/boot /mnt/luksboot
++		if [ -z &quot;$UNIONFS_CONFIG&quot; ];then
++			cp -a /mnt/boot/* /mnt/luksboot/boot
++		fi
+ 		rm -rf /mnt/boot
+ 		( cd /mnt &amp;&amp; ln -s luksboot/boot boot )
+ 	fi
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001328.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6f9aa912923c751dfc7af74d7f69b4d5b8aa9a00
+</A></li>
+	<LI>Next message: <A HREF="001330.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4a22528c995db91712aface86bbf17a1de00df36
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1329">[ date ]</a>
+              <a href="thread.html#1329">[ thread ]</a>
+              <a href="subject.html#1329">[ subject ]</a>
+              <a href="author.html#1329">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

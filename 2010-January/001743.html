@@ -1,0 +1,256 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f3f772c5674921663d96e50fe0d1902985e2f244
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20f3f772c5674921663d96e50fe0d1902985e2f244&In-Reply-To=%3C201001071218.o07CI6t3001120%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001742.html">
+   <LINK REL="Next"  HREF="001744.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f3f772c5674921663d96e50fe0d1902985e2f244</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20f3f772c5674921663d96e50fe0d1902985e2f244&In-Reply-To=%3C201001071218.o07CI6t3001120%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f3f772c5674921663d96e50fe0d1902985e2f244">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jan  7 13:18:06 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001742.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 510167ce4b5cf99837b3060400bbb86eccec0db2
+</A></li>
+        <LI>Next message: <A HREF="001744.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7e645bc93a117e0948b4ccb36c96b40e7bb1b9b6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1743">[ date ]</a>
+              <a href="thread.html#1743">[ thread ]</a>
+              <a href="subject.html#1743">[ subject ]</a>
+              <a href="author.html#1743">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  f3f772c5674921663d96e50fe0d1902985e2f244 (commit)
+      from  510167ce4b5cf99837b3060400bbb86eccec0db2 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit f3f772c5674921663d96e50fe0d1902985e2f244
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Jan 7 13:17:46 2010 +0100
+
+    - migration performance fixes
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 669c252..3858f5a 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -1082,8 +1082,8 @@ sub main {
+ 		#==========================================
+ 		# Create report HTML file, errors allowed
+ 		#------------------------------------------
+-		$migrate -&gt; getPackageList();
+ 		$migrate -&gt; setSystemOverlayFiles();
++		$migrate -&gt; getPackageList();
+ 		$migrate -&gt; createReport();
+ 		#==========================================
+ 		# Perform migration based on report
+diff --git a/modules/KIWIMigrate.pm b/modules/KIWIMigrate.pm
+index 2fcfd0d..fc92753 100644
+--- a/modules/KIWIMigrate.pm
++++ b/modules/KIWIMigrate.pm
+@@ -24,6 +24,7 @@ use strict;
+ use Carp qw (cluck);
+ use File::Find;
+ use File::Basename;
++use File::Path;
+ use Storable;
+ use KIWILog;
+ use KIWIQX;
+@@ -200,6 +201,7 @@ sub createReport {
+ 	my $failedJob1 = $this-&gt;{solverFailedJobs1};
+ 	my $failedJob2 = $this-&gt;{solverFailedJobs2};
+ 	my $filechanges= $this-&gt;{filechanges};
++	my $modified   = $this-&gt;{modified};
+ 	#==========================================
+ 	# start report
+ 	#------------------------------------------
+@@ -685,6 +687,7 @@ sub setSystemOverlayFiles {
+ 	my %result;
+ 	my $data;
+ 	my $code;
++	my @modified;
+ 	#==========================================
+ 	# check for cache file
+ 	#------------------------------------------
+@@ -799,7 +802,7 @@ sub setSystemOverlayFiles {
+ 	foreach my $check (@rpmcheck) {
+ 		if ($check =~ /^(\/.*)/) {
+ 			my $file = $1;
+-			my $dir  = dirname ($file);
++			my ($name,$dir,$suffix) = fileparse ($file);
+ 			my $ok   = 1;
+ 			foreach my $exp (@deny) {
+ 				if ($file =~ /$exp/) {
+@@ -807,7 +810,9 @@ sub setSystemOverlayFiles {
+ 				}
+ 			}
+ 			if ($ok) {
++				# FIXME: I don't see any modified files
+ 				$result{$file} = $dir;
++				push (@modified,$file);
+ 			}
+ 		}
+ 		$done = int ($count * $spart);
+@@ -827,9 +832,9 @@ sub setSystemOverlayFiles {
+ 		store ($cdata,$dest.&quot;.cache&quot;);
+ 	}
+ 	#==========================================
+-	# Create hard link list
++	# Create overlay root tree
+ 	#------------------------------------------
+-	$kiwi -&gt; info (&quot;Creating link list...&quot;);
++	$kiwi -&gt; info (&quot;Creating link list...\n&quot;);
+ 	$data = qxx (&quot;mkdir -p $dest/root 2&gt;&amp;1&quot;);
+ 	$code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+@@ -838,29 +843,23 @@ sub setSystemOverlayFiles {
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+ 	}
+-	# make directory structure...
+-	print &quot;++++ making directory structure...\n&quot;;
+-	my %files = ();
++	#==========================================
++	# 1) Create directory structure
++	#------------------------------------------
+ 	my %paths = ();
+ 	foreach my $file (keys %result) {
+-		$file = quotemeta ($file);
+-		my ($name,$path,$suffix) = fileparse ($file);
+-		$paths{$path} = $path;
+-		if ($name) {
+-			$files{$file} = $path;
+-		}
+-	}
+-	foreach my $path (keys %paths) {
+-		qxx (&quot;mkdir -p $dest/root/$path 2&gt;&amp;1&quot;);
++		my $path = $result{$file};
++		$paths{&quot;$dest/root/$path&quot;} = $path;
+ 	}
+-	# make links
+-	print &quot;++++ making links...\n&quot;;
+-	foreach my $file (keys %files) {
+-		my $path = $files{$file};
+-		$data = qxx (&quot;ln -t $dest/root/$path $file 2&gt;&amp;1&quot;);
+-		$code = $? &gt;&gt; 8;
+-		if ($code != 0) {
+-			$kiwi -&gt; warning (&quot;hard link for $file failed: $data&quot;);
++	mkpath (keys %paths, {verbose =&gt; 0});
++	#==========================================
++	# 2) Create hard link list
++	#------------------------------------------
++	foreach my $file (keys %result) {
++		my $old = $file;
++		my $new = $dest.&quot;/root&quot;.$old;
++		if (! link &quot;$old&quot;,&quot;$new&quot;) {
++			$kiwi -&gt; warning (&quot;hard link for $file failed: $!&quot;);
+ 			$kiwi -&gt; skipped ();
+ 		}
+ 	}
+@@ -870,8 +869,17 @@ sub setSystemOverlayFiles {
+ 	$kiwi -&gt; info (&quot;Cleaning symlinks...&quot;);
+ 	$this -&gt; checkBrokenLinks();
+ 	$kiwi -&gt; done();
++	#==========================================
++	# Remove empty directories
++	#------------------------------------------
++	$kiwi -&gt; info (&quot;Removing empty directories...&quot;);
++	qxx (&quot;find $dest/root -type d | xargs rmdir -p 2&gt;/dev/null&quot;);
++	$kiwi -&gt; done();
++	#==========================================
++	# Store in instance for report
++	#------------------------------------------
+ 	$this-&gt;{filechanges} = \%result;
+-	$this-&gt;{filecheck}   = \@rpmcheck;
++	$this-&gt;{modified}    = \@modified;
+ 	return $this;
+ }
+ 
+@@ -1025,14 +1033,8 @@ sub cleanMount {
+ sub checkBrokenLinks {
+ 	# ...
+ 	# the tree could contain broken symbolic links because
+-	# the target is unmodified and part of a package. The
+-	# broken links will be removed in this function and it
+-	# is assumed that a post install script of the package
+-	# creates this links when the package gets installed
+-	# in the kiwi prepare mode. If the links are created
+-	# manually or by an application at system installation
+-	# for example the links needs to be created in a
+-	# separate image description config.sh script 
++	# the target is part of a package and therefore not part
++	# of the overlay root tree.
+ 	# ---   
+ 	my $this = shift;
+ 	my $dest = $this-&gt;{dest};
+@@ -1040,11 +1042,13 @@ sub checkBrokenLinks {
+ 	my @link = qxx (&quot;find $dest/root -type l&quot;);
+ 	my $returnok = 1;
+ 	my $dir;
++	my $name;
++	my $suffix;
+ 	foreach my $linkfile (@link) {
+ 		chomp $linkfile;
+ 		my $ref = readlink ($linkfile);
+ 		if ($ref !~ /^\//) {
+-			$dir = dirname ($linkfile);
++			($name,$dir,$suffix) = fileparse ($linkfile);
+ 			$dir.= &quot;/&quot;;
+ 		} else {
+ 			$dir = $dest.&quot;/root&quot;;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001742.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 510167ce4b5cf99837b3060400bbb86eccec0db2
+</A></li>
+	<LI>Next message: <A HREF="001744.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7e645bc93a117e0948b4ccb36c96b40e7bb1b9b6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1743">[ date ]</a>
+              <a href="thread.html#1743">[ thread ]</a>
+              <a href="subject.html#1743">[ subject ]</a>
+              <a href="author.html#1743">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

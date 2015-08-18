@@ -1,0 +1,135 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1506 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1506%20-%20kiwi-head/modules&In-Reply-To=%3C200807311556.m6VFugTw002934%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000591.html">
+   <LINK REL="Next"  HREF="000593.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1506 - kiwi-head/modules</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1506%20-%20kiwi-head/modules&In-Reply-To=%3C200807311556.m6VFugTw002934%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1506 - kiwi-head/modules">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jul 31 17:56:42 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000591.html">[Kiwi-devel] r1505 - in kiwi-head: modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000593.html">[Kiwi-devel] r1507 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#592">[ date ]</a>
+              <a href="thread.html#592">[ thread ]</a>
+              <a href="subject.html#592">[ subject ]</a>
+              <a href="author.html#592">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-07-31 17:56:34 +0200 (Thu, 31 Jul 2008)
+New Revision: 1506
+
+Modified:
+   kiwi-head/modules/KIWILinuxRC.sh
+Log:
+
+- fixed shell exception on /dev/console (bnc #413474)
+
+
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-07-31 14:46:06 UTC (rev 1505)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-07-31 15:56:34 UTC (rev 1506)
+@@ -164,7 +164,11 @@
+ 	;;
+ 	&quot;shell&quot;)
+ 		Echo &quot;shellException: providing shell...&quot;
+-		setctsid $ELOG_EXCEPTION /bin/bash
++		if [ ! $ELOG_EXCEPTION = &quot;/dev/console&quot; ];then
++			setctsid $ELOG_EXCEPTION /bin/bash
++		else
++			/bin/bash &lt; $ELOG_EXCEPTION &gt; /dev/console 2&gt;&amp;1
++		fi
+ 	;;
+ 	*)
+ 		Echo &quot;unknownException...&quot;
+@@ -284,13 +288,15 @@
+ 	# Log all errors up to now to the terminal specified
+ 	# by ELOG_CONSOLE
+ 	# ----
+-	Echo &quot;Boot-Logging enabled on $ELOG_CONSOLE&quot;
+ 	if [ ! -f $ELOG_FILE ];then
+ 		echo &quot;KIWI Log:&quot; &gt;$ELOG_FILE
+ 	else
+ 		echo &quot;KIWI PreInit Log&quot; &gt;&gt;$ELOG_FILE
+ 	fi
+-	setctsid -f $ELOG_CONSOLE /bin/bash -c &quot;tail -f $ELOG_FILE&quot; &amp;
++	if [ ! $ELOG_CONSOLE = &quot;/dev/console&quot; ];then
++		Echo &quot;Boot-Logging enabled on $ELOG_CONSOLE&quot;
++		setctsid -f $ELOG_CONSOLE /bin/bash -c &quot;tail -f $ELOG_FILE&quot; &amp;
++	fi
+ 	exec 2&gt;&gt;$ELOG_FILE
+ 	if [ -f .profile ];then
+ 		echo &quot;KIWI .profile contents:&quot; 1&gt;&amp;2
+@@ -2659,8 +2665,10 @@
+ 	# /.../
+ 	# start a debugging shell on ELOG_BOOTSHELL
+ 	# ----
+-	Echo &quot;Starting boot shell on $ELOG_BOOTSHELL&quot;
+-	setctsid -f $ELOG_BOOTSHELL /bin/bash
++	if [ ! $ELOG_BOOTSHELL = &quot;/dev/console&quot; ];then
++		Echo &quot;Starting boot shell on $ELOG_BOOTSHELL&quot;
++		setctsid -f $ELOG_BOOTSHELL /bin/bash
++	fi
+ }
+ #======================================
+ # killShell
+@@ -2674,8 +2682,10 @@
+ 		mount -t proc proc /proc
+ 		umountProc=1
+ 	fi
+-	Echo &quot;Stopping boot shell&quot;
+-	fuser -k $ELOG_BOOTSHELL &gt;/dev/null
++	if [ ! $ELOG_BOOTSHELL = &quot;/dev/console&quot; ];then
++		Echo &quot;Stopping boot shell&quot;
++		fuser -k $ELOG_BOOTSHELL &gt;/dev/null
++	fi
+ 	if [ $umountProc -eq 1 ];then
+ 		umount /proc
+ 	fi
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000591.html">[Kiwi-devel] r1505 - in kiwi-head: modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000593.html">[Kiwi-devel] r1507 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#592">[ date ]</a>
+              <a href="thread.html#592">[ thread ]</a>
+              <a href="subject.html#592">[ subject ]</a>
+              <a href="author.html#592">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

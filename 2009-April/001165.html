@@ -1,0 +1,266 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 786f415c567241304f47340022fa7eec3eb773d8
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20786f415c567241304f47340022fa7eec3eb773d8&In-Reply-To=%3C200904031111.n33BBlTa009244%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001164.html">
+   <LINK REL="Next"  HREF="001166.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 786f415c567241304f47340022fa7eec3eb773d8</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20786f415c567241304f47340022fa7eec3eb773d8&In-Reply-To=%3C200904031111.n33BBlTa009244%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 786f415c567241304f47340022fa7eec3eb773d8">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Apr  3 13:11:47 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001164.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1c67b06217d92a6ca7d32b22dd2005c81861fa29
+</A></li>
+        <LI>Next message: <A HREF="001166.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f8562d14f57816d661d4e22edf0eca78c998feca
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1165">[ date ]</a>
+              <a href="thread.html#1165">[ thread ]</a>
+              <a href="subject.html#1165">[ subject ]</a>
+              <a href="author.html#1165">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  786f415c567241304f47340022fa7eec3eb773d8 (commit)
+      from  1c67b06217d92a6ca7d32b22dd2005c81861fa29 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 786f415c567241304f47340022fa7eec3eb773d8
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Apr 3 13:11:22 2009 +0200
+
+    - fixed SAP storage check and data storage setup
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 6f460e7..6a4ecaf 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -4117,88 +4117,67 @@ function SAPStorageCheck {
+ 	if [ ! -z &quot;$nohdcheck&quot; ];then
+ 		return
+ 	fi
++	local ROOT_DEVICE=$1
++	local size_rootkB=$(partitionSize $ROOT_DEVICE)
++	local DATA_DEVICE=&quot;&quot;
++	local size_datakB=&quot;&quot;
+ 	local main_memory_KB=`awk -F&quot; &quot; '{if (match ($1,&quot;^MemTotal&quot;)) print $2}' \
+ 		/proc/meminfo`
+ 	local main_memory_MB=$(( ${main_memory_KB} / 1024 ))
+ 	local main_memory_GB=$(( ${main_memory_MB} / 1024 ))
+ 	local MIN_DATA_DEV_SIZE=200 # GB
+ 	local MIN_ROOT_DEV_SIZE=$(( ${main_memory_GB} * 2 + 40 + 3 ))
+-	local DATA_DEVICE=&quot;&quot;
+-	local ROOT_DEVICE=&quot;&quot;
+ 	local NUM=`hwinfo --disk | grep -c &quot;Hardware Class:&quot;`
+-	local req_size_data=&quot;&quot;
+-	local req_size_root=&quot;&quot;
++	local req_size_datakB=&quot;&quot;
++	local req_size_rootkB=&quot;&quot;
+ 	local result=0
++	#======================================
++	# Calculate size requirements
++	#--------------------------------------
+ 	if [ &quot;$NUM&quot; != &quot;1&quot; ]; then
+ 		# /.../
+ 		# more than 1 disk, so we expect some more
+ 		# sophisticated setup
+-		# Data Device:
+-		req_size_data=$(( 2*1024*1024*${MIN_DATA_DEV_SIZE} ))
+-		# Root Device:
+-		req_size_root=$(( 2*1024*1024*${MIN_ROOT_DEV_SIZE} ))
++		# ----
++		req_size_datakB=$(( 1024*1024*${MIN_DATA_DEV_SIZE} ))
++		req_size_rootkB=$(( 1024*1024*${MIN_ROOT_DEV_SIZE} ))
+ 	else
+ 		# /.../
+ 		# only 1 disk, which must be large enough for &lt;root&gt;+&lt;data&gt;
+-		# Data Device:
+-		req_size_data=$((
+-			2*1024*1024*${MIN_DATA_DEV_SIZE} + 2*1024*1024*${MIN_ROOT_DEV_SIZE}
++		# ----
++		req_size_datakB=$((
++			1024*1024*${MIN_DATA_DEV_SIZE} + 1024*1024*${MIN_ROOT_DEV_SIZE}
+ 		))
+-		req_size_root=$req_size_data
+-	fi
+-	eval $(
+-		hwinfo --disk | grep -E 'Device File:|Size:' | \
+-		while read tmp size dev rest; do \
+-			if ( [ &quot;$tmp&quot; = &quot;Driver:&quot; ] &amp;&amp; [[ &quot;$size&quot; =~ &quot;usb&quot; ]] ); then
+-				read tmp size dev rest
+-				read tmp size dev rest
+-				continue;
+-			fi
+-			[ &quot;$size&quot; = &quot;File:&quot; ] &amp;&amp; dev_file=$dev;
+-			[ &quot;$dev&quot;  = &quot;sectors&quot; ]      &amp;&amp; \
+-			[ $size -ge $req_size_data ] &amp;&amp; \
+-			echo DATA_DEVICE=$dev_file   &amp;&amp; \
+-			break;
+-		done
+-	)
+-	if [ -z &quot;$DATA_DEVICE&quot; ]; then
+-		if [ &quot;$NUM&quot; != &quot;1&quot; ]; then
+-			result=2 # Data Device not large enough
+-		else
+-			result=1 # Root Device not large enough
+-		fi
+-	else
+-		if [ &quot;$NUM&quot; != &quot;1&quot; ]; then
+-			# /.../
+-			# more than 1 disk, so we expect some more sophisticated setup
+-			# furthermore ensure sufficient space for root-device
+-			req_size_root=$(( 2*1024*1024*${MIN_ROOT_DEV_SIZE} ))
+-			eval $(
+-				hwinfo --disk | grep -E 'Device File:|Size:' | \
+-				while read tmp size dev rest; do \
+-					if( [ &quot;$tmp&quot; = &quot;Driver:&quot; ] &amp;&amp; [[ &quot;$size&quot; =~ &quot;usb&quot; ]] );then
+-						read tmp size dev rest
+-						read tmp size dev rest
+-						continue;
+-					fi
+-					[ &quot;$size&quot; = &quot;File:&quot; ] &amp;&amp; dev_file=$dev;
+-					[ &quot;$dev&quot;  = &quot;sectors&quot; ]           &amp;&amp; \
+-					[ &quot;$DATA_DEVICE&quot; != &quot;$dev_file&quot; ] &amp;&amp; \
+-					[ $size -ge $req_size_root ]      &amp;&amp; \
+-					echo ROOT_DEVICE=$dev_file        &amp;&amp; \
+-					break;
+-				done
+-			)
+-			if [ -z &quot;$ROOT_DEVICE&quot; ]; then
+-				result=1 # Root Device not large enough
+-			else
+-				result=0 # everything ok
+-			fi
++		req_size_rootkB=$req_size_datakB
++	fi
++	#======================================
++	# Search a data disk
++	#--------------------------------------
++	local imageDiskExclude=$ROOT_DEVICE
++	local deviceDisks=`$hwinfo --disk |\
++		grep &quot;Device File:&quot; | cut -f2 -d: |\
++		cut -f1 -d&quot;(&quot; | sed -e s&quot;@$imageDiskExclude@@&quot;`
++	for DATA_DEVICE in $deviceDisks;do
++		break
++	done
++	#======================================
++	# Check size
++	#--------------------------------------
++	if [ $size_rootkB -lt $req_size_rootkB ];then
++		result=1
++	fi
++	if [ ! -z &quot;$DATA_DEVICE&quot; ]; then
++		size_datakB=$(partitionSize $DATA_DEVICE)
++		if [ $size_datakB -lt $req_size_datakB ];then
++			result=2
+ 		fi
+ 	fi
++	#======================================
++	# Print message on error
++	#--------------------------------------
+ 	case $result in
+ 		1 ) Echo &quot;The installation requires at least&quot;
+-			Echo -b &quot;$(( ${req_size_root} / 2 / 1024 / 1024 )) GB disk space&quot;
++			Echo -b &quot;$(( ${req_size_rootkB} / 1024 / 1024 )) GB disk space&quot;
+ 			Echo -b &quot;for the root partition. You can override this check&quot;
+ 			Echo -b &quot;by passing 'nohdcheck=1' to the kernel commandline.&quot;
+ 			systemException \
+@@ -4206,7 +4185,7 @@ function SAPStorageCheck {
+ 			&quot;reboot&quot;
+ 			;;
+ 		2 ) Echo &quot;The installation requires at least&quot;
+-			Echo -b &quot;$(( ${req_size_data} / 2 / 1024 / 1024 )) GB disk space&quot;
++			Echo -b &quot;$(( ${req_size_datakB} / 1024 / 1024 )) GB disk space&quot;
+ 			Echo -b &quot;for the data partition (second partition).&quot;
+ 			Echo -b &quot;You can override this check&quot;
+ 			Echo -b &quot;by passing 'nohdcheck=1' to the kernel commandline.&quot;
+@@ -4248,8 +4227,9 @@ function SAPDataStorageSetup {
+ 	#======================================
+ 	# Partition the data disk
+ 	#--------------------------------------
++	Echo &quot;Setting up $storage as SAP data device...&quot;
+ 	cat &gt; $input &lt; /dev/null
+-	dd if=/dev/zero of=$storage bs=512 count=1 2&gt;&amp;1
++	dd if=/dev/zero of=$storage bs=512 count=1 &amp;&gt;/dev/null
+ 	for cmd in n p 1 . . t 8e w q; do
+ 		if [ $cmd = &quot;.&quot; ];then
+ 			echo &gt;&gt; $input
+@@ -4264,8 +4244,8 @@ function SAPDataStorageSetup {
+ 	#======================================
+ 	# Add volume group and filesystem
+ 	#--------------------------------------
+-	pvcreate $storage
+-	vgcreate data_vg $storage
++	pvcreate $storage&quot;1&quot;
++	vgcreate data_vg $storage&quot;1&quot;
+ 	lvcreate -l 100%FREE -n sapdata data_vg
+ 	mke2fs -j /dev/data_vg/sapdata
+ 	if test $? != 0; then
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index c55f92c..e40cb91 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -189,7 +189,7 @@ if [ ! -z &quot;$OEM_SAP_INSTALL&quot; ];then
+ 	IFS=$IFS_ORIG
+ 	SAPMemCheck
+ 	SAPCPUCheck
+-	SAPStorageCheck
++	SAPStorageCheck $imageDiskDevice
+ 	SAPDataStorageSetup $imageDiskDevice
+ fi
+ 
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001164.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1c67b06217d92a6ca7d32b22dd2005c81861fa29
+</A></li>
+	<LI>Next message: <A HREF="001166.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f8562d14f57816d661d4e22edf0eca78c998feca
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1165">[ date ]</a>
+              <a href="thread.html#1165">[ thread ]</a>
+              <a href="subject.html#1165">[ subject ]</a>
+              <a href="author.html#1165">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

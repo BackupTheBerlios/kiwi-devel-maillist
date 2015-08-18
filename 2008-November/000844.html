@@ -1,0 +1,155 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1761 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1761%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200811171348.mAHDmKLH032545%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000842.html">
+   <LINK REL="Next"  HREF="000845.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1761 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1761%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200811171348.mAHDmKLH032545%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1761 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Nov 17 14:48:20 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000842.html">[Kiwi-devel] r1760 - in kiwi-head: doc doc/LaTex doc/examples	doc/examples/suse-10.3/suse-live-iso	doc/examples/suse-10.3/suse-live-stick	doc/examples/suse-10.3/suse-oem-preload	doc/examples/suse-10.3/suse-pxe-client	doc/examples/suse-10.3/suse-vm-guest	doc/examples/suse-10.3/suse-xen-guest	doc/examples/suse-11.0/suse-ec2-guest	doc/examples/suse-11.0/suse-live-iso	doc/examples/suse-11.0/suse-live-stick	doc/examples/suse-11.0/suse-oem-preload	doc/examples/suse-11.0/suse-pxe-client	doc/examples/suse-11.0/suse-vm-guest	doc/examples/suse-11.0/suse-xen-guest	doc/examples/suse-11.1/suse-ec2-guest	doc/examples/suse-11.1/suse-live-iso	doc/examples/suse-11.1/suse-live-stick	doc/examples/suse-11.1/suse-oem-preload	doc/examples/suse-11.1/suse-pxe-client	doc/examples/suse-11.1/suse-vm-guest	doc/examples/suse-11.1/suse-xen-guest rpm
+</A></li>
+        <LI>Next message: <A HREF="000845.html">[Kiwi-devel] r1762 - in kiwi-head: modules rpm tools/cdtool
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#844">[ date ]</a>
+              <a href="thread.html#844">[ thread ]</a>
+              <a href="subject.html#844">[ subject ]</a>
+              <a href="author.html#844">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-11-17 14:48:12 +0100 (Mon, 17 Nov 2008)
+New Revision: 1761
+
+Modified:
+   kiwi-head/modules/KIWIConfig.sh
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/modules/KIWIXML.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- fixed evaluation of bool value (bnc #444996)
+- fixed USBStickDevice() to check for config.isoclient too.
+  This is needed if a live iso was converted to boot from USB
+  stick as described in Bug (bnc #441278)
+- fixed grub default language setup in suseGFXBoot
+
+
+
+Modified: kiwi-head/modules/KIWIConfig.sh
+===================================================================
+--- kiwi-head/modules/KIWIConfig.sh	2008-11-17 09:54:49 UTC (rev 1760)
++++ kiwi-head/modules/KIWIConfig.sh	2008-11-17 13:48:12 UTC (rev 1761)
+@@ -824,9 +824,9 @@
+ 		local newlayout=
+ 		[ -f themes/$theme/config ] &amp;&amp; newlayout=1
+ 		[ &quot;$newlayout&quot; ] || make -C themes/$theme prep
+-		if [ ! -z &quot;$language&quot; ];then
+-			local l1=`echo $language | cut -f1 -d.`
+-			local l2=`echo $language | cut -f1 -d_`
++		if [ ! -z &quot;$kiwi_language&quot; ];then
++			local l1=`echo $kiwi_language | cut -f1 -d.`
++			local l2=`echo $kiwi_language | cut -f1 -d_`
+ 			local found=0
+ 			for lang in $l1 $l2;do
+ 				if [ -f themes/$theme/po/$lang.po ];then
+@@ -837,7 +837,7 @@
+ 				fi
+ 			done
+ 			if [ $found -eq 0 ];then
+-				echo &quot;Language $language not found, skipped&quot;
++				echo &quot;Language $kiwi_language not found, skipped&quot;
+ 				make -C themes/$theme
+ 			fi
+ 		else
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-11-17 09:54:49 UTC (rev 1760)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-11-17 13:48:12 UTC (rev 1761)
+@@ -1383,7 +1383,10 @@
+ 					if ! kiwiMount &quot;$stickDevice&quot; &quot;/mnt&quot;;then
+ 						continue
+ 					fi
+-					if [ ! -e /mnt/etc/ImageVersion ];then
++					if \
++						[ ! -e /mnt/etc/ImageVersion ] &amp;&amp; \
++						[ ! -e /mnt/config.isoclient ]
++					then
+ 						umountSystem
+ 						continue
+ 					fi
+
+Modified: kiwi-head/modules/KIWIXML.pm
+===================================================================
+--- kiwi-head/modules/KIWIXML.pm	2008-11-17 09:54:49 UTC (rev 1760)
++++ kiwi-head/modules/KIWIXML.pm	2008-11-17 13:48:12 UTC (rev 1761)
+@@ -1002,7 +1002,7 @@
+ 	}
+ 	my $node = $this -&gt; getPreferencesNodeByTagName (&quot;compressed&quot;);
+ 	my $gzip = $node -&gt; getElementsByTagName (&quot;compressed&quot;);
+-	if ((defined $gzip) &amp;&amp; (&quot;$gzip&quot; eq &quot;yes&quot;)) {
++	if ((defined $gzip) &amp;&amp; (&quot;$gzip&quot; =~ /yes|true/i)) {
+ 		return 1;
+ 	}
+ 	return 0;
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-11-17 09:54:49 UTC (rev 1760)
++++ kiwi-head/rpm/kiwi.changes	2008-11-17 13:48:12 UTC (rev 1761)
+@@ -1,6 +1,11 @@
+ -------------------------------------------------------------------
+ Mon Nov 17 10:46:09 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- fixed evaluation of bool value (bnc #444996)
++- fixed USBStickDevice() to check for config.isoclient too.
++  This is needed if a live iso was converted to boot from USB
++  stick as described in Bug (bnc #441278) 
++- fixed grub default language setup in suseGFXBoot
+ - changed examples default source path to point to network
+ - update documentation, added chapter how to create a local
+   SUSE installation source and reference it for the examples
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000842.html">[Kiwi-devel] r1760 - in kiwi-head: doc doc/LaTex doc/examples	doc/examples/suse-10.3/suse-live-iso	doc/examples/suse-10.3/suse-live-stick	doc/examples/suse-10.3/suse-oem-preload	doc/examples/suse-10.3/suse-pxe-client	doc/examples/suse-10.3/suse-vm-guest	doc/examples/suse-10.3/suse-xen-guest	doc/examples/suse-11.0/suse-ec2-guest	doc/examples/suse-11.0/suse-live-iso	doc/examples/suse-11.0/suse-live-stick	doc/examples/suse-11.0/suse-oem-preload	doc/examples/suse-11.0/suse-pxe-client	doc/examples/suse-11.0/suse-vm-guest	doc/examples/suse-11.0/suse-xen-guest	doc/examples/suse-11.1/suse-ec2-guest	doc/examples/suse-11.1/suse-live-iso	doc/examples/suse-11.1/suse-live-stick	doc/examples/suse-11.1/suse-oem-preload	doc/examples/suse-11.1/suse-pxe-client	doc/examples/suse-11.1/suse-vm-guest	doc/examples/suse-11.1/suse-xen-guest rpm
+</A></li>
+	<LI>Next message: <A HREF="000845.html">[Kiwi-devel] r1762 - in kiwi-head: modules rpm tools/cdtool
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#844">[ date ]</a>
+              <a href="thread.html#844">[ thread ]</a>
+              <a href="subject.html#844">[ subject ]</a>
+              <a href="author.html#844">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

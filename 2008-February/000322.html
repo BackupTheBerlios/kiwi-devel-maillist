@@ -1,0 +1,188 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] v2.23 released
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20v2.23%20released&In-Reply-To=%3C20080211153349.GA6027%40D7.ddts.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="000323.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] v2.23 released</H1>
+    <B>Marcus Sch&#228;fer</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20v2.23%20released&In-Reply-To=%3C20080211153349.GA6027%40D7.ddts.net%3E"
+       TITLE="[Kiwi-devel] v2.23 released">ms at suse.de
+       </A><BR>
+    <I>Mon Feb 11 16:33:50 CET 2008</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="000323.html">[Kiwi-devel] [PATCH] make boot attribute optional for split image
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#322">[ date ]</a>
+              <a href="thread.html#322">[ thread ]</a>
+              <a href="subject.html#322">[ subject ]</a>
+              <a href="author.html#322">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi All,
+
+version v2.23 is building. Between the last announcement of
+version v2.13 and this one some important parts has changed.
+Before I list the bugfixes and smaller enhancements I would
+like to explain the bigger changes first. Ok here we go:
+
+1) Enhanced split image type
+   -------------------------
+   Some of you know there is a split image type which was used
+   by the netboot boot image to allow an image to be splitted
+   into two portions and linked together again without using
+   overlay filesystems like for example aufs. James Willcox has
+   improved my first version of this split type and it works
+   pretty well. All implementations of overlay filesystems exising
+   today are not accepted by the kernel community as &quot;clean solution&quot;
+   they implemented code which normally should go the the vfs layer
+   of the kernel. As the virtual filesystem layer is a core component
+   it's not easy to get major changes in there. Because of this
+   reason I think the split image support would be useful for other
+   image types too. This version of kiwi supports split images
+   for the following boot types:
+
+		vmxboot
+        oemboot
+		usbboot
+		netboot
+
+   xenboot which is used for Xen _guests_ will not support split.
+   I think it doesn't make much sense there and isoboot provides
+   with the flags=&quot;compressed&quot; value a split solution which we
+   should adapt to the system James used.
+
+   For all split images you need at least the following split
+   sections in order to allow people to login to the image due
+   to minimum write permissions:
+
+   &lt;split&gt;
+        &lt;persistent&gt;
+            &lt;file name=&quot;/var&quot;/&gt;
+            &lt;file name=&quot;/var/*&quot;/&gt;
+        &lt;/persistent&gt;
+   &lt;/split&gt;
+
+   An example image description using split can be found here
+   <A HREF="https://forgesvn1.novell.com/svn/opensuse/trunk/distribution/images/wyseXMini-suse-11.0">https://forgesvn1.novell.com/svn/opensuse/trunk/distribution/images/wyseXMini-suse-11.0</A> 
+
+2) ISO boot catalog relocation
+   ---------------------------
+   Some BIOS implementations expect the boot catalog at the
+   very first blocks of an ISO image. mkisofs places it somewhere
+   more in the back which caused boot problems on &quot;broken&quot; BIOS
+   implementations. The ISO doesn't boot in such a situation or
+   is not accepted as bootable medium. kiwi now includes 
+   a relocation function which moves the boot catalog at the
+   first possible place
+
+3) XML schema element order
+   ------------------------
+   With the latest version I break up the strict ordering of
+   XML sections. You are now free to add the sections in the order
+   you like
+
+4) No kernel flavor boot image descriptions
+   ----------------------------------------
+   Some of you might have noticed that there are boot image
+   descriptions which are different only in their kernel specifications
+   I have removed all of them and handle them now via profiles.
+   Each boot image description which supports it can be flavored with
+   the xen and smp kernels. The Parameter bootprofile=&quot;...&quot; can be
+   set accordingly and normally points to the value &quot;default&quot;
+   If you have for example a reference to:
+
+   boot=netboot/suse-10-3-smp
+
+   change it to
+
+   boot=netboot/suse-10.3 bootprofile=&quot;smp&quot;
+
+Ok, so I hope you'll find that changes useful too.
+Here is the bug fix list:
+
+Bugzilla:
+=========
+   - fixed module probing code due to hwinfo changes (bnc #359788)
+   - added interactive creation of destination directory (bnc #360487)
+   - add ramdisk module (rd) to netboot and load the module (bnc #310001)
+   - increase CD/DVD drive test max probe count (bnc #356571)
+   - create very first smart cache inside the chroot (bnc #359449)
+   - fixed CD/DVD detection (bnc #359511)
+   - fixed cleanup function call when <A HREF="iso://">iso://</A> type is used (#356928)
+   - fixed usb hub detection (#348362)
+   - umount USB stick partitions before deployment (#355938)
+
+Other Bugfixes:
+===============
+   - make /var/log/boot.kiwi available in system image
+   - added tar program to be available in boot images
+   - fixed /proc/cmdline processing
+   - cleaned up mountSystem function, use sub functions to
+     be called according to the different root mount methods
+   - fixed grub setup in KIWIBoot.pm if the used kernel is a Xen kernel
+   - added better disk detection for oemboot installation mode. We also
+     present the user a list of disk devices found and a selection must
+     be done at that point
+   - fixed missing device nodes in chroot system. When in the
+     second stage of the prepare step smart and zypper may require
+     access to the /dev device nodes.
+   - fixed URL problems if special characters are used. The bash
+     we use to add the channels evaluates the data which it shouldn't do
+   - add smart channel information to log file
+   - don't remove file utility from diskless netboot profile
+
+Thanks for all your valuable input
+
+Have Fun :-)
+
+Best Regards,
+Marcus
+-- 
+ Public Key available
+ gpg --keyserver gpg-keyserver.de --recv-keys 0xCCE3C6A2
+ -------------------------------------------------------
+ Marcus Sch&#228;fer (Res. &amp; Dev.)   SUSE LINUX Products GmbH
+ Tel: 0911-740 53 0             Maxfeldstrasse 5
+ FAX: 0911-740 53 479           D-90409 N&#252;rnberg
+ GF: Markus Rex                 HRB: 16746 (AG N&#252;rnberg)
+ <A HREF="http://www.suse.de">http://www.suse.de</A>             Germany
+ -------------------------------------------------------
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="000323.html">[Kiwi-devel] [PATCH] make boot attribute optional for split image
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#322">[ date ]</a>
+              <a href="thread.html#322">[ thread ]</a>
+              <a href="subject.html#322">[ subject ]</a>
+              <a href="author.html#322">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

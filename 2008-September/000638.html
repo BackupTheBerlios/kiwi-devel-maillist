@@ -1,0 +1,138 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1548 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1548%20-%20kiwi-head/modules&In-Reply-To=%3C200809031550.m83FoQpk031570%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000637.html">
+   <LINK REL="Next"  HREF="000639.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1548 - kiwi-head/modules</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1548%20-%20kiwi-head/modules&In-Reply-To=%3C200809031550.m83FoQpk031570%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1548 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Wed Sep  3 17:50:26 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000637.html">[Kiwi-devel] r1547 - in kiwi-branches/KIWI-265-Studio-Alpha1-Devel:	modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000639.html">[Kiwi-devel] r1549 - in kiwi-branches/KIWI-265-Studio-Alpha1-Devel:	modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#638">[ date ]</a>
+              <a href="thread.html#638">[ thread ]</a>
+              <a href="subject.html#638">[ subject ]</a>
+              <a href="author.html#638">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2008-09-03 17:50:24 +0200 (Wed, 03 Sep 2008)
+New Revision: 1548
+
+Modified:
+   kiwi-head/modules/KIWICollect.pm
+Log:
+- some workarounds to add missing directories before metadata
+  creation for it will fail on these
+- my wish is to integrate this into the plugin handling. There are some
+  issues with plugins which need some more considerations
+
+
+Modified: kiwi-head/modules/KIWICollect.pm
+===================================================================
+--- kiwi-head/modules/KIWICollect.pm	2008-09-03 12:50:20 UTC (rev 1547)
++++ kiwi-head/modules/KIWICollect.pm	2008-09-03 15:50:24 UTC (rev 1548)
+@@ -322,11 +322,26 @@
+       $this-&gt;{m_logger}-&gt;warning(&quot;[E] You want a single medium distro but specified medium=... for some packages\n\tIgnoring the MULTIPLE_MEDIA=no flag!&quot;);
+     }
+   }
++  my $descrdir = $this-&gt;{m_proddata}-&gt;getInfo(&quot;DESCRDIR&quot;);
++  if(not defined($descrdir) or $descrdir =~ m{notset}i) {
++    $this-&gt;{m_logger}-&gt;error(&quot;Variable DESCRDIR missing!&quot;);
++    die;
++  }
++  my $datadir = $this-&gt;{m_proddata}-&gt;getInfo(&quot;DATADIR&quot;);
++  if(not defined($datadir) or $datadir =~ m{notset}i) {
++    $this-&gt;{m_logger}-&gt;error(&quot;Variable DATADIR missing!&quot;);
++    die;
++  }
++  $descrdir =~ s{^/(.*)/$}{$1};
++  my @descrdirs = split('/', $descrdir);
+   foreach my $n(@media) {
+     my $dirbase = &quot;$this-&gt;{m_united}/$mediumname&quot;;
+     $dirbase .= &quot;$n&quot; if not defined($dirext);
+     $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase&quot;} = 1;
+-    $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/suse&quot;} = 1;
++    $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/$datadir&quot;} = 1;
++    ## HACK ALERT !!
++    $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/$datadir/$descrdirs[1]&quot;} = 1;
++    $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/$datadir/$descrdirs[1]/$descrdirs[2]&quot;} = 1;
+     $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/script&quot;} = 1;
+     $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/temp&quot;} = 1;
+     $this-&gt;{m_dirlist}-&gt;{&quot;$dirbase/media.$n&quot;} = 1;
+@@ -428,18 +443,18 @@
+     $retval = 1;
+   }
+   ## continue only in case of success
+-  else {
+-    $initmphandlers = $this-&gt;{m_metacreator}-&gt;initialiseHandlers();
+-    if($initmphandlers == 0) {
+-      $metadatacreate = $this-&gt;{m_metacreator}-&gt;createMetadata();
+-      # handle return value here
+-    }
+-    else {
+-      $this-&gt;{m_logger}-&gt;error(&quot;[E] Initialisation of metadata handlers failed!&quot;);
+-      $retval = 10;
+-    }
+-  }
+-  
++#  else {
++#    $initmphandlers = $this-&gt;{m_metacreator}-&gt;initialiseHandlers();
++#    if($initmphandlers == 0) {
++#      $metadatacreate = $this-&gt;{m_metacreator}-&gt;createMetadata();
++#      # handle return value here
++#    }
++#    else {
++#      $this-&gt;{m_logger}-&gt;error(&quot;[E] Initialisation of metadata handlers failed!&quot;);
++#      $retval = 10;
++#    }
++#  }
++#  
+   return $retval;
+ }
+ # /mainTask
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000637.html">[Kiwi-devel] r1547 - in kiwi-branches/KIWI-265-Studio-Alpha1-Devel:	modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000639.html">[Kiwi-devel] r1549 - in kiwi-branches/KIWI-265-Studio-Alpha1-Devel:	modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#638">[ date ]</a>
+              <a href="thread.html#638">[ thread ]</a>
+              <a href="subject.html#638">[ subject ]</a>
+              <a href="author.html#638">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

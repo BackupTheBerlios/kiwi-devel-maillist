@@ -1,0 +1,203 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ae66a0c815c50a593da64d70bda44dd7caebbf84
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ae66a0c815c50a593da64d70bda44dd7caebbf84&In-Reply-To=%3C200908110833.n7B8XQH1027201%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001398.html">
+   <LINK REL="Next"  HREF="001400.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ae66a0c815c50a593da64d70bda44dd7caebbf84</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ae66a0c815c50a593da64d70bda44dd7caebbf84&In-Reply-To=%3C200908110833.n7B8XQH1027201%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ae66a0c815c50a593da64d70bda44dd7caebbf84">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Aug 11 10:33:26 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001398.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3e48ca8d7b3f4e0449df1b60261b976cc96921c3
+</A></li>
+        <LI>Next message: <A HREF="001400.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 59acfe9adee34ebb2bd412c95e7e8be9b5e60e30
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1399">[ date ]</a>
+              <a href="thread.html#1399">[ thread ]</a>
+              <a href="subject.html#1399">[ subject ]</a>
+              <a href="author.html#1399">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  ae66a0c815c50a593da64d70bda44dd7caebbf84 (commit)
+      from  3e48ca8d7b3f4e0449df1b60261b976cc96921c3 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ae66a0c815c50a593da64d70bda44dd7caebbf84
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Aug 11 10:33:00 2009 +0200
+
+    - fixed getSize function to calculate required inode count
+      for the subsequent mkfs ext2/3/4 call (bnc #528839)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 32945a1..41af190 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -44,7 +44,7 @@ use KIWITest;
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.71&quot;;
++our $Version       = &quot;3.72&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index c77970e..5850e52 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -3693,6 +3693,9 @@ sub setupEXT2 {
+ 		$fsopts = $FSopts{ext2};
+ 		$fsopts.= &quot;-F&quot;;
+ 	}
++	if ($this-&gt;{inodes}) {
++		$fsopts.= &quot; -N $this-&gt;{inodes}&quot;;
++	}
+ 	my $data = qxx (&quot;/sbin/mke2fs $fsopts $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
+ 	my $code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+@@ -4122,28 +4125,38 @@ sub getSize {
+ 	my $this   = shift;
+ 	my $extend = shift;
+ 	my $xml    = $this-&gt;{xml};
+-	my $size = qxx (&quot; du -ks $extend &quot;); chomp $size;
+-	if ($size =~ /(\d+)\s.*/) {
+-		$size = $1;
+-	}
++	my $mini   = qxx (&quot;find $extend | wc -l&quot;); $mini *= 2;
++	my $size   = qxx (&quot;du -s --block-size=1 $extend | cut -f1&quot;); chomp $size;
++	my $spare  = 0.3 * $size;
++	my $needi  = $size / $main::FSInodeRatio;
+ 	#==========================================
+-	# Add 30% more space for later filesystem
++	# Inode count for this filesystem
++	#------------------------------------------
++	$this-&gt;{inodes} =
++		$mini &gt; $needi ? $mini : $needi;
++	#==========================================
++	# Minimum size calculated in MB
+ 	#------------------------------------------
+-	my $spare = 0.3 * $size;
+-	if ($spare &lt;= 8192) {
+-		$spare = 8192;
+-	}
+ 	my $orig = $size;
+-	$orig /= 1024;
++	$orig /= 1048576;
+ 	$orig = int ($orig);
++	#==========================================
++	# Used size with spare space in MB
++	#------------------------------------------
+ 	$size += $spare;
+-	$size += $xml -&gt; getImageSizeAdditiveBytes() / 1024;
+-	$size /= 1024;
++	$size += $xml -&gt; getImageSizeAdditiveBytes();
++	$size /= 1048576;
+ 	$size = int ($size);
++	#==========================================
++	# Size value from XML description
++	#------------------------------------------
+ 	my $xmlsize = $xml -&gt; getImageSize();
+ 	if ($xmlsize eq &quot;auto&quot;) {
+ 		$xmlsize = $size;
+ 	}
++	#==========================================
++	# return result list
++	#------------------------------------------
+ 	return ($orig,$size,$xmlsize);
+ }
+ 
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index be80258..402b7c4 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Tue Aug 11 10:23:45 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.72
++- fixed getSize function to calculate required inode count
++  for the subsequent mkfs ext2/3/4 call (bnc #528839)
++
++-------------------------------------------------------------------
+ Fri Aug  7 14:56:27 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.71
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index b0f386d..601115c 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.71)
++# spec file for package kiwi (Version 3.72)
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -46,7 +46,7 @@ Requires:       satsolver-tools
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.71
++Version:        3.72
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001398.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3e48ca8d7b3f4e0449df1b60261b976cc96921c3
+</A></li>
+	<LI>Next message: <A HREF="001400.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 59acfe9adee34ebb2bd412c95e7e8be9b5e60e30
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1399">[ date ]</a>
+              <a href="thread.html#1399">[ thread ]</a>
+              <a href="subject.html#1399">[ subject ]</a>
+              <a href="author.html#1399">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

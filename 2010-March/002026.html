@@ -1,0 +1,165 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, RHEL,	updated. bd72030ecfd19a0cd94d746f01826e33cb232b14
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20RHEL%2C%0A%09updated.%20bd72030ecfd19a0cd94d746f01826e33cb232b14&In-Reply-To=%3C201003161712.o2GHCJrQ005533%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002025.html">
+   <LINK REL="Next"  HREF="002027.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, RHEL,	updated. bd72030ecfd19a0cd94d746f01826e33cb232b14</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20RHEL%2C%0A%09updated.%20bd72030ecfd19a0cd94d746f01826e33cb232b14&In-Reply-To=%3C201003161712.o2GHCJrQ005533%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, RHEL,	updated. bd72030ecfd19a0cd94d746f01826e33cb232b14">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Mar 16 18:12:19 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002025.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c9724b9edfab503d867482e26c04d43c02c96198
+</A></li>
+        <LI>Next message: <A HREF="002027.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 243ff8bc786dc423e7d013ea839f0543cbaa7eaf
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2026">[ date ]</a>
+              <a href="thread.html#2026">[ thread ]</a>
+              <a href="subject.html#2026">[ subject ]</a>
+              <a href="author.html#2026">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, RHEL has been updated
+       via  bd72030ecfd19a0cd94d746f01826e33cb232b14 (commit)
+      from  af396dcfcb572be922cb13f32db5de70bcf678f1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit bd72030ecfd19a0cd94d746f01826e33cb232b14
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Mar 16 18:11:54 2010 +0100
+
+    - added Xen dom0 hypervisor check if domain=&quot;dom0&quot; is set
+    - fixed Xen dom0 bootloader configuration
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index a5d8dc2..f9b8913 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -3742,19 +3742,31 @@ sub extractLinux {
+ 	my $imageTree = shift;
+ 	my $dest      = shift;
+ 	my $kiwi      = $this-&gt;{kiwi};
++	my $xml       = $this-&gt;{xml};
++	my %xenc      = $xml-&gt;getXenConfig();
+ 	if ((-f &quot;$imageTree/boot/vmlinux.gz&quot;)  ||
+ 		(-f &quot;$imageTree/boot/vmlinuz.el5&quot;) ||
+ 		(-f &quot;$imageTree/boot/vmlinux&quot;)     ||
+ 		(-f &quot;$imageTree/boot/vmlinuz&quot;)
+ 	) {
+ 		$kiwi -&gt; info (&quot;Extracting kernel...&quot;);
++		#==========================================
++		# setup file names / cleanup...
++		#------------------------------------------
+ 		my $pwd = qxx (&quot;pwd&quot;); chomp $pwd;
+ 		my $shortfile = &quot;$name.kernel&quot;;
+ 		my $file = &quot;$dest/$shortfile&quot;;
+ 		if ($file !~ /^\//) {
+ 			$file = $pwd.&quot;/&quot;.$file;
+ 		}
+-		qxx (&quot;rm -f $file&quot;);
++		if (-e $file) {
++			qxx (&quot;rm -f $file&quot;);
++		}
++		# /.../
++		# the KIWIConfig::suseStripKernel() function provides the
++		# kernel as common name /boot/vmlinuz. We use this file for
++		# the extraction
++		# ----
+ 		qxx (&quot;cp $imageTree/boot/vmlinuz $file&quot;);
+ 		my $code = $? &gt;&gt; 8;
+ 		if ($code != 0) {
+@@ -3763,26 +3775,19 @@ sub extractLinux {
+ 			$kiwi -&gt; failed ();
+ 			return undef;
+ 		}
+-		my $kfile;
+-		if (-f &quot;$imageTree/boot/vmlinux.gz&quot;) {
+-			$kfile = &quot;$imageTree/boot/vmlinux.gz&quot;;
+-		} elsif (-f &quot;$imageTree/boot/vmlinuz.el5&quot;) {
+-			$kfile = &quot;$imageTree/boot/vmlinuz.el5&quot;;
+-		} elsif (-f &quot;$imageTree/boot/xen.gz&quot;) {
+-			$kfile = &quot;$imageTree/boot/xen.gz&quot;;
+-		} elsif (-f &quot;$imageTree/boot/vmlinux&quot;) {
+-			$kfile = &quot;$imageTree/boot/vmlinux&quot;;
+-		} elsif (-f &quot;$imageTree/boot/vmlinuz&quot;) {
+-			$kfile = &quot;$imageTree/boot/vmlinuz&quot;;
+-		} else {
+-			$kiwi -&gt; failed ();
+-			$kiwi -&gt; info   (&quot;Couldn't find kernel file&quot;);
+-			$kiwi -&gt; failed ();
+-			return undef;
++		my $kernel = qxx (&quot;get_kernel_version $file&quot;); chomp $kernel;
++		qxx (&quot;mv -f $file $file.$kernel &amp;&amp; ln -s $shortfile.$kernel $file&quot;);
++		# /.../
++		# check for the Xen hypervisor and extract them as well
++		# ----
++		if ((defined $xenc{xen_domain}) &amp;&amp; ($xenc{xen_domain} eq &quot;dom0&quot;)) {
++			if (! -f &quot;$imageTree/boot/xen.gz&quot;) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; info   (&quot;Xen dom0 requested but no hypervisor found&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
+ 		}
+-		my $kernel;
+-		$kernel = qxx (&quot;/sbin/get_kernel_version $kfile&quot;); chomp $kernel;
+-		qxx (&quot;mv -f $file $file.$kernel &amp;&amp; ln -s $shortfile.$kernel $file &quot;);
+ 		if (-f &quot;$imageTree/boot/xen.gz&quot;) {
+ 			$file = &quot;$dest/$name.kernel-xen&quot;;
+ 			qxx (&quot;cp $imageTree/boot/xen.gz $file&quot;);
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002025.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c9724b9edfab503d867482e26c04d43c02c96198
+</A></li>
+	<LI>Next message: <A HREF="002027.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 243ff8bc786dc423e7d013ea839f0543cbaa7eaf
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2026">[ date ]</a>
+              <a href="thread.html#2026">[ thread ]</a>
+              <a href="subject.html#2026">[ subject ]</a>
+              <a href="author.html#2026">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

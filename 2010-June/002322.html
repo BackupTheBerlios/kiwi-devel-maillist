@@ -1,0 +1,164 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. adf3c8c8a0152fb65e75cef9f835675639fb4703
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20adf3c8c8a0152fb65e75cef9f835675639fb4703&In-Reply-To=%3C201006221304.o5MD4eZa015795%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002321.html">
+   <LINK REL="Next"  HREF="002323.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. adf3c8c8a0152fb65e75cef9f835675639fb4703</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20adf3c8c8a0152fb65e75cef9f835675639fb4703&In-Reply-To=%3C201006221304.o5MD4eZa015795%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. adf3c8c8a0152fb65e75cef9f835675639fb4703">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jun 22 15:04:40 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002321.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d12fa168b89b97e13f42c0a5d143f241c3e71d78
+</A></li>
+        <LI>Next message: <A HREF="002323.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ef77a7e29871b0835c301bbbb1e6030ea619402a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2322">[ date ]</a>
+              <a href="thread.html#2322">[ thread ]</a>
+              <a href="subject.html#2322">[ subject ]</a>
+              <a href="author.html#2322">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  adf3c8c8a0152fb65e75cef9f835675639fb4703 (commit)
+      from  d12fa168b89b97e13f42c0a5d143f241c3e71d78 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit adf3c8c8a0152fb65e75cef9f835675639fb4703
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Jun 22 15:04:23 2010 +0200
+
+    - fixed use of global file handles
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 6ce213a..8f25055 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -18,17 +18,18 @@ package KIWIXML;
+ # Modules
+ #------------------------------------------
+ require Exporter;
+-use strict;
+ use Carp qw (cluck);
+-use XML::LibXML;
++use File::Glob ':glob';
++use File::Basename;
+ use LWP;
++use XML::LibXML;
++use strict;
++use warnings;
+ use KIWILog;
+-use KIWIOverlay;
+-use KIWISatSolver;
+ use KIWIManager qw (%packageManager);
+-use File::Glob ':glob';
+-use File::Basename;
++use KIWIOverlay;
+ use KIWIQX;
++use KIWISatSolver;
+ 
+ #==========================================
+ # Exports
+@@ -200,8 +201,8 @@ sub new {
+ 	#==========================================
+ 	# Check kiwirevision attribute
+ 	#------------------------------------------
+-	if (open FD,$main::Revision) {
+-		my $cur_rev = &lt;FD&gt;; close FD;
++	if (open (my $FD,$main::Revision)) {
++		my $cur_rev = &lt;$FD&gt;; close $FD;
+ 		my $req_rev = $imgnameNodeList
+ 			-&gt; get_node(1) -&gt; getAttribute (&quot;kiwirevision&quot;);
+ 		if ((defined $req_rev) &amp;&amp; ($cur_rev &lt; $req_rev)) {
+@@ -2357,8 +2358,8 @@ sub getImageConfig {
+ 	# revision information
+ 	#------------------------------------------
+ 	my $rev  = &quot;unknown&quot;;
+-	if (open FD,$main::Revision) {
+-		$rev = &lt;FD&gt;; close FD;
++	if (open (my $FD,$main::Revision)) {
++		$rev = &lt;$FD&gt;; close $FD;
+ 		$rev =~ s/\n//g;
+ 	}
+ 	$result{kiwi_revision} = $rev;
+@@ -3938,13 +3939,13 @@ sub getSingleInstSourceSatSolvable {
+ 			# get files listed in patterns
+ 			#------------------------------------------
+ 			my $patfile = $destfile;
+-			if (! open (FD,$patfile)) {
++			if (! open (my $FD,$patfile)) {
+ 				$kiwi -&gt; warning (&quot;--&gt; Couldn't open patterns file: $!&quot;);
+ 				$kiwi -&gt; skipped ();
+ 				unlink $patfile;
+ 				next;
+ 			}
+-			foreach my $line (&lt;FD&gt;) {
++			foreach my $line (&lt;$FD&gt;) {
+ 				chomp $line; $destfile = $sdir.&quot;/&quot;.$line;
+ 				if ($line !~ /\.$arch\./) {
+ 					next;
+@@ -3957,7 +3958,7 @@ sub getSingleInstSourceSatSolvable {
+ 					next;
+ 				}
+ 			}
+-			close FD;
++			close $FD;
+ 			unlink $patfile;
+ 		}
+ 	}
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002321.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d12fa168b89b97e13f42c0a5d143f241c3e71d78
+</A></li>
+	<LI>Next message: <A HREF="002323.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ef77a7e29871b0835c301bbbb1e6030ea619402a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2322">[ date ]</a>
+              <a href="thread.html#2322">[ thread ]</a>
+              <a href="subject.html#2322">[ subject ]</a>
+              <a href="author.html#2322">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

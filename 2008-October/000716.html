@@ -1,0 +1,220 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1620 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1620%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200810071533.m97FXf7T001184%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000715.html">
+   <LINK REL="Next"  HREF="000717.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1620 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1620%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200810071533.m97FXf7T001184%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1620 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Oct  7 17:33:41 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000715.html">[Kiwi-devel] r1619 - kiwi-head/modules
+</A></li>
+        <LI>Next message: <A HREF="000717.html">[Kiwi-devel] r1621 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#716">[ date ]</a>
+              <a href="thread.html#716">[ thread ]</a>
+              <a href="subject.html#716">[ subject ]</a>
+              <a href="author.html#716">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-07 17:33:37 +0200 (Tue, 07 Oct 2008)
+New Revision: 1620
+
+Modified:
+   kiwi-head/modules/KIWIXML.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- fixed getInstSourceSatSolvable() for online repos
+
+
+
+Modified: kiwi-head/modules/KIWIXML.pm
+===================================================================
+--- kiwi-head/modules/KIWIXML.pm	2008-10-07 15:26:48 UTC (rev 1619)
++++ kiwi-head/modules/KIWIXML.pm	2008-10-07 15:33:37 UTC (rev 1620)
+@@ -2801,10 +2801,9 @@
+ 	# ----
+ 	my $kiwi     = shift;
+ 	my $repos    = shift;
+-	my @patternd = (&quot;/suse/setup/descr/&quot;,&quot;/repodata&quot;);
+ 	my $patterns = &quot;/suse/setup/descr/patterns&quot;;
+ 	my $packages = &quot;/suse/setup/descr/packages.gz&quot;;
+-	my $solvable = &quot;/suse/setup/descr/primary.gz&quot;;
++	my $solvable = &quot;/suse/repodata/primary.xml.gz&quot;;
+ 	my $project  = &quot;/repodata/patterns.xml.gz&quot;;
+ 	my $arch     = qxx (&quot;uname -m&quot;); chomp $arch;
+ 	my $count    = 0;
+@@ -2840,39 +2839,19 @@
+ 	#------------------------------------------
+ 	foreach my $repo (@{$repos}) {
+ 		#==========================================
+-		# create directory listing for each repo
++		# check if this is a valid suse repo
+ 		#------------------------------------------
+ 		my $destfile = $sdir.&quot;/listing&quot;;
+-		my $foundDir = 0;
+-		foreach my $patternd (@patternd) {
+-			if (KIWIXML::getInstSourceFile ($kiwi,$repo.$patternd,$destfile)) {
+-				$foundDir = 1; last;
++		my @testfile = ($repo.$patterns,$repo.$project);
++		my $isValid  = 0;
++		foreach my $test (@testfile) {
++			if (KIWIXML::getInstSourceFile ($kiwi,$test,$destfile)) {
++				$isValid = 1; last;
+ 			}
+ 		}
+-		if (! $foundDir) {
+-			next;
+-		}
+-		#==========================================
+-		# check if this is a valid suse repo
+-		#------------------------------------------
+-		if (! open (FD,$destfile)) {
+-			unlink $destfile; next;
+-		}
+-		my $repoOK = -1;
+-		foreach my $line (&lt;FD&gt;) {
+-			# opensuse rpm-md project repo
+-			if ($line =~ /\&quot;patterns\.xml\.gz\&quot;/) {
+-				$repoOK = 1; last;
+-			}
+-			# standard yast2 distribution repo
+-			if ($line =~ /\&quot;patterns\&quot;/) {
+-				$repoOK++; last;
+-			}
+-		}
+-		if ($repoOK) {
++		if ($isValid) {
+ 			push (@index,$repo);
+ 		}
+-		close FD;
+ 		unlink $destfile;
+ 	}
+ 	push (@index,$arch);
+@@ -2898,7 +2877,7 @@
+ 		# check for pre-created solvable first
+ 		#------------------------------------------
+ 		my $foundFile = 0;
+-		$destfile = $sdir.&quot;/primary-&quot;.$count.&quot;.gz&quot;;
++		$destfile = $sdir.&quot;/distxml-&quot;.$count.&quot;.gz&quot;;
+ 		if (KIWIXML::getInstSourceFile ($kiwi,$repo.$solvable,$destfile)) {
+ 			$foundFile = 1;
+ 		}
+@@ -2939,7 +2918,8 @@
+ 			if ($line !~ /\.$arch\./) {
+ 				next;
+ 			}
+-			my $file = $repo.$patternd[0].$line;
++			my $base = dirname $patterns;
++			my $file = $repo.&quot;/&quot;.$base.&quot;/&quot;.$line;
+ 			if (! KIWIXML::getInstSourceFile($kiwi,$file,$destfile)) {
+ 				$kiwi -&gt; warning (&quot;--&gt; Pattern file $line not found&quot;);
+ 				$kiwi -&gt; skipped ();
+@@ -2960,6 +2940,20 @@
+ 	}
+ 	$count++;
+ 	#==========================================
++	# create solvable from opensuse dist pat
++	#------------------------------------------
++	if (glob (&quot;$sdir/distxml-*.gz&quot;)) {
++		$destfile = $sdir.&quot;/primary-&quot;.$count;
++		$scommand = &quot;gzip -cd $sdir/distxml-*.gz&quot;;
++		my $data = qxx (&quot;($scommand) | rpmmd2solv &gt; $destfile 2&gt;/dev/null&quot;);
++		my $code = $? &gt;&gt; 8;
++		if ($code != 0) {
++			$kiwi -&gt; error  (&quot;--&gt; Can't create SaT solvable file&quot;);
++			$kiwi -&gt; failed ();
++			$error = 1;
++		}
++	}
++	#==========================================
+ 	# create solvable from suse tags data
+ 	#------------------------------------------
+ 	if (glob (&quot;$sdir/packages-*.gz&quot;)) {
+@@ -2992,20 +2986,6 @@
+ 		}
+ 	}
+ 	#==========================================
+-	# uncompress all pre-created solvables
+-	#------------------------------------------
+-	if (! $error) {
+-		foreach my $solvables (glob (&quot;$sdir/primary-*.gz&quot;)) {
+-			my $data = qxx (&quot;gzip -d $sdir/primary-*.gz&quot;);
+-			my $code = $? &gt;&gt; 8;
+-			if ($code != 0) {
+-				$kiwi -&gt; error  (&quot;--&gt; Couldn't uncompress solve files&quot;);
+-				$kiwi -&gt; failed ();
+-				$error = 1;
+-			}
+-		}
+-	}
+-	#==========================================
+ 	# merge all solvables into one
+ 	#------------------------------------------
+ 	if (! $error) {
+@@ -3028,6 +3008,7 @@
+ 	#------------------------------------------
+ 	qxx (&quot;rm -f $sdir/primary-*&quot;);
+ 	qxx (&quot;rm -f $sdir/projectxml-*.gz&quot;);
++	qxx (&quot;rm -f $sdir/distxml-*.gz&quot;);
+ 	qxx (&quot;rm -f $sdir/packages-*.gz&quot;);
+ 	qxx (&quot;rm -f $sdir/*.pat.gz&quot;);
+ 	if (! $error) {
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-07 15:26:48 UTC (rev 1619)
++++ kiwi-head/rpm/kiwi.changes	2008-10-07 15:33:37 UTC (rev 1620)
+@@ -3,6 +3,7 @@
+ 
+ - v2.86
+ - fixed build, quick install guide was removed
++- fixed getInstSourceSatSolvable() for online repos 
+ 
+ -------------------------------------------------------------------
+ Mon Oct  6 12:09:15 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000715.html">[Kiwi-devel] r1619 - kiwi-head/modules
+</A></li>
+	<LI>Next message: <A HREF="000717.html">[Kiwi-devel] r1621 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#716">[ date ]</a>
+              <a href="thread.html#716">[ thread ]</a>
+              <a href="subject.html#716">[ subject ]</a>
+              <a href="author.html#716">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

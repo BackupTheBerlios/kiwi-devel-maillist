@@ -1,0 +1,425 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c907bccd9e6cde99edc30f5ec8de7eea6249b51b
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20c907bccd9e6cde99edc30f5ec8de7eea6249b51b&In-Reply-To=%3C200912081552.nB8FqRm6003461%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001663.html">
+   <LINK REL="Next"  HREF="001665.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c907bccd9e6cde99edc30f5ec8de7eea6249b51b</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20c907bccd9e6cde99edc30f5ec8de7eea6249b51b&In-Reply-To=%3C200912081552.nB8FqRm6003461%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c907bccd9e6cde99edc30f5ec8de7eea6249b51b">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Dec  8 16:52:27 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001663.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 56511892ea8f8fdb87f125dfdc3713c502bc091e
+</A></li>
+        <LI>Next message: <A HREF="001665.html">[Kiwi-devel] JFYI: About KIWI's RELAX NG Schema
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1664">[ date ]</a>
+              <a href="thread.html#1664">[ thread ]</a>
+              <a href="subject.html#1664">[ subject ]</a>
+              <a href="author.html#1664">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  c907bccd9e6cde99edc30f5ec8de7eea6249b51b (commit)
+      from  56511892ea8f8fdb87f125dfdc3713c502bc091e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit c907bccd9e6cde99edc30f5ec8de7eea6249b51b
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Dec 8 16:52:16 2009 +0100
+
+    - improved solvable caching code and added functions to
+      KIWISatSolver module for extracting SaT informations about
+      dependency and queueing problems
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWISatSolver.pm b/modules/KIWISatSolver.pm
+index 947f454..cdb29b0 100644
+--- a/modules/KIWISatSolver.pm
++++ b/modules/KIWISatSolver.pm
+@@ -75,10 +75,11 @@ sub new {
+ 	#==========================================
+ 	# Constructor setup
+ 	#------------------------------------------
+-	my $solvable; # sat solvable file name
+-	my $solver;   # sat solver object
+-	my $queue;    # sat job queue
+-	my @solved;   # solve result
++	my $solvable;  # sat solvable file name
++	my $solver;    # sat solver object
++	my $queue;     # sat job queue
++	my @solved;    # solve result
++	my @jobFailed; # failed jobs
+ 	if (! defined $kiwi) {
+ 		$kiwi = new KIWILog(&quot;tiny&quot;);
+ 	}
+@@ -134,6 +135,7 @@ sub new {
+ 		if (! $id) {
+ 			$kiwi -&gt; warning (&quot;--&gt; Failed to queue job: $name&quot;);
+ 			$kiwi -&gt; skipped ();
++			push @jobFailed, $name;
+ 			next;
+ 		}
+ 		$queue -&gt; queuePush ( $KIWI::SaT::SOLVER_INSTALL_SOLVABLE );
+@@ -145,6 +147,7 @@ sub new {
+ 	$this-&gt;{kiwi}    = $kiwi;
+ 	$this-&gt;{queue}   = $queue;
+ 	$this-&gt;{solver}  = $solver;
++	$this-&gt;{failed}  = \@jobFailed;
+ 	#==========================================
+ 	# Solve the job(s)
+ 	#------------------------------------------
+@@ -152,6 +155,7 @@ sub new {
+ 	if ($this -&gt; getProblemsCount()) {
+ 		my $solution = $this -&gt; getSolutions();
+ 		$kiwi -&gt; warning (&quot;--&gt; Solver Problems:\n$solution&quot;);
++		$this-&gt;{problem} = &quot;$solution&quot;;
+ 	}
+ 	my $size = $solver -&gt; getInstallSizeKBytes();
+ 	my $list = $solver -&gt; getInstallList ($pool);
+@@ -196,6 +200,28 @@ sub new {
+ }
+ 
+ #==========================================
++# getProblemInfo
++#------------------------------------------
++sub getProblemInfo {
++	# /.../
++	# return problem solution text
++	# ----
++	my $this = shift;
++	return $this-&gt;{problem};
++}
++
++#==========================================
++# getFailedJobs
++#------------------------------------------
++sub getFailedJobs {
++	# /.../
++	# return package names of failed jobs
++	# ----
++	my $this = shift;
++	return $this-&gt;{failed};
++}
++
++#==========================================
+ # getSolfile
+ #------------------------------------------
+ sub getSolfile {
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 32f4a5b..1eb87bc 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -35,7 +35,9 @@ use KIWIQX;
+ # Exports
+ #------------------------------------------
+ our @ISA    = qw (Exporter);
+-our @EXPORT = qw (getInstSourceFile getInstSourceSatSolvable);
++our @EXPORT = qw (
++	getInstSourceFile getInstSourceSatSolvable getSingleInstSourceSatSolvable
++);
+ 
+ #==========================================
+ # Globals
+@@ -3293,6 +3295,12 @@ sub getInstSourceFile {
+ 		$url = &quot;<A HREF="file://">file://</A>&quot;.$url;
+ 		$url =~ s{/{3,}}{//};
+ 	}
++	if ($url =~ /dir:\/\//) {
++		# /.../
++		# dir url, make them a <A HREF="file://">file://</A> url
++		# ----
++		$url =~ s/^dir/file/;
++	}
+ 	# /.../
+ 	# use lwp-download to manage the process.
+ 	# if first download failed check the directory list with
+@@ -3346,21 +3354,66 @@ sub getInstSourceFile {
+ sub getInstSourceSatSolvable {
+ 	# /.../
+ 	# This function will return an uncompressed solvable record
+-	# for the given repository list. If it's required to create
++	# for the given repository list.
++	# ----
++	my $kiwi  = shift;
++	my $repos = shift;
++	my $arch  = qxx (&quot;uname -m&quot;); chomp $arch;
++	my $sdir  = &quot;/var/cache/kiwi/satsolver&quot;;
++	my @index = ();
++	my $solv;
++	#==========================================
++	# check/create main solvable file
++	#------------------------------------------
++	foreach my $repo (@{$repos}) {
++		push (@index,$repo);
++	}
++	push (@index,$arch);
++	@index = sort (@index);
++	$solv  = join (&quot;:&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">, at index</A>);
++	$solv = qxx (&quot;echo $solv | md5sum | cut -f1 -d-&quot;);
++	$solv = $sdir.&quot;/&quot;.$solv; chomp $solv;
++	$solv =~ s/ +$//;
++	if (-f $solv) {
++		return $solv;
++	}
++	#==========================================
++	# create one solvable per repo
++	#------------------------------------------
++	undef @index;
++	foreach my $repo (@{$repos}) {
++		my $solvable = getSingleInstSourceSatSolvable ($kiwi,$repo);
++		if (! $solvable) {
++			return undef;
++		}
++		push @index,$solvable;
++	}
++	#==========================================
++	# merge all solvables into one
++	#------------------------------------------
++	my $data = qxx (&quot;mergesolv @index &gt; $solv&quot;);
++	my $code = $? &gt;&gt; 8;
++	if ($code != 0) {
++		$kiwi -&gt; error  (&quot;--&gt; Couldn't merge solve files&quot;);
++		$kiwi -&gt; failed ();
++		return undef
++	}
++	return $solv;
++}
++
++#==========================================
++# getSingleInstSourceSatSolvable
++#------------------------------------------
++sub getSingleInstSourceSatSolvable {
++	# /.../
++	# This function will return an uncompressed solvable record
++	# for the given URL. If it's required to create
+ 	# this solvable because it doesn't exist on the repository
+ 	# the satsolver toolkit is used and therefore required in
+ 	# order to allow this function to work correctly
+ 	# ----
+-	my $kiwi     = shift;
+-	my $repos    = shift;
+-	#==========================================
+-	# one of the following to match...
+-	#------------------------------------------
+-	my @valid    = (
+-		&quot;/suse/setup/descr/patterns&quot;,
+-		&quot;/repodata/patterns.xml.gz&quot;,
+-		&quot;/repodata/primary.xml.gz&quot;
+-	);
++	my $kiwi = shift;
++	my $repo = shift;
+ 	#==========================================
+ 	# one of the following for a base solvable
+ 	#------------------------------------------
+@@ -3410,23 +3463,7 @@ sub getInstSourceSatSolvable {
+ 	#==========================================
+ 	# check/create solvable index file
+ 	#------------------------------------------
+-	foreach my $repo (@{$repos}) {
+-		#==========================================
+-		# check if this is a valid suse repo
+-		#------------------------------------------
+-		my $destfile = $sdir.&quot;/listing&quot;;
+-		my $isValid  = 0;
+-		foreach my $valid (@valid) {
+-			my $test = $repo.$valid;
+-			if (KIWIXML::getInstSourceFile ($kiwi,$test,$destfile)) {
+-				$isValid = 1; last;
+-			}
+-		}
+-		if ($isValid) {
+-			push (@index,$repo);
+-		}
+-		unlink $destfile;
+-	}
++	push (@index,$repo);
+ 	push (@index,$arch);
+ 	@index = sort (@index);
+ 	$index = join (&quot;:&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">, at index</A>);
+@@ -3448,18 +3485,16 @@ sub getInstSourceSatSolvable {
+ 	# download distro solvable(s)
+ 	#------------------------------------------
+ 	my $foundDist = 0;
+-	foreach my $repo (@{$repos}) {
+-		$count++;
+-		foreach my $dist (keys %distro) {
+-			my $name = $distro{$dist};
+-			if ($dist =~ /\.gz$/) {
+-				$destfile = $sdir.&quot;/$name-&quot;.$count.&quot;.gz&quot;;
+-			} else {
+-				$destfile = $sdir.&quot;/$name-&quot;.$count;
+-			}
+-			if (KIWIXML::getInstSourceFile ($kiwi,$repo.$dist,$destfile)) {
+-				$foundDist = 1; last;
+-			}
++	$count++;
++	foreach my $dist (keys %distro) {
++		my $name = $distro{$dist};
++		if ($dist =~ /\.gz$/) {
++			$destfile = $sdir.&quot;/$name-&quot;.$count.&quot;.gz&quot;;
++		} else {
++			$destfile = $sdir.&quot;/$name-&quot;.$count;
++		}
++		if (KIWIXML::getInstSourceFile ($kiwi,$repo.$dist,$destfile)) {
++			$foundDist = 1; last;
+ 		}
+ 	}
+ 	if (! $foundDist) {
+@@ -3470,39 +3505,37 @@ sub getInstSourceSatSolvable {
+ 	#==========================================
+ 	# download pattern solvable(s)
+ 	#------------------------------------------
+-	foreach my $repo (@{$repos}) {
+-		$count++;
+-		foreach my $patt (keys %patterns) {
+-			my $name = $patterns{$patt};
+-			$destfile = $sdir.&quot;/$name-&quot;.$count.&quot;.gz&quot;;
+-			my $ok = KIWIXML::getInstSourceFile ($kiwi,$repo.$patt,$destfile);
+-			if (($ok) &amp;&amp; ($name eq &quot;patterns&quot;)) {
+-				#==========================================
+-				# get files listed in patterns
+-				#------------------------------------------
+-				my $patfile = $destfile;
+-				if (! open (FD,$patfile)) {
+-					$kiwi -&gt; warning (&quot;--&gt; Couldn't open patterns file: $!&quot;);
+-					$kiwi -&gt; skipped ();
+-					unlink $patfile;
++	$count++;
++	foreach my $patt (keys %patterns) {
++		my $name = $patterns{$patt};
++		$destfile = $sdir.&quot;/$name-&quot;.$count.&quot;.gz&quot;;
++		my $ok = KIWIXML::getInstSourceFile ($kiwi,$repo.$patt,$destfile);
++		if (($ok) &amp;&amp; ($name eq &quot;patterns&quot;)) {
++			#==========================================
++			# get files listed in patterns
++			#------------------------------------------
++			my $patfile = $destfile;
++			if (! open (FD,$patfile)) {
++				$kiwi -&gt; warning (&quot;--&gt; Couldn't open patterns file: $!&quot;);
++				$kiwi -&gt; skipped ();
++				unlink $patfile;
++				next;
++			}
++			foreach my $line (&lt;FD&gt;) {
++				chomp $line; $destfile = $sdir.&quot;/&quot;.$line;
++				if ($line !~ /\.$arch\./) {
+ 					next;
+ 				}
+-				foreach my $line (&lt;FD&gt;) {
+-					chomp $line; $destfile = $sdir.&quot;/&quot;.$line;
+-					if ($line !~ /\.$arch\./) {
+-						next;
+-					}
+-					my $base = dirname $patt;
+-					my $file = $repo.&quot;/&quot;.$base.&quot;/&quot;.$line;
+-					if (! KIWIXML::getInstSourceFile($kiwi,$file,$destfile)) {
+-						$kiwi -&gt; warning (&quot;--&gt; Pattern file $line not found&quot;);
+-						$kiwi -&gt; skipped ();
+-						next;
+-					}
++				my $base = dirname $patt;
++				my $file = $repo.&quot;/&quot;.$base.&quot;/&quot;.$line;
++				if (! KIWIXML::getInstSourceFile($kiwi,$file,$destfile)) {
++					$kiwi -&gt; warning (&quot;--&gt; Pattern file $line not found&quot;);
++					$kiwi -&gt; skipped ();
++					next;
+ 				}
+-				close FD;
+-				unlink $patfile;
+ 			}
++			close FD;
++			unlink $patfile;
+ 		}
+ 	}
+ 	$count++;
+@@ -3600,10 +3633,10 @@ sub getInstSourceSatSolvable {
+ 	# cleanup cache dir
+ 	#------------------------------------------
+ 	qxx (&quot;rm -f $sdir/primary-*&quot;);
+-	qxx (&quot;rm -f $sdir/projectxml-*.gz&quot;);
+-	qxx (&quot;rm -f $sdir/distxml-*.gz&quot;);
+-	qxx (&quot;rm -f $sdir/packages-*.gz&quot;);
+-	qxx (&quot;rm -f $sdir/*.pat.gz&quot;);
++	qxx (&quot;rm -f $sdir/projectxml-*&quot;);
++	qxx (&quot;rm -f $sdir/distxml-*&quot;);
++	qxx (&quot;rm -f $sdir/packages-*&quot;);
++	qxx (&quot;rm -f $sdir/*.pat*&quot;);
+ 	if (! $error) {
+ 		return $index;
+ 	}
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 26e06e0..47a9b4f 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,15 @@
+ -------------------------------------------------------------------
++Tue Dec  8 12:42:11 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.84
++- improved solvable caching code and added functions to
++  KIWISatSolver module for extracting SaT informations about
++  dependency and queueing problems
++- fixed satsolver usage, pool_setarch is required for correct
++  solving results. Also prune_best_arch_name_version() is now
++  used instead of prune_to_best_arch
++
++-------------------------------------------------------------------
+ Mon Dec  7 12:10:40 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">adrian at suse.de</A>
+ 
+ - v3.84
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001663.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 56511892ea8f8fdb87f125dfdc3713c502bc091e
+</A></li>
+	<LI>Next message: <A HREF="001665.html">[Kiwi-devel] JFYI: About KIWI's RELAX NG Schema
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1664">[ date ]</a>
+              <a href="thread.html#1664">[ thread ]</a>
+              <a href="subject.html#1664">[ subject ]</a>
+              <a href="author.html#1664">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

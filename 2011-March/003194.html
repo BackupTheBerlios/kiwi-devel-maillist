@@ -1,0 +1,137 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bdbe51f87e9dfccacd9edff6e2dd265a1f445e94
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20bdbe51f87e9dfccacd9edff6e2dd265a1f445e94&In-Reply-To=%3C20110315155740.8791B4814E6%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003196.html">
+   <LINK REL="Next"  HREF="003195.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bdbe51f87e9dfccacd9edff6e2dd265a1f445e94</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20bdbe51f87e9dfccacd9edff6e2dd265a1f445e94&In-Reply-To=%3C20110315155740.8791B4814E6%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bdbe51f87e9dfccacd9edff6e2dd265a1f445e94">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Mar 15 16:57:40 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003196.html">[Kiwi-devel] kiwi removes /etc/smart/channels/*
+</A></li>
+        <LI>Next message: <A HREF="003195.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, ppc,	updated. d102e598b7fa860f4036861d9ce9fd3ba16927ad
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3194">[ date ]</a>
+              <a href="thread.html#3194">[ thread ]</a>
+              <a href="subject.html#3194">[ subject ]</a>
+              <a href="author.html#3194">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  bdbe51f87e9dfccacd9edff6e2dd265a1f445e94 (commit)
+      from  e7c2b275514232a754412ad5cd2c4ec05c80ba04 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit bdbe51f87e9dfccacd9edff6e2dd265a1f445e94
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Mar 15 16:56:52 2011 +0100
+
+    - prevent the use of File::Path qw(make_path remove_tree) because
+      it's not compatible to File::Path qw(mkpath rmtree) in older
+      perl versions
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILog.pm b/modules/KIWILog.pm
+index 98a7f56..9a7c2a2 100644
+--- a/modules/KIWILog.pm
++++ b/modules/KIWILog.pm
+@@ -106,7 +106,7 @@ sub sendLogServerMessage {
+ 	my $level   = $this-&gt;{level};
+ 	my $date    = $this-&gt;{date};
+ 	if (! defined $smem) {
+-		if ($this-&gt;trace()) {
++		if (($this-&gt;trace()) &amp;&amp; ($main::TT)) {
+ 			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		}
+ 		return undef;
+diff --git a/modules/KIWIManager.pm b/modules/KIWIManager.pm
+index bfa2aaf..8c4e7fe 100644
+--- a/modules/KIWIManager.pm
++++ b/modules/KIWIManager.pm
+@@ -22,7 +22,6 @@ use strict;
+ use Carp qw (cluck);
+ use FileHandle;
+ use File::Basename;
+-use File::Path qw(make_path remove_tree);
+ use Config::IniFiles;
+ use KIWILog;
+ use KIWILocator;
+@@ -102,8 +101,10 @@ sub new {
+ 	# Clean out any potential previous data
+ 	#------------------------------------------
+ 	my $dataDir = &quot;/var/cache/kiwi/$manager&quot;;
+-	make_path ($dataDir);
+-	remove_tree ($dataDir, {keep_root =&gt; 1} );
++	if (! -d $dataDir) {
++		qxx (&quot;mkdir -p $dataDir&quot;);
++	}
++	qxx (&quot;rm -rf $dataDir/*&quot;);
+ 	my $zyppConf;   # Configuration file for libzypp
+ 	my $zypperConf; # Configuration file for zypper
+ 	my $zconfig;
+@@ -129,7 +130,7 @@ sub new {
+ 		if ($uname) {
+ 			$kiwi -&gt; info ('Creating credentials data');
+ 			my $credDir = &quot;$dataDir/credentials.d&quot;;
+-			make_path($credDir);
++			mkdir $credDir;
+ 			$zconfig-&gt;newval('main', 'credentials.global.dir', $credDir);
+ 			$zconfig-&gt;RewriteConfig();
+ 			open my $credFile, '&gt;'. &quot;$credDir/kiwiRepoCredentials&quot;;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003196.html">[Kiwi-devel] kiwi removes /etc/smart/channels/*
+</A></li>
+	<LI>Next message: <A HREF="003195.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, ppc,	updated. d102e598b7fa860f4036861d9ce9fd3ba16927ad
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3194">[ date ]</a>
+              <a href="thread.html#3194">[ thread ]</a>
+              <a href="subject.html#3194">[ subject ]</a>
+              <a href="author.html#3194">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,187 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1535 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1535%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200808271606.m7RG6cUa017652%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000622.html">
+   <LINK REL="Next"  HREF="000624.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1535 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1535%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200808271606.m7RG6cUa017652%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1535 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Aug 27 18:06:38 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000622.html">[Kiwi-devel] r1534 - in kiwi-head: . modules
+</A></li>
+        <LI>Next message: <A HREF="000624.html">[Kiwi-devel] r1536 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#623">[ date ]</a>
+              <a href="thread.html#623">[ thread ]</a>
+              <a href="subject.html#623">[ subject ]</a>
+              <a href="author.html#623">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-08-27 18:06:24 +0200 (Wed, 27 Aug 2008)
+New Revision: 1535
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIRoot.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+Log:
+
+- v2.71
+- fixed cache bind mount, only bind mount kiwi and package
+  manager cache directories to avoid conflicts with others
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-08-26 15:02:14 UTC (rev 1534)
++++ kiwi-head/kiwi.pl	2008-08-27 16:06:24 UTC (rev 1535)
+@@ -43,7 +43,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;2.70&quot;;
++our $Version       = &quot;2.71&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+ our $ConfigFile    = &quot;$ENV{'HOME'}/.kiwirc&quot;;
+ our $ConfigName    = &quot;config.xml&quot;;
+
+Modified: kiwi-head/modules/KIWIRoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIRoot.pm	2008-08-26 15:02:14 UTC (rev 1534)
++++ kiwi-head/modules/KIWIRoot.pm	2008-08-27 16:06:24 UTC (rev 1535)
+@@ -368,7 +368,7 @@
+ 		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+-	$this -&gt; cleanMount('cache$');
++	$this -&gt; cleanMount('cache\/(kiwi|zypp)$');
+ 	$manager -&gt; freeLock();
+ 	#==================================
+ 	# Create default fstab file
+@@ -880,21 +880,23 @@
+ 	# ---
+ 	my $this  = shift;
+ 	my $root  = $this-&gt;{root};
+-	my $cache = &quot;/var/cache&quot;;
++	my @cache = (&quot;/var/cache/zypp&quot;,&quot;/var/cache/kiwi&quot;);
+ 	my @mountList;
+ 	if (defined $this-&gt;{mountList}) {
+ 		@mountList = @{$this-&gt;{mountList}};
+ 	} else {
+ 		@mountList = ();
+ 	}
+-	if (! -d $cache) {
+-		qxx (&quot;mkdir -p $cache&quot;);
++	foreach my $cache (@cache) {
++		if (! -d $cache) {
++			qxx (&quot;mkdir -p $cache&quot;);
++		}
++		if (! -d &quot;$root/$cache&quot;) {
++			qxx (&quot;mkdir -p $root/$cache 2&gt;&amp;1&quot;);
++		}
++		qxx (&quot;mount --bind $cache $root/$cache 2&gt;&amp;1&quot;);
++		push (@mountList,&quot;$root/$cache&quot;);
+ 	}
+-	if (! -d &quot;$root/$cache&quot;) {
+-		qxx (&quot;mkdir -p $root/$cache 2&gt;&amp;1&quot;);
+-	}
+-	qxx (&quot;mount --bind $cache $root/$cache 2&gt;&amp;1&quot;);
+-	push (@mountList,&quot;$root/$cache&quot;);
+ 	$this-&gt;{mountList} = \@mountList;
+ 	return @mountList;
+ }
+@@ -1081,8 +1083,8 @@
+ #------------------------------------------
+ sub cleanManager {
+ 	# ...
+-	# remove data dir(s) of the packagemanager created
+-	# for kiwi in /var/cache/kiwi/&lt;packagemanager&gt;
++	# remove data and cache dir(s) of the packagemanager
++	# created for building the new root system
+ 	# ---
+ 	my $this = shift;
+ 	my $manager = $this-&gt;{manager};
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-08-26 15:02:14 UTC (rev 1534)
++++ kiwi-head/rpm/kiwi.changes	2008-08-27 16:06:24 UTC (rev 1535)
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Wed Aug 27 18:04:12 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v2.71
++- fixed cache bind mount, only bind mount kiwi and package
++  manager cache directories to avoid conflicts with others 
++
++-------------------------------------------------------------------
+ Mon Aug 25 16:49:57 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.70
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-08-26 15:02:14 UTC (rev 1534)
++++ kiwi-head/rpm/kiwi.spec	2008-08-27 16:06:24 UTC (rev 1535)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 2.70
++# spec file for package kiwi (Version 2.71
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        2.70
++Version:        2.71
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000622.html">[Kiwi-devel] r1534 - in kiwi-head: . modules
+</A></li>
+	<LI>Next message: <A HREF="000624.html">[Kiwi-devel] r1536 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#623">[ date ]</a>
+              <a href="thread.html#623">[ thread ]</a>
+              <a href="subject.html#623">[ subject ]</a>
+              <a href="author.html#623">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

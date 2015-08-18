@@ -1,0 +1,359 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1432 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1432%20-%20kiwi-head/modules&In-Reply-To=%3C200807041931.m64JVdHg000072%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000517.html">
+   <LINK REL="Next"  HREF="000519.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1432 - kiwi-head/modules</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1432%20-%20kiwi-head/modules&In-Reply-To=%3C200807041931.m64JVdHg000072%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1432 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Fri Jul  4 21:31:39 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000517.html">[Kiwi-devel] r1431 - kiwi-head/modules
+</A></li>
+        <LI>Next message: <A HREF="000519.html">[Kiwi-devel] r1433 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#518">[ date ]</a>
+              <a href="thread.html#518">[ thread ]</a>
+              <a href="subject.html#518">[ subject ]</a>
+              <a href="author.html#518">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2008-07-04 21:31:38 +0200 (Fri, 04 Jul 2008)
+New Revision: 1432
+
+Modified:
+   kiwi-head/modules/KIWIArchList.pm
+   kiwi-head/modules/KIWICollect.pm
+Log:
+- implemented ArchList
+- removed some dead code
+
+
+Modified: kiwi-head/modules/KIWIArchList.pm
+===================================================================
+--- kiwi-head/modules/KIWIArchList.pm	2008-07-04 19:23:51 UTC (rev 1431)
++++ kiwi-head/modules/KIWIArchList.pm	2008-07-04 19:31:38 UTC (rev 1432)
+@@ -19,6 +19,7 @@
+ use strict;
+ 
+ use KIWIArch;
++use Data::Dumper;
+ 
+ 
+ #==================
+@@ -89,6 +90,28 @@
+ 
+ 
+ #==================
++# dumpList
++#------------------
++sub dumpList
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++
++  eval &quot;require Data::Dumper&quot;;
++  if($@) {
++    $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;Cannot load Data::Dumper!&quot;);
++    return undef;
++  }
++  else {
++    return Dumper($this-&gt;{m_archs});
++  }
++}
++
++
++
++#==================
+ # _addArch
+ #------------------
+ # adds one specific arch object to the list
+
+Modified: kiwi-head/modules/KIWICollect.pm
+===================================================================
+--- kiwi-head/modules/KIWICollect.pm	2008-07-04 19:23:51 UTC (rev 1431)
++++ kiwi-head/modules/KIWICollect.pm	2008-07-04 19:31:38 UTC (rev 1432)
+@@ -31,6 +31,7 @@
+ use KIWIURL;
+ use KIWIRepoMetaHandler;
+ use KIWIProductData;
++use KIWIArchList;
+ 
+ use RPMQ;
+ 
+@@ -241,10 +242,12 @@
+   }
+ 
+   ## architectures information (hash with name|desrc|next, next may be 0 which means &quot;no fallback&quot;)
+-  %{$this-&gt;{m_archlist}}      = $this-&gt;{m_xml}-&gt;getInstSourceArchList();
++  #%{$this-&gt;{m_archlist}}      = $this-&gt;{m_xml}-&gt;getInstSourceArchList();
++  $this-&gt;{m_archlist} = new KIWIArchList($this);
++  $this-&gt;{m_archlist}-&gt;addArchs( { $this-&gt;{m_xml}-&gt;getInstSourceArchList() } );
+   if($this-&gt;{m_debug}) {
+     open(DUMP, &quot;&gt;&quot;, &quot;$this-&gt;{m_basedir}/archlist.dump.pl&quot;);
+-    print DUMP Dumper($this-&gt;{m_archlist});
++    print DUMP $this-&gt;{m_archlist}-&gt;dumpList();
+     close(DUMP);
+   }
+ 
+@@ -1219,88 +1222,88 @@
+ #==========================================
+ # getArchList
+ #------------------------------------------
+-sub getArchList
+-{
+-  my $this = shift;
+-  
+-  my @erg = ();
+-  #my @archs = @{$this-&gt;{m_archlist}};
++#sub getArchList
++#{
++#  my $this = shift;
++#  
++#  my @erg = ();
++#  #my @archs = @{$this-&gt;{m_archlist}};
++#
++#  foreach(@{$this-&gt;{m_archlist}}) {
++#    if(m{i\d+}) {
++#      push @erg, $this-&gt;getArchListByName('intel', $_);
++#    }
++#    elsif(m{ia.+}) {
++#      push @erg, $this-&gt;getArchListByName('ia', $_);
++#    }
++#    elsif(m{ppc}) {
++#      push @erg, $this-&gt;getArchListByName('ppc', $_);
++#    }
++#    elsif(m{ppc64}) {
++#      push @erg, $this-&gt;getArchListByName('ppc64', $_);
++#    }
++#    elsif(m{hppa}) {
++#      push @erg, $this-&gt;getArchListByName('hp', $_);
++#    }
++#    elsif(m{x\d+}) {
++#      push @erg, $this-&gt;getArchListByName('amd', $_);
++#    }
++#    elsif(m{s\d+.*}) {
++#      push @erg, $this-&gt;getArchListByName('s390', $_);
++#    }
++#  }
++#  return KIWIUtil::unify(@erg);
++#}
++## /getArchList
+ 
+-  foreach(@{$this-&gt;{m_archlist}}) {
+-    if(m{i\d+}) {
+-      push @erg, $this-&gt;getArchListByName('intel', $_);
+-    }
+-    elsif(m{ia.+}) {
+-      push @erg, $this-&gt;getArchListByName('ia', $_);
+-    }
+-    elsif(m{ppc}) {
+-      push @erg, $this-&gt;getArchListByName('ppc', $_);
+-    }
+-    elsif(m{ppc64}) {
+-      push @erg, $this-&gt;getArchListByName('ppc64', $_);
+-    }
+-    elsif(m{hppa}) {
+-      push @erg, $this-&gt;getArchListByName('hp', $_);
+-    }
+-    elsif(m{x\d+}) {
+-      push @erg, $this-&gt;getArchListByName('amd', $_);
+-    }
+-    elsif(m{s\d+.*}) {
+-      push @erg, $this-&gt;getArchListByName('s390', $_);
+-    }
+-  }
+-  return KIWIUtil::unify(@erg);
+-}
+-# /getArchList
+ 
+ 
+-
+ #
+-sub getArchListByName
+-{
+-  my $this = shift;
+-  my $arch = shift;# or die(&quot;No arch given!&quot;);
+-  # missing pars warning hook:
+-  if(not defined($arch)) {
+-    $this-&gt;{m_logger}-&gt;warning(&quot;[WARNING] [getArchByName] undefined parameter \$arch&quot;);
+-    return undef; # no harm, but also no result
+-  }
++#sub getArchListByName
++#{
++#  my $this = shift;
++#  my $arch = shift;# or die(&quot;No arch given!&quot;);
++#  # missing pars warning hook:
++#  if(not defined($arch)) {
++#    $this-&gt;{m_logger}-&gt;warning(&quot;[WARNING] [getArchByName] undefined parameter \$arch&quot;);
++#    return undef; # no harm, but also no result
++#  }
++#
++#  my @orig;
++#  if($arch =~ m{i\d+}) {
++#    @orig = @{$this-&gt;{m_fpath}-&gt;{'intel'}};
++#  }
++#  elsif($arch =~ m{ia.+}) {
++#    @orig = @{$this-&gt;{m_fpath}-&gt;{'ia'}};
++#  }
++#  elsif($arch =~ m{ppc}) {
++#   @orig = @{$this-&gt;{m_fpath}-&gt;{'ppc'}};
++#  }
++#  elsif($arch =~ m{ppc64}) {
++#   @orig = @{$this-&gt;{m_fpath}-&gt;{'ppc64'}};
++#  }
++#  elsif($arch =~ m{hppa}) {
++#   @orig = @{$this-&gt;{m_fpath}-&gt;{'hp'}};
++#  }
++#  elsif($arch =~ m{x\d+}) {
++#   @orig = @{$this-&gt;{m_fpath}-&gt;{'amd'}};
++#  }
++#  elsif($arch =~ m{s\d+.*}) {
++#   @orig = @{$this-&gt;{m_fpath}-&gt;{'s390'}};
++#  }
++#
++#  my $index = 0;
++#  for($index=0; $index&lt;$#orig; $index++) {
++#    if($orig[$index] eq $arch) {
++#      last;
++#    }
++#  }
++#  return @orig[$index .. $#orig];
++#}
++## /getArchListByName
+ 
+-  my @orig;
+-  if($arch =~ m{i\d+}) {
+-    @orig = @{$this-&gt;{m_fpath}-&gt;{'intel'}};
+-  }
+-  elsif($arch =~ m{ia.+}) {
+-    @orig = @{$this-&gt;{m_fpath}-&gt;{'ia'}};
+-  }
+-  elsif($arch =~ m{ppc}) {
+-   @orig = @{$this-&gt;{m_fpath}-&gt;{'ppc'}};
+-  }
+-  elsif($arch =~ m{ppc64}) {
+-   @orig = @{$this-&gt;{m_fpath}-&gt;{'ppc64'}};
+-  }
+-  elsif($arch =~ m{hppa}) {
+-   @orig = @{$this-&gt;{m_fpath}-&gt;{'hp'}};
+-  }
+-  elsif($arch =~ m{x\d+}) {
+-   @orig = @{$this-&gt;{m_fpath}-&gt;{'amd'}};
+-  }
+-  elsif($arch =~ m{s\d+.*}) {
+-   @orig = @{$this-&gt;{m_fpath}-&gt;{'s390'}};
+-  }
+ 
+-  my $index = 0;
+-  for($index=0; $index&lt;$#orig; $index++) {
+-    if($orig[$index] eq $arch) {
+-      last;
+-    }
+-  }
+-  return @orig[$index .. $#orig];
+-}
+-# /getArchListByName
+ 
+-
+-
+ #==========================================
+ # dumpPackageList
+ #------------------------------------------
+@@ -1403,7 +1406,7 @@
+     }
+     elsif($requiredarch{$a} == 1) {
+       $this-&gt;{m_logger}-&gt;info(&quot;\tarch $a as per global list&quot;);
+-      push @ret, $this-&gt;getArchListByName($a);
++# BAUSTELLE #      push @ret, $this-&gt;getArchListByName($a);
+     }
+     elsif($requiredarch{$a} == 2) {
+       $this-&gt;{m_logger}-&gt;info(&quot;\tarch $a added explicitely&quot;);
+@@ -1547,14 +1550,6 @@
+   if(not open(CONT, &quot;&gt;&quot;, $contentfile)) {
+     die &quot;Cannot create $contentfile&quot;;
+   }
+-  #foreach my $i(sort {$a &lt;=&gt; $b } keys(%{$this-&gt;{m_prodinfo}})) {
+-  #  my $line = &quot;$this-&gt;{m_prodinfo}-&gt;{$i}-&gt;[0] $this-&gt;{m_prodinfo}-&gt;{$i}-&gt;[1]&quot;;
+-  #  while( $line =~ m{\$(DISTNAME|DISTVERSION|MANUFACTURER)}) {
+-  #    my $replace = $this-&gt;{m_prodvars}-&gt;{$1};
+-  #    $line =~ s|\$$1|$replace|;  # '|' char is not allowed in vars anyway
+-  #  }
+-  #  print CONT &quot;$line\n&quot;;
+-  #}
+   my $info = $this-&gt;{m_proddata}-&gt;getSet(&quot;prodinfo&quot;);
+   foreach my $i(sort { $a &lt;=&gt; $b } keys(%{$info})) {
+     print CONT &quot;$info-&gt;{$i}-&gt;[0] $info-&gt;{$i}-&gt;[1]\n&quot;;
+@@ -1593,27 +1588,13 @@
+   my $proddir = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_DIR&quot;);
+   my $prodname = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_NAME&quot;);
+   my $prodver = $this-&gt;{m_proddata}-&gt;getVar(&quot;PRODUCT_VERSION&quot;);
+-  #if($this-&gt;{m_prodvars}-&gt;{'PRODUCT_DIR'} and
+-  #  $this-&gt;{m_prodvars}-&gt;{'PRODUCT_NAME'} and
+-  #  $this-&gt;{m_prodvars}-&gt;{'PRODUCT_VERSION'}
+-  #  ) {
+   if(defined($proddir) and defined($prodname) and defined($prodver)) {
+     for my $n($this-&gt;getMediaNumbers()) {
+       my $productsfile = &quot;$this-&gt;{m_basesubdir}-&gt;{$n}/media.$n/products&quot;;
+       if(not open(PRODUCT, &quot;&gt;&quot;, $productsfile)) {
+ 	die &quot;Cannot create $productsfile&quot;;
+       }
+-      #for my $v(&quot;PRODUCT_DIR&quot;, &quot;PRODUCT_NAME&quot;, &quot;PRODUCT_VERSION&quot;) {
+-      #  my $line = $this-&gt;{m_prodvars}-&gt;{$v};
+-      #  while($line =~ m{\$(DISTNAME|DISTVERSION|MANUFACTURER)}) {
+-      #    my $replace = $this-&gt;{m_prodvars}-&gt;{$1};
+-      #    $line =~ s|\$$1|$replace|;
+-      #  }
+-      #  $this-&gt;{m_prodvars}-&gt;{$v} = $line;
+-      #}
+       print PRODUCT &quot;$proddir $prodname $prodver\n&quot;;
+-      #print PRODUCT &quot; $this-&gt;{m_prodvars}-&gt;{'PRODUCT_NAME'}&quot;;
+-      #print PRODUCT &quot; $this-&gt;{m_prodvars}-&gt;{'PRODUCT_VERSION'}\n&quot;;
+       close(PRODUCT);
+     }
+   }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000517.html">[Kiwi-devel] r1431 - kiwi-head/modules
+</A></li>
+	<LI>Next message: <A HREF="000519.html">[Kiwi-devel] r1433 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#518">[ date ]</a>
+              <a href="thread.html#518">[ thread ]</a>
+              <a href="subject.html#518">[ subject ]</a>
+              <a href="author.html#518">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

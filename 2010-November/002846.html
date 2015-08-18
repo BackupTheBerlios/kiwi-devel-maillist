@@ -1,0 +1,166 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] XML processing - patch two
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20XML%20processing%20-%20patch%20two&In-Reply-To=%3C4CEE5C62.8010103%40novell.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002845.html">
+   <LINK REL="Next"  HREF="002856.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] XML processing - patch two</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20XML%20processing%20-%20patch%20two&In-Reply-To=%3C4CEE5C62.8010103%40novell.com%3E"
+       TITLE="[Kiwi-devel] XML processing - patch two">rschweikert at novell.com
+       </A><BR>
+    <I>Thu Nov 25 13:53:54 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002845.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+        <LI>Next message: <A HREF="002856.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2846">[ date ]</a>
+              <a href="thread.html#2846">[ thread ]</a>
+              <a href="subject.html#2846">[ subject ]</a>
+              <a href="author.html#2846">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi,
+
+On 11/25/2010 07:04 AM, Marcus Sch&#228;fer wrote:
+&gt;<i> Hi,
+</I>&gt;<i> 
+</I>&gt;&gt;<i> This patch lays the ground work for the removal of
+</I>&gt;&gt;<i> getImageTypeAndAttributes. I am adding a new data structure in KIWIXML
+</I>&gt;&gt;<i> (details below) and new accessor code. A good chunk of this falls into
+</I>&gt;&gt;<i> the &quot;not yet alive category&quot;.
+</I>&gt;<i> 
+</I>&gt;<i> Problem with the patch is that it doesn't apply to the current master
+</I>&gt;<i> branch. Most probably due to the cache and profile fixes I made yesterday
+</I>&gt;<i> when I was in Nuremberg. Sorry for that
+</I>
+Yes, I just saw that patch :(
+&gt;<i> 
+</I>&gt;<i> Another thing I found while reading the patch was that I don't understand
+</I>&gt;<i> why you want to change the hash returned by the former
+</I>&gt;<i> getImageTypeAndAttributes() into a set of accessor functions.
+</I>
+The intend is to reduce the coupling of the rest of the code to the data
+structure KIWIXML uses to represent the data in config.xml. At present
+almost every module needs to have intimate knowledge of how KIWIXML
+stores it's data. This very strong coupling is generally not very nice.
+Accessors reduce the coupling.
+
+&gt;<i> Personally I liked to have a function returning a hash where I
+</I>&gt;<i> can operate on and I know that this hash will also change quite often
+</I>&gt;<i> in the future. So if we need to add/remove an accessor function for
+</I>&gt;<i> each element of the hash it would make the coding not easier and
+</I>&gt;<i> maintenance is a nightmare
+</I>
+Actually I have found that accessors are a lot easier to maintain. It
+might be a bit more typing but from a debugging point of view things are
+much easier. More on this below.
+&gt;<i> 
+</I>&gt;<i> So what's wrong with:
+</I>&gt;<i> 
+</I>&gt;<i>    $xml -&gt; setCurrentBuildInfo();
+</I>&gt;<i>    my %build_info = $xml -&gt; getBuildInfo();
+</I>&gt;<i> 
+</I>&gt;<i>    ===&gt; access $build_info{...}
+</I>&gt;<i> 
+</I>&gt;<i>    instead of calling a member function for each item in the hash
+</I>&gt;<i> 
+</I>&gt;<i> I know and I also agree that in strong typed languages accessor functions
+</I>&gt;<i> for private object data is a good thing but that accessor methods are also
+</I>&gt;<i> allowed to return more than one element so I think we can live with one
+</I>&gt;<i> accessor method called getBuildInfo()
+</I>&gt;<i> (or use the old name getImageTypeAndAttributes() which I would prefer)
+</I>
+But with returning a hash every part of the code that needs to have
+information from the configuration must be intimately familiar with the
+KIWIXML object data storage model, this is not a good thing. Further
+especially in Perl where things get created for you as a &quot;feature&quot; of
+the language accessing a hash vs. calling an accessor has terrible
+implications.
+
+If something ever gets rename, for whatever reason, it will introduce a
+large number of bugs because one can never find all
+ ${myHash}{oldName} usages, especially if the old name is something
+common. Lets say we wanted to change:
+
+$record{type}          = $node -&gt; getAttribute(&quot;image&quot;);
+
+in getImageTypeAndAttributes to
+
+$record{image}          = $node -&gt; getAttribute(&quot;image&quot;);
+
+to more closely reflect the name used in the XML. This is almost
+impossible. Because Perl in general will not complain when you now use
+
+%type = $xml -&gt; getImageTypeAndAttributes();
+my $imgT = $type{type}
+
+when it should really be
+my $imgT = $type{image}
+
+after the rename. But if I have an accessor all I have to do is change
+one place and I know I didn't break anything. Same situation applies if
+something gets removed. Once I remove the accessor Perl will nicely
+point me to all the places where I am calling the accessor, thus I know
+exactly where I have to modify the code. I do not have to run find and
+grep and make WAGs (wild ass guesses) where the data might have been used.
+
+So yes, accessors are bit more typing when adding something but they
+save days or weeks of debugging time.
+
+Also we already use this model for all the OEM stuff. For the OEM
+configuration there's an accessor for every element, rather than one
+accessor to get everything in &lt;oemconfig&gt;
+
+Let me know if I convinced you that accessors will make our lives easier
+in the future.
+
+Thanks,
+Robert
+-- 
+Robert Schweikert                           MAY THE SOURCE BE WITH YOU
+Software Engineer Consultant                          LINUX
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>
+781-464-8147
+
+Novell
+Making IT Work As One
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002845.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+	<LI>Next message: <A HREF="002856.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2846">[ date ]</a>
+              <a href="thread.html#2846">[ thread ]</a>
+              <a href="subject.html#2846">[ subject ]</a>
+              <a href="author.html#2846">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

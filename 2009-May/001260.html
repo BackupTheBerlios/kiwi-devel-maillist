@@ -1,0 +1,166 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ca135625957a58ab71b6d8dbfc4e4d3e4b7b5a13
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ca135625957a58ab71b6d8dbfc4e4d3e4b7b5a13&In-Reply-To=%3C200905251454.n4PEsuFh001769%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001259.html">
+   <LINK REL="Next"  HREF="001261.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ca135625957a58ab71b6d8dbfc4e4d3e4b7b5a13</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ca135625957a58ab71b6d8dbfc4e4d3e4b7b5a13&In-Reply-To=%3C200905251454.n4PEsuFh001769%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ca135625957a58ab71b6d8dbfc4e4d3e4b7b5a13">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon May 25 16:54:56 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001259.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 68a164ebe54979a54709d256a360a5f2f610a1b8
+</A></li>
+        <LI>Next message: <A HREF="001261.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 3a9013156562c31cda05c38395626232789f27ef
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1260">[ date ]</a>
+              <a href="thread.html#1260">[ thread ]</a>
+              <a href="subject.html#1260">[ subject ]</a>
+              <a href="author.html#1260">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  ca135625957a58ab71b6d8dbfc4e4d3e4b7b5a13 (commit)
+      from  68a164ebe54979a54709d256a360a5f2f610a1b8 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ca135625957a58ab71b6d8dbfc4e4d3e4b7b5a13
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon May 25 16:54:43 2009 +0200
+
+    - added resize_inode feature to filesystem before resizing.
+      This will reserve space so the block group descriptor
+      table may grow in the future (bnc #498683)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index c76bbec..7f75b3d 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -44,7 +44,7 @@ use KIWITest;
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.52&quot;;
++our $Version       = &quot;3.53&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+@@ -2113,6 +2113,7 @@ sub checkFSOptions {
+ 		my $journalsize; # journal size in MB (ext) or blocks (reiser)
+ 		my $inodesize;   # inode size in bytes (ext only)
+ 		my $numinodes;   # maximum number of inodes (ext only)
++		my $fsfeature;   # filesystem features (ext only)
+ 		SWITCH: for ($fs) {
+ 			#==========================================
+ 			# EXT2 and EXT3
+@@ -2122,6 +2123,7 @@ sub checkFSOptions {
+ 				if ($FSInodeSize)   {$inodesize   = &quot;-I $FSInodeSize&quot;}
+ 				if ($FSJournalSize) {$journalsize = &quot;-J size=$FSJournalSize&quot;}
+  				if ($FSNumInodes)   {$numinodes   = &quot;-N $FSNumInodes&quot;}
++				$fsfeature = &quot;-O resize_inode&quot;;
+ 				last SWITCH;
+ 			};
+ 			#==========================================
+@@ -2146,6 +2148,9 @@ sub checkFSOptions {
+ 		if (defined $numinodes) {
+ 			$result{$fs} .= $numinodes.&quot; &quot;;
+ 		}
++		if (defined $fsfeature) {
++			$result{$fs} .= $fsfeature.&quot; &quot;;
++		}
+ 	}
+ 	return %result;
+ }
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 5d62208..f97dac7 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,12 @@
+ -------------------------------------------------------------------
++Mon May 25 16:10:39 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.53
++- added resize_inode feature to filesystem before resizing.
++  This will reserve space so the block group descriptor
++  table may grow in the future (bnc #498683)
++
++-------------------------------------------------------------------
+ Mon May 25 10:49:56 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed clicfs mount, regression from my last nfs fix
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index 7c03386..485f5a1 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.52)
++# spec file for package kiwi (Version 3.53)
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -46,7 +46,7 @@ Requires:       satsolver-tools
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.52
++Version:        3.53
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001259.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 68a164ebe54979a54709d256a360a5f2f610a1b8
+</A></li>
+	<LI>Next message: <A HREF="001261.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 3a9013156562c31cda05c38395626232789f27ef
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1260">[ date ]</a>
+              <a href="thread.html#1260">[ thread ]</a>
+              <a href="subject.html#1260">[ subject ]</a>
+              <a href="author.html#1260">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

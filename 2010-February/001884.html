@@ -1,0 +1,140 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b2c6433348ea1179a807a400c9044f21f214ca58
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b2c6433348ea1179a807a400c9044f21f214ca58&In-Reply-To=%3C201002101023.o1AANmEt002574%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001883.html">
+   <LINK REL="Next"  HREF="001885.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b2c6433348ea1179a807a400c9044f21f214ca58</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b2c6433348ea1179a807a400c9044f21f214ca58&In-Reply-To=%3C201002101023.o1AANmEt002574%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b2c6433348ea1179a807a400c9044f21f214ca58">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Feb 10 11:23:48 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001883.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2fdfd60638d0b0a4e623dbd5878da08b95e093c2
+</A></li>
+        <LI>Next message: <A HREF="001885.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c09f8b097aa78ec8eefdd6021acd09cadccbe471
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1884">[ date ]</a>
+              <a href="thread.html#1884">[ thread ]</a>
+              <a href="subject.html#1884">[ subject ]</a>
+              <a href="author.html#1884">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  b2c6433348ea1179a807a400c9044f21f214ca58 (commit)
+      from  2fdfd60638d0b0a4e623dbd5878da08b95e093c2 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b2c6433348ea1179a807a400c9044f21f214ca58
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Feb 10 11:23:06 2010 +0100
+
+    - fixed repo metadata download, cleanMount was called too early
+    - fixed error handling in report file creation
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 831d58b..647c1a4 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -1085,7 +1085,6 @@ sub main {
+ 		# Create report HTML file, errors allowed
+ 		#------------------------------------------
+ 		if (! $MigrateNoFiles) {
+-			$migrate -&gt; cleanMount();
+ 			$migrate -&gt; setSystemOverlayFiles();
+ 		}
+ 		$migrate -&gt; getPackageList();
+diff --git a/modules/KIWIMigrate.pm b/modules/KIWIMigrate.pm
+index 30de5a6..c5558b8 100644
+--- a/modules/KIWIMigrate.pm
++++ b/modules/KIWIMigrate.pm
+@@ -250,7 +250,7 @@ sub createReport {
+ 		print FD &quot;$problem2&quot;;
+ 		print FD '&lt;/p&gt;'.&quot;\n&quot;;
+ 	}
+-	if (@{$failedJob1}) {
++	if ($failedJob1) {
+ 		print FD '&lt;h1&gt;Pattern(s) not found&lt;/h1&gt;'.&quot;\n&quot;;
+ 		print FD '&lt;p&gt;'.&quot;\n&quot;;
+ 		print FD 'Following patterns could not be found in your ';
+@@ -265,7 +265,7 @@ sub createReport {
+ 		}
+ 		print FD '&lt;/ul&gt;'.&quot;\n&quot;;
+ 	}
+-	if (@{$failedJob2}) {
++	if ($failedJob2) {
+ 		print FD '&lt;h1&gt;Package(s) not found&lt;/h1&gt;'.&quot;\n&quot;;
+ 		print FD '&lt;p&gt;'.&quot;\n&quot;;
+ 		print FD 'Following packages could not be found in your ';
+@@ -453,7 +453,7 @@ sub setTemplate {
+ 	#==========================================
+     # &lt;description&gt;
+     #------------------------------------------
+-	print FD '&lt;image schemaversion=&quot;4.1&quot; ';
++	print FD '&lt;image schemaversion=&quot;4.2&quot; ';
+ 	print FD 'name=suse-migration&quot;'.$product.'&quot;&gt;'.&quot;\n&quot;;
+ 	print FD &quot;\t&quot;.'&lt;description type=&quot;system&quot;&gt;'.&quot;\n&quot;;
+ 	print FD &quot;\t\t&quot;.'&lt;author&gt;***AUTHOR***&lt;/author&gt;'.&quot;\n&quot;;
+@@ -887,7 +887,6 @@ sub setSystemOverlayFiles {
+ 	} else {
+ 		my $wref = generateWanted (\%result,$root);
+ 		find ({ wanted =&gt; $wref, follow =&gt; 0 }, $root );
+-		$this -&gt; cleanMount();
+ 		$cdata-&gt;{result} = \%result;
+ 	}
+ 	$kiwi -&gt; done ();
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001883.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2fdfd60638d0b0a4e623dbd5878da08b95e093c2
+</A></li>
+	<LI>Next message: <A HREF="001885.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c09f8b097aa78ec8eefdd6021acd09cadccbe471
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1884">[ date ]</a>
+              <a href="thread.html#1884">[ thread ]</a>
+              <a href="subject.html#1884">[ subject ]</a>
+              <a href="author.html#1884">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,141 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a94535933b22586e2672cf0bd3010ca56299b0cb
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a94535933b22586e2672cf0bd3010ca56299b0cb&In-Reply-To=%3C20110419113805.DEBF8481412%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003345.html">
+   <LINK REL="Next"  HREF="003347.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a94535933b22586e2672cf0bd3010ca56299b0cb</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20a94535933b22586e2672cf0bd3010ca56299b0cb&In-Reply-To=%3C20110419113805.DEBF8481412%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a94535933b22586e2672cf0bd3010ca56299b0cb">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Apr 19 13:38:05 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003345.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. 8aea6472d46de8230b464956291e319e1b92b570
+</A></li>
+        <LI>Next message: <A HREF="003347.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. e291021c7cce9d3f1cf39e6a415501ba6f6ebdfe
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3346">[ date ]</a>
+              <a href="thread.html#3346">[ thread ]</a>
+              <a href="subject.html#3346">[ subject ]</a>
+              <a href="author.html#3346">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  a94535933b22586e2672cf0bd3010ca56299b0cb (commit)
+      from  b70edb843bdde75f3f550dd6d457ca6fff93282a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit a94535933b22586e2672cf0bd3010ca56299b0cb
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Apr 19 12:55:56 2011 +0200
+
+    - added setupBootLoaderTheme() function which is called
+      after the bootloader configuration has been written. The
+      function adapts/sets the THEME variable in the
+      /etc/sysconfig/bootsplash file according to the boot
+      theme set in the kiwi XML configuration
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index ae3857e..96cbaa9 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -977,6 +977,44 @@ function setupBootLoader {
+ 			&quot;*** boot loader setup for $arch-$loader not implemented ***&quot; \
+ 		&quot;reboot&quot;
+ 	esac
++	setupBootLoaderTheme &quot;/config&quot;
++}
++#======================================
++# setupBootLoaderTheme
++#--------------------------------------
++function setupBootLoaderTheme {
++	local destprefix=$1
++	local srcprefix=$2
++	if [ -z &quot;$srcprefix&quot; ];then
++		srcprefix=/mnt
++	fi
++	#======================================
++	# no boot theme set, return
++	#--------------------------------------
++	if [ -z &quot;$kiwi_boottheme&quot; ];then
++		return
++	fi
++	#======================================
++	# prepare paths
++	#--------------------------------------
++	local sysimg_bootsplash=$srcprefix/etc/sysconfig/bootsplash
++	local sysbootsplash=$destprefix/etc/sysconfig/bootsplash
++	mkdir -p $destprefix/etc/sysconfig
++	touch $sysbootsplash
++	#======================================
++	# check for bootsplash config in sysimg
++	#--------------------------------------
++	if [ -f $sysimg_bootsplash ];then
++		cp $sysimg_bootsplash $sysbootsplash
++	fi
++	#======================================
++	# change/create bootsplash config
++	#--------------------------------------
++	if cat $sysbootsplash | grep -q -E &quot;^THEME&quot;; then
++		sed -i &quot;s/^THEME=.*/THEME=\&quot;$kiwi_boottheme\&quot;/&quot; $sysbootsplash
++	else
++		echo &quot;THEME=\&quot;$kiwi_boottheme\&quot;&quot; &gt;&gt; $sysbootsplash
++	fi
+ }
+ #======================================
+ # setupBootLoaderRecovery
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003345.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. 8aea6472d46de8230b464956291e319e1b92b570
+</A></li>
+	<LI>Next message: <A HREF="003347.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. e291021c7cce9d3f1cf39e6a415501ba6f6ebdfe
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3346">[ date ]</a>
+              <a href="thread.html#3346">[ thread ]</a>
+              <a href="subject.html#3346">[ subject ]</a>
+              <a href="author.html#3346">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

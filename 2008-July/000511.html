@@ -1,0 +1,209 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1422 - kiwi-head/modules/.test
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1422%20-%20kiwi-head/modules/.test&In-Reply-To=%3C200807011302.m61D2YMi019252%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000515.html">
+   <LINK REL="Next"  HREF="000512.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1422 - kiwi-head/modules/.test</H1>
+    <B>jcborn at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1422%20-%20kiwi-head/modules/.test&In-Reply-To=%3C200807011302.m61D2YMi019252%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1422 - kiwi-head/modules/.test">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Tue Jul  1 15:02:34 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000515.html">[Kiwi-devel] [SVN:KIWI-Team] r1421 - kiwi-head/modules/.test
+</A></li>
+        <LI>Next message: <A HREF="000512.html">[Kiwi-devel] [SVN:KIWI-Team] r1423 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#511">[ date ]</a>
+              <a href="thread.html#511">[ thread ]</a>
+              <a href="subject.html#511">[ subject ]</a>
+              <a href="author.html#511">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: Tue Jul  1 15:02:33 2008
+New Revision: 1422
+
+Added:
+   kiwi-head/modules/.test/KIWIArchList-unittest.pl   (contents, props changed)
+
+Log:
+- unittest for KIWIArchList.pm and KIWIArch.pm
+
+
+Added: kiwi-head/modules/.test/KIWIArchList-unittest.pl
+==============================================================================
+--- (empty file)
++++ kiwi-head/modules/.test/KIWIArchList-unittest.pl	Tue Jul  1 15:02:33 2008
+@@ -0,0 +1,132 @@
++#!/usr/bin/perl -wd
++
++# This is a unittest script for the ArchList (KIWIArchList.pm)
++# written by Jan-Christoph Bornschlegel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">jcborn at suse.de</A>&gt;
++# The module must be run from the .test subfolder and requires two parameters.
++# first, the directory where the configuration file resides
++# second, the name of this file
++
++BEGIN {
++  unshift @INC, '..';
++}
++
++use KIWICollect;
++use KIWIArchList;
++use KIWILog;
++use KIWIXML;
++
++# some globals:
++$DB::inhibit_exit = 0;
++
++our $pathtoconfig = shift;
++usage(1, &quot;Path to config file is missing&quot;) if not defined($pathtoconfig);
++
++our $ConfigName = shift; #&quot;config.xml&quot;;
++usage(2, &quot;Name of config file is missing&quot;)  if not defined($ConfigName);
++
++print &quot;\nUnit test for KIWIArchList.pm module&quot;;
++print &quot;\n====================================\n\n&quot;;
++
++my $bd = &quot;/tmp/testkiwi&quot;;
++my $log  =new KIWILog();
++$main::Scheme = &quot;/usr/share/kiwi/modules/KIWIScheme.rng&quot;;
++my $xml = new KIWIXML($log, $pathtoconfig);
++
++my $collect = new KIWICollect($log, $xml, $bd, 1);
++if(not defined($collect)) {
++  print &quot;Failed to create KIWICollect object\n&quot;;
++  exit 12;
++}
++
++my $testresult = performTest($collect);
++exit $testresult;
++
++# end of main program
++
++
++#===========================
++# functions
++#---------------------------
++
++sub performTest
++{
++  my $coll = shift;
++  my $res = 5;
++
++  # TEST 1: constructor sanity check (expect: undef):
++  my $module = new KIWIArchList();
++  if(not defined($module)) {
++    print &quot;Creation 1: constructor without parameters fails as expected\n&quot;;
++    $res--;
++  }
++  else {
++    print &quot;1st constructor call should fail but didn't.\n&quot;;
++    return $res;
++  }
++
++  # TEST 2: constructor sanity part two: expect success
++  $module = new KIWIArchList($coll);
++  if(defined($module)) {
++    print &quot;Creation 2: module is a &quot;.ref($module).&quot;...\n&quot;;
++    $res--;
++  }
++
++  # TEST 3: insert data from config.xml file:
++  my %archlist = $coll-&gt;{m_xml}-&gt;getInstSourceArchList();
++  my $addret = $module-&gt;addArchs( \%archlist );
++  if(defined($addret)) {
++    $res--;
++  }
++  else {
++    print &quot;adding the archs failed!\n&quot;;
++    return $res;
++  }
++
++  # TEST 4: retrieve fallback lists
++  print &quot;\nTest of fallback architecture list for (x86_64, i686, s390x, ia64, ppc64):\n&quot;;
++  for my $arch(&quot;x86_64&quot;, &quot;i686&quot;, &quot;i586&quot;, &quot;i486&quot;, &quot;ppc&quot;, &quot;s390&quot;, &quot;s390x&quot;, &quot;ia64&quot;, &quot;ppc64&quot;) {
++    print &quot;\nArchitecture is $arch: fallbacks are: &quot;;
++    my @fallbacks = $module-&gt;fallbacks($arch);
++    if(not(@fallbacks)) {
++      print &quot;No fallbacks defined for architecture $arch\n&quot;;
++    }
++    else {
++      foreach my $fa(@fallbacks) {
++	print &quot;$fa &quot;;
++      }
++      print &quot;\n&quot;;
++    }
++  }
++  $res--;
++
++  # TEST 5: retrieve filtered fallback lists:
++  print &quot;\nTest of filtered fallback architecture lists -- omitting i486 and i386:\n&quot;;
++  for my $arch(&quot;x86_64&quot;, &quot;i686&quot;, &quot;i586&quot;, &quot;i486&quot;, &quot;ppc&quot;, &quot;s390&quot;, &quot;s390x&quot;, &quot;ia64&quot;, &quot;ppc64&quot;) {
++    print &quot;\nArchitecture is $arch: fallbacks are: &quot;;
++    my @fallbacks = $module-&gt;fallbacks($arch, &quot;i486&quot;, &quot;i386&quot;);
++    if(not(@fallbacks)) {
++      print &quot;No fallbacks defined for architecture $arch\n&quot;;
++    }
++    else {
++      foreach my $fa(@fallbacks) {
++	print &quot;$fa &quot;;
++      }
++      print &quot;\n&quot;;
++    }
++  }
++  print &quot;please verify those results against $pathtoconfig/$ConfigName!\n&quot;;
++  $res--;
++  
++  return $res;
++}
++
++
++
++sub usage
++{
++  my $retcode = shift;
++  my $msg = shift;
++  print &quot;$msg\n&quot;;
++  print &quot;Usage: ./KIWIArchList-unittest.pl &lt;/path/to/config/&gt; &lt;configfilename&gt;\n\n&quot;;
++  exit $retcode;
++}
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000515.html">[Kiwi-devel] [SVN:KIWI-Team] r1421 - kiwi-head/modules/.test
+</A></li>
+	<LI>Next message: <A HREF="000512.html">[Kiwi-devel] [SVN:KIWI-Team] r1423 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#511">[ date ]</a>
+              <a href="thread.html#511">[ thread ]</a>
+              <a href="subject.html#511">[ subject ]</a>
+              <a href="author.html#511">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

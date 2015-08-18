@@ -1,0 +1,287 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4234060f0755ec498a95c14d51ddab3a8ddb8f82
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204234060f0755ec498a95c14d51ddab3a8ddb8f82&In-Reply-To=%3C20110715122340.D161E4814B2%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003617.html">
+   <LINK REL="Next"  HREF="003619.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4234060f0755ec498a95c14d51ddab3a8ddb8f82</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204234060f0755ec498a95c14d51ddab3a8ddb8f82&In-Reply-To=%3C20110715122340.D161E4814B2%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4234060f0755ec498a95c14d51ddab3a8ddb8f82">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Jul 15 14:23:40 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003617.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d0de4ea55c360979d09286bb7edac7c58c6a8ae1
+</A></li>
+        <LI>Next message: <A HREF="003619.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4b3b77f37795124359b24097d195ac057bd40ea0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3618">[ date ]</a>
+              <a href="thread.html#3618">[ thread ]</a>
+              <a href="subject.html#3618">[ subject ]</a>
+              <a href="author.html#3618">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  4234060f0755ec498a95c14d51ddab3a8ddb8f82 (commit)
+      from  d0de4ea55c360979d09286bb7edac7c58c6a8ae1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 4234060f0755ec498a95c14d51ddab3a8ddb8f82
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Jul 15 14:07:54 2011 +0200
+
+    - added support for hybrid installiso media. In order to create
+      the hybrid the attribute bootloader must be either set to
+      syslinux or extlinux
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index e9277c9..908d315 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -658,6 +658,7 @@ sub setupInstallCD {
+ 	my %type;
+ 	my $haveDiskDevice;
+ 	my $version;
++	my $FD;
+ 	#==========================================
+ 	# Check for disk device
+ 	#------------------------------------------
+@@ -670,6 +671,19 @@ sub setupInstallCD {
+ 		$this-&gt;{system} = $system;
+ 	}
+ 	#==========================================
++	# read MBR disk label
++	#------------------------------------------
++	if (! open $FD,&quot;dd 2&gt;/dev/null if=$system bs=1 count=4 skip=\$((0x1b8))|&quot;) {
++		$kiwi -&gt; error  (&quot;Couldn't open: $system: $!&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	my $mbrid = sprintf &quot;0x%08x&quot;, unpack &quot;V&quot;, &lt;$FD&gt;;
++	if (($this-&gt;{mbrid}) &amp;&amp; ($mbrid ne $this-&gt;{mbrid})) {
++		$this-&gt;{mbrid} = $mbrid;
++	}
++	close $FD;
++	#==========================================
+ 	# read config XML attributes
+ 	#------------------------------------------
+ 	if (defined $xml) {
+@@ -984,6 +998,11 @@ sub setupInstallCD {
+ 		return undef;
+ 	}
+ 	$kiwi -&gt; done ();
++	if ($bootloader =~ /(sys|ext)linux/) {
++		if (! $iso-&gt;createHybrid($this-&gt;{mbrid})) {
++			return undef;
++		}
++	}
+ 	if ($arch !~ /ppc|ppc64/) {
+ 		if (! $iso -&gt; relocateCatalog ()) {
+ 			$iso  -&gt; cleanISO ();
+@@ -3395,7 +3414,7 @@ sub setupBootLoaderConfiguration {
+ 				print FD &quot;append initrd=initrd &quot;;
+ 				print FD &quot;vga=$vga loader=$bloader splash=silent &quot;;
+ 				print FD &quot;ramdisk_size=512000 ramdisk_blocksize=4096 &quot;;
+-				print FD &quot;cdinst=1&quot;;
++				print FD &quot;cdinst=1 kiwi_hybrid=1&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split/)) {
+ 				print FD &quot;kernel /boot/linux.vmx\n&quot;;
+ 				print FD &quot;append initrd=/boot/initrd.vmx &quot;;
+@@ -3443,7 +3462,7 @@ sub setupBootLoaderConfiguration {
+ 				print FD &quot;append initrd=initrd &quot;;
+ 				print FD &quot;vga=$vga loader=$bloader splash=silent &quot;;
+ 				print FD &quot;ramdisk_size=512000 ramdisk_blocksize=4096 &quot;;
+-				print FD &quot;cdinst=1&quot;;
++				print FD &quot;cdinst=1 kiwi_hybrid=1&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split/)) {
+ 				print FD &quot;kernel /boot/linux.vmx\n&quot;;
+ 				print FD &quot;append initrd=/boot/initrd.vmx &quot;;
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index ba5b63d..e09c583 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -3085,7 +3085,8 @@ function GetBootable {
+ function CDMount {
+ 	# /.../
+ 	# search all CD/DVD drives and use the one we can find
+-	# the CD configuration on
++	# the CD configuration on. This also includes hybrid
++	# devices which appears as a disk
+ 	# ----
+ 	local count=0
+ 	local ecode=0
+@@ -3097,7 +3098,7 @@ function CDMount {
+ 	#======================================
+ 	# check for hybrid mbr ID
+ 	#--------------------------------------
+-	if [ -z &quot;$cdinst&quot; ];then
++	if [ ! -z &quot;$kiwi_hybrid&quot; ];then
+ 		searchBIOSBootDevice
+ 		ecode=$?
+ 		if [ ! $ecode = 0 ];then
+@@ -3106,8 +3107,6 @@ function CDMount {
+ 			fi
+ 			unset kiwi_hybrid
+ 		fi
+-	else
+-		unset kiwi_hybrid
+ 	fi
+ 	#======================================
+ 	# walk through media
+@@ -3339,16 +3338,6 @@ function searchBIOSBootDevice {
+ 		pred=$curd
+ 	done
+ 	#======================================
+-	# Check for OEM ISO installation mode
+-	#--------------------------------------
+-	if [ ! -z &quot;$cdinst&quot; ];then
+-		CDMount
+-		umount $cddev
+-		curd=$cddev
+-		export biosBootDevice=$curd
+-		return 0
+-	fi
+-	#======================================
+ 	# Search and copy all mbrid files 
+ 	#--------------------------------------
+ 	mkdir -p $cmpd
+diff --git a/system/boot/ix86/oemboot/suse-dump b/system/boot/ix86/oemboot/suse-dump
+index 972e1e3..c4fcfe9 100755
+--- a/system/boot/ix86/oemboot/suse-dump
++++ b/system/boot/ix86/oemboot/suse-dump
+@@ -175,15 +175,9 @@ function OEMInstall {
+ 	IFS=$IFS_ORIG
+ 	Echo &quot;Searching harddrive for $OEMInstallType installation&quot;
+ 	hwinfo=/usr/sbin/hwinfo
+-	if [ &quot;$OEMInstallType&quot; = &quot;USB&quot; ];then
+-		deviceDisks=`$hwinfo --disk |\
+-			grep &quot;Device File:&quot; | cut -f2 -d: |\
+-			cut -f1 -d&quot;(&quot; | sed -e s&quot;@$imageDiskDevice@@&quot;`
+-	else
+-		deviceDisks=`$hwinfo --disk |\
+-			grep &quot;Device File:&quot; | cut -f2 -d: |\
+-			cut -f1 -d&quot;(&quot;`
+-	fi
++	deviceDisks=`$hwinfo --disk |\
++		grep &quot;Device File:&quot; | cut -f2 -d: |\
++		cut -f1 -d&quot;(&quot; | sed -e s&quot;@$imageDiskDevice@@&quot;`
+ 	export deviceDisks=`echo $deviceDisks`
+ 	if [ -z &quot;$deviceDisks&quot; ];then
+ 		systemException \
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index ab7662a..f400a4e 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -217,7 +217,11 @@ if [ -z &quot;$pxe&quot; ];then
+ 	Echo &quot;Searching for boot device...&quot;
+ 	if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 		if ! searchBIOSBootDevice;then
+-			systemException &quot;$biosBootDevice&quot; &quot;reboot&quot;
++			if [ ! -z &quot;$cdinst&quot; ];then
++				biosBootDevice=/dev/cdrom
++			else
++				systemException &quot;$biosBootDevice&quot; &quot;reboot&quot;
++			fi
+ 		fi
+ 		export imageDiskDevice=$biosBootDevice
+ 	else
+diff --git a/system/boot/ppc/oemboot/suse-dump b/system/boot/ppc/oemboot/suse-dump
+index e76093a..6df2827 100755
+--- a/system/boot/ppc/oemboot/suse-dump
++++ b/system/boot/ppc/oemboot/suse-dump
+@@ -175,15 +175,9 @@ function OEMInstall {
+ 	IFS=$IFS_ORIG
+ 	Echo &quot;Searching harddrive for $OEMInstallType installation&quot;
+ 	hwinfo=/usr/sbin/hwinfo
+-	if [ &quot;$OEMInstallType&quot; = &quot;USB&quot; ];then
+-		deviceDisks=`$hwinfo --disk |\
+-			grep &quot;Device File:&quot; | cut -f2 -d: |\
+-			cut -f1 -d&quot;(&quot; | sed -e s&quot;@$imageDiskDevice@@&quot;`
+-	else
+-		deviceDisks=`$hwinfo --disk |\
+-			grep &quot;Device File:&quot; | cut -f2 -d: |\
+-			cut -f1 -d&quot;(&quot;`
+-	fi
++	deviceDisks=`$hwinfo --disk |\
++		grep &quot;Device File:&quot; | cut -f2 -d: |\
++		cut -f1 -d&quot;(&quot; | sed -e s&quot;@$imageDiskDevice@@&quot;`
+ 	export deviceDisks=`echo $deviceDisks`
+ 	if [ -z &quot;$deviceDisks&quot; ];then
+ 		systemException \
+diff --git a/system/boot/s390/oemboot/suse-dump b/system/boot/s390/oemboot/suse-dump
+index e76093a..6df2827 100755
+--- a/system/boot/s390/oemboot/suse-dump
++++ b/system/boot/s390/oemboot/suse-dump
+@@ -175,15 +175,9 @@ function OEMInstall {
+ 	IFS=$IFS_ORIG
+ 	Echo &quot;Searching harddrive for $OEMInstallType installation&quot;
+ 	hwinfo=/usr/sbin/hwinfo
+-	if [ &quot;$OEMInstallType&quot; = &quot;USB&quot; ];then
+-		deviceDisks=`$hwinfo --disk |\
+-			grep &quot;Device File:&quot; | cut -f2 -d: |\
+-			cut -f1 -d&quot;(&quot; | sed -e s&quot;@$imageDiskDevice@@&quot;`
+-	else
+-		deviceDisks=`$hwinfo --disk |\
+-			grep &quot;Device File:&quot; | cut -f2 -d: |\
+-			cut -f1 -d&quot;(&quot;`
+-	fi
++	deviceDisks=`$hwinfo --disk |\
++		grep &quot;Device File:&quot; | cut -f2 -d: |\
++		cut -f1 -d&quot;(&quot; | sed -e s&quot;@$imageDiskDevice@@&quot;`
+ 	export deviceDisks=`echo $deviceDisks`
+ 	if [ -z &quot;$deviceDisks&quot; ];then
+ 		systemException \
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003617.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d0de4ea55c360979d09286bb7edac7c58c6a8ae1
+</A></li>
+	<LI>Next message: <A HREF="003619.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4b3b77f37795124359b24097d195ac057bd40ea0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3618">[ date ]</a>
+              <a href="thread.html#3618">[ thread ]</a>
+              <a href="subject.html#3618">[ subject ]</a>
+              <a href="author.html#3618">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

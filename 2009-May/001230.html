@@ -1,0 +1,345 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 41b393bfc9c1d8bb3b39452e711c5c05af23109b
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2041b393bfc9c1d8bb3b39452e711c5c05af23109b&In-Reply-To=%3C200905062024.n46KOsZ8024885%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001229.html">
+   <LINK REL="Next"  HREF="001231.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 41b393bfc9c1d8bb3b39452e711c5c05af23109b</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2041b393bfc9c1d8bb3b39452e711c5c05af23109b&In-Reply-To=%3C200905062024.n46KOsZ8024885%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 41b393bfc9c1d8bb3b39452e711c5c05af23109b">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed May  6 22:24:54 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001229.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7af38f6f9121dbb6910298e6b13e9b961bba9356
+</A></li>
+        <LI>Next message: <A HREF="001231.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. ac59bc6a6aee62460a4bf18eb4159e2f258fa115
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1230">[ date ]</a>
+              <a href="thread.html#1230">[ thread ]</a>
+              <a href="subject.html#1230">[ subject ]</a>
+              <a href="author.html#1230">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  41b393bfc9c1d8bb3b39452e711c5c05af23109b (commit)
+      from  7af38f6f9121dbb6910298e6b13e9b961bba9356 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 41b393bfc9c1d8bb3b39452e711c5c05af23109b
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed May 6 22:20:42 2009 +0200
+
+    - fixed sap media changer call (bnc #486758)
+    - added more clic fixes, still not finished (bnc #497172)
+    - set inode count for system partition only (bnc #495135)
+    - fixed satsolver setup
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 5dba0e2..292f8bb 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -311,9 +311,8 @@ sub new {
+ 			) {
+ 				$kiwi -&gt; warning (&quot;Specified Inode count might be too small\n&quot;);
+ 				$kiwi -&gt; warning (&quot;Copying of files to image could fail !\n&quot;);
+-			}
+-			if (! defined $main::FSNumInodes) {
+-				$main::FSNumInodes = $systemInodes;
++			} else {
++				$this-&gt;{inodes} = $systemInodes;
+ 			}
+ 			if ($systemSXML eq &quot;auto&quot;) {
+ 				$systemSXML = 0;
+@@ -1048,6 +1047,9 @@ sub setupBootStick {
+ 				$kiwi -&gt; info (&quot;Creating ext2 root filesystem&quot;);
+ 				my $fsopts = $FSopts{ext2};
+ 				$fsopts.= &quot;-F&quot;;
++				if ($this-&gt;{inodes}) {
++					$fsopts.= &quot; -N $this-&gt;{inodes}&quot;;
++				}
+ 				$status = qxx (&quot;/sbin/mke2fs $fsopts $deviceMap{1} 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+@@ -1056,6 +1058,9 @@ sub setupBootStick {
+ 				$kiwi -&gt; info (&quot;Creating ext3 root filesystem&quot;);
+ 				my $fsopts = $FSopts{ext3};
+ 				$fsopts.= &quot;-j -F&quot;;
++				if ($this-&gt;{inodes}) {
++					$fsopts.= &quot; -N $this-&gt;{inodes}&quot;;
++				}
+ 				$status = qxx (&quot;/sbin/mke2fs $fsopts $deviceMap{1} 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+@@ -1808,6 +1813,9 @@ sub setupInstallStick {
+ 		my %FSopts = main::checkFSOptions();
+ 		my $fsopts = $FSopts{ext3};
+ 		$fsopts.= &quot;-j&quot;;
++		if (($root eq $data) &amp;&amp; ($this-&gt;{inodes})) {
++			$fsopts.= &quot; -N $this-&gt;{inodes}&quot;;
++		}
+ 		$status = qxx ( &quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot; );
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+@@ -2395,6 +2403,9 @@ sub setupBootDisk {
+ 				$kiwi -&gt; info (&quot;Creating ext2 root filesystem&quot;);
+ 				my $fsopts = $FSopts{ext2};
+ 				$fsopts.= &quot;-F&quot;;
++				if ($this-&gt;{inodes}) {
++					$fsopts.= &quot; -N $this-&gt;{inodes}&quot;;
++				}
+ 				$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+@@ -2403,6 +2414,9 @@ sub setupBootDisk {
+ 				$kiwi -&gt; info (&quot;Creating ext3 root filesystem&quot;);
+ 				my $fsopts = $FSopts{ext3};
+ 				$fsopts.= &quot;-j -F&quot;;
++				if ($this-&gt;{inodes}) {
++					$fsopts.= &quot; -N $this-&gt;{inodes}&quot;;
++				}
+ 				$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+diff --git a/modules/KIWIConfigure.pm b/modules/KIWIConfigure.pm
+index 06304d8..ee38795 100644
+--- a/modules/KIWIConfigure.pm
++++ b/modules/KIWIConfigure.pm
+@@ -251,7 +251,7 @@ sub setupAutoYaST {
+ 	my $autocnf = &quot;autoconf.xml&quot;;
+ 	if (! -d &quot;$root/$autodir&quot;) {
+ 		$kiwi -&gt; failed ();
+-		$kiwi -&gt; error  (&quot;AutoYaST seems not be installed&quot;);
++		$kiwi -&gt; error  (&quot;AutoYaST seems not to be installed&quot;);
+ 		$kiwi -&gt; failed ();
+ 		return &quot;failed&quot;;
+ 	}
+@@ -393,14 +393,8 @@ sub quoteshell {
+ 	# expansion is enabled, !.
+ 	# ----
+ 	my $name = shift;
+-	my $done;
+-	foreach my $l (split (//,$name)) {
+-		if ($l =~ /[\&quot;\$\!\`\\]/) {
+-			$l = &quot;\\&quot;.$l;
+-		}
+-		$done.=$l;
+-	}
+-	return $done;
++	$name =~ s/([\&quot;\$\!\`\\])/\\$1/g;
++	return $name;
+ }
+ 
+ 1;
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index c839de2..7b6939f 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -278,11 +278,49 @@ sub createImageClicFS {
+ 		$kiwi -&gt; error  ($data);
+ 		return undef;
+ 	}
++	#==========================================  
++	# Resize to minimum  
++	#------------------------------------------
++	my $dfs = &quot;/sbin/debugfs&quot;;
++	my $req = &quot;-R 'show_super_stats -h'&quot;;
++	my $bcn = &quot;'^Block count:'&quot;;
++	my $bfr = &quot;'^Free blocks:'&quot;;
++	my $src = &quot;$dest/fsdata.ext3&quot;;
++	my $blocks = 0;
++	$data = qxx (
++		&quot;$dfs $req $src 2&gt;/dev/null | grep $bcn | sed -e 's,.*: *,,'&quot;
++	);
++	$code = $? &gt;&gt; 8;
++	if ($code != 0) {
++		$kiwi -&gt; error  (&quot;debugfs: block count request failed: $data&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	chomp $data;
++	$blocks = $data;  
++	$data = qxx (
++		&quot;$dfs $req $src 2&gt;/dev/null | grep $bfr | sed -e 's,.*: *,,'&quot;
++	);
++	$code = $? &gt;&gt; 8;
++	if ($code != 0) {
++		$kiwi -&gt; error  (&quot;debugfs: free blocks request failed: $data&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}  
++	$kiwi -&gt; info (&quot;clicfs: blocks count=$blocks free=$data\n&quot;);  
++	$blocks = $blocks - $data;  
++	$data = qxx (&quot;/sbin/resize2fs $dest/fsdata.ext3 $blocks 2&gt;&amp;1&quot;);
++	$code = $? &gt;&gt; 8;
++	if ($code != 0) {
++		$kiwi -&gt; error  (&quot;Failed to resize ext3 container: $data&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
+ 	#==========================================
+ 	# Create clicfs filesystem from ext3
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Creating clicfs container...&quot;);
+-	$data = qxx (&quot;mkclicfs -b 131072 $dest/fsdata.ext3 $dest/$name 2&gt;&amp;1&quot;);
++	$data = qxx (&quot;mkclicfs $dest/fsdata.ext3 $dest/$name 2&gt;&amp;1&quot;);
+ 	$code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+ 		$kiwi -&gt; failed ();
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index bbd4852..4315280 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -3279,7 +3279,6 @@ function mountSystemDMSquash {
+ function mountSystemClicFS {
+ 	local loopf=$1
+ 	local roDir=/read-only
+-	local rwDir=/read-write
+ 	local rwDevice=`echo $UNIONFS_CONFIG | cut -d , -f 1`
+ 	local clic_cmd=clicfs
+ 	local size
+@@ -3288,11 +3287,9 @@ function mountSystemClicFS {
+ 	#--------------------------------------
+ 	modprobe fuse &amp;&gt;/dev/null
+ 	#======================================
+-	# create read write mount points
++	# create read only mount point
+ 	#--------------------------------------
+-	for dir in $roDir $rwDir;do
+-		mkdir -p $dir
+-	done
++	mkdir -p $roDir
+ 	#======================================
+ 	# check for NFS export location
+ 	#--------------------------------------
+@@ -3307,6 +3304,12 @@ function mountSystemClicFS {
+ 			return 1
+ 		fi
+ 	fi
++	#======================================  
++	# check kernel command line for log file  
++	#--------------------------------------  
++	if [ -n &quot;$cliclog&quot; ]; then  
++		clic_cmd=&quot;$clic_cmd -l $cliclog&quot;  
++	fi  
+ 	#======================================
+ 	# check read/write device location
+ 	#--------------------------------------
+@@ -3314,9 +3317,7 @@ function mountSystemClicFS {
+ 	if [ $? = 0 ];then
+ 		clic_cmd=&quot;$clic_cmd -m 470&quot;
+ 	else
+-		# TODO: mount clic with persistent cow file
+-		# clic_cmd=&quot;$clic_cmd -c $src.cow&quot;
+-		:
++		clic_cmd=&quot;$clic_cmd -c $rwDevice&quot;
+ 	fi
+ 	#======================================
+ 	# mount clic container
+@@ -4462,7 +4463,14 @@ function SAPDataStorageSetup {
+ # SAPStartMediaChanger
+ #--------------------------------------
+ function SAPStartMediaChanger {
++	local runme=/var/lib/YaST2/runme_at_boot
++	local ininf=/etc/install.inf
+ 	startX
+-	yast2 --noborder --fullscreen inst_sap_wrapper
++	test -e $runme &amp;&amp; mv $runme /tmp
++	test -e $ininf &amp;&amp; mv $ininf /tmp
++	yast2 --noborder --fullscreen inst_autosetup   initial
++	yast2 --noborder --fullscreen inst_sap_wrapper initial
+ 	stoppX
++	test -e /tmp/runme_at_boot &amp;&amp; mv /tmp/runme_at_boot $runme
++	test -e /tmp/install.inf &amp;&amp; mv /tmp/install.inf $ininf
+ }
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 36ccb85..38424fd 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -3150,7 +3150,7 @@ sub getInstSourceSatSolvable {
+ 		$count++;
+ 		foreach my $dist (keys %distro) {
+ 			my $name = $distro{$dist};
+-			if ($name =~ /\.gz$/) {
++			if ($dist =~ /\.gz$/) {
+ 				$destfile = $sdir.&quot;/$name-&quot;.$count.&quot;.gz&quot;;
+ 			} else {
+ 				$destfile = $sdir.&quot;/$name-&quot;.$count;
+@@ -3234,7 +3234,7 @@ sub getInstSourceSatSolvable {
+ 				$stdcmd .= $file.&quot; &quot;;
+ 			}
+ 		}
+-		foreach my $file (glob (&quot;$sdir/*.pat&quot;)) {
++		foreach my $file (glob (&quot;$sdir/*.pat*&quot;)) {
+ 			if ($file =~ /\.gz$/) {
+ 				$gzicmd .= $file.&quot; &quot;;
+ 			} else {
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index fe13d27..6d90ebc 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -3,6 +3,10 @@ Tue May  5 21:21:03 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - 3.50
+ - added bash quotation function (bnc #500537)
++- fixed sap media changer call (bnc #486758)
++- added more clic fixes, still not finished (bnc #497172)
++- set inode count for system partition only (bnc #495135)
++- fixed satsolver setup
+ 
+ -------------------------------------------------------------------
+ Tue May  5 11:34:11 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001229.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7af38f6f9121dbb6910298e6b13e9b961bba9356
+</A></li>
+	<LI>Next message: <A HREF="001231.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. ac59bc6a6aee62460a4bf18eb4159e2f258fa115
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1230">[ date ]</a>
+              <a href="thread.html#1230">[ thread ]</a>
+              <a href="subject.html#1230">[ subject ]</a>
+              <a href="author.html#1230">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

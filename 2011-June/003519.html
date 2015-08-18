@@ -1,0 +1,389 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. e0ccdcc68f7dca2bb539dee1c94cbb73468f4e74
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-485-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20e0ccdcc68f7dca2bb539dee1c94cbb73468f4e74&In-Reply-To=%3C20110607111710.EFB46480D90%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003518.html">
+   <LINK REL="Next"  HREF="003520.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. e0ccdcc68f7dca2bb539dee1c94cbb73468f4e74</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-485-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20e0ccdcc68f7dca2bb539dee1c94cbb73468f4e74&In-Reply-To=%3C20110607111710.EFB46480D90%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. e0ccdcc68f7dca2bb539dee1c94cbb73468f4e74">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jun  7 13:17:10 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003518.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 15df3e707b785f75529a805d1520b1a9c67eea7f
+</A></li>
+        <LI>Next message: <A HREF="003520.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2d859fa68610ad60062d968cafaac677c9451c2a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3519">[ date ]</a>
+              <a href="thread.html#3519">[ thread ]</a>
+              <a href="subject.html#3519">[ subject ]</a>
+              <a href="author.html#3519">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-485-SuSE-11-1-SLE-SP-Devel has been updated
+       via  e0ccdcc68f7dca2bb539dee1c94cbb73468f4e74 (commit)
+      from  7b9b98df7e43cb9810e336f4f6d2cf93a58ed829 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit e0ccdcc68f7dca2bb539dee1c94cbb73468f4e74
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Jun 7 13:16:12 2011 +0200
+
+    - don't use a fixed value for the size of the boot partition. The
+      size among others depends on how many kernels were installed. Thus
+      a fixed value is always wrong. The new function __getBootSize()
+      is used to check the actual size of the boot/* area and this value
+      is used to create the boot partition if required. In case of an
+      oem image the re-creation of the boot partition happens based on
+      the original boot partition size (bnc #698161)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 05cf7f8..02957f5 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -217,6 +217,7 @@ sub new {
+ 	$this-&gt;{tmpdirs}  = [ $tmpdir, $loopdir ];
+ 	$this-&gt;{haveTree} = $haveTree;
+ 	$this-&gt;{kiwi}     = $kiwi;
++	$this-&gt;{bootsize} = 100;
+ 
+ 	#==========================================
+ 	# setup pointer to XML configuration
+@@ -226,6 +227,10 @@ sub new {
+ 			$xml = new KIWIXML (
+ 				$kiwi,$system.&quot;/image&quot;,$main::SetImageType,$profile
+ 			);
++			#==========================================
++			# Determine size of /boot area
++			#------------------------------------------
++			$this -&gt;{bootsize} = $this -&gt; __getBootSize ($system);
+ 		} else {
+ 			my %fsattr = main::checkFileSystem ($system);
+ 			if ((! $fsattr{type}) || ($fsattr{type} eq &quot;auto&quot;)) {
+@@ -272,6 +277,10 @@ sub new {
+ 					$kiwi,$tmpdir.&quot;/image&quot;,$main::SetImageType,$profile
+ 				);
+ 				#==========================================
++				# Determine size of /boot area
++				#------------------------------------------
++				$this -&gt;{bootsize} = $this -&gt; __getBootSize ($tmpdir);
++				#==========================================
+ 				# clean up
+ 				#------------------------------------------
+ 				$this -&gt; cleanLoop ();
+@@ -296,6 +305,10 @@ sub new {
+ 					$kiwi,$tmpdir.&quot;/image&quot;,$main::SetImageType,$profile
+ 				);
+ 				#==========================================
++				# Determine size of /boot area
++				#------------------------------------------
++				$this -&gt;{bootsize} = $this -&gt; __getBootSize ($tmpdir);
++				#==========================================
+ 				# clean up
+ 				#------------------------------------------
+ 				main::umount();
+@@ -1454,18 +1467,14 @@ sub setupBootDisk {
+ 	my $haveTree  = $this-&gt;{haveTree};
+ 	my $imgtype   = $this-&gt;{imgtype};
+ 	my $haveSplit = $this-&gt;{haveSplit};
++	my $bootsize  = $this-&gt;{bootsize};
+ 	my $diskname  = $system.&quot;.raw&quot;;
+ 	my %deviceMap = ();
+ 	my @commands  = ();
+ 	my $bootfix   = &quot;VMX&quot;;
+-	my $lvmbootMB = 0;
+-	my $luksbootMB= 0;
+-	my $syslbootMB= 0;
+-	my $dmbootMB  = 0;
+ 	my $dmapper   = 0;
+ 	my $haveluks  = 0;
+ 	my $needBootP = 0;
+-	my $prepbootMB= 0;
+ 	my $bootloader;
+ 	my $boot;
+ 	if ($arch =~ /ppc|ppc64/) {
+@@ -1503,7 +1512,6 @@ sub setupBootDisk {
+ 		# add boot space if lvm based
+ 		#------------------------------------------
+ 		$lvm = 1;
+-		$lvmbootMB  = 100;
+ 		$this-&gt;{lvm}= $lvm;
+ 		#==========================================
+ 		# set volume group name
+@@ -1585,21 +1593,18 @@ sub setupBootDisk {
+ 	if ($type{filesystem} eq &quot;clicfs&quot;) {
+ 		$this-&gt;{dmapper} = 1;
+ 		$dmapper  = 1;
+-		$dmbootMB = 100;
+ 	}
+ 	#==========================================
+ 	# check if fs requires a boot partition
+ 	#------------------------------------------
+ 	if (($type{filesystem} eq &quot;btrfs&quot;) || ($type{filesystem} eq &quot;xfs&quot;)) {
+ 		$needBootP  = 1;
+-		$luksbootMB = 100;
+ 	}
+ 	#==========================================
+ 	# check for LUKS extension
+ 	#------------------------------------------
+ 	if ($type{luks}) {
+ 		$haveluks   = 1;
+-		$luksbootMB = 100;
+ 	}
+ 	#==========================================
+ 	# setup boot loader type
+@@ -1612,20 +1617,12 @@ sub setupBootDisk {
+ 	# add boot space if syslinux based
+ 	#------------------------------------------
+ 	if ($bootloader =~ /(sys|ext)linux/) {
+-		$syslbootMB = 100;
+ 		if (defined $main::FatStorage) {
+-			if ($syslbootMB &lt; $main::FatStorage) {
+-				$syslbootMB = $main::FatStorage;
++			if ($bootsize &lt; $main::FatStorage) {
++				$bootsize = $main::FatStorage;
+ 			}
+ 		}
+ 	}
+-	if ($arch =~ /ppc|ppc64/) {
+-		if ($lvm) {
+-			$prepbootMB = 100;
+-		} else {
+-			$prepbootMB = 8;
+-		}
+-	}
+ 	#==========================================
+ 	# build disk name and label from xml data
+ 	#------------------------------------------
+@@ -1672,7 +1669,7 @@ sub setupBootDisk {
+ 	#------------------------------------------
+ 	if (($imgtype eq &quot;split&quot;) &amp;&amp; (-f $splitfile)) {
+ 		my $splitsize = main::isize ($splitfile); $splitsize /= 1048576;
+-		$vmsize = $this-&gt;{vmmbyte} + ($splitsize * 1.5) + $lvmbootMB;
++		$vmsize = $this-&gt;{vmmbyte} + ($splitsize * 1.5) + $bootsize;
+ 		$vmsize = sprintf (&quot;%.0f&quot;, $vmsize);
+ 		$this-&gt;{vmmbyte} = $vmsize;
+ 		$vmsize = $vmsize.&quot;M&quot;;
+@@ -1681,8 +1678,8 @@ sub setupBootDisk {
+ 	#==========================================
+ 	# increase vmsize if single boot partition
+ 	#------------------------------------------
+-	if (($dmbootMB) || ($syslbootMB) || ($lvmbootMB)) {
+-		$vmsize = $this-&gt;{vmmbyte} + (($dmbootMB+$syslbootMB+$lvmbootMB) * 1.3);
++	if ($bootsize) {
++		$vmsize = $this-&gt;{vmmbyte} + ($bootsize * 1.3);
+ 		$vmsize = sprintf (&quot;%.0f&quot;, $vmsize);
+ 		$this-&gt;{vmmbyte} = $vmsize;
+ 		$vmsize = $vmsize.&quot;M&quot;;
+@@ -1793,7 +1790,7 @@ sub setupBootDisk {
+ 		# create disk partition
+ 		#------------------------------------------
+ 		if ($arch =~ /ppc|ppc64/) {
+-			my $prepsize = $prepbootMB;
++			my $prepsize = $bootsize;
+ 			if (! $lvm) {
+ 				@commands = (
+ 					&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$prepsize.&quot;M&quot;,
+@@ -1804,7 +1801,7 @@ sub setupBootDisk {
+ 				);
+ 			} else {
+ 				@commands = (
+-					&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$prepbootMB.&quot;M&quot;,
++					&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$bootsize.&quot;M&quot;,
+ 					&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;.&quot;,
+ 					&quot;t&quot;,&quot;1&quot;,&quot;c&quot;,
+ 					&quot;t&quot;,&quot;2&quot;,&quot;8e&quot;,
+@@ -1820,7 +1817,7 @@ sub setupBootDisk {
+ 					if ($bootloader eq &quot;extlinux&quot; ) {
+ 						$partid = &quot;83&quot;;
+ 					}
+-					my $syslsize = $this-&gt;{vmmbyte} - $syslbootMB - $syszip;
++					my $syslsize = $this-&gt;{vmmbyte} - $bootsize - $syszip;
+ 					@commands = (
+ 						&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$syszip.&quot;M&quot;,
+ 						&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;+&quot;.$syslsize.&quot;M&quot;,
+@@ -1829,7 +1826,7 @@ sub setupBootDisk {
+ 						&quot;a&quot;,&quot;3&quot;,&quot;w&quot;,&quot;q&quot;
+ 					);
+ 				} elsif ($dmapper) {
+-					my $dmsize = $this-&gt;{vmmbyte} - $dmbootMB - $syszip;
++					my $dmsize = $this-&gt;{vmmbyte} - $bootsize - $syszip;
+ 					@commands = (
+ 						&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$syszip.&quot;M&quot;,
+ 						&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;+&quot;.$dmsize.&quot;M&quot;,
+@@ -1837,7 +1834,7 @@ sub setupBootDisk {
+ 						&quot;a&quot;,&quot;3&quot;,&quot;w&quot;,&quot;q&quot;
+ 					);
+ 				} elsif ($haveluks) {
+-					my $lukssize = $this-&gt;{vmmbyte} - $luksbootMB - $syszip;
++					my $lukssize = $this-&gt;{vmmbyte} - $bootsize - $syszip;
+ 					@commands = (
+ 						&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$syszip.&quot;M&quot;,
+ 						&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;+&quot;.$lukssize.&quot;M&quot;,
+@@ -1858,7 +1855,7 @@ sub setupBootDisk {
+ 					if ($bootloader eq &quot;extlinux&quot; ) {
+ 						$partid = &quot;83&quot;;
+ 					}
+-					my $syslsize = $this-&gt;{vmmbyte} - $syslbootMB;
++					my $syslsize = $this-&gt;{vmmbyte} - $bootsize;
+ 					@commands = (
+ 						&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$syslsize.&quot;M&quot;,
+ 						&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;.&quot;,
+@@ -1866,7 +1863,7 @@ sub setupBootDisk {
+ 						&quot;a&quot;,&quot;2&quot;,&quot;w&quot;,&quot;q&quot;
+ 					);
+ 				} elsif (($haveluks) || ($needBootP)) {
+-					my $lukssize = $this-&gt;{vmmbyte} - $luksbootMB;
++					my $lukssize = $this-&gt;{vmmbyte} - $bootsize;
+ 					@commands = (
+ 						&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$lukssize.&quot;M&quot;,
+ 						&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;.&quot;,
+@@ -1885,8 +1882,8 @@ sub setupBootDisk {
+ 				if ($bootloader eq &quot;extlinux&quot; ) {
+ 					$partid = &quot;83&quot;;
+ 				}
+-				my $lvmsize = $this-&gt;{vmmbyte} - $syslbootMB;
+-				my $bootpartsize = &quot;+&quot;.$syslbootMB.&quot;M&quot;;
++				my $lvmsize = $this-&gt;{vmmbyte} - $bootsize;
++				my $bootpartsize = &quot;+&quot;.$bootsize.&quot;M&quot;;
+ 				@commands = (
+ 					&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,$bootpartsize,
+ 					&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;.&quot;,
+@@ -1895,8 +1892,8 @@ sub setupBootDisk {
+ 					&quot;a&quot;,&quot;1&quot;,&quot;w&quot;,&quot;q&quot;
+ 				);
+ 			} else {
+-				my $lvmsize = $this-&gt;{vmmbyte} - $lvmbootMB;
+-				my $bootpartsize = &quot;+&quot;.$lvmbootMB.&quot;M&quot;;
++				my $lvmsize = $this-&gt;{vmmbyte} - $bootsize;
++				my $bootpartsize = &quot;+&quot;.$bootsize.&quot;M&quot;;
+ 				@commands = (
+ 					&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,$bootpartsize,
+ 					&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;.&quot;,
+@@ -5079,6 +5076,29 @@ sub DESTROY {
+ # Private methods
+ #------------------------------------------
+ #==========================================
++# getBootSize
++#------------------------------------------
++sub __getBootSize {
++	# ...
++	# calculate required size of /boot. This is
++	# needed if we have a separate boot partition
++	# The function returns the size in M-Bytes
++	# ---
++	my $this   = shift;
++	my $extend = shift;
++	my $kiwi   = $this-&gt;{kiwi};
++	my $boot   = $extend.&quot;/boot&quot;;
++	my $bbytes = qxx (&quot;du -s --block-size=1 $boot | cut -f1&quot;); chomp $bbytes;
++	my $gotMB  = sprintf (&quot;%.0f&quot;,(($bbytes / 1048576) * 1.3));
++	my $minMB  = 100;
++	if ($gotMB &lt; $minMB) {
++		$gotMB = $minMB;
++	}
++	$kiwi -&gt; loginfo (&quot;Set boot space to: $gotMB\n&quot;);
++	return $gotMB;
++}
++
++#==========================================
+ # __expandFS
+ #------------------------------------------
+ sub __expandFS {
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 1e22f68..00cb600 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,15 @@
+ -------------------------------------------------------------------
++Tue Jun  7 11:29:18 CEST 2011 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- don't use a fixed value for the size of the boot partition. The
++  size among others depends on how many kernels were installed. Thus
++  a fixed value is always wrong. The new function __getBootSize()
++  is used to check the actual size of the boot/* area and this value
++  is used to create the boot partition if required. In case of an
++  oem image the re-creation of the boot partition happens based on
++  the original boot partition size (bnc #698161)
++
++-------------------------------------------------------------------
+ Mon Jun  6 10:18:55 CEST 2011 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed location of squashfs in drivers section for sle10
+diff --git a/system/boot/ix86/oemboot/suse-repart b/system/boot/ix86/oemboot/suse-repart
+index fec623b..e021395 100755
+--- a/system/boot/ix86/oemboot/suse-repart
++++ b/system/boot/ix86/oemboot/suse-repart
+@@ -724,12 +724,15 @@ function setupDeviceNames {
+ #--------------------------------------
+ function createBootDeviceData {
+ 	local bootPart=$1
+-	if partitionSize $(ddn $imageDiskDevice $bootPart) &amp;&gt;/dev/null;then
++	local bootDevice=$(ddn $imageDiskDevice $bootPart)
++	local bootKBytes
++	if [ -e &quot;$bootDevice&quot; ];then
+ 		#======================================
+ 		# Variable setup
+ 		#--------------------------------------
++		bootKBytes=$(partitionSize $bootDevice)
+ 		export haveBootPartition=yes
+-		export bootXMBytes=100
++		export bootXMBytes=$((bootKBytes / 1024))
+ 		export bootpartID=83
+ 		if [ &quot;$loader&quot; = &quot;syslinux&quot; ];then
+ 			bootpartID=c
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003518.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 15df3e707b785f75529a805d1520b1a9c67eea7f
+</A></li>
+	<LI>Next message: <A HREF="003520.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2d859fa68610ad60062d968cafaac677c9451c2a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3519">[ date ]</a>
+              <a href="thread.html#3519">[ thread ]</a>
+              <a href="subject.html#3519">[ subject ]</a>
+              <a href="author.html#3519">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

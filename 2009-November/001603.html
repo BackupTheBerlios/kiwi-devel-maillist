@@ -1,0 +1,281 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. e08eaa3cdc90de0391a015ef90ca757663b9d9fa
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20e08eaa3cdc90de0391a015ef90ca757663b9d9fa&In-Reply-To=%3C200911111153.nABBrXAA031394%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001602.html">
+   <LINK REL="Next"  HREF="001604.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. e08eaa3cdc90de0391a015ef90ca757663b9d9fa</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20e08eaa3cdc90de0391a015ef90ca757663b9d9fa&In-Reply-To=%3C200911111153.nABBrXAA031394%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. e08eaa3cdc90de0391a015ef90ca757663b9d9fa">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Nov 11 12:53:33 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001602.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ec778df95985130da19052cbccc4c04354ec3bda
+</A></li>
+        <LI>Next message: <A HREF="001604.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3840511e726aa00bd0fd478793b9ef2488ae4d51
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1603">[ date ]</a>
+              <a href="thread.html#1603">[ thread ]</a>
+              <a href="subject.html#1603">[ subject ]</a>
+              <a href="author.html#1603">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-374-SuSE-11-1-SLE-SP-Devel has been updated
+       via  e08eaa3cdc90de0391a015ef90ca757663b9d9fa (commit)
+      from  725c53f19f12dbd545a9bd9b68b2ca24a7cba203 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit e08eaa3cdc90de0391a015ef90ca757663b9d9fa
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Nov 11 12:53:12 2009 +0100
+
+    - fixed exit code evaluation in Dialog function. The value of the
+      evaluated exit code was undefined because it depended on which
+      subshell finished first. The solution is to prevent parameter
+      subshells when building the dialog parameterlist (bnc #547864)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 99a2177..220c9db 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -50,22 +50,26 @@ function Dialog {
+ 	local code=1
+ 	export DIALOG_CANCEL=1
+ 	if [ -e /dev/fb0 ];then
+-		code=$(fbiterm -m $UFONT -- dialog \
+-			--ok-label &quot;$(getText &quot;OK&quot;)&quot; \
+-			--cancel-label &quot;$(getText &quot;Cancel&quot;)&quot; \
+-			--yes-label &quot;$(getText &quot;Yes&quot;)&quot; \
+-			--no-label &quot;$(getText &quot;No&quot;)&quot; \
+-			--exit-label &quot;$(getText &quot;Exit&quot;)&quot; \
+-			&quot;$@&quot;;echo $?)
+-		code=$(echo $code | cut -c5-)
++		cat &gt; /tmp/fbcode &lt;&lt;- EOF
++			dialog \
++				--ok-label &quot;$TEXT_OK&quot; \
++				--cancel-label &quot;$TEXT_CANCEL&quot; \
++				--yes-label &quot;$TEXT_YES&quot; \
++				--no-label &quot;$TEXT_NO&quot; \
++				--exit-label &quot;$TEXT_EXIT&quot; \
++				$@
++			echo \$? &gt; /tmp/fbcode
++		EOF
++		fbiterm -m $UFONT -- bash /tmp/fbcode
++		code=$(cat /tmp/fbcode)
+ 	else
+-		dialog \
+-			--ok-label &quot;$(getText &quot;OK&quot;)&quot; \
+-			--cancel-label &quot;$(getText &quot;Cancel&quot;)&quot; \
+-			--yes-label &quot;$(getText &quot;Yes&quot;)&quot; \
+-			--no-label &quot;$(getText &quot;No&quot;)&quot; \
+-			--exit-label &quot;$(getText &quot;Exit&quot;)&quot; \
+-			&quot;$@&quot;
++		eval dialog \
++			--ok-label &quot;$TEXT_OK&quot; \
++			--cancel-label &quot;$TEXT_CANCEL&quot; \
++			--yes-label &quot;$TEXT_YES&quot; \
++			--no-label &quot;$TEXT_NO&quot; \
++			--exit-label &quot;$TEXT_EXIT&quot; \
++			$@
+ 		code=$?
+ 	fi
+ 	return $code
+@@ -4549,7 +4553,7 @@ function luksOpen {
+ 		if [ ! -e /tmp/luks ];then
+ 			Dialog \
+ 				--stdout --insecure \
+-				--passwordbox &quot;$(getText &quot;Enter LUKS passphrase&quot;)&quot; 10 60 |\
++				--passwordbox &quot;\&quot;$TEXT_LUKS\&quot;&quot; 10 60 |\
+ 				cat &gt; /tmp/luks
+ 		fi
+ 		info=$(cat /tmp/luks | cryptsetup luksOpen $ldev $name 2&gt;&amp;1)
+@@ -4638,12 +4642,39 @@ function selectLanguage {
+ 		done
+ 		if [ &quot;$list&quot; = &quot;$list_orig&quot; ];then
+ 			DIALOG_LANG=en_US
+-			return
++		else
++			DIALOG_LANG=$(runInteractive \
++				&quot;--stdout --no-cancel --radiolist $title 20 40 10 $list&quot;
++			)
+ 		fi
+-		DIALOG_LANG=$(runInteractive \
+-			&quot;--stdout --no-cancel --radiolist $title 20 40 10 $list&quot;
+-		)
+ 	fi
++	#======================================
++	# Exports (Texts)
++	#--------------------------------------
++	export TEXT_OK=$(
++		getText &quot;OK&quot;)
++	export TEXT_CANCEL=$(
++		getText &quot;Cancel&quot;)
++	export TEXT_YES=$(
++		getText &quot;Yes&quot;)
++	export TEXT_NO=$(
++		getText &quot;No&quot;)
++	export TEXT_EXIT=$(
++		getText &quot;Exit&quot;)
++	export TEXT_LUKS=$(
++		getText &quot;Enter LUKS passphrase&quot;)
++	export TEXT_LICENSE=$(
++		getText &quot;Do you accept the license agreement ?&quot;)
++	export TEXT_RESTORE=$(
++		getText &quot;Do you want to start the System-Restore ?&quot;)
++	export TEXT_REPAIR=$(
++		getText &quot;Do you want to start the System-Recovery ?&quot;)
++	export TEXT_RECOVERYTITLE=$(
++		getText &quot;Restoring base operating system...&quot;)
++	export TEXT_CDPULL=$(
++		getText &quot;Please eject the install CD/DVD before continuing&quot;)
++	export TEXT_USBPULL=$(
++		getText &quot;Please pull out the install USB stick before continuing&quot;)	
+ }
+ #======================================
+ # getText
+@@ -4699,10 +4730,10 @@ function displayEULA {
+ 	while true;do
+ 		Dialog --textbox $code 20 70 \
+ 			--and-widget --extra-button \
+-			--extra-label &quot;$(getText &quot;No&quot;)&quot; \
+-			--ok-label &quot;$(getText &quot;Yes&quot;)&quot; \
+-			--cancel-label &quot;$(getText &quot;Cancel&quot;)&quot; \
+-			--yesno &quot;$(getText &quot;Do you accept the license agreement ?&quot;)&quot; \
++			--extra-label &quot;$TEXT_NO&quot; \
++			--ok-label &quot;$TEXT_YES&quot; \
++			--cancel-label &quot;$TEXT_CANCEL&quot; \
++			--yesno &quot;$TEXT_LICENSE&quot; \
+ 			5 45
+ 		case $? in
+ 			0 ) break
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index abc702c..e83af84 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,12 @@
+ -------------------------------------------------------------------
++Wed Nov 11 12:52:51 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed exit code evaluation in Dialog function. The value of the
++  evaluated exit code was undefined because it depended on which
++  subshell finished first. The solution is to prevent parameter
++  subshells when building the dialog parameterlist (bnc #547864)
++
++-------------------------------------------------------------------
+ Mon Nov  9 12:33:42 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed spec file for s390 architecture
+diff --git a/system/boot/ix86/oemboot/suse-dump b/system/boot/ix86/oemboot/suse-dump
+index b151e6e..9222c96 100755
+--- a/system/boot/ix86/oemboot/suse-dump
++++ b/system/boot/ix86/oemboot/suse-dump
+@@ -135,9 +135,9 @@ function OEMInstall {
+ 	fi
+ 	Echo &quot;Entering installation mode for disk: $instDisk&quot;
+ 	if [ -z &quot;$OEM_SAP_INSTALL&quot; ];then
+-		Dialog --yesno \
+-			&quot;$(getText &quot;Destroying ALL data on %1, continue ?&quot; $instDisk)&quot; \
+-			5 60
++		TEXT_INST=$(
++			getText &quot;Destroying ALL data on %1, continue ?&quot; $instDisk)
++		Dialog --yesno &quot;\&quot;$TEXT_INST\&quot;&quot; 5 70
+ 		if [ ! $? = 0 ];then
+ 			systemException \
+ 				&quot;System installation canceled&quot; \
+@@ -285,9 +285,9 @@ function OEMInstall {
+ 	# Reboot system
+ 	#--------------------------------------
+ 	if [ &quot;$OEMInstallType&quot; = &quot;CD&quot; ];then
+-		message=&quot;Please eject the install CD/DVD before continuing&quot;
++		message=$TEXT_CDPULL
+ 	else
+-		message=&quot;Please pull out the install USB stick before continuing&quot;
++		message=$TEXT_USBPULL
+ 	fi
+-	Dialog --msgbox &quot;$(getText &quot;$message&quot;)&quot; 5 60
++	Dialog --msgbox &quot;\&quot;$message\&quot;&quot; 5 60
+ }
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index e339228..692165c 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -347,11 +347,12 @@ fi
+ # 16) Recover system if requested
+ #--------------------------------------
+ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+-	text=&quot;Do you want to start the System-Recovery ?&quot;
++	text=$TEXT_REPAIR
+ 	if [ ! -z &quot;$RESTORE&quot; ];then
+-		text=&quot;Do you want to start the System-Restore ?&quot;
++		text=$TEXT_RESTORE
+ 	fi
+-	if ! Dialog --defaultno --yesno &quot;$(getText &quot;$text&quot;)&quot; 5 50;then
++	Dialog --defaultno --yesno &quot;\&quot;$text\&quot;&quot; 5 50
++	if [ ! $? = 0 ];then
+ 		systemException &quot;System-Recovery not started&quot; &quot;reboot&quot;
+ 	fi
+ 	clear
+@@ -496,7 +497,7 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 		kill $dPID
+ 	)&amp;
+ 	echo &quot;mst -f /progress | dialog \
+-		--backtitle \&quot;$(getText &quot;Restoring base operating system...&quot;)\&quot; \
++		--backtitle \&quot;$TEXT_RECOVERYTITLE\&quot; \
+ 		--progressbox 3 50
+ 	&quot; &gt; /tmp/progress.sh
+ 	if [ -e /dev/fb0 ];then
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001602.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ec778df95985130da19052cbccc4c04354ec3bda
+</A></li>
+	<LI>Next message: <A HREF="001604.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3840511e726aa00bd0fd478793b9ef2488ae4d51
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1603">[ date ]</a>
+              <a href="thread.html#1603">[ thread ]</a>
+              <a href="subject.html#1603">[ subject ]</a>
+              <a href="author.html#1603">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

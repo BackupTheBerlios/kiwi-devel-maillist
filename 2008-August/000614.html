@@ -1,0 +1,126 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1529 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1529%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200808250807.m7P87w4r002965%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000619.html">
+   <LINK REL="Next"  HREF="000616.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1529 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1529%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200808250807.m7P87w4r002965%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1529 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Aug 25 10:07:58 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000619.html">[Kiwi-devel] Fixing recommends handling for zypper and	ISO	mounting
+</A></li>
+        <LI>Next message: <A HREF="000616.html">[Kiwi-devel] r1530 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#614">[ date ]</a>
+              <a href="thread.html#614">[ thread ]</a>
+              <a href="subject.html#614">[ subject ]</a>
+              <a href="author.html#614">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-08-25 10:07:55 +0200 (Mon, 25 Aug 2008)
+New Revision: 1529
+
+Modified:
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- added partition format patch for netboot by SLEPOS team
+
+
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-08-22 16:14:46 UTC (rev 1528)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-08-25 08:07:55 UTC (rev 1529)
+@@ -1706,16 +1706,24 @@
+ 		vgcreate systemvg $diskPartition &gt;/dev/null
+ 	else
+ 		# .../
+-		# There is no need to create a filesystem on the partition
+-		# because the image itself contains the filesystem
++		# Create partition in case it is not root system and
++		# there is no system  already created There is no need to
++		# create a filesystem on the root partition
+ 		# ----
+-		# mke2fs $diskPartition &gt;/dev/null
+-		# if test $? != 0;then
+-		#   systemException \
+-		#       &quot;Failed to create filesystem on: $diskPartition !&quot; \
+-		#   &quot;reboot&quot;
+-		# fi
+-		:
++		if test $diskID -gt 2; then
++			if ! mount $diskPartition; then
++				Echo &quot;Partition $diskPartition is not valid, formating...&quot;
++				mke2fs -j $diskPartition 1&gt;&amp;2
++				if test $? != 0; then
++					systemException \
++						&quot;Failed to create filesystem on: $diskPartition !&quot; \
++					&quot;reboot&quot;
++				fi
++			else
++				Echo &quot;Partition $diskPartition is valid, leave it untouched&quot;
++				umount $diskPartition 1&gt;&amp;2
++			fi
++		fi
+ 	fi
+ }
+ #======================================
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-08-22 16:14:46 UTC (rev 1528)
++++ kiwi-head/rpm/kiwi.changes	2008-08-25 08:07:55 UTC (rev 1529)
+@@ -5,6 +5,7 @@
+ - fixed cache usage, need bind mount in early prepare (bnc #417457)
+ - fixed channel names, don't use PID here (bnc #417457)
+ - zypper: keep packages from remote repos only (bnc #419380)
++- added partition format patch for netboot by SLEPOS team
+ 
+ -------------------------------------------------------------------
+ Thu Aug 21 10:45:59 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000619.html">[Kiwi-devel] Fixing recommends handling for zypper and	ISO	mounting
+</A></li>
+	<LI>Next message: <A HREF="000616.html">[Kiwi-devel] r1530 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#614">[ date ]</a>
+              <a href="thread.html#614">[ thread ]</a>
+              <a href="subject.html#614">[ subject ]</a>
+              <a href="author.html#614">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

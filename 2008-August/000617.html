@@ -1,0 +1,168 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Fixing recommends handling for zypper and ISO	mounting
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Fixing%20recommends%20handling%20for%20zypper%20and%20ISO%0A%09mounting&In-Reply-To=%3C200808251118.46142.cgoncalves%40opensuse.org%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000615.html">
+   <LINK REL="Next"  HREF="000619.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Fixing recommends handling for zypper and ISO	mounting</H1>
+    <B>Carlos Goncalves</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Fixing%20recommends%20handling%20for%20zypper%20and%20ISO%0A%09mounting&In-Reply-To=%3C200808251118.46142.cgoncalves%40opensuse.org%3E"
+       TITLE="[Kiwi-devel] Fixing recommends handling for zypper and ISO	mounting">cgoncalves at opensuse.org
+       </A><BR>
+    <I>Mon Aug 25 12:18:46 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000615.html">[Kiwi-devel] Fixing recommends handling for zypper and	ISO	mounting
+</A></li>
+        <LI>Next message: <A HREF="000619.html">[Kiwi-devel] Fixing recommends handling for zypper and	ISO	mounting
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#617">[ date ]</a>
+              <a href="thread.html#617">[ thread ]</a>
+              <a href="subject.html#617">[ subject ]</a>
+              <a href="author.html#617">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Em Segunda 25 Agosto 2008, o Marcus Sch&#228;fer escreveu:
+&gt;<i> two questions on the patch:
+</I>&gt;<i> &gt; Index: modules/KIWIRoot.pm
+</I>&gt;<i> &gt; ===================================================================
+</I>&gt;<i> &gt; --- modules/KIWIRoot.pm	(revision 1528)
+</I>&gt;<i> &gt; +++ modules/KIWIRoot.pm	(working copy)
+</I>&gt;<i> &gt; @@ -899,6 +899,7 @@
+</I>&gt;<i> &gt;  	my $this   = shift;
+</I>&gt;<i> &gt;  	my $kiwi   = $this-&gt;{kiwi};
+</I>&gt;<i> &gt;  	my $root   = $this-&gt;{root};
+</I>&gt;<i> &gt; +	my $xml    = $this-&gt;{xml};
+</I>&gt;<i> &gt;  	my $baseSystem = $this-&gt;{baseSystem};
+</I>&gt;<i> &gt;  	my $prefix = $root.&quot;/&quot;.$baseSystem;
+</I>&gt;<i> &gt;  	my $cache  = &quot;/var/cache&quot;;
+</I>&gt;<i> &gt; @@ -950,6 +951,16 @@
+</I>&gt;<i> &gt;  		} else {
+</I>&gt;<i> &gt;  			next;
+</I>&gt;<i> &gt;  		}
+</I>&gt;<i> &gt; +		#==========================================
+</I>&gt;<i> &gt; +		# Mount if source is an ISO file
+</I>&gt;<i> &gt; +		#------------------------------------------
+</I>&gt;<i> &gt; +		my %repository = $xml -&gt; getRepository();
+</I>&gt;<i> &gt; +		foreach my $source (keys %repository) {
+</I>&gt;<i> &gt; +			if ($source =~ /^iso:\/\//) {
+</I>&gt;<i> &gt; +				my $isoMountPoint = new KIWIURL($kiwi,$this) -&gt; isoPath($source);
+</I>&gt;<i> &gt; +				push(@mountList,$isoMountPoint);
+</I>&gt;<i> &gt; +			}
+</I>&gt;<i> &gt; +		}
+</I>&gt;<i> &gt;  		$kiwi -&gt; info (&quot;Mounting local channel: $chl&quot;);
+</I>&gt;<i> &gt;  		my $roopt = &quot;dirs=$cache=rw:$path=ro,ro&quot;;
+</I>&gt;<i> &gt;  		my $auopt = &quot;dirs=$path=ro&quot;;
+</I>&gt;<i>
+</I>&gt;<i> The function isoPath() already adds the mount point to the mountList.
+</I>
+Yes, isoPath() should be adding the mount point to the mountList, but if you 
+just do a
+
+        foreach my $item (reverse @mountList) {
+                $kiwi -&gt; info (&quot;ITEM: $item&quot;);
+        }
+
+you will notice that it didn't add. That's why I had to force it with 
+push(@mountList,$isoMountPoint); I also wondered why it didn't add...
+
+&gt;<i> I'm wondering why isoPath needs to be called here. At any time a new
+</I>&gt;<i> XML object is created it calls createURLList() on object construction.
+</I>&gt;<i> createURLList() calls normalizePath() on each repo entry of your
+</I>&gt;<i> xml input. I think I need to investigate this issue. I'm sorry I don't
+</I>&gt;<i> want to patch it that way
+</I>
+If the ISO wasn't be mounting was because isoPath() wasn't called.
+I agree that this should be fixed other way than this though was the way I 
+found to solve it...
+
+&gt;<i> &gt; Index: modules/KIWIManager.pm
+</I>&gt;<i> &gt; ===================================================================
+</I>&gt;<i> &gt; --- modules/KIWIManager.pm	(revision 1528)
+</I>&gt;<i> &gt; +++ modules/KIWIManager.pm	(working copy)
+</I>&gt;<i> &gt; @@ -971,6 +971,15 @@
+</I>&gt;<i> &gt;  		my @installOpts = (
+</I>&gt;<i> &gt;  			&quot;--auto-agree-with-licenses&quot;
+</I>&gt;<i> &gt;  		);
+</I>&gt;<i> &gt; +		#=========================================
+</I>&gt;<i> &gt; +		# Do not install recommended packages
+</I>&gt;<i> &gt; +		#-----------------------------------------
+</I>&gt;<i> &gt; +		my %pattr = $xml -&gt; getPackageAttributes(&quot;image&quot;);
+</I>&gt;<i> &gt; +		if (($pattr{patternType} ne &quot;plusRecommended&quot;) &amp;&amp;
+</I>&gt;<i> &gt; +			($pattr{patternPackageType} ne &quot;plusRecommended&quot;)
+</I>&gt;<i> &gt; +		) {
+</I>&gt;<i> &gt; +			push (@installOpts,&quot;--no-recommends&quot;);
+</I>&gt;<i> &gt; +		}
+</I>&gt;<i> &gt;  		print $fd &quot;function clean { kill \$SPID;&quot;;
+</I>&gt;<i> &gt;  		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+</I>&gt;<i> &gt;  		print $fd &quot;trap clean INT TERM\n&quot;;
+</I>&gt;<i> &gt; @@ -999,12 +1008,6 @@
+</I>&gt;<i> &gt;  				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+</I>&gt;<i> &gt;  			}
+</I>&gt;<i> &gt;  			if (@newpatts) {
+</I>&gt;<i> &gt; -				my %pattr = $xml -&gt; getPackageAttributes();
+</I>&gt;<i> &gt; -				if (($pattr{patternType} ne &quot;plusRecommended&quot;) &amp;&amp;
+</I>&gt;<i> &gt; -					($pattr{patternPackageType} ne &quot;plusRecommended&quot;)
+</I>&gt;<i> &gt; -				) {
+</I>&gt;<i> &gt; -					push (@installOpts,&quot;--no-recommends&quot;);
+</I>&gt;<i> &gt; -				}
+</I>&gt;<i> &gt;  				print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @zypper install &quot;;
+</I>&gt;<i> &gt;  				print $fd &quot;@installOpts -t pattern @newpatts &amp;\n&quot;;
+</I>&gt;<i> &gt;  				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+</I>&gt;<i> &gt; @@ -1180,6 +1183,15 @@
+</I>&gt;<i> &gt;  			my @installOpts = (
+</I>&gt;<i> &gt;  				&quot;--auto-agree-with-licenses&quot;
+</I>&gt;<i> &gt;  			);
+</I>&gt;<i> &gt; ....
+</I>&gt;<i>
+</I>&gt;<i> I'm wondering why you moved the code which adds the option to be
+</I>&gt;<i> not pattern specific anymore ? I thought the option --no-recommends
+</I>&gt;<i> makes only sense if the there is a pattern specified in config.xml
+</I>&gt;<i> If the xml descr. contains only a list of packages --no-recommends
+</I>&gt;<i> shouldn't have any effect.
+</I>
+As patterns also packages have the capability to recommend other packages. You 
+was just non recommending packages in patterns. I tested it and bootstrap 
+decreased the number of installed packages from ~130 to ~120 and image from 
+~760 to ~650.
+
+-- 
+Regards,
+Carlos Goncalves
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000615.html">[Kiwi-devel] Fixing recommends handling for zypper and	ISO	mounting
+</A></li>
+	<LI>Next message: <A HREF="000619.html">[Kiwi-devel] Fixing recommends handling for zypper and	ISO	mounting
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#617">[ date ]</a>
+              <a href="thread.html#617">[ thread ]</a>
+              <a href="subject.html#617">[ subject ]</a>
+              <a href="author.html#617">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

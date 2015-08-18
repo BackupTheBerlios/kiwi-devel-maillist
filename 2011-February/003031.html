@@ -1,0 +1,147 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 357cdf78832486a10646eb0988b7ee9754c1c59f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20357cdf78832486a10646eb0988b7ee9754c1c59f&In-Reply-To=%3C20110207092714.34BE148138F%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003035.html">
+   <LINK REL="Next"  HREF="003033.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 357cdf78832486a10646eb0988b7ee9754c1c59f</H1>
+    <B>adrians at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20357cdf78832486a10646eb0988b7ee9754c1c59f&In-Reply-To=%3C20110207092714.34BE148138F%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 357cdf78832486a10646eb0988b7ee9754c1c59f">adrians at mail.berlios.de
+       </A><BR>
+    <I>Mon Feb  7 10:27:13 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003035.html">[Kiwi-devel] Support region specification for EC2
+</A></li>
+        <LI>Next message: <A HREF="003033.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1b1eaf98f1d60785a5a6091ae407034cd35ce960
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3031">[ date ]</a>
+              <a href="thread.html#3031">[ thread ]</a>
+              <a href="subject.html#3031">[ subject ]</a>
+              <a href="author.html#3031">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  357cdf78832486a10646eb0988b7ee9754c1c59f (commit)
+       via  1ef1a8b62df61899480285051c9b725990685113 (commit)
+      from  2a678cf973f3dcaafc0091961e3b16167a9dd502 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 357cdf78832486a10646eb0988b7ee9754c1c59f
+Author: Adrian Schr&#195;&#182;ter &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">adrian at suse.de</A>&gt;
+Date:   Mon Feb 7 10:26:29 2011 +0100
+
+    report about all missing packages and abort afterwards, not at the first missing package.
+
+commit 1ef1a8b62df61899480285051c9b725990685113
+Author: Adrian Schr&#195;&#182;ter &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">adrian at suse.de</A>&gt;
+Date:   Mon Feb 7 10:18:46 2011 +0100
+
+    take care about arch= package statement for product required architectures
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWICollect.pm b/modules/KIWICollect.pm
+index 8be10c7..72edd88 100644
+--- a/modules/KIWICollect.pm
++++ b/modules/KIWICollect.pm
+@@ -763,6 +763,7 @@ sub setupPackageFiles
+   my $last_progress_time = 0;
+   my $count_packs = 0;
+   my $num_packs = keys %{$usedPackages};
++  my @missingPackages;
+ 
+   PACK:foreach my $packName(keys(%{$usedPackages})) {
+     next if $packName eq &quot;_name&quot;;
+@@ -880,10 +881,18 @@ sub setupPackageFiles
+ 	}
+ 	$this-&gt;logMsg(&quot;W&quot;, &quot;     =&gt; package $packName not available for arch $arch in any repo&quot;) if $this-&gt;{m_debug} &gt;= 4;
+       } # /@fallbackarch
+-      # FIXME: we need to make it an option to ignore this error.
+-      $this-&gt;logMsg(&quot;E&quot;, &quot;    =&gt; package $packName not available for $requestedArch nor its fallbacks&quot;); # if $this-&gt;{m_debug} &gt;= 1;
++      $this-&gt;logMsg(&quot;W&quot;, &quot;    =&gt; package $packName not available for $requestedArch nor its fallbacks&quot;) if $this-&gt;{m_debug} &gt;= 1;
++      push @missingPackages, $packName;
+     } # /@archs
+   }
++  if (@missingPackages &gt; 0) {
++      $this-&gt;logMsg(&quot;W&quot;, &quot;MISSING PACKAGES:&quot;);
++      foreach my $pack(@missingPackages) {
++        $this-&gt;logMsg(&quot;W&quot;, &quot;  &quot;.$pack);
++      }
++      # FIXME: we need to make it an option to ignore this error.
++      $this-&gt;logMsg(&quot;E&quot;, &quot;Required packages were not found&quot;);
++  }
+   return $retval;
+ }
+ # /setupPackageFile
+@@ -1496,7 +1505,17 @@ sub getArchList
+   }
+ 
+   # set required archs
+-  push @archs, $this-&gt;{m_archlist}-&gt;headList();
++  if(defined($packOptions-&gt;{'arch'})) {
++    # use archs defined for this package
++    foreach my $plattform (split(/,\s*/, $packOptions-&gt;{'arch'})) {
++      foreach my $reqArch ($this-&gt;{m_archlist}-&gt;headList()) {
++        push @archs, $reqArch if ( $reqArch eq $plattform );
++      };
++    };
++  }else{
++    # take all global defined archs
++    push @archs, $this-&gt;{m_archlist}-&gt;headList();
++  }
+ 
+   if(defined($packOptions-&gt;{'addarch'})) {
+     if(not(grep($packOptions-&gt;{'addarch'} eq $_, @archs))) {
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003035.html">[Kiwi-devel] Support region specification for EC2
+</A></li>
+	<LI>Next message: <A HREF="003033.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1b1eaf98f1d60785a5a6091ae407034cd35ce960
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3031">[ date ]</a>
+              <a href="thread.html#3031">[ thread ]</a>
+              <a href="subject.html#3031">[ subject ]</a>
+              <a href="author.html#3031">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

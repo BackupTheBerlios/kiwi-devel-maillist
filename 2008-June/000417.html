@@ -1,0 +1,217 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1327 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1327%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200806130944.m5D9iegx001100%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000416.html">
+   <LINK REL="Next"  HREF="000418.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1327 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1327%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200806130944.m5D9iegx001100%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1327 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Jun 13 11:44:40 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000416.html">[Kiwi-devel] [SVN:KIWI-Team] r1326 - kiwi-head/system/boot/oemboot
+</A></li>
+        <LI>Next message: <A HREF="000418.html">[Kiwi-devel] [SVN:KIWI-Team] r1328 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#417">[ date ]</a>
+              <a href="thread.html#417">[ thread ]</a>
+              <a href="subject.html#417">[ subject ]</a>
+              <a href="author.html#417">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: Fri Jun 13 11:44:33 2008
+New Revision: 1327
+
+Modified:
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/modules/KIWIManager.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/system/boot/oemboot/suse-linuxrc
+
+Log:
+
+- expect ensconce package manager to be part of the image
+  description. This change is only important for studio
+
+- fixed boot loader setup for oemboot
+
+
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+==============================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	(original)
++++ kiwi-head/modules/KIWILinuxRC.sh	Fri Jun 13 11:44:33 2008
+@@ -376,7 +376,7 @@
+ 	# ----
+ 	if [ -x /usr/sbin/grub ];then
+ 		Echo &quot;Installing boot loader...&quot;
+-		/usr/sbin/grub --batch --no-floppy &lt; /etc/grub.conf &gt;/dev/null
++		/usr/sbin/grub --batch --no-floppy &lt; /etc/grub.conf 1&gt;&amp;2
+ 		if [ ! $? = 0 ];then
+ 			Echo &quot;Failed to install boot loader&quot;
+ 		fi
+@@ -593,10 +593,10 @@
+ 			kernel=`echo $i | cut -f1 -d:`
+ 			initrd=`echo $i | cut -f2 -d:`
+ 			kname=${KERNEL_NAME[$count]}
+-			if [ -z &quot;$name&quot; ];then
+-				echo &quot;title $kname [ $gfix ]&quot;                   &gt;&gt; $menu
++			if [ -z &quot;$kiwi_iname&quot; ];then
++				echo &quot;title $kname [ $gfix ]&quot;                     &gt;&gt; $menu
+ 			else
+-				echo &quot;title $name-$kname [ $gfix ]&quot;             &gt;&gt; $menu
++				echo &quot;title $kiwi_iname-$kname [ $gfix ]&quot;         &gt;&gt; $menu
+ 			fi
+ 			if [ $kernel = &quot;vmlinuz-xen&quot; ];then
+ 				echo &quot; root $gdev&quot;                                &gt;&gt; $menu
+@@ -624,10 +624,10 @@
+ 			#======================================
+ 			# create failsafe entry
+ 			#--------------------------------------
+-			if [ -z &quot;$name&quot; ];then
+-				echo &quot;title Failsafe -- $kname [ $gfix ]&quot;       &gt;&gt; $menu
++			if [ -z &quot;$kiwi_iname&quot; ];then
++				echo &quot;title Failsafe -- $kname [ $gfix ]&quot;         &gt;&gt; $menu
+ 			else
+-				echo &quot;title Failsafe -- $name-$kname [ $gfix ]&quot; &gt;&gt; $menu
++				echo &quot;title Failsafe -- $kiwi_iname-$kname [ $gfix ]&quot; &gt;&gt; $menu
+ 			fi
+ 			if [ $kernel = &quot;vmlinuz-xen&quot; ];then
+ 				echo &quot; root $gdev&quot;                                &gt;&gt; $menu
+@@ -657,9 +657,9 @@
+ 			#--------------------------------------
+ 			if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ 				if [ -z &quot;$name&quot; ];then
+-					echo &quot;title Recovery [ $gfix ]&quot;             &gt;&gt; $menu
++					echo &quot;title Recovery [ $gfix ]&quot;               &gt;&gt; $menu
+ 				else
+-					echo &quot;title Recovery [ $gfix ]&quot;             &gt;&gt; $menu
++					echo &quot;title Recovery [ $gfix ]&quot;               &gt;&gt; $menu
+ 				fi
+ 				gdev_recovery=&quot;(hd0,3)&quot;
+ 				rdev_recovery=$OEM_RECOVERY
+@@ -1807,10 +1807,11 @@
+ 	# links to the initrd and kernel files. The function will
+ 	# save the valid linknames in the variable KERNEL_LIST
+ 	# ----
+-	prefix=$1
++	local prefix=$1
++	local kcount=0
++	local name=&quot;&quot;
+ 	KERNEL_LIST=&quot;&quot;
+ 	KERNEL_NAME=&quot;&quot;
+-	kcount=0
+ 	for i in $prefix/lib/modules/*;do
+ 		if [ ! -d $i ];then
+ 			continue
+
+Modified: kiwi-head/modules/KIWIManager.pm
+==============================================================================
+--- kiwi-head/modules/KIWIManager.pm	(original)
++++ kiwi-head/modules/KIWIManager.pm	Fri Jun 13 11:44:33 2008
+@@ -1270,7 +1270,7 @@
+ 			print $fd &quot;function clean { kill \$SPID; &quot;;
+ 			print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+-			print $fd &quot;$root/ensconce &amp;\n&quot;;
++			print $fd &quot;$main::Prepare/ensconce &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
+ 			$fd -&gt; close();
+
+Modified: kiwi-head/rpm/kiwi.changes
+==============================================================================
+--- kiwi-head/rpm/kiwi.changes	(original)
++++ kiwi-head/rpm/kiwi.changes	Fri Jun 13 11:44:33 2008
+@@ -3,6 +3,8 @@
+ 
+ - v2.40
+ - allow xen bootprofile for isoboot images (bnc #399600)
++- expect ensconce package manager to be part of the image
++  description. This change is only important for studio
+ 
+ -------------------------------------------------------------------
+ Tue Jun 10 17:04:32 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+Modified: kiwi-head/system/boot/oemboot/suse-linuxrc
+==============================================================================
+--- kiwi-head/system/boot/oemboot/suse-linuxrc	(original)
++++ kiwi-head/system/boot/oemboot/suse-linuxrc	Fri Jun 13 11:44:33 2008
+@@ -892,8 +892,7 @@
+ 		if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ 			KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS LOCAL_BOOT=yes&quot;
+ 			KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS deviceRoot=$deviceRoot&quot;
+-			KIWI_INITRD_PARAMS=\
+-				&quot;$KIWI_INITRD_PARAMS deviceRecovery=$deviceRecovery&quot;
++			KIWI_INITRD_PARAMS=&quot;$KIWI_INITRD_PARAMS deviceRecovery=$deviceRecovery&quot;
+ 			export KIWI_INITRD_PARAMS
+ 		fi
+ 		if [ &quot;$FSTYPE&quot; = &quot;reiserfs&quot; ];then
+@@ -930,7 +929,7 @@
+ # 13) Recover system if requested
+ #--------------------------------------
+ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+-	Echo -n &quot;Do you want to start the System-Recovery ? [y/n]&quot;; read runReco
++	Echo -n &quot;Do you want to start the System-Recovery ? [y/n]: &quot;; read runReco
+ 	if [ ! $runReco = &quot;y&quot; ];then
+ 		systemException &quot;System-Recovery not started&quot; &quot;reboot&quot;
+ 	fi
+@@ -1004,13 +1003,10 @@
+ 		if [ ! -z $OEM_RECOVERY ];then
+ 			OEM_RECOVERY=${deviceDisk}4
+ 		fi
+-		if [ $HAVE_SWAP -eq 1 ];then
+-			setupBootLoader \
+-				/mnt /config 1 ${deviceDisk}2 $OEM_BOOT_TITLE $deviceSwap
+-		else
+-			setupBootLoader \
+-				/mnt /config 0 ${deviceDisk}1 $OEM_BOOT_TITLE
+-		fi
++		bootid=`echo $deviceRoot | tr -d &quot;[:alpha:]//&quot;`
++		bootid=`expr $bootid - 1`
++		setupBootLoader \
++			/mnt /config $bootid $deviceRoot $OEM_BOOT_TITLE $deviceSwap
+ 	fi
+ 	setupKernelModules /config
+ fi
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000416.html">[Kiwi-devel] [SVN:KIWI-Team] r1326 - kiwi-head/system/boot/oemboot
+</A></li>
+	<LI>Next message: <A HREF="000418.html">[Kiwi-devel] [SVN:KIWI-Team] r1328 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#417">[ date ]</a>
+              <a href="thread.html#417">[ thread ]</a>
+              <a href="subject.html#417">[ subject ]</a>
+              <a href="author.html#417">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

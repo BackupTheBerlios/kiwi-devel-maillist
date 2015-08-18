@@ -1,0 +1,206 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] XML processing - patch two
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20XML%20processing%20-%20patch%20two&In-Reply-To=%3C4CFA2F0F.3030003%40novell.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002878.html">
+   <LINK REL="Next"  HREF="002888.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] XML processing - patch two</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20XML%20processing%20-%20patch%20two&In-Reply-To=%3C4CFA2F0F.3030003%40novell.com%3E"
+       TITLE="[Kiwi-devel] XML processing - patch two">rschweikert at novell.com
+       </A><BR>
+    <I>Sat Dec  4 13:07:43 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002878.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+        <LI>Next message: <A HREF="002888.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2885">[ date ]</a>
+              <a href="thread.html#2885">[ thread ]</a>
+              <a href="subject.html#2885">[ subject ]</a>
+              <a href="author.html#2885">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Alright, attempt number two, compressing the attachment to get below the
+40K limit. I will cancel the message waiting for moderator approval.
+
+On 12/03/2010 03:55 AM, Marcus Sch&#228;fer wrote:
+&gt;<i> Hi Robert,
+</I>&gt;<i> 
+</I>&gt;&gt;<i> Well, setCurrentBuildInfo really represents the spirit of the changes I
+</I>&gt;&gt;<i> would like us to make. The XML object prior to this patch and still now
+</I>&gt;&gt;<i> holds state information, i.e. the XML object knows what image type is
+</I>&gt;&gt;<i> currently being built and what profiles apply. However, IMHO this should
+</I>&gt;&gt;<i> not be. The XML object should only hold and represent the data as it is
+</I>&gt;&gt;<i> encoded in config.xml. All the data in XML, not selectively load some data.
+</I>&gt;<i> 
+</I>&gt;<i> I understand your goal thanks for explaining it more detailed. I read
+</I>&gt;<i> through the code with what you've said in mind and found that there are
+</I>&gt;<i> several places in kiwi which needs a real cleanup first before we can
+</I>&gt;<i> proceed to turn the XML object into a simple data container. 
+</I>
+OK, how can I help with that?
+
+&gt;<i> I have
+</I>&gt;<i> started to cleanup the situation around KIWIImage.pm (see the current push)
+</I>&gt;<i> and I will proceed with KIWIBoot the next days. Basically there are too
+</I>&gt;<i> many instances of KIWIXML objects in place
+</I>
+Yes, I absolutely agree. In the end there should probably be only two
+instantiations of the XML object. One for the system, i.e. the user
+config.xml and one for the boot image. Both of these instantiations
+should be in the build manager I have been advocating.
+
+&gt;<i> which I think makes it
+</I>&gt;<i> impossible to add the big change without creating too much regressions
+</I>&gt;<i> and new bugs. I fear the stability will really suffer.
+</I>&gt;<i> 
+</I>&gt;<i> As you want to remove the state from KIWIXML and also want to introduce
+</I>&gt;<i> accessor methods for all the XML data, another place to implement
+</I>&gt;<i> that is required. Your patch adds all that in the main code which I
+</I>&gt;<i> think is not the right place. At the moment the situation is:
+</I>&gt;<i> 
+</I>&gt;<i>    KIWIXML (with state) -&gt; getHash -&gt; ...
+</I>&gt;<i> 
+</I>&gt;<i> I think it would be nice to have something like this:
+</I>&gt;<i> 
+</I>&gt;<i>    KIWIXML (just data)  -&gt; KIWIBuild (with state) -&gt; getX
+</I>&gt;<i>                                                   -&gt; getY 
+</I>&gt;<i>                                                   -&gt; getHash
+</I>&gt;<i>                                                   -&gt; ...
+</I>&gt;<i> 
+</I>&gt;<i> If I have reduced the amount of new KIWIXML instances by
+</I>&gt;<i> cleaning up the code it would be more easy to change from stateful
+</I>&gt;<i> KIWIXML object to stateless combined with a KIWIBuild object
+</I>&gt;<i> which holds the state and controlls the data access. I don't
+</I>&gt;<i> care much for the name but I think it would be good to have
+</I>&gt;<i> the code in a new module. In my example it would be 'KIWIBuild.pm'
+</I>
+Sounds like we are on the same page now. I like BuildMgr better as this
+indicates it manages a process rather than a single task, but I am OK
+with Build.
+
+My idea of the build manager was to unload a bunch of stuff from main.
+Some of the state that is currently in XML would also move into the
+manager, other state from the XML needs to move somewhere else.
+
+One example is the location of the boot description, this should move
+into the boot object. No one else really needs to know about this.
+
+I've been working on a &quot;from scratch&quot; XML object of and on over the last
+couple of days while I had some time. The intention with this was to
+show in code more clearly the way I see the XML object as a data container.
+
+Note in this implementation I have removed the validation into it's own
+object. This change can be easily implemented in the current code base
+and I will submit a patch for this hopefully today, if not over the
+weekend. (done)
+
+The KIWIXML.pm file attached has some comments about things to be
+probably deleted and other things needing review. The code is simply
+intended as a guide and show the overall picture. I think it maybe 50%
+there. I've documented the data structures used. One of the themes is
+that any data that may have the profiles attribute is stored in the
+imageConfig hash (named typeInfo in my previous patches) keyed by the
+profile name. imageConfig is probably still a misnomer, but I didn't
+like profileData, because it made me think of just one profile. Maybe
+profCollection would be a good name for this hash?
+
+My previous patches were basically an attempt to get us to this type of
+implementation. As we have to get there gradually. A rip and replace
+approach will IMHO not work as we'd have to do a deep dive for a month
+or so where we'd get nothing out the door. I don't think that would be a
+good approach.
+
+One approach that might be feasible and that I was trying to follow with
+my patches is a parallel implementation, i.e. implement the new XML
+stuff alongside the existing implementation and then gradually transform
+the code around the new XML. This approach should let us focus on one
+part of the code base at a time.
+
+&gt;<i> 
+</I>&gt;<i> That way we also prevent conflicts while merging in patches and
+</I>&gt;<i> we keep main free from functions which imho doesn't belong there
+</I>&gt;<i> What do you think ?
+</I>
+Yes :)
+
+main should really just process the command line options and then kick
+off the appropriate actions by passing the proper arguments to the
+BuildMgr, the XML validator (soon to be a separate object) etc.
+
+Now we're cooking. :)
+
+If you think I should continue with the XML implementation as a pure
+data container, i.e. finish the implementation of the attached KIWIXML
+file such that we can eventually either cut and paste the code out of
+here and insert it into the development branch, or drop the new code in
+at some point please let me know.
+
+My next step will be to create the Validator based on the latest push
+and add a --check-config option to Kiwi. After that I am not sure
+whether or not you want me to just continue whacking at the XML object
+or if you think other parts need whacking first.
+
+Very happy to see that you already ripped out the ForeignRepo stuff out
+of the XML. :)
+
+Please let me know where I should poke around next.
+
+Thanks,
+Robert
+
+
+
+-- 
+Robert Schweikert                           MAY THE SOURCE BE WITH YOU
+Software Engineer Consultant                          LINUX
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>
+781-464-8147
+
+Novell
+Making IT Work As One
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: KIWIXML.pm.bz2
+Type: application/x-bzip
+Size: 19967 bytes
+Desc: not available
+URL: &lt;<A HREF="https://lists.berlios.de/pipermail/kiwi-devel/attachments/20101204/337514a5/attachment.bin">https://lists.berlios.de/pipermail/kiwi-devel/attachments/20101204/337514a5/attachment.bin</A>&gt;
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002878.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+	<LI>Next message: <A HREF="002888.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2885">[ date ]</a>
+              <a href="thread.html#2885">[ thread ]</a>
+              <a href="subject.html#2885">[ subject ]</a>
+              <a href="author.html#2885">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

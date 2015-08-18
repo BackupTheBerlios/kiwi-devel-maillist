@@ -1,0 +1,161 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Some restructuring
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Some%20restructuring&In-Reply-To=%3C4D2D8984.9040700%40novell.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002946.html">
+   <LINK REL="Next"  HREF="002949.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Some restructuring</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Some%20restructuring&In-Reply-To=%3C4D2D8984.9040700%40novell.com%3E"
+       TITLE="[Kiwi-devel] Some restructuring">rschweikert at novell.com
+       </A><BR>
+    <I>Wed Jan 12 11:59:16 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002946.html">[Kiwi-devel] Some restructuring
+</A></li>
+        <LI>Next message: <A HREF="002949.html">[Kiwi-devel] Some restructuring
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2948">[ date ]</a>
+              <a href="thread.html#2948">[ thread ]</a>
+              <a href="subject.html#2948">[ subject ]</a>
+              <a href="author.html#2948">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi,
+
+The attached patch should contain the changes as discussed.
+
+Thanks,
+Robert
+
+On 01/11/2011 11:35 AM, Marcus Sch&#228;fer wrote:
+&gt;<i> Hi,
+</I>&gt;<i> 
+</I>&gt;&gt;<i> Well, changing the KIWIXML ctor arguments is inevitable. Once we remove
+</I>&gt;&gt;<i> the state from the XML object the imageType and reqProfiles arguments
+</I>&gt;&gt;<i> will no longer be necessary to construct an XML object.
+</I>&gt;<i> 
+</I>&gt;<i> yes but removing ctor arguments directly leads to errors if one
+</I>&gt;<i> is using the object in the wrong way but changing the meaning of
+</I>&gt;<i> an argument could cause regressions and weird behaviour which is
+</I>&gt;<i> hard to find and hard to debug. removing stuff is not a problem
+</I>&gt;<i> 
+</I>&gt;&gt;<i> If we think about this from a bottom line/minimalist perspective, all
+</I>&gt;&gt;<i> that should be needed to construct the XML object is the path to the
+</I>&gt;&gt;<i> control file (and the message logging object). Everything else is fluff.
+</I>&gt;&gt;<i> I think it would be great to get to the point of a 2 argument XML object
+</I>&gt;&gt;<i> &quot;new KIWIXML(KIWI_LOG, CONTROL_FILE)&quot;, it doesn't get much cleaner and
+</I>&gt;&gt;<i> nicer than that. Even the validation of the XML can and probably should
+</I>&gt;&gt;<i> be offloaded from the XML object. The object can certainly reasonably
+</I>&gt;&gt;<i> expect that the file given to it is valid and consistent.
+</I>&gt;<i> 
+</I>&gt;<i> if we reach that point when KIWIXML is so simple that you also
+</I>&gt;<i> can move out the validation from the constructor we can move
+</I>&gt;<i> out the config file locator call too. I think at that point we also
+</I>&gt;<i> can evaluate the impact of changing the meaning of the ctor
+</I>&gt;<i> arguments. At the moment I'm convinced it's not a good idea to
+</I>&gt;<i> change the meaning of the KIWIXML argument list
+</I>&gt;<i> 
+</I>&gt;&gt;<i> I realize this looks horrible now with calls to getControlFile()
+</I>&gt;&gt;<i> littered all over the code. However, don't forget that in the end there
+</I>&gt;&gt;<i> should be a lot fewer instantiations of the XML object (I'm still
+</I>&gt;&gt;<i> thinking 3 or 4, and all of those in one central place) and thus this
+</I>&gt;&gt;<i> will clean itself up automatically.
+</I>&gt;<i> 
+</I>&gt;<i> I'm sorry but I disagree. Over years of working in development projects
+</I>&gt;<i> things never cleaned up themselves automatically :) It was
+</I>&gt;<i> unfortunately most often the other way round
+</I>&gt;<i> 
+</I>&gt;&gt;<i> With that said, if you want a call to getControlFile() in the XML ctor,
+</I>&gt;&gt;<i> rather than changing the argument at this point I can certainly rework
+</I>&gt;&gt;<i> the patch. However, it is inevitable that at some point we will reach
+</I>&gt;&gt;<i> this pint again, and thus have to revisit this discussion. As mentioned
+</I>&gt;&gt;<i> above the arguments of the XML ctor will need to change if we want to
+</I>&gt;&gt;<i> remove the state from the XML object.
+</I>&gt;<i> 
+</I>&gt;<i> I agree and I'm sure if we re-enter this discussion the code will have
+</I>&gt;<i> been improved and cleaned up which will make it easier to make the
+</I>&gt;<i> decision at that time. 
+</I>&gt;<i> 
+</I>&gt;<i>  - You are introducing a new KIWIXMLLocator module which is great.
+</I>&gt;<i> 
+</I>&gt;<i>  - We will move out some code parts and duplications when calling
+</I>&gt;<i>    getControlFile() which is also a step into the right direction
+</I>&gt;<i> 
+</I>&gt;<i>  - We will find a solution for the md5 check ;)
+</I>&gt;<i>    see my next comment
+</I>&gt;<i> 
+</I>&gt;<i> and that's a good patch for this restructuring round to become
+</I>&gt;<i> checked in. What do you think ?
+</I>&gt;<i> 
+</I>&gt;&gt;&gt;<i> You are right that includes other than XML files but it also
+</I>&gt;&gt;&gt;<i> includes the XML file itself. I'm not sure if we have to
+</I>&gt;&gt;&gt;<i> be that strict here ?
+</I>&gt;&gt;<i>
+</I>&gt;&gt;<i> I think we should be. I am convinced that a better place than kiwi.pl
+</I>&gt;&gt;<i> will emerge for this function. I consider putting this function into
+</I>&gt;&gt;<i> kiwi.pl an eyesore and I agree with you that it should not live there.
+</I>&gt;&gt;<i> However, I also feel quite strongly that it should not be mingled in
+</I>&gt;&gt;<i> with the XML validation as it really has nothing to do with the
+</I>&gt;&gt;<i> validation step of the control file.
+</I>&gt;<i> 
+</I>&gt;<i> Ok, I agree here. So let us create a function for the md5 check
+</I>&gt;<i> and put it into kiwi.pl. The md5 check makes only sense in kiwi's
+</I>&gt;<i> prepare mode anyway so it is called too often at the moment. Would
+</I>&gt;<i> be good if we just place one call inside the $Prepare block
+</I>&gt;<i> 
+</I>&gt;<i> Regards,
+</I>&gt;<i> Marcus
+</I>
+-- 
+Robert Schweikert                           MAY THE SOURCE BE WITH YOU
+Software Engineer Consultant                          LINUX
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>
+781-464-8147
+
+Novell
+Making IT Work As One
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: 0001-create-new-Locator-module-some-refactoring-in-XML-an.patch
+Type: text/x-patch
+Size: 20255 bytes
+Desc: not available
+URL: &lt;<A HREF="https://lists.berlios.de/pipermail/kiwi-devel/attachments/20110112/61b4eade/attachment.bin">https://lists.berlios.de/pipermail/kiwi-devel/attachments/20110112/61b4eade/attachment.bin</A>&gt;
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002946.html">[Kiwi-devel] Some restructuring
+</A></li>
+	<LI>Next message: <A HREF="002949.html">[Kiwi-devel] Some restructuring
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2948">[ date ]</a>
+              <a href="thread.html#2948">[ thread ]</a>
+              <a href="subject.html#2948">[ subject ]</a>
+              <a href="author.html#2948">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

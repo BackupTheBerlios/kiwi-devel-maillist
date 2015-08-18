@@ -1,0 +1,655 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8fb727cf8303a5611f7991f087d5b00428102871
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%208fb727cf8303a5611f7991f087d5b00428102871&In-Reply-To=%3C20110113085856.796FA480CCF%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002952.html">
+   <LINK REL="Next"  HREF="002960.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8fb727cf8303a5611f7991f087d5b00428102871</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%208fb727cf8303a5611f7991f087d5b00428102871&In-Reply-To=%3C20110113085856.796FA480CCF%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8fb727cf8303a5611f7991f087d5b00428102871">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jan 13 09:58:56 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002952.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a2a101f9ad145a28ab497a9f40f1f9b0dd30e502
+</A></li>
+        <LI>Next message: <A HREF="002960.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ab2929eb1e82e45567e2816c1ec9a5aa687794bc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2955">[ date ]</a>
+              <a href="thread.html#2955">[ thread ]</a>
+              <a href="subject.html#2955">[ subject ]</a>
+              <a href="author.html#2955">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  8fb727cf8303a5611f7991f087d5b00428102871 (commit)
+      from  a2a101f9ad145a28ab497a9f40f1f9b0dd30e502 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 8fb727cf8303a5611f7991f087d5b00428102871
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Jan 13 09:57:05 2011 +0100
+
+    - added new module KIWILocator which perform operations to
+      locate objects needed by Kiwi in the filesystem. Along with
+      the new module other code parts which did that before has
+      been replaced
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 386f52d..3b973c2 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -34,6 +34,7 @@ use Getopt::Long;
+ use File::Spec;
+ use KIWIRoot;
+ use KIWIXML;
++use KIWILocator;
+ use KIWILog;
+ use KIWIImage;
+ use KIWIBoot;
+@@ -111,18 +112,19 @@ our $InitCDir = &quot;/var/cache/kiwi/image&quot;;
+ # Globals (Supported filesystem names)
+ #------------------------------------------
+ our %KnownFS;
+-$KnownFS{ext4}{tool}      = findExec(&quot;mkfs.ext4&quot;);
+-$KnownFS{ext3}{tool}      = findExec(&quot;mkfs.ext3&quot;);
+-$KnownFS{ext2}{tool}      = findExec(&quot;mkfs.ext2&quot;);
+-$KnownFS{squashfs}{tool}  = findExec(&quot;mksquashfs&quot;);
+-$KnownFS{clicfs}{tool}    = findExec(&quot;mkclicfs&quot;);
+-$KnownFS{clic}{tool}      = findExec(&quot;mkclicfs&quot;);
+-$KnownFS{unified}{tool}   = findExec(&quot;mksquashfs&quot;);
+-$KnownFS{compressed}{tool}= findExec(&quot;mksquashfs&quot;);
+-$KnownFS{reiserfs}{tool}  = findExec(&quot;mkreiserfs&quot;);
+-$KnownFS{btrfs}{tool}     = findExec(&quot;mkfs.btrfs&quot;);
+-$KnownFS{xfs}{tool}       = findExec(&quot;mkfs.xfs&quot;);
+-$KnownFS{cpio}{tool}      = findExec(&quot;cpio&quot;);
++our $locator = new KIWILocator();
++$KnownFS{ext4}{tool}      = $locator -&gt; getExecPath(&quot;mkfs.ext4&quot;);
++$KnownFS{ext3}{tool}      = $locator -&gt; getExecPath(&quot;mkfs.ext3&quot;);
++$KnownFS{ext2}{tool}      = $locator -&gt; getExecPath(&quot;mkfs.ext2&quot;);
++$KnownFS{squashfs}{tool}  = $locator -&gt; getExecPath(&quot;mksquashfs&quot;);
++$KnownFS{clicfs}{tool}    = $locator -&gt; getExecPath(&quot;mkclicfs&quot;);
++$KnownFS{clic}{tool}      = $locator -&gt; getExecPath(&quot;mkclicfs&quot;);
++$KnownFS{unified}{tool}   = $locator -&gt; getExecPath(&quot;mksquashfs&quot;);
++$KnownFS{compressed}{tool}= $locator -&gt; getExecPath(&quot;mksquashfs&quot;);
++$KnownFS{reiserfs}{tool}  = $locator -&gt; getExecPath(&quot;mkreiserfs&quot;);
++$KnownFS{btrfs}{tool}     = $locator -&gt; getExecPath(&quot;mkfs.btrfs&quot;);
++$KnownFS{xfs}{tool}       = $locator -&gt; getExecPath(&quot;mkfs.xfs&quot;);
++$KnownFS{cpio}{tool}      = $locator -&gt; getExecPath(&quot;cpio&quot;);
+ $KnownFS{ext3}{ro}        = 0;
+ $KnownFS{ext4}{ro}        = 0;
+ $KnownFS{ext2}{ro}        = 0;
+@@ -258,22 +260,6 @@ sub createDirInteractive {
+ 	return undef;
+ }
+ 
+-#============================================
+-# findExec
+-#--------------------------------------------
+-sub findExec {
+-	my $execName = shift;
+-	my $execPath = qxx (&quot;which $execName 2&gt;&amp;1&quot;); chomp $execPath;
+-	my $code = $? &gt;&gt; 8;
+-	if ($code != 0) {
+-		if ($kiwi) {
+-			$kiwi -&gt; loginfo (&quot;warning: $execName not found\n&quot;);
+-		}
+-		return undef;
+-	}
+-	return $execPath;
+-}
+-
+ #==========================================
+ # main
+ #------------------------------------------
+@@ -393,16 +379,15 @@ sub main {
+ 		# Process system image description
+ 		#------------------------------------------
+ 		$kiwi -&gt; info (&quot;Reading image description [Prepare]...\n&quot;);
++		if (! checkImageIntegrity($Prepare)) {
++			my $code = kiwiExit (1); return $code;
++		}
+ 		my $xml = new KIWIXML (
+ 			$kiwi,$Prepare,undef,\@Profiles
+ 		);
+ 		if (! defined $xml) {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
+-		if (! $xml -&gt; haveMD5File()) {
+-			$kiwi -&gt; warning (&quot;Description provides no MD5 hash, check&quot;);
+-			$kiwi -&gt; skipped ();
+-		}
+ 		my %type = %{$xml-&gt;getImageTypeAndAttributes()};
+ 		#==========================================
+ 		# print boot theme information
+@@ -1760,7 +1745,13 @@ sub listImage {
+ 		if (-l &quot;$System/$image&quot;) {
+ 			next;
+ 		}
+-		if (getControlFile ($System.&quot;/&quot;.$image)) {
++		if ($image =~ /(iso|net|oem|usb|vmx)boot/) {
++			next;
++		}
++		my $controlFile = $locator -&gt; getControlFile (
++			&quot;$System/$image&quot;
++		);
++		if ($controlFile) {
+ 			$kiwi -&gt; info ($image);
+ 			my $xml = new KIWIXML (
+ 				$kiwi,$System.&quot;/&quot;.$image,undef,undef
+@@ -2401,7 +2392,7 @@ sub createHash {
+ 		$kiwi -&gt; failed ();
+ 		my $code = kiwiExit (1); return $code;
+ 	}
+-	if (! getControlFile ($CreateHash)) {
++	if (! $locator -&gt; getControlFile ($CreateHash)) {
+ 		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;Not a kiwi description: no xml description found&quot;);
+ 		$kiwi -&gt; failed ();
+@@ -2863,40 +2854,28 @@ sub checkFileSystem {
+ }
+ 
+ #==========================================
+-# getControlFile
++# checkImageIntegrity
+ #------------------------------------------
+-sub getControlFile {
+-	# /.../
+-	# This function receives a directory as parameter
+-	# and searches for a kiwi xml description in it.
+-	# ----
+-	my $dir    = shift;
+-	my $config = &quot;$dir/$ConfigName&quot;;
+-	if (! -d $dir) {
+-		if (($main::kiwi) &amp;&amp; ($main::kiwi -&gt; trace())) {
+-			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+-		}
+-		return undef;
+-	}
+-	if (-f $config) {
+-		return $config;
+-	}
+-	my @globsearch = glob ($dir.&quot;/*.kiwi&quot;);
+-	my $globitems  = @globsearch;
+-	if ($globitems == 0) {
+-		if (($main::kiwi) &amp;&amp; ($main::kiwi -&gt; trace())) {
+-			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+-		}
+-		return undef;
+-	} elsif ($globitems &gt; 1) {
+-		if (($main::kiwi) &amp;&amp; ($main::kiwi -&gt; trace())) {
+-			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
++sub checkImageIntegrity {
++	# /../
++	# Check the image description integrity if a checksum file exists
++	# ---
++	my $imageDesc = shift;
++	my $checkmdFile = $imageDesc.&quot;/.checksum.md5&quot;;
++	if (-f $checkmdFile) {
++		my $data = qxx (&quot;cd $imageDesc &amp;&amp; md5sum -c .checksum.md5 2&gt;&amp;1&quot;);
++		my $code = $? &gt;&gt; 8;
++		if ($code != 0) {
++			chomp $data;
++			$kiwi -&gt; error (&quot;Integrity check for $imageDesc failed:\n$data&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
+ 		}
+-		return undef;
+ 	} else {
+-		$config = pop @globsearch;
++		$kiwi -&gt; warning (&quot;Description provides no MD5 hash, check&quot;);
++		$kiwi -&gt; skipped ();
+ 	}
+-	return $config;
++	return 1;
+ }
+ 
+ #==========================================
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index c937afa..4734f45 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -32,6 +32,7 @@ use FileHandle;
+ use File::Basename;
+ use File::Spec;
+ use Math::BigFloat;
++use KIWILocator;
+ use KIWIQX;
+ 
+ #==========================================
+@@ -2054,22 +2055,41 @@ sub setupBootDisk {
+ 			}
+ 			%fsattr= main::checkFileSystem ($mapper);
+ 		}
++		my $locator = new KIWILocator($kiwi);
+ 		SWITCH: for ($fsattr{type}) {
+ 			/^ext\d/    &amp;&amp; do {
+ 				$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
+-				$status = qxx (&quot;/sbin/resize2fs -f -F -p $mapper 2&gt;&amp;1&quot;);
++				my $resize = $locator -&gt; getExecPath ('resize2fs');
++				if (! $resize) {
++					$kiwi -&gt; error ('Could not locate resize2fs');
++					$kiwi -&gt; failed ();
++					return undef;
++				}
++				$status = qxx (&quot;$resize -f -F -p $mapper 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+ 			};
+ 			/^reiserfs/ &amp;&amp; do {
+ 				$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
+-				$status = qxx (&quot;/sbin/resize_reiserfs $mapper 2&gt;&amp;1&quot;);
++				my $resize = $locator -&gt; getExecPath ('resize_reiserfs');
++				if (! $resize) {
++					$kiwi -&gt; error ('Could not locate resize_reiserfs');
++					$kiwi -&gt; failed ();
++					return undef;
++				}
++				$status = qxx (&quot;$resize $mapper 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
+ 			};
+ 			/^btrfs/    &amp;&amp; do {
+ 				$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
+-				my $bctl = &quot;/sbin/btrfsctl -r max /mnt&quot;;
++				my $bfsctl = $locator -&gt; getExecPath('btrfsctl');
++				if (! $bfsctl) {
++					$kiwi -&gt; error ('Could not locate btrfsctl');
++					$kiwi -&gt; failed ();
++					return undef;
++				}
++				my $bctl = &quot;$bfsctl -r max /mnt&quot;;
+ 				$status = qxx (&quot;
+ 					mount $mapper /mnt &amp;&amp; $bctl; umount /mnt 2&gt;&amp;1&quot;
+ 				);
+@@ -2078,7 +2098,12 @@ sub setupBootDisk {
+ 			};
+ 			/^xfs/      &amp;&amp; do {
+ 				$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
+-				my $xfsGrow = main::findExec('xfs_growfs');
++				my $xfsGrow = $locator -&gt; getExecPath('xfs_growfs');
++				if (! $xfsGrow) {
++					$kiwi -&gt; error ('Could not locate xfs_grow');
++					$kiwi -&gt; failed ();
++					return undef;
++				}
+ 				$status = qxx (&quot;
+ 					mount $mapper /mnt &amp;&amp; $xfsGrow /mnt; umount /mnt 2&gt;&amp;1&quot;
+ 				);
+@@ -2124,22 +2149,41 @@ sub setupBootDisk {
+ 				}
+ 				%fsattr= main::checkFileSystem ($mapper);
+ 			}
++			my $locator = new KIWILocator($kiwi);
+ 			SWITCH: for ($fsattr{type}) {
+ 				/^ext\d/    &amp;&amp; do {
+ 					$kiwi -&gt; info (&quot;Resizing split $fsattr{type} filesystem&quot;);
+-					$status = qxx (&quot;/sbin/resize2fs -f -F -p $mapper 2&gt;&amp;1&quot;);
++					my $resize = $locator -&gt; getExecPath ('resize2fs');
++					if (! $resize) {
++						$kiwi -&gt; error ('Could not locate resize2fs');
++						$kiwi -&gt; failed ();
++						return undef;
++					}
++					$status = qxx (&quot;$resize -f -F -p $mapper 2&gt;&amp;1&quot;);
+ 					$result = $? &gt;&gt; 8;
+ 					last SWITCH;
+ 				};
+ 				/^reiserfs/ &amp;&amp; do {
+ 					$kiwi -&gt; info (&quot;Resizing split $fsattr{type} filesystem&quot;);
+-					$status = qxx (&quot;/sbin/resize_reiserfs $mapper 2&gt;&amp;1&quot;);
++					my $resize = $locator -&gt; getExecPath ('resize_reiserfs');
++					if (! $resize) {
++						$kiwi -&gt; error ('Could not locate resize_reiserfs');
++						$kiwi -&gt; failed ();
++						return undef;
++					}
++					$status = qxx (&quot;$resize $mapper 2&gt;&amp;1&quot;);
+ 					$result = $? &gt;&gt; 8;
+ 					last SWITCH;
+ 				};
+ 				/^btrfs/    &amp;&amp; do {
+-					$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
+-					my $bctl = &quot;/sbin/btrfsctl -r max /mnt&quot;;
++					$kiwi -&gt; info (&quot;Resizing split $fsattr{type} filesystem&quot;);
++					my $bfsctl = $locator -&gt; getExecPath('btrfsctl');
++					if (! $bfsctl) {
++						$kiwi -&gt; error ('Could not locate btrfsctl');
++						$kiwi -&gt; failed ();
++						return undef;
++					}
++					my $bctl = &quot;$bfsctl -r max /mnt&quot;;
+ 					$status = qxx (&quot;
+ 						mount $mapper /mnt&amp;&amp; $bctl; umount /mnt 2&gt;&amp;1&quot;
+ 					);
+@@ -2147,8 +2191,13 @@ sub setupBootDisk {
+ 					last SWITCH;
+ 				};
+ 				/^xfs/      &amp;&amp; do {
+-					$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
+-					my $xfsGrow = main::findExec('xfs_growfs');
++					$kiwi -&gt; info (&quot;Resizing split $fsattr{type} filesystem&quot;);
++					my $xfsGrow = $locator -&gt; getExecPath('xfs_growfs');
++					if (! $xfsGrow) {
++						$kiwi -&gt; error ('Could not locate xfs_grow');
++						$kiwi -&gt; failed ();
++						return undef;
++					}
+ 					$status = qxx (&quot;
+ 					    mount $mapper /mnt &amp;&amp; $xfsGrow /mnt; umount /mnt 2&gt;&amp;1&quot;
+ 					);
+diff --git a/modules/KIWILocator.pm b/modules/KIWILocator.pm
+new file mode 100644
+index 0000000..8180770
+--- /dev/null
++++ b/modules/KIWILocator.pm
+@@ -0,0 +1,122 @@
++#================
++# FILE          : KIWILocator.pm
++#----------------
++# PROJECT       : OpenSUSE Build-Service
++# COPYRIGHT     : (c) 2011 SUSE LINUX Products GmbH, Germany
++#               :
++# AUTHOR        : Robert Schweikert &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>&gt;
++#               :
++# BELONGS TO    : Operating System images
++#               :
++# DESCRIPTION   : This module is used to perform operation to locate
++#               : objects needed by Kiwi in the filesystem
++#               :
++# STATUS        : Development
++#----------------
++package KIWILocator;
++#==========================================
++# Modules
++#------------------------------------------
++use strict;
++use warnings;
++require Exporter;
++use KIWIQX;
++
++#==========================================
++# Exports
++#------------------------------------------
++our @ISA    = qw (Exporter);
++our @EXPORT = qw (getExecPath getControlFile );
++
++#==========================================
++# Constructor
++#------------------------------------------
++sub new {
++	# ...
++	# Create the Locator object
++	# ---
++	#==========================================
++	# Object setup
++	#------------------------------------------
++	my $this  = {};
++	my $class = shift;
++	bless $this,$class;
++	#==========================================
++	# Module Parameters
++	#------------------------------------------
++	my $kiwi = shift;
++	#==========================================
++	# Constructor setup
++	#------------------------------------------
++	if (! defined $kiwi) {
++		$kiwi = new KIWILog();
++	}
++	#==========================================
++	# Store object data
++	#------------------------------------------
++	$this-&gt;{configName} = 'config.xml';
++	$this-&gt;{kiwi}       = $kiwi;
++	return $this;
++}
++
++#==========================================
++# getControlFile
++#------------------------------------------
++sub getControlFile {
++	# /.../
++	# This function receives a directory as parameter
++	# and searches for a kiwi xml description in it.
++	# ----
++	my $this   = shift;
++	my $dir    = shift;
++	my $kiwi   = $this-&gt;{kiwi};
++	my $config = &quot;$dir/&quot; . $this-&gt;{configName};
++	if (! -d $dir) {
++		my $msg = &quot;Expected a directory at $dir.\nSpecify a directory&quot;;
++		$msg .= ' as the configuration base.';
++		$kiwi -&gt; error ($msg);
++		$kiwi -&gt; failed();
++		return undef;
++	}
++	if (-f $config) {
++		return $config;
++	}
++	my @globsearch = glob ($dir.&quot;/*.kiwi&quot;);
++	my $globitems  = @globsearch;
++	if ($globitems == 0) {
++		$kiwi -&gt; error ( &quot;Could not locate a configuration file in $dir&quot;);
++		$kiwi -&gt; failed();
++		return undef;
++	} elsif ($globitems &gt; 1) {
++		my $msg = &quot;Found multiple control files in $dir\n&quot;;
++		for my $item (@globsearch) {
++			$msg .= &quot;\t$item\n&quot;;
++		}
++		$kiwi -&gt; errot ($msg);
++		$kiwi -&gt; failed();
++		return undef;
++	} else {
++		$config = pop @globsearch;
++	}
++	return $config;
++}
++
++#============================================
++# getExecPath
++#--------------------------------------------
++sub getExecPath {
++	my $this     = shift;
++	my $execName = shift;
++	my $kiwi     = $this-&gt;{kiwi};
++	my $execPath = qxx (&quot;which $execName 2&gt;&amp;1&quot;); chomp $execPath;
++	my $code = $? &gt;&gt; 8;
++	if ($code != 0) {
++		if ($kiwi) {
++			$kiwi -&gt; loginfo (&quot;warning: $execName not found\n&quot;);
++		}
++		return undef;
++	}
++	return $execPath;
++}
++
++1;
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 7da23ad..27fc003 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -25,6 +25,7 @@ use File::Glob ':glob';
+ use File::Basename;
+ use LWP;
+ use XML::LibXML;
++use KIWILocator;
+ use KIWILog;
+ use KIWIManager qw (%packageManager);
+ use KIWIOverlay;
+@@ -90,58 +91,32 @@ sub new {
+ 	#==========================================
+ 	# Constructor setup
+ 	#------------------------------------------
++	my $arch = qxx (&quot;uname -m&quot;); chomp $arch;
+ 	if (! defined $kiwi) {
+ 		$kiwi = new KIWILog();
+ 	}
+ 	#==========================================
++	# Check pre condition
++	#------------------------------------------
++	if (! -d $imageDesc) {
++		$kiwi -&gt; error (&quot;Couldn't locate configuration directory $imageDesc&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
+ 	$this-&gt;{kiwi} = $kiwi;
+ 	#==========================================
+-	# Setup defaults to read in image directory
++	# Lookup XML configuration file
+ 	#------------------------------------------
+-	if (($imageDesc !~ /\//) &amp;&amp; (! -d $imageDesc)) {
+-		$imageDesc = $main::System.&quot;/&quot;.$imageDesc;
+-	}
+-	my $arch = qxx (&quot;uname -m&quot;); chomp $arch;
+-	my $controlFile = $imageDesc.&quot;/&quot;.$main::ConfigName;
+-	my $checkmdFile = $imageDesc.&quot;/.checksum.md5&quot;;
+-	my $havemd5File = 1;
++	my $locator = new KIWILocator($kiwi);
++	my $controlFile = $locator -&gt; getControlFile ( $imageDesc );
+ 	#==========================================
+-	# Check xml alternatives if default failed
++	# Store object data
+ 	#------------------------------------------
+-	if (! -f $controlFile) {
+-		my @globsearch = glob ($imageDesc.&quot;/*.kiwi&quot;);
+-		my $globitems  = @globsearch;
+-		if ($globitems == 0) {
+-			$kiwi -&gt; error (&quot;Cannot open control file: $controlFile&quot;);
+-			$kiwi -&gt; failed ();
+-			return undef;
+-		} elsif ($globitems &gt; 1) {
+-			$kiwi -&gt; error (&quot;Found multiple *.kiwi control files&quot;);
+-			$kiwi -&gt; failed ();
+-			return undef;
+-		} else {
+-			$controlFile = pop @globsearch;
+-		}
+-	}
+ 	$this-&gt;{xmlOrigFile} = $controlFile;
+ 	#==========================================
+-	# Check image md5 sum
+-	#------------------------------------------
+-	if (-f $checkmdFile) {
+-		my $data = qxx (&quot;cd $imageDesc &amp;&amp; md5sum -c .checksum.md5 2&gt;&amp;1&quot;);
+-		my $code = $? &gt;&gt; 8;
+-		if ($code != 0) {
+-			chomp $data;
+-			$kiwi -&gt; error (&quot;Integrity check for $imageDesc failed:\n$data&quot;);
+-			$kiwi -&gt; failed ();
+-			return undef;
+-		}
+-	} else {
+-		$havemd5File = 0;
+-	}
+-	#==========================================
+ 	# Read and Validate XML information
+ 	#------------------------------------------
+ 	my $validator = new KIWIXMLValidator (
+@@ -229,11 +204,9 @@ sub new {
+ 	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
+-	$this-&gt;{imageDesc}          = $imageDesc;
+ 	$this-&gt;{driversNodeList}    = $driversNodeList;
+ 	$this-&gt;{usrdataNodeList}    = $usrdataNodeList;
+ 	$this-&gt;{instsrcNodeList}    = $instsrcNodeList;
+-	$this-&gt;{havemd5File}        = $havemd5File;
+ 	$this-&gt;{arch}               = $arch;
+ 	$this-&gt;{controlFile}        = $controlFile;
+ 	#==========================================
+@@ -305,14 +278,6 @@ sub getConfigName {
+ }
+ 
+ #==========================================
+-# haveMD5File
+-#------------------------------------------
+-sub haveMD5File {
+-	my $this = shift;
+-	return $this-&gt;{havemd5File};
+-}
+-
+-#==========================================
+ # createURLList
+ #------------------------------------------
+ sub createURLList {
+diff --git a/modules/KIWIXMLValidator.pm b/modules/KIWIXMLValidator.pm
+index 3c311cb..43cef57 100644
+--- a/modules/KIWIXMLValidator.pm
++++ b/modules/KIWIXMLValidator.pm
+@@ -21,6 +21,7 @@ use strict;
+ use warnings;
+ require Exporter;
+ use XML::LibXML;
++use KIWILocator;
+ use KIWILog;
+ use KIWIQX;
+ 
+@@ -586,7 +587,8 @@ sub __validateXML {
+ 			print $UPCNTFL $upgradedStr;
+ 			close ( $UPCNTFL );
+ 		}
+-		my $jingExec = main::findExec('jing');
++		my $locator = new KIWILocator($kiwi);
++		my $jingExec = $locator -&gt; getExecPath('jing');
+ 		if ($jingExec) {
+ 			qxx (&quot;$jingExec $this-&gt;{schema} $upgradedContolFile 1&gt;&amp;2&quot;);
+ 			return undef;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002952.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. a2a101f9ad145a28ab497a9f40f1f9b0dd30e502
+</A></li>
+	<LI>Next message: <A HREF="002960.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ab2929eb1e82e45567e2816c1ec9a5aa687794bc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2955">[ date ]</a>
+              <a href="thread.html#2955">[ thread ]</a>
+              <a href="subject.html#2955">[ subject ]</a>
+              <a href="author.html#2955">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

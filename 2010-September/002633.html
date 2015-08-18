@@ -1,0 +1,215 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 98f2b06176944a2ff4bfc2960d18727eef8abd73
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2098f2b06176944a2ff4bfc2960d18727eef8abd73&In-Reply-To=%3C20100906115627.DFEBB481051%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002632.html">
+   <LINK REL="Next"  HREF="002634.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 98f2b06176944a2ff4bfc2960d18727eef8abd73</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2098f2b06176944a2ff4bfc2960d18727eef8abd73&In-Reply-To=%3C20100906115627.DFEBB481051%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 98f2b06176944a2ff4bfc2960d18727eef8abd73">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Sep  6 13:56:27 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002632.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ae7d152c49ab14f24cf213af74ebf015f3f5b427
+</A></li>
+        <LI>Next message: <A HREF="002634.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 51a9f0c72d70e959a039028008d33f7e897aed1e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2633">[ date ]</a>
+              <a href="thread.html#2633">[ thread ]</a>
+              <a href="subject.html#2633">[ subject ]</a>
+              <a href="author.html#2633">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  98f2b06176944a2ff4bfc2960d18727eef8abd73 (commit)
+      from  ae7d152c49ab14f24cf213af74ebf015f3f5b427 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 98f2b06176944a2ff4bfc2960d18727eef8abd73
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Sep 6 13:55:43 2010 +0200
+
+    - allow the kernelCheck function to reboot via kexec (bnc #636406)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 88bd80f..2917bbf 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -2286,11 +2286,14 @@ function kernelCheck {
+ 	# Check this running kernel against the kernel
+ 	# installed in the image. If the version does not 
+ 	# match we need to reboot to activate the system
+-	# image kernel.
++	# image kernel which is done if kexec is installed
++	# 
++	# 1) try to load KIWI_KERNEL and KIWI_INITRD if set in config.&lt;MAC&gt;
++	# 2) try to load default kernel set in /IMAGE_NAME file on image
+ 	# ----
+-	kactive=`uname -r`
+-	kreboot=1
+-	prefix=$1
++	local kactive=`uname -r`
++	local kreboot=1
++	local prefix=$1
+ 	for i in $prefix/lib/modules/*;do
+ 		if [ ! -d $i ];then
+ 			continue
+@@ -2302,6 +2305,103 @@ function kernelCheck {
+ 		fi
+ 	done
+ 	if [ $kreboot = 1 ];then
++		if [ -f /sbin/kexec ] ; then
++			Echo &quot;Kernel versions do not match trying boot another kernel...&quot;
++			#======================================
++			# load builtin image configs
++			#--------------------------------------
++			if [ -f $prefix/IMAGE_NAME ] ; then
++				. $prefix/IMAGE_NAME 
++			fi
++			#======================================
++			# check KEXEC_USED from /proc/cmdline
++			#--------------------------------------
++			ldconfig
++			mountSystemFilesystems &amp;&gt;/dev/null
++			KEXEC_USED=$(cat /proc/cmdline |\
++				tr ' ' '\n' | grep 'KEXEC_USED=' |  sed 's/KEXEC_USED=//')
++			kernel_cmdline=$(cat /proc/cmdline |\
++				tr ' ' '\n' | grep -v 'KEXEC_USED=' |\
++				grep -v 'BOOT_IMAGE' | tr '\n' ' ')
++			umountSystemFilesystems
++			#======================================
++			# avoid nonterminating reboot
++			#--------------------------------------
++			if [ -z &quot;$KEXEC_USED&quot; ] ; then
++				: # first try
++			elif [ &quot;$KEXEC_USED&quot; = &quot;1&quot; ] ; then
++				Echo &quot;kernel $KIWI_KERNEL,$KIWI_INITRD not supported&quot;
++				Echo &quot;falling back to $KIWI_KERNEL_DEFAULT,$KIWI_INITRD_DEFAULT&quot;
++				KIWI_KERNEL=&quot;&quot;
++				KIWI_INITRD=&quot;&quot;
++			elif [ $KEXEC_USED = 2 ] ; then
++				Echo &quot;kexec kernel boot failed for all installed kernels&quot;
++				Echo &quot;Please, check your initrd and root images&quot;
++				REBOOT_IMAGE=&quot;yes&quot;
++				sleep 5
++				return 1
++			else
++				Echo &quot;Wrong value of KEXEC_USED option&quot;
++				REBOOT_IMAGE=&quot;yes&quot;
++				sleep 5
++				return 1
++			fi
++			#======================================
++			# check for KIWI_KERNEL/KIWI_INITRD
++			#--------------------------------------
++			pathToKernel=$prefix/boot/linux.kiwi
++			pathToInitrd=$prefix/boot/initrd.kiwi
++			if [ -z $KIWI_KERNEL ] ; then
++				KIWI_KERNEL=boot/$KIWI_KERNEL_DEFAULT
++				pathToKernel=$prefix/$KIWI_KERNEL
++			fi
++			if [ -z $KIWI_INITRD ] ; then
++				KIWI_INITRD=boot/$KIWI_INITRD_DEFAULT
++				pathToInitrd=$prefix/$KIWI_INITRD
++			fi
++			#======================================
++			# download kernel and initrd if needed 
++			#--------------------------------------
++			mkdir -p $prefix/boot /boot 2&gt;dev/null
++			if [ ! -e $pathToKernel ] ; then
++				if [ -z `mount | grep rw | grep &quot; $prefix &quot;` ] ; then
++					pathToKernel=/$KIWI_KERNEL
++				fi
++				fetchFile $KIWI_KERNEL $pathToKernel 
++			fi
++			if [ ! -e $pathToInitrd ] ; then
++				if [ -z `mount | grep rw | grep &quot; $prefix &quot;` ] ; then
++					pathToInitrd=/$KIWI_INITRD
++				fi
++				fetchFile $KIWI_INITRD $pathToInitrd
++			fi
++			#======================================
++			# prepare kernel command line
++			#--------------------------------------
++			if [ x&quot;$KERNEL_CMDLINE_ARGS_OVERWRITE&quot; = x&quot;yes&quot; ] ; then
++				KERNEL_CMDLINE_ARGS=&quot;$KERNEL_CMDLINE_ARGS&quot;
++			elif [ x&quot;$KERNEL_CMDLINE_ARGS_OVERWRITE&quot; = x&quot;append&quot; ] ; then
++				if [ $KEXEC_USED = 0 ] ; then
++					KERNEL_CMDLINE_ARGS=&quot;$kernel_cmdline $KERNEL_CMDLINE_ARGS&quot;
++				else 
++					KERNEL_CMDLINE_ARGS=&quot;$kernel_cmdline&quot;
++				fi
++			else
++				KERNEL_CMDLINE_ARGS=&quot;&quot;
++			fi
++			KEXEC_USED=$((KEXEC_USED+1))
++			#======================================
++			# load and run kernel...
++			#--------------------------------------
++			if [ -f $pathToKernel -a -f $pathToInitrd ] ; then
++				kexec -l $pathToKernel \
++					--append=&quot;$KERNEL_CMDLINE_ARGS KEXEC_USED=$KEXEC_USED&quot; \
++					--initrd=$pathToInitrd
++				kexec -e
++			else
++				Echo &quot;Failed to download $KIWI_KERNEL,$KIWI_INITRD&quot;
++			fi
++		fi
+ 		Echo &quot;Kernel versions do not match rebooting in 5 sec...&quot;
+ 		REBOOT_IMAGE=&quot;yes&quot;
+ 		sleep 5
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002632.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ae7d152c49ab14f24cf213af74ebf015f3f5b427
+</A></li>
+	<LI>Next message: <A HREF="002634.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 51a9f0c72d70e959a039028008d33f7e897aed1e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2633">[ date ]</a>
+              <a href="thread.html#2633">[ thread ]</a>
+              <a href="subject.html#2633">[ subject ]</a>
+              <a href="author.html#2633">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

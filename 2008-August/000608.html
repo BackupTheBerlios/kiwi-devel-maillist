@@ -1,0 +1,205 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1526 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1526%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200808210928.m7L9Sjfe009511%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000607.html">
+   <LINK REL="Next"  HREF="000609.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1526 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1526%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200808210928.m7L9Sjfe009511%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1526 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Aug 21 11:28:45 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000607.html">[Kiwi-devel] r1525 - in kiwi-head: . modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000609.html">[Kiwi-devel] r1527 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#608">[ date ]</a>
+              <a href="thread.html#608">[ thread ]</a>
+              <a href="subject.html#608">[ subject ]</a>
+              <a href="author.html#608">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-08-21 11:28:40 +0200 (Thu, 21 Aug 2008)
+New Revision: 1526
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIManager.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+Log:
+
+- don't use the zypper service-* commands (bnc #418994)
+- added recommends handling for zypper according to the
+  value of the patternType/patternPackageType (bnc #418817)
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-08-20 15:10:54 UTC (rev 1525)
++++ kiwi-head/kiwi.pl	2008-08-21 09:28:40 UTC (rev 1526)
+@@ -43,7 +43,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;2.67&quot;;
++our $Version       = &quot;2.68&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+ our $ConfigFile    = &quot;$ENV{'HOME'}/.kiwirc&quot;;
+ our $ConfigName    = &quot;config.xml&quot;;
+
+Modified: kiwi-head/modules/KIWIManager.pm
+===================================================================
+--- kiwi-head/modules/KIWIManager.pm	2008-08-20 15:10:54 UTC (rev 1525)
++++ kiwi-head/modules/KIWIManager.pm	2008-08-21 09:28:40 UTC (rev 1526)
+@@ -518,7 +518,7 @@
+ 					push (@zopts,&quot;--type $val&quot;);
+ 				}
+ 			}
+-			my $sadd = &quot;service-add @zopts $alias&quot;;
++			my $sadd = &quot;addrepo @zopts $alias&quot;;
+ 			if (! $chroot) {
+ 				$kiwi -&gt; info (&quot;Adding local zypper service: $alias&quot;);
+ 				$data = qxx (&quot;@zypper --root \&quot;$root\&quot; $sadd 2&gt;&amp;1&quot;);
+@@ -596,9 +596,9 @@
+ 	#------------------------------------------
+ 	if ($manager eq &quot;zypper&quot;) {
+ 		my @list = @channelList;
+-		my $cmds = &quot;@zypper service-delete&quot;;
++		my $cmds = &quot;@zypper removerepo&quot;;
+ 		if (! $chroot) {
+-			$cmds = &quot;@zypper --root $root service-delete&quot;;
++			$cmds = &quot;@zypper --root $root removerepo&quot;;
+ 		}
+ 		if (! $chroot) {
+ 			$kiwi -&gt; info (&quot;Removing zypper service(s): @channelList&quot;);
+@@ -993,6 +993,12 @@
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+ 			if (@newpatts) {
++				my %pattr = $xml -&gt; getPackageAttributes();
++				if (($pattr{patternType} ne &quot;plusRecommended&quot;) &amp;&amp;
++					($pattr{patternPackageType} ne &quot;plusRecommended&quot;)
++				) {
++					push (@installOpts,&quot;--no-recommends&quot;);
++				}
+ 				print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @zypper install &quot;;
+ 				print $fd &quot;@installOpts -t pattern @newpatts &amp;\n&quot;;
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+@@ -1206,6 +1212,12 @@
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+ 			if (@newpatts) {
++				my %pattr = $xml -&gt; getPackageAttributes();
++				if (($pattr{patternType} ne &quot;plusRecommended&quot;) &amp;&amp;
++					($pattr{patternPackageType} ne &quot;plusRecommended&quot;)
++				) {
++					push (@installOpts,&quot;--no-recommends&quot;);
++				}
+ 				if (@packs) {
+ 					print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+ 				}
+@@ -1245,6 +1257,12 @@
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+ 			if (@newpatts) {
++				my %pattr = $xml -&gt; getPackageAttributes();
++				if (($pattr{patternType} ne &quot;plusRecommended&quot;) &amp;&amp;
++					($pattr{patternPackageType} ne &quot;plusRecommended&quot;)
++				) {
++					push (@installOpts,&quot;--no-recommends&quot;);
++				}
+ 				if (@install) {
+ 					print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+ 				}
+@@ -1306,7 +1324,7 @@
+ 	if ($manager eq &quot;zypper&quot;) {
+ 		foreach my $channel (keys %{$source{public}}) {
+ 			$kiwi -&gt; info (&quot;Removing zypper service: $channel\n&quot;);
+-			qxx (&quot;@zypper service-delete $channel 2&gt;&amp;1&quot;);
++			qxx (&quot;@zypper removerepo $channel 2&gt;&amp;1&quot;);
+ 		}
+ 	}
+ 	#==========================================
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-08-20 15:10:54 UTC (rev 1525)
++++ kiwi-head/rpm/kiwi.changes	2008-08-21 09:28:40 UTC (rev 1526)
+@@ -1,4 +1,12 @@
+ -------------------------------------------------------------------
++Thu Aug 21 10:45:59 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v2.68
++- don't use the zypper service-* commands (bnc #418994)
++- added recommends handling for zypper according to the
++  value of the patternType/patternPackageType (bnc #418817)
++
++-------------------------------------------------------------------
+ Wed Aug 20 17:09:36 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.67
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-08-20 15:10:54 UTC (rev 1525)
++++ kiwi-head/rpm/kiwi.spec	2008-08-21 09:28:40 UTC (rev 1526)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 2.67
++# spec file for package kiwi (Version 2.68
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        2.67
++Version:        2.68
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000607.html">[Kiwi-devel] r1525 - in kiwi-head: . modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000609.html">[Kiwi-devel] r1527 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#608">[ date ]</a>
+              <a href="thread.html#608">[ thread ]</a>
+              <a href="subject.html#608">[ subject ]</a>
+              <a href="author.html#608">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,195 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0c033f5ed5c0eec03bac3268c8175a10c475feaa
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%200c033f5ed5c0eec03bac3268c8175a10c475feaa&In-Reply-To=%3C201002111626.o1BGQZeK009019%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001896.html">
+   <LINK REL="Next"  HREF="001898.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0c033f5ed5c0eec03bac3268c8175a10c475feaa</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%200c033f5ed5c0eec03bac3268c8175a10c475feaa&In-Reply-To=%3C201002111626.o1BGQZeK009019%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0c033f5ed5c0eec03bac3268c8175a10c475feaa">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Feb 11 17:26:35 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001896.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 7e7c527bcc7054a32fdf0baacf818d33150384dc
+</A></li>
+        <LI>Next message: <A HREF="001898.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 9a65fd7699ec5df01d0a549c7226fe4a2f3af18c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1897">[ date ]</a>
+              <a href="thread.html#1897">[ thread ]</a>
+              <a href="subject.html#1897">[ subject ]</a>
+              <a href="author.html#1897">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  0c033f5ed5c0eec03bac3268c8175a10c475feaa (commit)
+      from  f26c4afe7e394dd5f83fbe704ead650b56e7f754 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 0c033f5ed5c0eec03bac3268c8175a10c475feaa
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Feb 11 17:26:22 2010 +0100
+
+    - v4.16
+    - make setupSplash() to operate in a temp dir (bnc #579134)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index d2e8f29..75c7a49 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -44,7 +44,7 @@ use KIWITest;
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;4.15&quot;;
++our $Version       = &quot;4.16&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 3af6a79..09d5d80 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -3105,13 +3105,24 @@ sub setupSplash {
+ 	my $this   = shift;
+ 	my $kiwi   = $this-&gt;{kiwi};
+ 	my $initrd = $this-&gt;{initrd};
+-	my $spldir = $initrd.&quot;_&quot;.$$.&quot;.splash&quot;;
+-	my $irddir = &quot;$spldir/initrd&quot;;
+ 	my $zipped = 0;
+ 	my $newird;
+-	my $status;
+ 	my $result;
+ 	#==========================================
++	# create temp dir for operations
++	#------------------------------------------
++	$kiwi -&gt; info (&quot;Setting up splash screen...&quot;);
++	my $spldir = qxx (&quot;mktemp -q -d /tmp/kiwisplash.XXXXXX&quot;);
++	my $status = $? &gt;&gt; 8;
++	if ($status != 0) {
++		$kiwi -&gt; skipped ();
++		$kiwi -&gt; warning  (&quot;Failed to create splash directory: $!&quot;);
++		$kiwi -&gt; skipped ();
++		return $initrd;
++	}
++	chomp $spldir;
++	my $irddir = &quot;$spldir/initrd&quot;;
++	#==========================================
+ 	# check if compressed and setup splash.gz
+ 	#------------------------------------------
+ 	if ($initrd =~ /\.gz$/) {
+@@ -3122,13 +3133,6 @@ sub setupSplash {
+ 	} else {
+ 		$newird = $initrd.&quot;.splash.gz&quot;;
+ 	}
+-	$kiwi -&gt; info (&quot;Setting up splash screen...&quot;);
+-	if (! mkdir $spldir) {
+-		$kiwi -&gt; skipped ();
+-		$kiwi -&gt; warning (&quot;Failed to create splash directory&quot;);
+-		$kiwi -&gt; skipped ();
+-		return $initrd;
+-	}
+ 	#==========================================
+ 	# unpack initrd files
+ 	#------------------------------------------
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index f95fdb4..cb01870 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -1147,6 +1147,7 @@ sub setForeignOptionsElement {
+ 	my $node = $opts -&gt; getElementsByTagName (&quot;$item&quot;);
+ 	if ($node) {
+ 		if (&quot;$node&quot; eq &quot;$value&quot;) {
++			$kiwi -&gt; done ();
+ 			return $this;
+ 		}
+ 		$node = $node -&gt; get_node(1);
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 7cfaf70..a24ef37 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Thu Feb 11 17:14:14 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v4.16
++- make setupSplash() to operate in a temp dir (bnc #579134)
++
++-------------------------------------------------------------------
+ Wed Feb 10 16:49:28 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v4.15
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index 7fdb0b1..0811090 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 4.15)
++# spec file for package kiwi (Version 4.16)
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -52,7 +52,7 @@ Requires:       satsolver-tools
+ Requires:       clicfs
+ %endif
+ Summary:        OpenSuSE - KIWI Image System
+-Version:        4.15
++Version:        4.16
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001896.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 7e7c527bcc7054a32fdf0baacf818d33150384dc
+</A></li>
+	<LI>Next message: <A HREF="001898.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 9a65fd7699ec5df01d0a549c7226fe4a2f3af18c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1897">[ date ]</a>
+              <a href="thread.html#1897">[ thread ]</a>
+              <a href="subject.html#1897">[ subject ]</a>
+              <a href="author.html#1897">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

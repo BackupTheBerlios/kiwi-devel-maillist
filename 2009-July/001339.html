@@ -1,0 +1,526 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 405ab4c667f28a82ccd9a370b1d72f7a737b50fe
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20405ab4c667f28a82ccd9a370b1d72f7a737b50fe&In-Reply-To=%3C200907131458.n6DEw5TV030160%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001338.html">
+   <LINK REL="Next"  HREF="001340.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 405ab4c667f28a82ccd9a370b1d72f7a737b50fe</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20405ab4c667f28a82ccd9a370b1d72f7a737b50fe&In-Reply-To=%3C200907131458.n6DEw5TV030160%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 405ab4c667f28a82ccd9a370b1d72f7a737b50fe">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Jul 13 16:58:05 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001338.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9665bef664044e97df795dc0b2fcdb88dff0c473
+</A></li>
+        <LI>Next message: <A HREF="001340.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 87bf636b9296120aab6eaafdc5eb223030afa03d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1339">[ date ]</a>
+              <a href="thread.html#1339">[ thread ]</a>
+              <a href="subject.html#1339">[ subject ]</a>
+              <a href="author.html#1339">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  405ab4c667f28a82ccd9a370b1d72f7a737b50fe (commit)
+       via  673b561387f4a84d468c1593eb7439e07ed10bca (commit)
+      from  9665bef664044e97df795dc0b2fcdb88dff0c473 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 405ab4c667f28a82ccd9a370b1d72f7a737b50fe
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Jul 13 16:56:54 2009 +0200
+
+    - set hal lock for mapped luks device
+    - added support for luks extension for iso image type (bnc #505782)
+
+commit 673b561387f4a84d468c1593eb7439e07ed10bca
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Jul 13 15:16:43 2009 +0200
+
+    - added support for luks extension for xen image type (bnc #505782)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index a173e36..580ae2e 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -4611,6 +4611,10 @@ sub luksResize {
+ 	my $cipher = $main::LuksCipher;
+ 	my $status;
+ 	my $result;
++	my $hald;
++	#==========================================
++	# open luks device
++	#------------------------------------------
+ 	if ($cipher) {
+ 		$status = qxx (
+ 			&quot;echo $cipher | cryptsetup luksOpen $source $name 2&gt;&amp;1&quot;
+@@ -4625,6 +4629,26 @@ sub luksResize {
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+ 	}
++	#==========================================
++	# lock device for hal
++	#------------------------------------------
++	if ($source !~ /loop/) {
++		$hald = new KIWI::dbusdevice::HalConnection;
++		if (! $hald -&gt; open()) {
++			$kiwi -&gt; loginfo ($hald-&gt;state());
++		} else {
++			$this -&gt; {lhald} = $hald;
++			if ($hald -&gt; lock (&quot;/dev/mapper/&quot;.$name)) {
++				$kiwi -&gt; loginfo ($hald-&gt;state());
++			} else {
++				$this -&gt; {lhalddevice} = &quot;/dev/mapper/&quot;.$name;
++				$kiwi -&gt; loginfo (&quot;HAL:&quot;.$hald-&gt;state());
++			}
++		}
++	}
++	#==========================================
++	# resize luks header
++	#------------------------------------------
+ 	$this-&gt;{luks} = $name;
+ 	$status = qxx (&quot;cryptsetup resize $name&quot;);
+ 	$result = $? &gt;&gt; 8;
+@@ -4635,6 +4659,9 @@ sub luksResize {
+ 		$this -&gt; luksClose();
+ 		return undef;
+ 	}
++	#==========================================
++	# return mapped device name
++	#------------------------------------------
+ 	return &quot;/dev/mapper/&quot;.$name;
+ }
+ 
+@@ -4647,6 +4674,13 @@ sub luksClose {
+ 		qxx (&quot;cryptsetup luksClose $this-&gt;{luks} 2&gt;&amp;1&quot;);
+ 		undef $this-&gt;{luks};
+ 	}
++	if ($this-&gt;{lhald}) {
++		$this-&gt;{lhald} -&gt; unlock (
++			$this-&gt;{lhalddevice}
++		);
++		undef $this-&gt;{lhald};
++		undef $this-&gt;{lhalddevice};
++	}
+ 	return $this;
+ }
+ 
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index b3268c0..76802b9 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -2,8 +2,11 @@
+ Thu Jul  9 11:09:59 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.63
++- set hal lock for mapped luks device
+ - fixed ram only netboot image download (bnc #519055) 
+ - added support for luks extension for usb image type (bnc #505782)
++- added support for luks extension for xen image type (bnc #505782)
++- added support for luks extension for iso image type (bnc #505782)
+ - make luks password dialog more user friendly
+ - update schema documentation
+ 
+diff --git a/system/boot/ix86/isoboot/suse-10.3/config.xml b/system/boot/ix86/isoboot/suse-10.3/config.xml
+index 527efa0..eaf1b74 100644
+--- a/system/boot/ix86/isoboot/suse-10.3/config.xml
++++ b/system/boot/ix86/isoboot/suse-10.3/config.xml
+@@ -28,6 +28,7 @@
+ 		&lt;file name=&quot;usb/storage/usb-storage.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
++		&lt;file name=&quot;crypto/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/hid/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+@@ -102,6 +103,8 @@
+ 		&lt;package name=&quot;bootsplash&quot;/&gt;
+ 		&lt;package name=&quot;tar&quot;/&gt;
+ 		&lt;package name=&quot;checkmedia&quot;/&gt;
++		&lt;package name=&quot;cryptsetup&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/system/boot/ix86/isoboot/suse-11.0/config.xml b/system/boot/ix86/isoboot/suse-11.0/config.xml
+index ac4945e..0501164 100644
+--- a/system/boot/ix86/isoboot/suse-11.0/config.xml
++++ b/system/boot/ix86/isoboot/suse-11.0/config.xml
+@@ -28,6 +28,7 @@
+ 		&lt;file name=&quot;usb/storage/usb-storage.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
++		&lt;file name=&quot;crypto/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/virtio/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/virtio_blk.ko&quot;/&gt;
+ 		&lt;file name=&quot;drivers/net/virtio_net.ko&quot;/&gt;
+@@ -113,6 +114,8 @@
+ 		&lt;package name=&quot;rpm&quot;/&gt;
+ 		&lt;package name=&quot;kiwi-tools&quot;/&gt;
+ 		&lt;package name=&quot;checkmedia&quot;/&gt;
++		&lt;package name=&quot;cryptsetup&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+@@ -200,7 +203,6 @@
+ 		&lt;package name=&quot;pmtools&quot;/&gt;
+ 		&lt;package name=&quot;pm-utils&quot;/&gt;
+ 		&lt;package name=&quot;pmtools&quot;/&gt;
+-		&lt;package name=&quot;popt&quot;/&gt;
+ 		&lt;package name=&quot;pwdutils&quot;/&gt;
+ 		&lt;package name=&quot;resmgr&quot;/&gt;
+ 		&lt;package name=&quot;setserial&quot;/&gt;
+diff --git a/system/boot/ix86/isoboot/suse-11.1/config.xml b/system/boot/ix86/isoboot/suse-11.1/config.xml
+index 5a7f06f..d99604a 100644
+--- a/system/boot/ix86/isoboot/suse-11.1/config.xml
++++ b/system/boot/ix86/isoboot/suse-11.1/config.xml
+@@ -28,6 +28,7 @@
+ 		&lt;file name=&quot;usb/storage/usb-storage.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
++		&lt;file name=&quot;crypto/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/virtio/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/virtio_blk.ko&quot;/&gt;
+ 		&lt;file name=&quot;drivers/char/hw_random/virtio-rng.ko&quot;/&gt;
+@@ -116,6 +117,8 @@
+ 		&lt;package name=&quot;rpm&quot;/&gt;
+ 		&lt;package name=&quot;kiwi-tools&quot;/&gt;
+ 		&lt;package name=&quot;checkmedia&quot;/&gt;
++		&lt;package name=&quot;cryptsetup&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+@@ -203,7 +206,6 @@
+ 		&lt;package name=&quot;pmtools&quot;/&gt;
+ 		&lt;package name=&quot;pm-utils&quot;/&gt;
+ 		&lt;package name=&quot;pmtools&quot;/&gt;
+-		&lt;package name=&quot;popt&quot;/&gt;
+ 		&lt;package name=&quot;pwdutils&quot;/&gt;
+ 		&lt;package name=&quot;setserial&quot;/&gt;
+ 		&lt;package name=&quot;suse-build-key&quot;/&gt;
+diff --git a/system/boot/ix86/isoboot/suse-11.2/config.xml b/system/boot/ix86/isoboot/suse-11.2/config.xml
+index 8e1cb83..7d3e44b 100644
+--- a/system/boot/ix86/isoboot/suse-11.2/config.xml
++++ b/system/boot/ix86/isoboot/suse-11.2/config.xml
+@@ -28,6 +28,7 @@
+ 		&lt;file name=&quot;usb/storage/usb-storage.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
++		&lt;file name=&quot;crypto/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/virtio/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/virtio_blk.ko&quot;/&gt;
+ 		&lt;file name=&quot;drivers/char/hw_random/virtio-rng.ko&quot;/&gt;
+@@ -114,6 +115,8 @@
+ 		&lt;package name=&quot;kiwi-tools&quot;/&gt;
+ 		&lt;package name=&quot;checkmedia&quot;/&gt;
+ 		&lt;package name=&quot;clicfs&quot;/&gt;
++		&lt;package name=&quot;cryptsetup&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+@@ -201,7 +204,6 @@
+ 		&lt;package name=&quot;pmtools&quot;/&gt;
+ 		&lt;package name=&quot;pm-utils&quot;/&gt;
+ 		&lt;package name=&quot;pmtools&quot;/&gt;
+-		&lt;package name=&quot;popt&quot;/&gt;
+ 		&lt;package name=&quot;pwdutils&quot;/&gt;
+ 		&lt;package name=&quot;setserial&quot;/&gt;
+ 		&lt;package name=&quot;suse-build-key&quot;/&gt;
+diff --git a/system/boot/ix86/isoboot/suse-SLED11/config.xml b/system/boot/ix86/isoboot/suse-SLED11/config.xml
+index 5cc848c..0105766 100644
+--- a/system/boot/ix86/isoboot/suse-SLED11/config.xml
++++ b/system/boot/ix86/isoboot/suse-SLED11/config.xml
+@@ -28,6 +28,7 @@
+ 		&lt;file name=&quot;usb/storage/usb-storage.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
++		&lt;file name=&quot;crypto/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/virtio/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/virtio_blk.ko&quot;/&gt;
+ 		&lt;file name=&quot;drivers/char/hw_random/virtio-rng.ko&quot;/&gt;
+@@ -108,6 +109,8 @@
+ 		&lt;package name=&quot;rpm&quot;/&gt;
+ 		&lt;package name=&quot;kiwi-tools&quot;/&gt;
+ 		&lt;package name=&quot;checkmedia&quot;/&gt;
++		&lt;package name=&quot;cryptsetup&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+@@ -192,7 +195,6 @@
+ 		&lt;package name=&quot;pmtools&quot;/&gt;
+ 		&lt;package name=&quot;pm-utils&quot;/&gt;
+ 		&lt;package name=&quot;pmtools&quot;/&gt;
+-		&lt;package name=&quot;popt&quot;/&gt;
+ 		&lt;package name=&quot;pwdutils&quot;/&gt;
+ 		&lt;package name=&quot;setserial&quot;/&gt;
+ 		&lt;package name=&quot;suse-build-key&quot;/&gt;
+diff --git a/system/boot/ix86/isoboot/suse-SLES11/config.xml b/system/boot/ix86/isoboot/suse-SLES11/config.xml
+index 9683591..eab2730 100644
+--- a/system/boot/ix86/isoboot/suse-SLES11/config.xml
++++ b/system/boot/ix86/isoboot/suse-SLES11/config.xml
+@@ -28,6 +28,7 @@
+ 		&lt;file name=&quot;usb/storage/usb-storage.ko&quot;/&gt;
+ 	&lt;/drivers&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
++		&lt;file name=&quot;crypto/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/virtio/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/virtio_blk.ko&quot;/&gt;
+ 		&lt;file name=&quot;drivers/char/hw_random/virtio-rng.ko&quot;/&gt;
+@@ -108,6 +109,8 @@
+ 		&lt;package name=&quot;rpm&quot;/&gt;
+ 		&lt;package name=&quot;kiwi-tools&quot;/&gt;
+ 		&lt;package name=&quot;checkmedia&quot;/&gt;
++		&lt;package name=&quot;cryptsetup&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+@@ -192,7 +195,6 @@
+ 		&lt;package name=&quot;pmtools&quot;/&gt;
+ 		&lt;package name=&quot;pm-utils&quot;/&gt;
+ 		&lt;package name=&quot;pmtools&quot;/&gt;
+-		&lt;package name=&quot;popt&quot;/&gt;
+ 		&lt;package name=&quot;pwdutils&quot;/&gt;
+ 		&lt;package name=&quot;setserial&quot;/&gt;
+ 		&lt;package name=&quot;suse-build-key&quot;/&gt;
+diff --git a/system/boot/ix86/isoboot/suse-linuxrc b/system/boot/ix86/isoboot/suse-linuxrc
+index 786c2a3..734095a 100755
+--- a/system/boot/ix86/isoboot/suse-linuxrc
++++ b/system/boot/ix86/isoboot/suse-linuxrc
+@@ -161,20 +161,29 @@ CDUmount
+ #--------------------------------------
+ if [ -z &quot;$UNIONFS_CONFIG&quot; ];then
+ 	probeFileSystem $imageDevice
++	if [ &quot;$FSTYPE&quot; = &quot;luks&quot; ];then
++		imageDevice=$(luksOpen $imageDevice)
++		probeFileSystem $imageDevice
++		export haveLuks=yes
++	fi
+ 	if test &quot;$FSTYPE&quot; = &quot;reiserfs&quot;;then
+ 		Echo &quot;Resize Reiser filesystem to full ramdisk space...&quot;
++		luksResize $imageDevice
+ 		resize_reiserfs $imageDevice
+ 	fi
+ 	if test &quot;$FSTYPE&quot; = &quot;ext2&quot;;then
+ 		Echo &quot;Resize EXT2 filesystem to full ramdisk space...&quot;
++		luksResize $imageDevice
+ 		resize2fs -f $imageDevice
+ 	fi
+ 	if test &quot;$FSTYPE&quot; = &quot;ext3&quot;;then
+ 		Echo &quot;Resize EXT3 filesystem to full ramdisk space...&quot;
++		luksResize $imageDevice
+ 		resize2fs -f $imageDevice
+ 	fi
+ 	if test &quot;$FSTYPE&quot; = &quot;ext4&quot;;then
+ 		Echo &quot;Resize EXT4 filesystem to full ramdisk space...&quot;
++		luksResize $imageDevice
+ 		resize2fs -f $imageDevice
+ 	fi
+ fi
+diff --git a/system/boot/ix86/xenboot/suse-10.3/config.xml b/system/boot/ix86/xenboot/suse-10.3/config.xml
+index 91231f4..0835ddc 100644
+--- a/system/boot/ix86/xenboot/suse-10.3/config.xml
++++ b/system/boot/ix86/xenboot/suse-10.3/config.xml
+@@ -18,6 +18,8 @@
+ 		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Xen&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
++		&lt;file name=&quot;crypto/*&quot;/&gt;
++		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/loop.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+@@ -50,6 +52,8 @@
+ 		&lt;package name=&quot;fribidi&quot;/&gt;
+ 		&lt;package name=&quot;make&quot;/&gt;
+ 		&lt;package name=&quot;bootsplash&quot;/&gt;
++		&lt;package name=&quot;cryptsetup&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot; arch=&quot;x86_64&quot;/&gt;
+diff --git a/system/boot/ix86/xenboot/suse-11.0/config.xml b/system/boot/ix86/xenboot/suse-11.0/config.xml
+index ea2f00b..3c7248a 100644
+--- a/system/boot/ix86/xenboot/suse-11.0/config.xml
++++ b/system/boot/ix86/xenboot/suse-11.0/config.xml
+@@ -18,6 +18,8 @@
+ 		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Xen&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
++		&lt;file name=&quot;crypto/*&quot;/&gt;
++		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/loop.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+@@ -50,6 +52,8 @@
+ 		&lt;package name=&quot;fribidi&quot;/&gt;
+ 		&lt;package name=&quot;make&quot;/&gt;
+ 		&lt;package name=&quot;bootsplash&quot;/&gt;
++		&lt;package name=&quot;cryptsetup&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+diff --git a/system/boot/ix86/xenboot/suse-11.1/config.xml b/system/boot/ix86/xenboot/suse-11.1/config.xml
+index e120825..37a2aba 100644
+--- a/system/boot/ix86/xenboot/suse-11.1/config.xml
++++ b/system/boot/ix86/xenboot/suse-11.1/config.xml
+@@ -19,6 +19,8 @@
+ 		&lt;profile name=&quot;ec2&quot; description=&quot;KERNEL: Ec2&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
++		&lt;file name=&quot;crypto/*&quot;/&gt;
++		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/loop.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+@@ -51,6 +53,8 @@
+ 		&lt;package name=&quot;fribidi&quot;/&gt;
+ 		&lt;package name=&quot;make&quot;/&gt;
+ 		&lt;package name=&quot;bootsplash&quot;/&gt;
++		&lt;package name=&quot;cryptsetup&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+diff --git a/system/boot/ix86/xenboot/suse-11.2/config.xml b/system/boot/ix86/xenboot/suse-11.2/config.xml
+index ea5bd6b..9df41ad 100644
+--- a/system/boot/ix86/xenboot/suse-11.2/config.xml
++++ b/system/boot/ix86/xenboot/suse-11.2/config.xml
+@@ -19,6 +19,8 @@
+ 		&lt;profile name=&quot;ec2&quot; description=&quot;KERNEL: Ec2&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
++		&lt;file name=&quot;crypto/*&quot;/&gt;
++		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/loop.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+@@ -55,6 +57,8 @@
+ 		&lt;package name=&quot;fribidi&quot;/&gt;
+ 		&lt;package name=&quot;make&quot;/&gt;
+ 		&lt;package name=&quot;bootsplash&quot;/&gt;
++		&lt;package name=&quot;cryptsetup&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+diff --git a/system/boot/ix86/xenboot/suse-SLED11/config.xml b/system/boot/ix86/xenboot/suse-SLED11/config.xml
+index 2a5f6fa..6a3a1cb 100644
+--- a/system/boot/ix86/xenboot/suse-SLED11/config.xml
++++ b/system/boot/ix86/xenboot/suse-SLED11/config.xml
+@@ -19,6 +19,8 @@
+ 		&lt;profile name=&quot;ec2&quot; description=&quot;KERNEL: Ec2&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
++		&lt;file name=&quot;crypto/*&quot;/&gt;
++		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/loop.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+@@ -54,6 +56,8 @@
+ 		&lt;package name=&quot;fribidi&quot;/&gt;
+ 		&lt;package name=&quot;make&quot;/&gt;
+ 		&lt;package name=&quot;bootsplash&quot;/&gt;
++		&lt;package name=&quot;cryptsetup&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+diff --git a/system/boot/ix86/xenboot/suse-SLES11/config.xml b/system/boot/ix86/xenboot/suse-SLES11/config.xml
+index 187df12..1600346 100644
+--- a/system/boot/ix86/xenboot/suse-SLES11/config.xml
++++ b/system/boot/ix86/xenboot/suse-SLES11/config.xml
+@@ -19,6 +19,8 @@
+ 		&lt;profile name=&quot;ec2&quot; description=&quot;KERNEL: Ec2&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
++		&lt;file name=&quot;crypto/*&quot;/&gt;
++		&lt;file name=&quot;drivers/md/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/loop.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/ext3/*&quot;/&gt;
+@@ -54,6 +56,8 @@
+ 		&lt;package name=&quot;fribidi&quot;/&gt;
+ 		&lt;package name=&quot;make&quot;/&gt;
+ 		&lt;package name=&quot;bootsplash&quot;/&gt;
++		&lt;package name=&quot;cryptsetup&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel-xen&quot;/&gt;
+diff --git a/system/boot/ix86/xenboot/suse-linuxrc b/system/boot/ix86/xenboot/suse-linuxrc
+index 30c9974..2a9fe44 100755
+--- a/system/boot/ix86/xenboot/suse-linuxrc
++++ b/system/boot/ix86/xenboot/suse-linuxrc
+@@ -114,6 +114,11 @@ VMFindSystem
+ # 7) Get filesystem type
+ #--------------------------------------
+ probeFileSystem $imageRootDevice
++if [ &quot;$FSTYPE&quot; = &quot;luks&quot; ];then
++	imageRootDevice=$(luksOpen $imageRootDevice)
++	probeFileSystem $imageRootDevice
++	export haveLuks=yes
++fi
+ if [ $FSTYPE = &quot;unknown&quot; ];then
+ 	systemException \
+ 		&quot;Couldn't determine filesystem type... abort&quot; \
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001338.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9665bef664044e97df795dc0b2fcdb88dff0c473
+</A></li>
+	<LI>Next message: <A HREF="001340.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 87bf636b9296120aab6eaafdc5eb223030afa03d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1339">[ date ]</a>
+              <a href="thread.html#1339">[ thread ]</a>
+              <a href="subject.html#1339">[ subject ]</a>
+              <a href="author.html#1339">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

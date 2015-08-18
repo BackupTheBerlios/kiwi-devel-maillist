@@ -1,0 +1,184 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. 6bc41c4691195bfafe5d2e9cc657d8de72386639
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-443-SuSE-11-3-Devel%2C%0A%09updated.%206bc41c4691195bfafe5d2e9cc657d8de72386639&In-Reply-To=%3C20100930105802.9CF14481009%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002702.html">
+   <LINK REL="Next"  HREF="002704.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. 6bc41c4691195bfafe5d2e9cc657d8de72386639</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-443-SuSE-11-3-Devel%2C%0A%09updated.%206bc41c4691195bfafe5d2e9cc657d8de72386639&In-Reply-To=%3C20100930105802.9CF14481009%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. 6bc41c4691195bfafe5d2e9cc657d8de72386639">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Sep 30 12:58:02 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002702.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bdd4aa02ad9801e4063931dca643188fb32185ab
+</A></li>
+        <LI>Next message: <A HREF="002704.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. c8ad8eb581fc8135331231f05ff5d363aaa0f837
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2703">[ date ]</a>
+              <a href="thread.html#2703">[ thread ]</a>
+              <a href="subject.html#2703">[ subject ]</a>
+              <a href="author.html#2703">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-443-SuSE-11-3-Devel has been updated
+       via  6bc41c4691195bfafe5d2e9cc657d8de72386639 (commit)
+      from  a976f9147212d2d6c33978e3b79efea30476f024 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 6bc41c4691195bfafe5d2e9cc657d8de72386639
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Sep 30 12:34:55 2010 +0200
+
+    - fixed OEMRepartStandard() to use the suggested last cylinder for
+      the last partition to become created instead of a fixed value.
+      Also use the suggested last cylinder for the resize of the root
+      partition if there is no other partition to become created and
+      no oem-systemsize was specified
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/system/boot/ix86/oemboot/suse-repart b/system/boot/ix86/oemboot/suse-repart
+index 30ca1d9..c3cdbf2 100755
+--- a/system/boot/ix86/oemboot/suse-repart
++++ b/system/boot/ix86/oemboot/suse-repart
+@@ -62,6 +62,8 @@ function OEMRepartStandard {
+ 	# p1: ( root )  +luks
+ 	# p2: [ boot ]
+ 	# -------------------------------------
++	local newparts=0
++	local partsize=0
+ 	#======================================
+ 	# check for boot partition
+ 	#--------------------------------------
+@@ -127,17 +129,41 @@ function OEMRepartStandard {
+ 				d 2
+ 		fi
+ 		#======================================
++		# count partitions to be created
++		#--------------------------------------
++		if [ -z &quot;$OEM_WITHOUTSWAP&quot; ];then
++			newparts=$((newparts + 1))
++		fi
++		if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
++			newparts=$((newparts + 1))
++		fi
++		if [ ! -z &quot;$bootXMBytes&quot; ];then
++			newparts=$((newparts + 1))
++		fi
++		if [ -z &quot;$OEM_WITHOUTHOME&quot; ];then
++			newparts=$((newparts + 1))
++		fi
++		#======================================
+ 		# repart root partition
+ 		#--------------------------------------
++		partsize=+&quot;$disk1MBytes&quot;M
++		if [ -z &quot;$OEM_SYSTEMSIZE&quot; ] &amp;&amp; [ $newparts -eq 0 ];then
++			partsize=.
++		fi
+ 		createPartitionerInput \
+-			d n p $pID . +&quot;$disk1MBytes&quot;M
++			d n p $pID . $partsize
+ 		#======================================
+ 		# add swap partition
+ 		#--------------------------------------
+ 		if [ -z &quot;$OEM_WITHOUTSWAP&quot; ];then
+ 			pID=$((pID + 1))
++			partsize=+&quot;$swapsize&quot;M
++			if [ $newparts -eq 1 ];then
++				partsize=.
++			fi
+ 			createPartitionerInput \
+-				n p $pID . +&quot;$swapsize&quot;M t 2 82
++				n p $pID . $partsize t 2 82
++			newparts=$((newparts - 1))
+ 			swapParam=$pID
+ 		fi
+ 		#======================================
+@@ -145,8 +171,13 @@ function OEMRepartStandard {
+ 		#--------------------------------------
+ 		if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ 			pID=$((pID + 1))
++			partsize=+&quot;$recoMByte&quot;M
++			if [ $newparts -eq 1 ];then
++				partsize=.
++			fi
+ 			createPartitionerInput \
+-				n p $pID . +&quot;$recoMByte&quot;M t $pID $recoID
++				n p $pID . $partsize t $pID $recoID
++			newparts=$((newparts - 1))
+ 			recoParam=$pID
+ 		fi
+ 		#======================================
+@@ -154,8 +185,10 @@ function OEMRepartStandard {
+ 		#--------------------------------------
+ 		if [ ! -z &quot;$bootXMBytes&quot; ];then
+ 			pID=$((pID + 1))
++			partsize=+&quot;$bootXMBytes&quot;M
+ 			createPartitionerInput \
+-				n p $pID . +&quot;$bootXMBytes&quot;M t $pID $bootpartID
++				n p $pID . $partsize t $pID $bootpartID
++			newparts=$((newparts - 1))
+ 			bootParam=$pID
+ 		fi
+ 		#======================================
+@@ -165,6 +198,7 @@ function OEMRepartStandard {
+ 			pID=$((pID + 1))
+ 			createPartitionerInput \
+ 				n p $pID . .
++			newparts=$((newparts - 1))
+ 			homeParam=$pID
+ 		fi
+ 		#======================================
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002702.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bdd4aa02ad9801e4063931dca643188fb32185ab
+</A></li>
+	<LI>Next message: <A HREF="002704.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-443-SuSE-11-3-Devel,	updated. c8ad8eb581fc8135331231f05ff5d363aaa0f837
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2703">[ date ]</a>
+              <a href="thread.html#2703">[ thread ]</a>
+              <a href="subject.html#2703">[ subject ]</a>
+              <a href="author.html#2703">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

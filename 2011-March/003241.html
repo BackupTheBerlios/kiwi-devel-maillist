@@ -1,0 +1,202 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [PATCH] add a --mbrid command line switch
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BPATCH%5D%20add%20a%20--mbrid%20command%20line%20switch&In-Reply-To=%3C1300817291-22249-1-git-send-email-winter%40pre-sense.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003192.html">
+   <LINK REL="Next"  HREF="003242.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [PATCH] add a --mbrid command line switch</H1>
+    <B>Justus Winter</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BPATCH%5D%20add%20a%20--mbrid%20command%20line%20switch&In-Reply-To=%3C1300817291-22249-1-git-send-email-winter%40pre-sense.de%3E"
+       TITLE="[Kiwi-devel] [PATCH] add a --mbrid command line switch">winter at pre-sense.de
+       </A><BR>
+    <I>Tue Mar 22 19:08:11 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003192.html">[Kiwi-devel] [PATCH] find and mount the active partition on /livecd
+</A></li>
+        <LI>Next message: <A HREF="003242.html">[Kiwi-devel] [PATCH] add a --mbrid command line switch
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3241">[ date ]</a>
+              <a href="thread.html#3241">[ thread ]</a>
+              <a href="subject.html#3241">[ subject ]</a>
+              <a href="author.html#3241">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This patch allows you to specify a mbrid on the command line. The default
+was (and still is) to let kiwi create a random value every time kiwi is
+invoked.
+---
+ kiwi.pl              |   14 ++++++++++++++
+ modules/KIWIBoot.pm  |   27 ++++++++++++++++-----------
+ modules/KIWIImage.pm |   28 ++++++++++++++++------------
+ 3 files changed, 46 insertions(+), 23 deletions(-)
+
+diff --git a/kiwi.pl b/kiwi.pl
+index 3ef682e..f890255 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -222,6 +222,7 @@ our $RecycleRoot;           # use existing root directory incl. contents
+ our $FatStorage;            # specify size of fat partition if syslinux is used
+ our $cmdL;                  # command line storage object
+ our $kiwi;                  # global logging handler object
++our $MBRID;                 # mbrid to use when creating isohybrid images
+ 
+ #============================================
+ # Globals
+@@ -1242,6 +1243,7 @@ sub init {
+ 		&quot;check-config=s&quot;        =&gt; \$CheckConfig,
+ 		&quot;yes|y&quot;                 =&gt; \$defaultAnswer,
+ 		&quot;debug&quot;                 =&gt; \$Debug,
++		&quot;mbrid=o&quot;               =&gt; \$MBRID,
+ 		&quot;help|h&quot;                =&gt; \$Help
+ 	);
+ 	#========================================
+@@ -1473,6 +1475,14 @@ sub init {
+ 	if (defined $SetImageType) {
+ 		$cmdL -&gt; setBuildType($SetImageType);
+ 	}
++	if (defined $MBRID) {
++		if ($MBRID &lt; 0 || $MBRID &gt; 0xffffffff) {
++			$kiwi -&gt; error (&quot;Invalid mbrid&quot;);
++			$kiwi -&gt; failed ();
++			return kiwiExit (1);
++		}
++		$MBRID = sprintf (&quot;0x%08x&quot;, $MBRID);
++	}
+ }
+ 
+ #==========================================
+@@ -1673,6 +1683,10 @@ sub usage {
+ 	print &quot;      Activates check for matching kernels between boot and\n&quot;;
+ 	print &quot;      system image. The kernel check also tries to fix the boot\n&quot;;
+ 	print &quot;      image if no matching kernel was found.\n&quot;;
++	print &quot;\n&quot;;
++	print &quot;    [ --mbrid &lt;mbrid&gt;]\n&quot;;
++	print &quot;      Sets the disk id to the given value. The default is to\n&quot;;
++	print &quot;      generate a random id.\n&quot;;
+ 	print &quot;--\n&quot;;
+ 	version ($exit);
+ }
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 2ba7d45..ff29c2b 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -2829,20 +2829,25 @@ sub buildMD5Sum {
+ #------------------------------------------
+ sub getMBRDiskLabel {
+ 	# ...
+-	# create a random 4byte MBR disk label ID
++	# set the mbrid to either the value given at the command line or
++	# a random 4byte MBR disk label ID
+ 	# ---
+ 	my $this  = shift;
+ 	my $range = 0xfe;
+-	my @bytes;
+-	undef $this-&gt;{mbrid};
+-	for (my $i=0;$i&lt;4;$i++) {
+-		$bytes[$i] = 1 + int(rand($range));
+-		redo if $bytes[0] &lt;= 0x11;
+-	}
+-	my $nid = sprintf (&quot;0x%02x%02x%02x%02x&quot;,
+-		$bytes[0],$bytes[1],$bytes[2],$bytes[3]
+-	);
+-	$this-&gt;{mbrid} = $nid;
++	if (defined $main::MBRID) {
++		$this-&gt;{mbrid} = $main::MBRID;
++	} else {
++		my @bytes;
++		undef $this-&gt;{mbrid};
++		for (my $i=0;$i&lt;4;$i++) {
++			$bytes[$i] = 1 + int(rand($range));
++			redo if $bytes[0] &lt;= 0x11;
++		}
++		my $nid = sprintf (&quot;0x%02x%02x%02x%02x&quot;,
++			$bytes[0],$bytes[1],$bytes[2],$bytes[3]
++		);
++		$this-&gt;{mbrid} = $nid;
++	}
+ 	return $this;
+ }
+ 
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index ec2ffd9..b945e8e 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -4071,21 +4071,25 @@ sub cleanKernelFSMount {
+ #------------------------------------------
+ sub getMBRDiskLabel {
+ 	# ...
+-	# create a random 4byte MBR disk label ID, used
+-	# the isohybrid call as parameter
++	# set the mbrid to either the value given at the command line or
++	# a random 4byte MBR disk label ID
+ 	# ---
+ 	my $this  = shift;
+ 	my $range = 0xfe;
+-	my @bytes;
+-	undef $this-&gt;{mbrid};
+-	for (my $i=0;$i&lt;4;$i++) {
+-		$bytes[$i] = 1 + int(rand($range));
+-		redo if $bytes[0] &lt;= 0xf;
+-	}
+-	my $nid = sprintf (&quot;0x%02x%02x%02x%02x&quot;,
+-		$bytes[0],$bytes[1],$bytes[2],$bytes[3]
+-	);
+-	$this-&gt;{mbrid} = $nid;
++	if (defined $main::MBRID) {
++		$this-&gt;{mbrid} = $main::MBRID;
++	} else {
++		my @bytes;
++		undef $this-&gt;{mbrid};
++		for (my $i=0;$i&lt;4;$i++) {
++			$bytes[$i] = 1 + int(rand($range));
++			redo if $bytes[0] &lt;= 0xf;
++		}
++		my $nid = sprintf (&quot;0x%02x%02x%02x%02x&quot;,
++			$bytes[0],$bytes[1],$bytes[2],$bytes[3]
++		);
++		$this-&gt;{mbrid} = $nid;
++	}
+ 	return $this;
+ }
+ 
+-- 
+1.7.2.5
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003192.html">[Kiwi-devel] [PATCH] find and mount the active partition on /livecd
+</A></li>
+	<LI>Next message: <A HREF="003242.html">[Kiwi-devel] [PATCH] add a --mbrid command line switch
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3241">[ date ]</a>
+              <a href="thread.html#3241">[ thread ]</a>
+              <a href="subject.html#3241">[ subject ]</a>
+              <a href="author.html#3241">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,353 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 607aafbc89441fb97501c1e33db13fc527de323e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20607aafbc89441fb97501c1e33db13fc527de323e&In-Reply-To=%3C200912151355.nBFDtdga014702%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001704.html">
+   <LINK REL="Next"  HREF="001706.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 607aafbc89441fb97501c1e33db13fc527de323e</H1>
+    <B>cwh at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20607aafbc89441fb97501c1e33db13fc527de323e&In-Reply-To=%3C200912151355.nBFDtdga014702%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 607aafbc89441fb97501c1e33db13fc527de323e">cwh at mail.berlios.de
+       </A><BR>
+    <I>Tue Dec 15 14:55:39 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001704.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4cfe7b34695aece2d3bccb203b12c9743eb74d7e
+</A></li>
+        <LI>Next message: <A HREF="001706.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0f20393d83ed6409a74f8ce3f80a4993abe001a4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1705">[ date ]</a>
+              <a href="thread.html#1705">[ thread ]</a>
+              <a href="subject.html#1705">[ subject ]</a>
+              <a href="author.html#1705">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  607aafbc89441fb97501c1e33db13fc527de323e (commit)
+      from  4cfe7b34695aece2d3bccb203b12c9743eb74d7e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 607aafbc89441fb97501c1e33db13fc527de323e
+Author: Christopher Hofmann &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">cwh at suse.de</A>&gt;
+Date:   Fri Dec 11 15:23:07 2009 +0100
+
+    - changed mkisofs parameters in KIWICollect.pm the way similar like autobuild did before
+    - fixed mkisofs parameters for ia64
+    - added ppc support to KIWIIsoLinux (KIWIIsoLinux-AppleFileMapping.txt is part of it)
+    - added KIWIIsoLinux-AppleFileMapping.txt to spec file
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWICollect.pm b/modules/KIWICollect.pm
+index 239649e..197069e 100644
+--- a/modules/KIWICollect.pm
++++ b/modules/KIWICollect.pm
+@@ -605,14 +605,36 @@ sub mainTask
+   }
+   else {
+     my $iso;
+-    foreach my $cd($this-&gt;getMediaNumbers()) {
++
++    foreach my $cd ($this-&gt;getMediaNumbers()) {
+       next if($cd == 0);
+-      my $cdname = $this-&gt;{m_basesubdir}-&gt;{$cd};
+-      my $attr = &quot;-R -J -f -pad -joliet-long&quot;;
+-      $cdname =~ s{.*/(.*)/*$}{$1};
+-      my $checkmedia;
+-      $checkmedia = &quot;checkmedia&quot; if ( defined($this-&gt;{m_proddata}-&gt;getVar(&quot;RUN_MEDIA_CHECK&quot;)) and $this-&gt;{m_proddata}-&gt;getVar(&quot;RUN_MEDIA_CHECK&quot;) ne &quot;0&quot; and $this-&gt;{m_proddata}-&gt;getVar(&quot;RUN_MEDIA_CHECK&quot;) ne &quot;false&quot;   );
+-      $iso = new KIWIIsoLinux($this-&gt;{m_logger}, $this-&gt;{m_basesubdir}-&gt;{$cd}, $this-&gt;{m_united}.&quot;/$cdname.iso&quot;,$attr,$checkmedia);
++
++      ( my $name = $this-&gt;{m_basesubdir}-&gt;{$cd} ) =~ s{.*/(.*)/*$}{$1};
++      my $isoname = $this-&gt;{m_united}.&quot;/$name.iso&quot;;
++
++      my $attr = &quot;-r&quot;; # RockRidge
++      $attr .= &quot; -pad&quot;; # pad image by 150 sectors - needed for Linux
++      $attr .= &quot; -f&quot;; # follow symlinks - really necessary?
++      $attr .= &quot; -J&quot;; # Joilet extensions - only useful for i586/x86_64, I think
++      $attr .= &quot; -joliet-long&quot;; # longer filenames for joilet filenames
++      $attr .= &quot; -p \&quot;$main::Preparer\&quot;&quot;;
++      $attr .= &quot; -publisher \&quot;$main::Publisher\&quot;&quot;;
++      $attr .= &quot; -A \&quot;$name\&quot;&quot;;
++      $attr .= sprintf(' -V &quot;%s.%03d&quot;',
++                       $name,
++                       $cd);
++
++      my $checkmedia = '';
++      $checkmedia = &quot;checkmedia&quot; if ( defined($this-&gt;{m_proddata}-&gt;getVar(&quot;RUN_MEDIA_CHECK&quot;))
++                                      &amp;&amp; $this-&gt;{m_proddata}-&gt;getVar(&quot;RUN_MEDIA_CHECK&quot;) ne &quot;0&quot;
++                                      &amp;&amp; $this-&gt;{m_proddata}-&gt;getVar(&quot;RUN_MEDIA_CHECK&quot;) ne &quot;false&quot; );
++
++      $iso = new KIWIIsoLinux( $this-&gt;{m_logger},
++                               $this-&gt;{m_basesubdir}-&gt;{$cd},
++                               $isoname,
++                               $attr,
++                               $checkmedia);
++
+       if(!$iso-&gt;callBootMethods()) {
+         $this-&gt;logMsg(&quot;W&quot;, &quot;Creating boot methods failed, medium maybe not be bootable&quot;);
+       }
+@@ -624,7 +646,7 @@ sub mainTask
+         return 1;
+       }
+       else {
+-        $this-&gt;logMsg(&quot;I&quot;, &quot;Created Iso image &lt;$cdname.iso&gt;&quot;);
++        $this-&gt;logMsg(&quot;I&quot;, &quot;Created Iso image &lt;$isoname&gt;&quot;);
+       }
+       if(!$iso-&gt;checkImage()) {
+         $this-&gt;logMsg(&quot;E&quot;, &quot;Tagmedia call failed&quot;);
+diff --git a/modules/KIWIIsoLinux-AppleFileMapping.txt b/modules/KIWIIsoLinux-AppleFileMapping.txt
+new file mode 100644
+index 0000000..b8f712d
+--- /dev/null
++++ b/modules/KIWIIsoLinux-AppleFileMapping.txt
+@@ -0,0 +1,89 @@
++# Example filename mapping file for mkhybrid HFS parts
++# !!!!            !!!!      !!!!
++# EXTN   XLate   CREATOR   TYPE     Comment
++.tif     Raw     '8BIM'    'TIFF'   &quot;Photoshop TIFF image&quot;
++.tiff    Raw     '8BIM'    'TIFF'   &quot;Photoshop TIFF image&quot;
++.gif     Raw     'ogle'    'GIFf'   &quot;GIF Image&quot;
++.jpg     Raw     'ogle'    'JPEG'   &quot;JPEG Image&quot;
++.jpeg    Raw     'ogle'    'JPEG'   &quot;JPEG Image&quot;
++
++.htm     Ascii   'iCAB'    'TEXT'   &quot;iCab HTML Page&quot;
++.html    Ascii   'iCAB'    'TEXT'   &quot;iCab HTML Page&quot;
++
++.hqx     Ascii   'BnHq'    'TEXT'   &quot;BinHex file&quot;
++.sit     Raw     'SITx'    'SITD'   &quot;StuffIt Expander Archive&quot;
++.gz      Raw     'Gzip'    'Gzip'   &quot;GNU gzip Data&quot;
++.doc     Raw     'MSWD'    'WDBN'   &quot;Word file&quot;
++.mov     Raw     'TVOD'    'MooV'   &quot;QuickTime Movie&quot;
++.pdf     Raw     'CARO'    'PDF '   &quot;Acrobat Reader&quot;
++
++.mac     Ascii   'ttxt'   'TEXT'   &quot;README files in MacOS format&quot;
++
++
++.pl      Raw     'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.sh      Raw     'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.fil     Raw     'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.inf     Raw     'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.pkd     Raw     'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.sel     Raw     'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.ser     Raw     'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.txt     Raw     'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.TXT     Raw     'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.ycp     Raw     'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.conf    Ascii   'ttxt'    'TEXT'   &quot;BBEdit Text&quot;
++
++Finder             Raw   'MACS' 'FNDR' &quot;Finder dummy file&quot;
++System             Raw   'MACS' 'zsys' &quot;System fake, miboot&quot;
++yaboot             Raw   'UNIX' 'UNIX' &quot;yaboot bootloader&quot;
++yaboot.ibm         Raw   'UNIX' 'UNIX' &quot;yaboot bootloader with addnote&quot;
++install            Raw   'UNIX' 'UNIX' &quot;zImage.initrd for pseries&quot;
++install32          Raw   'UNIX' 'UNIX' &quot;zImage.initrd for 32bit RS6K&quot;
++inst32             Raw   'UNIX' 'UNIX' &quot;zImage.initrd with addnote&quot;
++inst64             Raw   'UNIX' 'UNIX' &quot;zImage.initrd with addnote&quot;
++vmlinux32          Raw   'UNIX' 'UNIX' &quot;vmlinux ELF&quot;
++vmlinux64          Raw   'UNIX' 'UNIX' &quot;vmlinux ELF&quot;
++initrd32           Raw   'UNIX' 'UNIX' &quot;installation initrd&quot;
++initrd64           Raw   'UNIX' 'UNIX' &quot;installation initrd&quot;
++zImage.prep.initrd Raw   'UNIX' 'UNIX' &quot;zImage.initrd for PReP&quot;
++yaboot.conf        Ascii 'ttxt' 'TEXT' &quot;os-chooser between MacOS and yaboot&quot;
++yaboot.cnf         Ascii 'ttxt' 'TEXT' &quot;os-chooser between MacOS and yaboot&quot;
++os-chooser         Ascii 'chrp' 'tbxi' &quot;os-chooser between MacOS and yaboot&quot;
++os-chooser.example Ascii 'ttxt' 'TEXT' &quot;os-chooser between MacOS and yaboot&quot;
++
++generate_os_chooser.sh        Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++
++Changelog        Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++COPYING          Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++COPYING.tex      Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++Changelog        Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++COPYRIGHT        Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++COPYRIGHT.yast   Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++SHA1SUMS         Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++MD5SUMS          Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++MD5SUMS.meta     Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.english         Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.de              Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.german          Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++NEWS             Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++README           Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++README.BETA      Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++README.manual    Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++README.japanese  Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++content          Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++media            Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++products         Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++build            Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.asc             Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.key             Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.xml             Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++.rtf             Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++directory.yast   Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++config           Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++rpmlist          Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++mini-iso-rmlist  Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++patterns         Raw    'R*ch'    'TEXT'   &quot;BBEdit Text&quot;
++
++*        Raw     '????'    '????'   &quot;Unknown File&quot;
++
++
++
+diff --git a/modules/KIWIIsoLinux.pm b/modules/KIWIIsoLinux.pm
+index 2363a5e..4fd8043 100644
+--- a/modules/KIWIIsoLinux.pm
++++ b/modules/KIWIIsoLinux.pm
+@@ -116,6 +116,10 @@ sub new {
+ 	$base{ia64}{boot}    = &quot;boot/ia64&quot;;
+ 	$base{ia64}{loader}  = &quot;undef&quot;;
+ 	$base{ia64}{efi}     = &quot;boot/ia64/efi&quot;;
++	# ppc64
++	$base{ppc64}{boot}    = &quot;suseboot&quot;;
++	$base{ppc64}{loader}  = &quot;undef&quot;;
++	$base{ppc64}{efi}     = &quot;undef&quot;;
+ 	#=======================================
+ 	# 1) search for legacy boot
+ 	#---------------------------------------
+@@ -127,6 +131,9 @@ sub new {
+ 			if ($arch eq &quot;ix86&quot;) {
+ 				$catalog[0] = &quot;ix86_legacy&quot;;
+ 			}
++			if ($arch eq &quot;ppc64&quot;) {
++				$catalog[0] = &quot;ppc64_default&quot;;
++			}
+ 		}
+ 	}
+ 	#=======================================
+@@ -217,7 +224,7 @@ sub ix86_legacy {
+ 	my $boot  = $base{$arch}{boot};
+ 	my $loader= $base{$arch}{loader};
+ 	$para.= &quot; -sort $sort -no-emul-boot -boot-load-size 4 -boot-info-table&quot;;
+-    $para.= &quot; -b $loader -c $boot/boot.catalog&quot;;
++	$para.= &quot; -b $loader -c $boot/boot.catalog&quot;;
+ 	$para.= &quot; -hide $boot/boot.catalog -hide-joliet $boot/boot.catalog&quot;;
+ 	$this -&gt; {params} = $para;
+ 	$this -&gt; createISOLinuxConfig ($boot);
+@@ -265,9 +272,15 @@ sub ia64_efi {
+ 	my $para  = $this -&gt; {params};
+ 	my $boot  = $base{$arch}{boot};
+ 	my $loader= $base{$arch}{efi};
+-	$para.= &quot; -eltorito-alt-boot&quot;;
+-	$para.= &quot; -hide $boot/boot.catalog -hide-joliet $boot/boot.catalog&quot;;
++	my $sort  = $this -&gt; createLegacySortFile (&quot;ia64&quot;);
++
++	$para.= &quot; -no-emul-boot&quot;;
++	$para.= &quot; -boot-load-size 1&quot;;
++	$para.= &quot; -sort $sort&quot;;
+ 	$para.= &quot; -b $loader&quot;;
++	$para.= &quot; -c $boot/boot.catalog&quot;;
++	$para.= &quot; -hide $boot/boot.catalog -hide-joliet $boot/boot.catalog&quot;;
++
+ 	$this -&gt; {params} = $para;
+ }
+ 
+@@ -304,6 +317,30 @@ sub s390x_ikr {
+ }
+ 
+ #==========================================
++# ppc64_default
++#------------------------------------------
++sub ppc64_default {
++	my $this  = shift;
++	my $arch  = shift;
++	my %base  = %{$this-&gt;{base}};
++	my $para  = $this -&gt; {params};
++	my $src  = $this -&gt; {source};
++	my $boot  = $base{$arch}{boot};
++
++	$para.= &quot; -chrp-boot&quot;;
++        $para.= &quot; -hfs-bless $src/$boot&quot;; # CHECK: maybe $src is not necessary
++	$para.= &quot; -hfs-volid FIXME&quot;; # FIXME should be same as value of -A
++	$para.= &quot; -l&quot;;
++	$para.= &quot; --macbin&quot;;
++	$para.= &quot; -map $main::BasePath/modules/KIWIIsoLinux-AppleFileMapping.txt&quot;;
++	$para.= &quot; --netatalk&quot;;
++	$para.= &quot; -part&quot;;
++	$para.= &quot; -T&quot;;
++	$para.= &quot; -U&quot;;
++	$this -&gt; {params} = $para;
++}
++
++#==========================================
+ # callBootMethods 
+ #------------------------------------------
+ sub callBootMethods {
+@@ -490,9 +527,11 @@ sub createISO {
+ 	my $para = $this -&gt; {params};
+ 	my $ldir = $this -&gt; {tmpdir};
+ 	my $prog = $this -&gt; {tool};
+-	my $data = qxx (
+-		&quot;$prog $para -o $dest $ldir $src 2&gt;&amp;1&quot;
+-	);
++
++        my $cmdln = &quot;$prog $para -o $dest $ldir $src 2&gt;&amp;1&quot;;
++        $kiwi -&gt; info ( &quot;Calling: $cmdln\n&quot; );
++	my $data = qxx ( $cmdln	);
++
+ 	my $code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+ 		$kiwi -&gt; error  (&quot;Failed to call $prog: $data&quot;);
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index f618e69..a30b7fd 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -453,6 +453,7 @@ rm -rf $RPM_BUILD_ROOT
+ 
+ %files -n kiwi-instsource
+ %defattr(-, root, root)
++%{_datadir}/kiwi/modules/KIWIIsoLinux-AppleFileMapping.txt
+ %{_datadir}/kiwi/modules/KIWICollect.pm
+ %{_datadir}/kiwi/modules/KIWIUtil.pm
+ %{_datadir}/kiwi/modules/KIWIRepoMetaHandler.pm
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001704.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4cfe7b34695aece2d3bccb203b12c9743eb74d7e
+</A></li>
+	<LI>Next message: <A HREF="001706.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0f20393d83ed6409a74f8ce3f80a4993abe001a4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1705">[ date ]</a>
+              <a href="thread.html#1705">[ thread ]</a>
+              <a href="subject.html#1705">[ subject ]</a>
+              <a href="author.html#1705">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

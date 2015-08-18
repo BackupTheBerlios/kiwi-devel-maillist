@@ -1,0 +1,136 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1653 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1653%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200810200944.m9K9idHF024086%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000744.html">
+   <LINK REL="Next"  HREF="000746.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1653 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1653%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200810200944.m9K9idHF024086%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1653 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Oct 20 11:44:39 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000744.html">[Kiwi-devel] r1652 - in kiwi-head: .	doc/examples/suse-11.1/suse-live-stick rpm
+</A></li>
+        <LI>Next message: <A HREF="000746.html">[Kiwi-devel] r1654 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#745">[ date ]</a>
+              <a href="thread.html#745">[ thread ]</a>
+              <a href="subject.html#745">[ subject ]</a>
+              <a href="author.html#745">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-20 11:44:34 +0200 (Mon, 20 Oct 2008)
+New Revision: 1653
+
+Modified:
+   kiwi-head/modules/KIWIQX.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- added file check before calling commands with qxx
+
+
+
+Modified: kiwi-head/modules/KIWIQX.pm
+===================================================================
+--- kiwi-head/modules/KIWIQX.pm	2008-10-17 15:56:48 UTC (rev 1652)
++++ kiwi-head/modules/KIWIQX.pm	2008-10-20 09:44:34 UTC (rev 1653)
+@@ -49,11 +49,42 @@
+ #------------------------------------------
+ sub qxx ($) {
+ 	# ...
+-	# Activate execution logging
++	# Activate execution logging. The function also checks
++	# if the first name evaluated as program name can be
++	# found in the environment using the which command.
++	# Please note if a command chain is given only the first
++	# item is checked which means subsequent calls in the
++	# chain might fail unnoticed
+ 	# ---
+ 	my $cmd = shift;
++	my @prg = &quot;&quot;;
+ 	$cmd =~ s/^ +//g;
+ 	$cmd =~ s/ +$//g;
++	@prg = split (/\s+/,$cmd);
++	#==========================================
++	# Try to find program name in PATH
++	#------------------------------------------
++	my $prog = qx (/usr/bin/which $prg[0]); chomp ($prog);
++	my $exit = $?;
++	my $code = $? &gt;&gt; 8;
++	if ($exit == -1) {
++		$main::kiwi -&gt; loginfo (&quot;EXEC [Failed to call /usr/bin/which: $!]\n&quot;);
++		$main::BT.=cluck ($main::TT.$main::TL++);
++		return $exit;
++	}
++	if ($code != 0) {
++		$main::kiwi -&gt; loginfo (&quot;EXEC [Can't find &quot;.$prg[0].&quot;]\n&quot;);
++		$main::BT.=cluck ($main::TT.$main::TL++);
++		return $exit;
++	}
++	if (! -x $prog) {
++		$main::kiwi -&gt; loginfo (&quot;EXEC [Program $prog not an executable]\n&quot;);
++		$main::BT.=cluck ($main::TT.$main::TL++);
++		return 0xffff;
++	}
++	#==========================================
++	# Call command line
++	#------------------------------------------
+ 	if (defined $main::kiwi) {
+ 		$main::kiwi -&gt; loginfo (&quot;EXEC [$cmd]\n&quot;);
+ 	}
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-17 15:56:48 UTC (rev 1652)
++++ kiwi-head/rpm/kiwi.changes	2008-10-20 09:44:34 UTC (rev 1653)
+@@ -3,6 +3,7 @@
+ 
+ - v2.93
+ - fixed suse-11.1/suse-live-stick example, wrong pattern
++- added file check before calling commands with qxx
+ 
+ -------------------------------------------------------------------
+ Thu Oct 16 18:59:05 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000744.html">[Kiwi-devel] r1652 - in kiwi-head: .	doc/examples/suse-11.1/suse-live-stick rpm
+</A></li>
+	<LI>Next message: <A HREF="000746.html">[Kiwi-devel] r1654 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#745">[ date ]</a>
+              <a href="thread.html#745">[ thread ]</a>
+              <a href="subject.html#745">[ subject ]</a>
+              <a href="author.html#745">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

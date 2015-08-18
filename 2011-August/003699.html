@@ -1,0 +1,425 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. 1fd0915d5aad123d25b27b3afdd1fcadc6115438
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-485-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%201fd0915d5aad123d25b27b3afdd1fcadc6115438&In-Reply-To=%3C20110818105515.08A8C4813E1%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003703.html">
+   <LINK REL="Next"  HREF="003700.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. 1fd0915d5aad123d25b27b3afdd1fcadc6115438</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-485-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%201fd0915d5aad123d25b27b3afdd1fcadc6115438&In-Reply-To=%3C20110818105515.08A8C4813E1%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. 1fd0915d5aad123d25b27b3afdd1fcadc6115438">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Aug 18 12:55:14 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003703.html">[Kiwi-devel] RHEL iso not booting
+</A></li>
+        <LI>Next message: <A HREF="003700.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. cfc31b98d96efef1e8d9d47836ee704d7326cab0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3699">[ date ]</a>
+              <a href="thread.html#3699">[ thread ]</a>
+              <a href="subject.html#3699">[ subject ]</a>
+              <a href="author.html#3699">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-485-SuSE-11-1-SLE-SP-Devel has been updated
+       via  1fd0915d5aad123d25b27b3afdd1fcadc6115438 (commit)
+       via  27f1968bfe50e068856fd0a4b85833c70e9f16ab (commit)
+      from  ceb6b4ff4438883a4f6626e2c78c073e087b67bc (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 1fd0915d5aad123d25b27b3afdd1fcadc6115438
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Jul 29 11:19:22 2011 +0200
+
+    - added support for download and verification progress
+      information for pxe (netboot) images (bnc #708711)
+
+commit 27f1968bfe50e068856fd0a4b85833c70e9f16ab
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Jun 27 12:00:38 2011 +0200
+
+    - added support for pxe buffered write on destination device in
+      fetchFile() function used for netboot images. By default a
+      chunk size of 4k is used
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index fc24c78..a16ee61 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -4858,6 +4858,12 @@ function fetchFile {
+ 	local izip=$3
+ 	local host=$4
+ 	local type=$5
++	local chunk=$6
++	local dump
++	local call
++	if test -z &quot;$chunk&quot;;then
++		chunk=4k
++	fi
+ 	if test -z &quot;$path&quot;; then
+ 		systemException &quot;No path specified&quot; &quot;reboot&quot;
+ 	fi
+@@ -4878,33 +4884,50 @@ function fetchFile {
+ 		path=$(echo $path | sed -e s@\\.gz@@)
+ 		path=&quot;$path.gz&quot;
+ 	fi
++	#======================================
++	# setup progress meta information
++	#--------------------------------------
++	dump=&quot;dd bs=$chunk of=$dest&quot;
++	showProgress=0
++	if [ -x /usr/bin/dcounter ] &amp;&amp; [ -f /etc/image.md5 ];then
++		showProgress=1
++		read sum1 blocks blocksize zblocks zblocksize &lt; /etc/image.md5
++		needBytes=`expr $blocks \* $blocksize`
++		needMByte=`expr $needBytes / 1048576`
++		progressBaseName=$(basename $path)
++		TEXT_LOAD=$(getText &quot;Loading %1&quot; &quot;$progressBaseName&quot;)
++		dump=&quot;dcounter -s $needMByte -l \&quot;$TEXT_LOAD \&quot; 2&gt;/progress | $dump&quot;
++	fi
++	#======================================
++	# build download command
++	#--------------------------------------
+ 	case &quot;$type&quot; in
+ 		&quot;http&quot;)
+ 			if test &quot;$izip&quot; = &quot;compressed&quot;; then
+-				curl -f <A HREF="http://$host/$path">http://$host/$path</A> 2&gt;$TRANSFER_ERRORS_FILE |\
+-					gzip -d &gt; $dest 2&gt;&gt;$TRANSFER_ERRORS_FILE
++				call=&quot;curl -f <A HREF="http://$host/$path">http://$host/$path</A> 2&gt;$TRANSFER_ERRORS_FILE |\
++					gzip -d 2&gt;&gt;$TRANSFER_ERRORS_FILE | $dump&quot;
+ 			else
+-				curl -f <A HREF="http://$host/$path">http://$host/$path</A> &gt; $dest 2&gt; $TRANSFER_ERRORS_FILE
++				call=&quot;curl -f <A HREF="http://$host/$path">http://$host/$path</A> 2&gt; $TRANSFER_ERRORS_FILE |\
++					$dump&quot;
+ 			fi
+-			loadCode=$?
+ 			;;
+ 		&quot;https&quot;)
+ 			if test &quot;$izip&quot; = &quot;compressed&quot;; then
+-				curl -f -k <A HREF="https://$host/$path">https://$host/$path</A> 2&gt;$TRANSFER_ERRORS_FILE |\
+-					gzip -d &gt; $dest 2&gt;&gt;$TRANSFER_ERRORS_FILE
++				call=&quot;curl -f -k <A HREF="https://$host/$path">https://$host/$path</A> 2&gt;$TRANSFER_ERRORS_FILE |\
++					gzip -d 2&gt;&gt;$TRANSFER_ERRORS_FILE | $dump&quot;
+ 			else
+-				curl -f -k <A HREF="https://$host/$path">https://$host/$path</A> &gt; $dest 2&gt; $TRANSFER_ERRORS_FILE
++				call=&quot;curl -f -k <A HREF="https://$host/$path">https://$host/$path</A> 2&gt; $TRANSFER_ERRORS_FILE |\
++					$dump&quot;
+ 			fi
+-			loadCode=$?
+ 			;;
+ 		&quot;ftp&quot;)
+ 			if test &quot;$izip&quot; = &quot;compressed&quot;; then
+-				curl <A HREF="ftp://$host/$path">ftp://$host/$path</A> 2&gt;$TRANSFER_ERRORS_FILE |\
+-					gzip -d &gt; $dest 2&gt;&gt;$TRANSFER_ERRORS_FILE
++				call=&quot;curl <A HREF="ftp://$host/$path">ftp://$host/$path</A> 2&gt;$TRANSFER_ERRORS_FILE |\
++					gzip -d 2&gt;&gt;$TRANSFER_ERRORS_FILE | $dump&quot;
+ 			else
+-				curl <A HREF="ftp://$host/$path">ftp://$host/$path</A> &gt; $dest 2&gt; $TRANSFER_ERRORS_FILE
++				call=&quot;curl <A HREF="ftp://$host/$path">ftp://$host/$path</A> 2&gt; $TRANSFER_ERRORS_FILE |\
++					$dump&quot;
+ 			fi
+-			loadCode=$?
+ 			;;
+ 		&quot;tftp&quot;)
+ 			validateBlockSize
+@@ -4919,22 +4942,49 @@ function fetchFile {
+ 			if test &quot;$izip&quot; = &quot;compressed&quot;; then
+ 				# mutlicast is disabled because you can't seek in a pipe
+ 				# atftp is disabled because it doesn't work with pipes
+-				busybox tftp \
++				call=&quot;busybox tftp \
+ 					-b $imageBlkSize -g -r $path \
+-					-l &gt;(gzip -d &gt; $dest 2&gt;&gt;$TRANSFER_ERRORS_FILE) \
+-					$host 2&gt;&gt;$TRANSFER_ERRORS_FILE
++					-l &gt;(gzip -d 2&gt;&gt;$TRANSFER_ERRORS_FILE | $dump) \
++					$host 2&gt;&gt;$TRANSFER_ERRORS_FILE&quot;
+ 			else
+-				atftp \
+-					--option &quot;$multicast_atftp&quot;  \
+-					--option &quot;blksize $imageBlkSize&quot; \
+-					-g -r $path -l $dest $host &amp;&gt; $TRANSFER_ERRORS_FILE
++				call=&quot;atftp \
++					--option \&quot;$multicast_atftp\&quot;  \
++					--option \&quot;blksize $imageBlkSize\&quot; \
++					-g -r $path -l &gt;($dump) \
++					$host &amp;&gt; $TRANSFER_ERRORS_FILE&quot;
+ 			fi
+-			loadCode=$?
+ 			;;
+ 		*)
+ 			systemException &quot;Unknown download type: $type&quot; &quot;reboot&quot;
+ 			;;
+ 	esac
++	#======================================
++	# run the download
++	#--------------------------------------
++	if [ $showProgress -eq 1 ];then
++		test -e /progress || mkfifo /progress
++		errorLogStop
++		(
++			eval $call &amp;&gt;/dev/null
++			loadCode=$?
++		)&amp;
++		echo &quot;cat /progress | dialog \
++			--backtitle \&quot;$TEXT_INSTALLTITLE\&quot; \
++			--progressbox 3 65
++		&quot; &gt; /tmp/progress.sh
++		if [ -e /dev/fb0 ];then
++			fbiterm -m $UFONT -- bash -e /tmp/progress.sh
++		else
++			bash -e /tmp/progress.sh
++		fi
++		clear
++	else
++		eval $call
++		loadCode=$?
++	fi
++	if [ $showProgress -eq 1 ];then
++		errorLogContinue
++	fi
+ 	loadStatus=`cat $TRANSFER_ERRORS_FILE`
+ 	return $loadCode
+ }
+diff --git a/system/boot/ix86/netboot/suse-11.1/config.xml b/system/boot/ix86/netboot/suse-11.1/config.xml
+index 2ffab26..e1e64d5 100644
+--- a/system/boot/ix86/netboot/suse-11.1/config.xml
++++ b/system/boot/ix86/netboot/suse-11.1/config.xml
+@@ -214,6 +214,10 @@
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
++		&lt;package name=&quot;openssl-certs&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
++		&lt;package name=&quot;fbiterm&quot;/&gt;
++		&lt;package name=&quot;gettext-runtime&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot; profiles=&quot;default,diskless,xen&quot;&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+diff --git a/system/boot/ix86/netboot/suse-11.2/config.xml b/system/boot/ix86/netboot/suse-11.2/config.xml
+index a1438c1..6b9fe2c 100644
+--- a/system/boot/ix86/netboot/suse-11.2/config.xml
++++ b/system/boot/ix86/netboot/suse-11.2/config.xml
+@@ -215,6 +215,9 @@
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
++		&lt;package name=&quot;fbiterm&quot;/&gt;
++		&lt;package name=&quot;gettext-runtime&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot; profiles=&quot;default,diskless,xen&quot;&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+diff --git a/system/boot/ix86/netboot/suse-11.3/config.xml b/system/boot/ix86/netboot/suse-11.3/config.xml
+index 185c5d3..50150fd 100644
+--- a/system/boot/ix86/netboot/suse-11.3/config.xml
++++ b/system/boot/ix86/netboot/suse-11.3/config.xml
+@@ -221,6 +221,9 @@
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
++		&lt;package name=&quot;fbiterm&quot;/&gt;
++		&lt;package name=&quot;gettext-runtime&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot; profiles=&quot;default,diskless,xen&quot;&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+diff --git a/system/boot/ix86/netboot/suse-11.4/config.xml b/system/boot/ix86/netboot/suse-11.4/config.xml
+index 7c9a711..6cbea7f 100644
+--- a/system/boot/ix86/netboot/suse-11.4/config.xml
++++ b/system/boot/ix86/netboot/suse-11.4/config.xml
+@@ -225,6 +225,9 @@
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+ 		&lt;package name=&quot;glibc&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
++		&lt;package name=&quot;fbiterm&quot;/&gt;
++		&lt;package name=&quot;gettext-runtime&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot; profiles=&quot;default,diskless,xen&quot;&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+diff --git a/system/boot/ix86/netboot/suse-SLED10/config.xml b/system/boot/ix86/netboot/suse-SLED10/config.xml
+index 2534066..4fdcb03 100644
+--- a/system/boot/ix86/netboot/suse-SLED10/config.xml
++++ b/system/boot/ix86/netboot/suse-SLED10/config.xml
+@@ -67,6 +67,9 @@
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;bc&quot;/&gt;
+ 		&lt;package name=&quot;curl&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
++		&lt;package name=&quot;fbiterm&quot;/&gt;
++		&lt;package name=&quot;gettext&quot;/&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;iputils&quot;/&gt;
+ 		&lt;package name=&quot;atftp&quot;/&gt;
+diff --git a/system/boot/ix86/netboot/suse-SLED11/config.xml b/system/boot/ix86/netboot/suse-SLED11/config.xml
+index 4e67956..734b751 100644
+--- a/system/boot/ix86/netboot/suse-SLED11/config.xml
++++ b/system/boot/ix86/netboot/suse-SLED11/config.xml
+@@ -210,6 +210,9 @@
+ 		&lt;package name=&quot;glibc&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+ 		&lt;package name=&quot;openssl-certs&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
++		&lt;package name=&quot;fbiterm&quot;/&gt;
++		&lt;package name=&quot;gettext-runtime&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot; profiles=&quot;default,diskless,xen&quot;&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+diff --git a/system/boot/ix86/netboot/suse-SLES10/config.xml b/system/boot/ix86/netboot/suse-SLES10/config.xml
+index 717e017..a089ee9 100644
+--- a/system/boot/ix86/netboot/suse-SLES10/config.xml
++++ b/system/boot/ix86/netboot/suse-SLES10/config.xml
+@@ -68,6 +68,9 @@
+ 		&lt;package name=&quot;bc&quot;/&gt;
+ 		&lt;package name=&quot;adaptec-firmware&quot;/&gt;
+ 		&lt;package name=&quot;curl&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
++		&lt;package name=&quot;fbiterm&quot;/&gt;
++		&lt;package name=&quot;gettext&quot;/&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;iputils&quot;/&gt;
+ 		&lt;package name=&quot;atftp&quot;/&gt;
+diff --git a/system/boot/ix86/netboot/suse-SLES11/config.xml b/system/boot/ix86/netboot/suse-SLES11/config.xml
+index 3188577..fd6758b 100644
+--- a/system/boot/ix86/netboot/suse-SLES11/config.xml
++++ b/system/boot/ix86/netboot/suse-SLES11/config.xml
+@@ -211,6 +211,9 @@
+ 		&lt;package name=&quot;glibc&quot;/&gt;
+ 		&lt;package name=&quot;glibc-locale&quot;/&gt;
+ 		&lt;package name=&quot;openssl-certs&quot;/&gt;
++		&lt;package name=&quot;dialog&quot;/&gt;
++		&lt;package name=&quot;fbiterm&quot;/&gt;
++		&lt;package name=&quot;gettext-runtime&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot; profiles=&quot;default,diskless,xen&quot;&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+diff --git a/system/boot/ix86/netboot/suse-linuxrc b/system/boot/ix86/netboot/suse-linuxrc
+index 8aaab2f..e105df1 100755
+--- a/system/boot/ix86/netboot/suse-linuxrc
++++ b/system/boot/ix86/netboot/suse-linuxrc
+@@ -458,13 +458,13 @@ then
+ 			# get image md5sum to be able to check for the size
+ 			# requirements if we are loading into RAM
+ 			# ---
++			IFS=$IFS_ORIG
+ 			fetchFile $imageMD5s /etc/image.md5 uncomp $imageServer
+ 			if test $loadCode != 0 || ! loadOK &quot;$loadStatus&quot;; then
+ 				systemException \
+ 					&quot;Download of $imageMD5s failed: $loadStatus&quot; \
+ 				&quot;reboot&quot;
+ 			fi
+-			IFS=&quot; &quot;
+ 			read sum1 blocks blocksize zblocks zblocksize &lt; /etc/image.md5
+ 			if ! validateSize;then
+ 				systemException \
+@@ -492,9 +492,35 @@ then
+ 			# check the md5sum of the downloaded data records
+ 			# ----
+ 			Echo &quot;Download complete, checking data...&quot;
+-			dd if=$imageDevice bs=1024 2&gt;/dev/null |\
+-				head --bytes=$((blocks * blocksize)) |\
+-				md5sum - &gt; /etc/ireal.md5
++			verifyBytes=$((blocks * blocksize))
++			verifyMByte=$((verifyBytes / 1048576))
++			if [ -x /usr/bin/dcounter ];then
++				test -e /progress || mkfifo /progress
++				TEXT_VERIFY=$(getText &quot;Verifying %1&quot; $imageDevice)
++				echo &quot;$TEXT_VERIFY ( 0% )&quot; &gt; /progress &amp;
++				dump=&quot;cat $imageDevice&quot;
++				dump=&quot;$dump | dcounter -s $verifyMByte -l \&quot;$TEXT_VERIFY \&quot;&quot;
++				errorLogStop
++				(
++					eval $dump 2&gt;/progress |\
++						head --bytes=$verifyBytes | md5sum - &gt; /etc/ireal.md5
++				)&amp;
++				echo &quot;cat /progress | dialog \
++					--backtitle \&quot;$TEXT_INSTALLTITLE\&quot; \
++					--progressbox 3 65
++				&quot; &gt; /tmp/progress.sh
++				if [ -e /dev/fb0 ];then
++					fbiterm -m $UFONT -- bash -e /tmp/progress.sh
++				else
++					bash -e /tmp/progress.sh
++				fi
++				clear
++				errorLogContinue
++			else
++				dd if=$imageDevice bs=1024 |\
++					head --bytes=$verifyBytes |\
++					md5sum - &gt; /etc/ireal.md5
++			fi
+ 			read sum2 dumy &lt; /etc/ireal.md5
+ 			if test $sum1 = $sum2;then
+ 				Echo &quot;Image checksum test: fine :-)&quot;
+@@ -514,7 +540,7 @@ then
+ 			Echo -b &quot;   TFTP server provides the same md5 sum as included&quot;
+ 			Echo -b &quot;   within the appropriate .md5 file for this image&quot;
+ 			echo
+-			if test -z $DISK;then
++			if [ -z &quot;$DISK&quot; ];then
+ 			Echo -b &quot;4) ramdisk size is too small for the image:&quot;
+ 			Echo -b &quot;   check the ramdisk_size parameter of the PXE&quot;
+ 			Echo -b &quot;   configuration file on the TFTP server&quot;
+@@ -527,7 +553,7 @@ then
+ 			Echo &quot;Retry to load image...&quot;
+ 			sleep 15
+ 		done
+-		if test ! -z $DISK;then
++		if [ ! -z &quot;$DISK&quot; ];then
+ 			probeFileSystem $imageDevice
+ 			resizeFilesystem $imageDevice
+ 		fi
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003703.html">[Kiwi-devel] RHEL iso not booting
+</A></li>
+	<LI>Next message: <A HREF="003700.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. cfc31b98d96efef1e8d9d47836ee704d7326cab0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3699">[ date ]</a>
+              <a href="thread.html#3699">[ thread ]</a>
+              <a href="subject.html#3699">[ subject ]</a>
+              <a href="author.html#3699">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

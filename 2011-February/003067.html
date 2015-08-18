@@ -1,0 +1,133 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. adc906c9e2bdc0eb057a419ca8fca290111def55
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20adc906c9e2bdc0eb057a419ca8fca290111def55&In-Reply-To=%3C20110215172539.7C33E4813D6%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003066.html">
+   <LINK REL="Next"  HREF="003068.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. adc906c9e2bdc0eb057a419ca8fca290111def55</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20adc906c9e2bdc0eb057a419ca8fca290111def55&In-Reply-To=%3C20110215172539.7C33E4813D6%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. adc906c9e2bdc0eb057a419ca8fca290111def55">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Feb 15 18:25:39 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003066.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2e43b9ad0d173a2dddd5e4625914b25e4da588d7
+</A></li>
+        <LI>Next message: <A HREF="003068.html">[Kiwi-devel] Doc improvement patch
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3067">[ date ]</a>
+              <a href="thread.html#3067">[ thread ]</a>
+              <a href="subject.html#3067">[ subject ]</a>
+              <a href="author.html#3067">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  adc906c9e2bdc0eb057a419ca8fca290111def55 (commit)
+      from  2e43b9ad0d173a2dddd5e4625914b25e4da588d7 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit adc906c9e2bdc0eb057a419ca8fca290111def55
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Feb 15 18:24:42 2011 +0100
+
+    - restore copy of temporary files only if they are not provided
+      by the overlay tree. This affects /etc/hosts and /etc/resolv.conf
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIRoot.pm b/modules/KIWIRoot.pm
+index c9639e2..e6bc2f2 100644
+--- a/modules/KIWIRoot.pm
++++ b/modules/KIWIRoot.pm
+@@ -1015,22 +1015,28 @@ sub setup {
+ 	#========================================
+ 	# cleanup temporary copy of resolv.conf
+ 	#----------------------------------------
+-	if ((-f &quot;$root/etc/resolv.conf&quot;) &amp;&amp; (-f &quot;/etc/resolv.conf&quot;)) {
+-		my $data = qxx (&quot;diff -q /etc/resolv.conf $root/etc/resolv.conf&quot;);
+-		my $code = $? &gt;&gt; 8;
+-		if ($code == 0) {
+-			$kiwi -&gt; info (&quot;Cleanup temporary copy of resolv.conf&quot;);
+-			qxx (&quot;rm -f $root/etc/resolv.conf&quot;);
+-			$kiwi -&gt; done ();
++	if (! -e &quot;$imageDesc/root/etc/resolv.conf&quot;) {
++		# restore only if overlay tree doesn't contain a resolv.conf
++		if ((-f &quot;$root/etc/resolv.conf&quot;) &amp;&amp; (-f &quot;/etc/resolv.conf&quot;)) {
++			my $data = qxx (&quot;diff -q /etc/resolv.conf $root/etc/resolv.conf&quot;);
++			my $code = $? &gt;&gt; 8;
++			if ($code == 0) {
++				$kiwi -&gt; info (&quot;Cleanup temporary copy of resolv.conf&quot;);
++				qxx (&quot;rm -f $root/etc/resolv.conf&quot;);
++				$kiwi -&gt; done ();
++			}
+ 		}
+ 	}
+ 	#========================================
+ 	# cleanup temporary copy of hosts
+ 	#----------------------------------------
+-	if (-f &quot;$root/etc/hosts.rpmnew&quot;) {
+-		$kiwi -&gt; info (&quot;Cleanup temporary copy of hosts&quot;);
+-		qxx (&quot;mv $root/etc/hosts.rpmnew $root/etc/hosts&quot;);
+-		$kiwi -&gt; done ();
++	if (! -e &quot;$imageDesc/root/etc/hosts&quot;) {
++		# restore only if overlay tree doesn't contain a hosts
++		if (-f &quot;$root/etc/hosts.rpmnew&quot;) {
++			$kiwi -&gt; info (&quot;Cleanup temporary copy of hosts&quot;);
++			qxx (&quot;mv $root/etc/hosts.rpmnew $root/etc/hosts&quot;);
++			$kiwi -&gt; done ();
++		}
+ 	}
+ 	#========================================
+ 	# cleanup temporary .buildenv
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003066.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2e43b9ad0d173a2dddd5e4625914b25e4da588d7
+</A></li>
+	<LI>Next message: <A HREF="003068.html">[Kiwi-devel] Doc improvement patch
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3067">[ date ]</a>
+              <a href="thread.html#3067">[ thread ]</a>
+              <a href="subject.html#3067">[ subject ]</a>
+              <a href="author.html#3067">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

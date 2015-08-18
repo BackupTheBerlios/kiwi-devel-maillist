@@ -1,0 +1,142 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f8bac43c4dcdf295db63596386892e7e0860db05
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20f8bac43c4dcdf295db63596386892e7e0860db05&In-Reply-To=%3C20110104094635.8803B480396%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002926.html">
+   <LINK REL="Next"  HREF="002928.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f8bac43c4dcdf295db63596386892e7e0860db05</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20f8bac43c4dcdf295db63596386892e7e0860db05&In-Reply-To=%3C20110104094635.8803B480396%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f8bac43c4dcdf295db63596386892e7e0860db05">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jan  4 10:46:35 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002926.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e6e4752e34f3690db6f4dfe0c276739dc420961e
+</A></li>
+        <LI>Next message: <A HREF="002928.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d9114674b3b7e33a1b5a27f1a237d1ede614aff5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2927">[ date ]</a>
+              <a href="thread.html#2927">[ thread ]</a>
+              <a href="subject.html#2927">[ subject ]</a>
+              <a href="author.html#2927">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  f8bac43c4dcdf295db63596386892e7e0860db05 (commit)
+      from  e6e4752e34f3690db6f4dfe0c276739dc420961e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit f8bac43c4dcdf295db63596386892e7e0860db05
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Jan 4 10:44:09 2011 +0100
+
+    - fixed releaseNetwork() to cleanup /dev/.sysconfig as well
+      as unset the variables from the dhcp info file which has been
+      exported into the root shell environment. Those variables
+      caused conflicts with the network scripts in /etc/init.d
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 3e3d23b..d6f51ca 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -233,6 +233,27 @@ function importFile {
+ 	IFS=$IFS_ORIG
+ }
+ #======================================
++# unsetFile
++#--------------------------------------
++function unsetFile {
++	# /.../
++	# unset variables specified within the given file.
++	# the file must be in the config.&lt;MAC&gt; style format
++	# ----
++	IFS=&quot;
++	&quot;
++	while read line;do
++		echo $line | grep -qi &quot;^#&quot; &amp;&amp; continue
++		key=`echo &quot;$line&quot; | cut -d '=' -f1`
++		if [ -z &quot;$key&quot; ];then
++			continue
++		fi
++		Debug &quot;unset $key&quot;
++		eval unset &quot;$key&quot;
++	done
++	IFS=$IFS_ORIG
++}
++#======================================
+ # systemException
+ #--------------------------------------
+ function systemException {
+@@ -3367,7 +3388,18 @@ function releaseNetwork {
+ 	# Do that only for _non_ network root devices
+ 	# ----
+ 	if [ -z &quot;$NFSROOT&quot; ] &amp;&amp; [ -z &quot;$NBDROOT&quot; ] &amp;&amp; [ -z &quot;$AOEROOT&quot; ];then
++		#======================================
++		# free the lease and the cache
++		#--------------------------------------
+ 		dhcpcd -p -k $PXE_IFACE
++		#======================================
++		# remove sysconfig state information
++		#--------------------------------------
++		rm -rf /dev/.sysconfig/network
++		#======================================
++		# unset dhcp info variables
++		#--------------------------------------
++		unsetFile &lt; /var/lib/dhcpcd/dhcpcd-$PXE_IFACE.info
+ 	fi
+ }
+ #======================================
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002926.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e6e4752e34f3690db6f4dfe0c276739dc420961e
+</A></li>
+	<LI>Next message: <A HREF="002928.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d9114674b3b7e33a1b5a27f1a237d1ede614aff5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2927">[ date ]</a>
+              <a href="thread.html#2927">[ thread ]</a>
+              <a href="subject.html#2927">[ subject ]</a>
+              <a href="author.html#2927">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

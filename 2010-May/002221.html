@@ -1,0 +1,686 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 234ec51edc27faebd6ab335e5beb06b1af35d622
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20234ec51edc27faebd6ab335e5beb06b1af35d622&In-Reply-To=%3C201005251415.o4PEFK0q030751%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002244.html">
+   <LINK REL="Next"  HREF="002222.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 234ec51edc27faebd6ab335e5beb06b1af35d622</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20234ec51edc27faebd6ab335e5beb06b1af35d622&In-Reply-To=%3C201005251415.o4PEFK0q030751%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 234ec51edc27faebd6ab335e5beb06b1af35d622">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue May 25 16:15:20 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002244.html">[Kiwi-devel] Hard Coding
+</A></li>
+        <LI>Next message: <A HREF="002222.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 79146e50eb921223b6196509c21446e55837c994
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2221">[ date ]</a>
+              <a href="thread.html#2221">[ thread ]</a>
+              <a href="subject.html#2221">[ subject ]</a>
+              <a href="author.html#2221">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  234ec51edc27faebd6ab335e5beb06b1af35d622 (commit)
+      from  ca4d8b8799c528f926f5dd89aade35f827318ba1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 234ec51edc27faebd6ab335e5beb06b1af35d622
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue May 25 16:15:04 2010 +0200
+
+    - use isolinux for install CD's if sys|extlinux was requested
+      as bootloader for an oem image plus install media (bnc #606651)
+    - fixed clicfs resize operation. The command is now based
+      on a 512 byte sector size value instead of a 4k filesystem block
+      size value which might be wrong depending on the size of the
+      filesystem (bnc #604646)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 774a1cd..2aca7c7 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -1482,18 +1482,29 @@ sub setupInstallCD {
+ 	my $imgtype   = &quot;oem&quot;;
+ 	my $gotsys    = 1;
+ 	my $volid     = &quot;-V \&quot;KIWI CD/DVD Installation\&quot;&quot;;
++	my $bootloader= &quot;grub&quot;;
+ 	my $status;
+ 	my $result;
+ 	my $ibasename;
+ 	my $tmpdir;
++	my %type;
+ 	#==========================================
+-	# check for volume id
++	# read config XML attributes
+ 	#------------------------------------------
+ 	if (defined $xml) {
+-		my %type = %{$xml-&gt;getImageTypeAndAttributes()};
+-		if ($type{volid}) {
+-			$volid = &quot; -V \&quot;$type{volid}\&quot;&quot;;
+-		}
++		%type = %{$xml-&gt;getImageTypeAndAttributes()};
++	}
++	#==========================================
++	# check for volume id
++	#------------------------------------------
++	if ((%type) &amp;&amp; ($type{volid})) {
++		$volid = &quot; -V \&quot;$type{volid}\&quot;&quot;;
++	}
++	#==========================================
++	# setup boot loader type
++	#------------------------------------------
++	if ((%type) &amp;&amp; ($type{bootloader})) {
++		$bootloader = $type{bootloader};
+ 	}
+ 	#==========================================
+ 	# create tmp directory
+@@ -1662,7 +1673,7 @@ sub setupInstallCD {
+ 	#==========================================
+ 	# Import boot loader stages
+ 	#------------------------------------------
+-	if (! $this -&gt; setupBootLoaderStages (&quot;grub&quot;,&quot;iso&quot;)) {
++	if (! $this -&gt; setupBootLoaderStages ($bootloader,&quot;iso&quot;)) {
+ 		$this -&gt; cleanTmp ();
+ 		if (! $pinst) {
+ 			qxx ( &quot;$main::Gzip -d $system&quot; );
+@@ -1679,7 +1690,7 @@ sub setupInstallCD {
+ 	if (! $gotsys) {
+ 		$title = &quot;KIWI CD Boot: $namecd&quot;;
+ 	}
+-	if (! $this -&gt; setupBootLoaderConfiguration (&quot;grub&quot;,$title)) {
++	if (! $this -&gt; setupBootLoaderConfiguration ($bootloader,$title)) {
+ 		$this -&gt; cleanTmp ();
+ 		if (! $pinst) {
+ 			qxx ( &quot;$main::Gzip -d $system&quot; );
+@@ -1742,8 +1753,33 @@ sub setupInstallCD {
+ 	} else {
+ 		$name =~ s/gz$/iso/;
+ 	}
+-	my $base = &quot;-R -J -f -b boot/grub/stage2 -no-emul-boot $volid&quot;;
+-	my $opts = &quot;-boot-load-size 4 -boot-info-table -udf -allow-limited-size&quot;;
++	my $base;
++	my $opts;
++	if ($bootloader eq &quot;grub&quot;) {
++		# let isolinux run grub second stage...
++		$base = &quot;-R -J -f -b boot/grub/stage2 -no-emul-boot $volid&quot;;
++		$opts = &quot;-boot-load-size 4 -boot-info-table -udf -allow-limited-size&quot;;
++	} elsif ($bootloader =~ /(sys|ext)linux/) {
++		# turn sys/extlinux configuation into a isolinux configuration...
++		my $cfg_ext = &quot;$tmpdir/boot/syslinux/syslinux.cfg&quot;;
++		if (! -f $cfg_ext) {
++			$cfg_ext = &quot;$tmpdir/boot/syslinux/extlinux.conf&quot;;
++		}
++		my $cfg_iso = &quot;$tmpdir/boot/syslinux/isolinux.cfg&quot;;
++		qxx (&quot;mv $cfg_ext $cfg_iso 2&gt;&amp;1&quot;);
++		qxx (&quot;mv $tmpdir/boot/initrd $tmpdir/boot/syslinux&quot;);
++		qxx (&quot;mv $tmpdir/boot/linux  $tmpdir/boot/syslinux&quot;);
++		qxx (&quot;mv $tmpdir/boot/syslinux $tmpdir/boot/loader 2&gt;&amp;1&quot;);
++		$base = &quot;-R -J -f -b boot/loader/isolinux.bin -no-emul-boot $volid&quot;;
++		$opts = &quot;-boot-load-size 4 -boot-info-table -udf -allow-limited-size&quot;;
++	} else {
++		# don't know how to use this bootloader together with isolinux
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Bootloader not supported for CD inst: $bootloader&quot;);
++		$kiwi -&gt; failed ();
++		$this -&gt; cleanTmp ();
++		return undef;
++	}
+ 	my $wdir = qxx (&quot;pwd&quot;); chomp $wdir;
+ 	if ($name !~ /^\//) {
+ 		$name = $wdir.&quot;/&quot;.$name;
+@@ -1752,6 +1788,9 @@ sub setupInstallCD {
+ 		$kiwi,$tmpdir,$name,undef,&quot;checkmedia&quot;
+ 	);
+ 	my $tool= $iso -&gt; getTool();
++	if ($bootloader =~ /(sys|ext)linux/) {
++		$iso -&gt; createISOLinuxConfig (&quot;/boot&quot;);
++	}
+ 	$status = qxx (&quot;cd $tmpdir &amp;&amp; $tool $base $opts -o $name . 2&gt;&amp;1&quot;);
+ 	$result = $? &gt;&gt; 8;
+ 	if ($result != 0) {
+@@ -1800,10 +1839,24 @@ sub setupInstallStick {
+ 	my @commands  = ();
+ 	my $imgtype   = &quot;oem&quot;;
+ 	my $gotsys    = 1;
++	my $bootloader= &quot;grub&quot;;
+ 	my $status;
+ 	my $result;
+ 	my $ibasename;
+ 	my $tmpdir;
++	my %type;
++	#==========================================
++	# read config XML attributes
++	#------------------------------------------
++	if (defined $xml) {
++		%type = %{$xml-&gt;getImageTypeAndAttributes()};
++	}
++	#==========================================
++	# setup boot loader type
++	#------------------------------------------
++	if ((%type) &amp;&amp; ($type{bootloader})) {
++		$bootloader = $type{bootloader};
++	}
+ 	#==========================================
+ 	# create tmp directory
+ 	#------------------------------------------
+@@ -1980,7 +2033,7 @@ sub setupInstallStick {
+ 	#==========================================
+ 	# Import boot loader stages
+ 	#------------------------------------------
+-	if (! $this -&gt; setupBootLoaderStages (&quot;grub&quot;)) {
++	if (! $this -&gt; setupBootLoaderStages ($bootloader)) {
+ 		$this -&gt; cleanTmp ();
+ 		if (! $pinst) {
+ 			qxx ( &quot;$main::Gzip -d $system&quot; );
+@@ -1994,7 +2047,7 @@ sub setupInstallStick {
+ 	if (! $gotsys) {
+ 		$title = &quot;KIWI USB Boot: $nameusb&quot;;
+ 	}
+-	if (! $this -&gt; setupBootLoaderConfiguration (&quot;grub&quot;,$title)) {
++	if (! $this -&gt; setupBootLoaderConfiguration ($bootloader,$title)) {
+ 		$this -&gt; cleanTmp ();
+ 		if (! $pinst) {
+ 			qxx ( &quot;$main::Gzip -d $system&quot; );
+@@ -2200,7 +2253,7 @@ sub setupInstallStick {
+ 	#==========================================
+ 	# Install boot loader on virtual disk
+ 	#------------------------------------------
+-	if (! $this -&gt; installBootLoader (&quot;grub&quot;, $diskname, \%deviceMap)) {
++	if (! $this -&gt; installBootLoader ($bootloader, $diskname, \%deviceMap)) {
+ 		$this -&gt; cleanLoop ();
+ 		$this -&gt; cleanTmp();
+ 	}
+@@ -3731,10 +3784,14 @@ sub setupBootLoaderStages {
+ 	# syslinux
+ 	#------------------------------------------
+ 	if ($loader =~ /(sys|ext)linux/) {
+-		my $message= &quot;'image/loader/message'&quot;;
++		my $message= &quot;'image/loader/*'&quot;;
+ 		my $unzip  = &quot;$main::Gzip -cd $initrd 2&gt;&amp;1&quot;;
+ 		#==========================================
+-		# Get syslinux graphics boot message
++		# Create syslinux boot data directory
++		#------------------------------------------
++		qxx (&quot;mkdir -p $tmpdir/boot/syslinux 2&gt;&amp;1&quot;);
++		#==========================================
++		# Get syslinux graphics data
+ 		#------------------------------------------
+ 		$kiwi -&gt; info (&quot;Importing graphics boot message&quot;);
+ 		if ($zipped) {
+@@ -3742,24 +3799,19 @@ sub setupBootLoaderStages {
+ 		} else {
+ 			$status= qxx (&quot;cat $initrd|(cd $tmpdir &amp;&amp; cpio -di $message 2&gt;&amp;1)&quot;);
+ 		}
+-		if (-e $tmpdir.&quot;/image/loader/message&quot;) {
+-			$status = qxx (&quot;mv $tmpdir/$message $tmpdir/boot/message 2&gt;&amp;1&quot;);
++		if (-d $tmpdir.&quot;/image/loader&quot;) {
++			$status = qxx (
++				&quot;mv $tmpdir/image/loader/* $tmpdir/boot/syslinux 2&gt;&amp;1&quot;
++			);
+ 			$result = $? &gt;&gt; 8;
+ 			$kiwi -&gt; done();
+ 		} else {
+ 			$kiwi -&gt; skipped();
+ 		}
+ 		#==========================================
+-		# Get syslinux vesamenu extension
++		# Cleanup tmpdir
+ 		#------------------------------------------
+-		$kiwi -&gt; info (&quot;Importing graphics boot message&quot;);
+-		qxx (&quot;mkdir -p $tmpdir/boot/syslinux 2&gt;&amp;1&quot;);
+-		qxx (&quot;cp /usr/share/syslinux/vesamenu.c32 $tmpdir/boot/syslinux 2&gt;&amp;1&quot;);
+-		if (-e $tmpdir.&quot;/boot/syslinux/vesamenu.c32&quot;) {
+-			$kiwi -&gt; done();
+-		} else {
+-			$kiwi -&gt; skipped();
+-		}
++		qxx (&quot;rm -rf $tmpdir/image 2&gt;&amp;1&quot;);
+ 	}
+ 	#==========================================
+ 	# more boot managers to come...
+@@ -4025,45 +4077,67 @@ sub setupBootLoaderConfiguration {
+ 			$kiwi -&gt; failed ();
+ 			return undef;
+ 		}
++		my $syslinux_new_format = 0;
++		my $gfx = &quot;$tmpdir/boot/syslinux&quot;;
++		if (-f &quot;$gfx/gfxboot.com&quot; || -f &quot;$gfx/gfxboot.c32&quot;) {
++			$syslinux_new_format = 1;
++		}
+ 		#==========================================
+ 		# General syslinux setup
+ 		#------------------------------------------
+-		print FD &quot;DEFAULT vesamenu.c32\n&quot;;
+-		print FD &quot;TIMEOUT 100\n&quot;;
++		print FD &quot;default  $label&quot;.&quot;\n&quot;;
++		print FD &quot;implicit 1&quot;.&quot;\n&quot;;
++		print FD &quot;prompt   1&quot;.&quot;\n&quot;;
++		print FD &quot;timeout  200&quot;.&quot;\n&quot;;
++		if ($syslinux_new_format) {
++			print FD &quot;ui gfxboot bootlogo isolinux.msg&quot;.&quot;\n&quot;;
++		} else {
++			print FD &quot;gfxboot  bootlogo&quot;.&quot;\n&quot;;
++			print FD &quot;display  isolinux.msg&quot;.&quot;\n&quot;;
++		}
+ 		if ($type =~ /^KIWI CD/) {
+-			$kiwi -&gt; failed ();
+-			$kiwi -&gt; error  (&quot;*** syslinux: cdinst not supported ***&quot;);
+-			$kiwi -&gt; failed ();
+-			return undef;
++			$title = $this -&gt; makeLabel (&quot;Install/Restore $label&quot;);
++			print FD &quot;label $title\n&quot;;
+ 		} elsif ($type =~ /^KIWI USB/) {
+-			print FD &quot;LABEL Linux\n&quot;;
+-			print FD &quot;MENU LABEL Install/Restore &quot;.$label.&quot;\n&quot;;
++			$title = $this -&gt; makeLabel (&quot;Install/Restore $label&quot;);
++			print FD &quot;label $title&quot;.&quot;\n&quot;;
+ 		} else {
+-			print FD &quot;LABEL Linux\n&quot;;
+-			print FD &quot;MENU LABEL &quot;.$label.&quot; [ &quot;.$type.&quot; ]\n&quot;;
++			$title = $this -&gt; makeLabel (&quot;$label [ $type ]&quot;);
++			print FD &quot;label $title&quot;.&quot;\n&quot;;
+ 		}
+ 		#==========================================
+ 		# Standard boot
+ 		#------------------------------------------
+ 		if (! $isxen) {
+ 			if ($type =~ /^KIWI CD/) {
+-				# not supported yet..
++				print FD &quot;kernel linux\n&quot;;
++				print FD &quot;append initrd=initrd &quot;;
++				print FD &quot;vga=$vga loader=$bloader splash=silent&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+-				print FD &quot;KERNEL /boot/linux.vmx\n&quot;;
+-				print FD &quot;APPEND initrd=/boot/initrd.vmx &quot;;
++				print FD &quot;kernel /boot/linux.vmx\n&quot;;
++				print FD &quot;append initrd=/boot/initrd.vmx &quot;;
+ 				print FD &quot;vga=$vga loader=$bloader splash=silent&quot;;
+ 			} else {
+-				print FD &quot;KERNEL /boot/linux\n&quot;;
+-				print FD &quot;APPEND initrd=/boot/initrd &quot;;
++				print FD &quot;kernel /boot/linux\n&quot;;
++				print FD &quot;append initrd=/boot/initrd &quot;;
+ 				print FD &quot;vga=$vga loader=$bloader splash=silent&quot;;
+ 			}
+ 		} else {
+ 			if ($type =~ /^KIWI CD/) {
+-				# not supported yet..
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;*** syslinux: Xen cdinst not supported ***&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+-				# not supported yet..
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;*** syslinux: Xen boot not supported ***&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
+ 			} else {
+-				# not supported yet..
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;*** syslinux: Xen boot not supported ***&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
+ 			}
+ 		}
+ 		print FD $cmdline;
+@@ -4071,35 +4145,47 @@ sub setupBootLoaderConfiguration {
+ 		# Failsafe boot
+ 		#------------------------------------------
+ 		if ($type =~ /^KIWI CD/) {
+-			# not supported yet..
++			$title = $this -&gt; makeLabel (&quot;Failsafe -- Install/Restore $label&quot;);
++			print FD &quot;label $title&quot;.&quot;\n&quot;;
+ 		} elsif ($type =~ /^KIWI USB/) {
+-			print FD &quot;LABEL Failsafe\n&quot;;
+-			print FD &quot;MENU LABEL Failsafe -- Install/Restore &quot;.$label.&quot;\n&quot;;
++			$title = $this -&gt; makeLabel (&quot;Failsafe -- Install/Restore $label&quot;);
++			print FD &quot;label $title&quot;.&quot;\n&quot;;
+ 		} else {
+-			print FD &quot;LABEL Failsafe\n&quot;;
+-			print FD &quot;MENU LABEL Failsafe -- &quot;.$label.&quot; [ &quot;.$type.&quot; ]\n&quot;;
++			$title = $this -&gt; makeLabel (&quot;Failsafe -- $label [ $type ]&quot;);
++			print FD &quot;label $title&quot;.&quot;\n&quot;;
+ 		}
+ 		if (! $isxen) {
+ 			if ($type =~ /^KIWI CD/) {
+-				# not supported yet..
++				print FD &quot;kernel linux\n&quot;;
++				print FD &quot;append initrd=initrd &quot;;
++				print FD &quot;vga=$vga loader=$bloader splash=silent&quot;;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+-				print FD &quot;KERNEL /boot/linux.vmx\n&quot;;
+-				print FD &quot;APPEND initrd=/boot/initrd.vmx &quot;;
++				print FD &quot;kernel /boot/linux.vmx\n&quot;;
++				print FD &quot;append initrd=/boot/initrd.vmx &quot;;
+ 				print FD &quot;vga=$vga loader=$bloader splash=silent&quot;;
+ 			} else {
+-				print FD &quot;KERNEL /boot/linux\n&quot;;
+-				print FD &quot;APPEND initrd=/boot/initrd &quot;;
++				print FD &quot;kernel /boot/linux\n&quot;;
++				print FD &quot;append initrd=/boot/initrd &quot;;
+ 				print FD &quot;vga=$vga loader=$bloader splash=silent&quot;;
+ 			}
+ 			print FD &quot; ide=nodma apm=off acpi=off noresume selinux=0 nosmp&quot;;
+ 			print FD &quot; noapic maxcpus=0 edd=off&quot;;
+ 		} else {
+ 			if ($type =~ /^KIWI CD/) {
+-				# not supported yet..
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;*** syslinux: Xen cdinst not supported ***&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
+ 			} elsif (($type=~ /^KIWI USB/)||($imgtype=~ /vmx|oem|split|usb/)) {
+-				# not supported yet..
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;*** syslinux: Xen boot not supported ***&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
+ 			} else {
+-				# not supported yet..
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;*** syslinux: Xen boot not supported ***&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
+ 			}
+ 			print FD &quot; ide=nodma apm=off acpi=off noresume selinux=0 nosmp&quot;;
+ 			print FD &quot; noapic maxcpus=0 edd=off&quot;;
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 3a432ed..63d56e4 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -1019,9 +1019,16 @@ function suseGFXBoot {
+ 	if [ ! -z &quot;$kiwi_boottheme&quot; ];then
+ 		theme=$kiwi_boottheme
+ 	fi
++	if [ ! -z &quot;$kiwi_bootloader&quot; ];then
++		loader=$kiwi_bootloader
++	fi
+ 	if [ ! -z &quot;$kiwi_hybrid&quot; ];then
+ 		loader=&quot;isolinux&quot;
+ 	fi
++	if [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
++		# need the same data for extlinux and for isolinux
++		loader=&quot;isolinux&quot;
++	fi
+ 	#======================================
+ 	# setup bootloader data
+ 	#--------------------------------------
+@@ -1177,7 +1184,9 @@ function suseGFXBoot {
+ 	#--------------------------------------
+ 	if [ &quot;$loader&quot; = &quot;isolinux&quot; ];then
+ 		# isolinux boot code...
+-		mv /usr/share/syslinux/isolinux.bin /image/loader
++		if [ -f /usr/share/syslinux/isolinux.bin ];then
++			mv /usr/share/syslinux/isolinux.bin /image/loader
++		fi
+ 		# use either gfxboot.com or gfxboot.c32
+ 		if [ -f /usr/share/syslinux/gfxboot.com ];then
+ 			mv /usr/share/syslinux/gfxboot.com /image/loader
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 08ff6f5..9bd70f5 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -278,8 +278,9 @@ sub createImageClicFS {
+ 	$kiwi -&gt; info (&quot;Creating clicfs container...&quot;);
+ 	my $clicfs = $this-&gt;{imageTree}.&quot;/usr/bin/mkclicfs&quot;;
+ 	if (! -x $clicfs) {
++		$kiwi -&gt; done ();
+ 		$kiwi -&gt; warning (
+-			&quot;Using mkclicfs from build system, versions should match !\n&quot;
++			&quot;Using mkclicfs from build system, versions should match !&quot;
+ 		);
+ 		$clicfs = &quot;mkclicfs&quot;;
+ 	}
+@@ -934,6 +935,9 @@ sub createImageUSB {
+ 	if ($type{cmdline}) {
+ 		$main::ForeignRepo{&quot;kernelcmdline&quot;} = $type{cmdline};
+ 	}
++	if ($type{bootloader}) {
++		$main::ForeignRepo{&quot;bootloader&quot;} = $type{bootloader};
++	}
+ 	$main::ForeignRepo{&quot;xmlnode&quot;} = $xml -&gt; getForeignNodeList();
+ 	$main::ForeignRepo{&quot;xmlpacnode&quot;} = $xml -&gt; getForeignPackageNodeList();
+ 	$main::ForeignRepo{&quot;packagemanager&quot;} = $xml -&gt; getPackageManager();
+@@ -1652,7 +1656,7 @@ sub createImageLiveCD {
+ 	if ($hybrid) {
+ 		$main::ForeignRepo{&quot;hybrid&quot;}= &quot;true&quot;;
+ 	}
+-	if ( $hybridpersistent ) {
++	if ($hybridpersistent) {
+ 		$main::ForeignRepo{&quot;hybridpersistent&quot;} = &quot;true&quot;;
+ 	}
+ 	$main::ForeignRepo{&quot;xmlnode&quot;} = $xml -&gt; getForeignNodeList();
+@@ -2786,6 +2790,9 @@ sub createImageSplit {
+ 	if ($type{cmdline}) {
+ 		$main::ForeignRepo{&quot;kernelcmdline&quot;} = $type{cmdline};
+ 	}
++	if ($type{bootloader}) {
++		$main::ForeignRepo{&quot;bootloader&quot;} = $type{bootloader};
++	}
+ 	$main::ForeignRepo{&quot;xmlnode&quot;} = $xml -&gt; getForeignNodeList();
+ 	$main::ForeignRepo{&quot;xmlpacnode&quot;} = $xml -&gt; getForeignPackageNodeList();
+ 	$main::ForeignRepo{&quot;packagemanager&quot;} = $xml -&gt; getPackageManager();
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 4ccc1f7..60a5e23 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -3431,7 +3431,7 @@ function mountSystemClicFS {
+ 	# mount root over clic
+ 	#--------------------------------------
+ 	size=`stat -c %s $roDir/fsdata.ext3`
+-	size=$((size/4096))
++	size=$((size/512))
+ 	# we don't want reserved blocks...
+ 	tune2fs -m 0 $roDir/fsdata.ext3 &gt;/dev/null
+ 	# we don't want automatic filesystem check...
+@@ -3440,7 +3440,7 @@ function mountSystemClicFS {
+ 		e2fsck -p $roDir/fsdata.ext3
+ 	fi
+ 	if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-		resize2fs $roDir/fsdata.ext3 $size
++		resize2fs $roDir/fsdata.ext3 $size&quot;s&quot;
+ 	fi
+ 	mount -o loop,noatime,nodiratime,errors=remount-ro,barrier=0 \
+ 		$roDir/fsdata.ext3 /mnt
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index a48ac15..632e40a 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -394,6 +394,11 @@ sub new {
+ 				&quot;kernelcmdline&quot;,$foreignRepo-&gt;{&quot;kernelcmdline&quot;}
+ 			);
+ 		}
++		if (defined $foreignRepo-&gt;{&quot;bootloader&quot;}) {
++			$this -&gt; setForeignTypeAttribute (
++				&quot;bootloader&quot;,$foreignRepo-&gt;{&quot;bootloader&quot;}
++			);
++		}
+ 		#==========================================
+ 		# foreign image attributes
+ 		#------------------------------------------
+@@ -2311,6 +2316,9 @@ sub getImageConfig {
+ 	if ((%type) &amp;&amp; ($type{cmdline})) {
+ 		$result{kiwi_cmdline} = $type{cmdline};
+ 	}
++	if ((%type) &amp;&amp; ($type{bootloader})) {
++		$result{kiwi_bootloader} = $type{bootloader};
++	}
+ 	if ((%type) &amp;&amp; ($type{luks})) {
+ 		$result{kiwi_luks} = &quot;yes&quot;;
+ 	}
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 40a45ab..3051d3a 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,14 @@
+ -------------------------------------------------------------------
++Tue May 25 16:10:30 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- use isolinux for install CD's if sys|extlinux was requested
++  as bootloader for an oem image plus install media (bnc #606651)
++- fixed clicfs resize operation. The command is now based
++  on a 512 byte sector size value instead of a 4k filesystem block
++  size value which might be wrong depending on the size of the
++  filesystem (bnc #604646)
++
++-------------------------------------------------------------------
+ Fri May 21 15:47:36 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v4.37
+diff --git a/system/boot/ix86/oemboot/suse-11.2/config.xml b/system/boot/ix86/oemboot/suse-11.2/config.xml
+index a947b3c..ae54aed 100644
+--- a/system/boot/ix86/oemboot/suse-11.2/config.xml
++++ b/system/boot/ix86/oemboot/suse-11.2/config.xml
+@@ -130,6 +130,7 @@
+ 		&lt;package name=&quot;gettext-runtime&quot;/&gt;
+ 		&lt;package name=&quot;kexec-tools&quot;/&gt;
+ 		&lt;package name=&quot;kpartx&quot;/&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+@@ -139,6 +140,7 @@
+ 		&lt;package name=&quot;procps&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+ 		&lt;package name=&quot;PolicyKit&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLED11/config.xml b/system/boot/ix86/oemboot/suse-SLED11/config.xml
+index 608d7d4..ac5f54d 100644
+--- a/system/boot/ix86/oemboot/suse-SLED11/config.xml
++++ b/system/boot/ix86/oemboot/suse-SLED11/config.xml
+@@ -123,6 +123,7 @@
+ 		&lt;package name=&quot;fbiterm&quot;/&gt;
+ 		&lt;package name=&quot;bc&quot;/&gt;
+ 		&lt;package name=&quot;gettext-runtime&quot;/&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+@@ -133,6 +134,7 @@
+ 		&lt;package name=&quot;openssl-certs&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+ 		&lt;package name=&quot;PolicyKit&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLES11/config.xml b/system/boot/ix86/oemboot/suse-SLES11/config.xml
+index f23215f..6ac3ff6 100644
+--- a/system/boot/ix86/oemboot/suse-SLES11/config.xml
++++ b/system/boot/ix86/oemboot/suse-SLES11/config.xml
+@@ -127,6 +127,7 @@
+ 		&lt;package name=&quot;gettext-runtime&quot;/&gt;
+ 		&lt;package name=&quot;kexec-tools&quot;/&gt;
+ 		&lt;package name=&quot;kpartx&quot;/&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+@@ -137,6 +138,7 @@
+ 		&lt;package name=&quot;openssl-certs&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+ 		&lt;package name=&quot;PolicyKit&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-11.2/config.xml b/system/boot/ix86/usbboot/suse-11.2/config.xml
+index ad9bad8..27ffc08 100644
+--- a/system/boot/ix86/usbboot/suse-11.2/config.xml
++++ b/system/boot/ix86/usbboot/suse-11.2/config.xml
+@@ -107,6 +107,7 @@
+ 		&lt;package name=&quot;dialog&quot;/&gt;
+ 		&lt;package name=&quot;kiwi-tools&quot;/&gt;
+ 		&lt;package name=&quot;parted&quot;/&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+@@ -115,6 +116,7 @@
+ 		&lt;package name=&quot;procps&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+ 		&lt;package name=&quot;PolicyKit&quot;/&gt;
+diff --git a/system/boot/ix86/vmxboot/suse-11.2/config.xml b/system/boot/ix86/vmxboot/suse-11.2/config.xml
+index 355238b..56048aa 100644
+--- a/system/boot/ix86/vmxboot/suse-11.2/config.xml
++++ b/system/boot/ix86/vmxboot/suse-11.2/config.xml
+@@ -106,6 +106,7 @@
+ 		&lt;package name=&quot;kiwi-tools&quot;/&gt;
+ 		&lt;package name=&quot;kexec-tools&quot;/&gt;
+ 		&lt;package name=&quot;parted&quot;/&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+@@ -115,6 +116,7 @@
+ 		&lt;package name=&quot;procps&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+ 		&lt;package name=&quot;PolicyKit&quot;/&gt;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002244.html">[Kiwi-devel] Hard Coding
+</A></li>
+	<LI>Next message: <A HREF="002222.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 79146e50eb921223b6196509c21446e55837c994
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2221">[ date ]</a>
+              <a href="thread.html#2221">[ thread ]</a>
+              <a href="subject.html#2221">[ subject ]</a>
+              <a href="author.html#2221">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

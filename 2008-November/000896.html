@@ -1,0 +1,171 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1793 - in kiwi-branches/KIWI-238-SuSE-10-1-Devel:	modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1793%20-%20in%20kiwi-branches/KIWI-238-SuSE-10-1-Devel%3A%0A%09modules%20rpm&In-Reply-To=%3C200811241455.mAOEtqOB008506%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000895.html">
+   <LINK REL="Next"  HREF="000899.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1793 - in kiwi-branches/KIWI-238-SuSE-10-1-Devel:	modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1793%20-%20in%20kiwi-branches/KIWI-238-SuSE-10-1-Devel%3A%0A%09modules%20rpm&In-Reply-To=%3C200811241455.mAOEtqOB008506%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1793 - in kiwi-branches/KIWI-238-SuSE-10-1-Devel:	modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Nov 24 15:55:52 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000895.html">[Kiwi-devel] r1792 - in kiwi-head: modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000899.html">[Kiwi-devel] r1794 - in kiwi-head: modules rpm	system/boot/ix86/netboot system/boot/ix86/netboot/suse-10.3	system/boot/ix86/netboot/suse-11.0	system/boot/ix86/netboot/suse-11.1	system/boot/ix86/netboot/suse-SLED10	system/boot/ix86/netboot/suse-SLED11	system/boot/ix86/netboot/suse-SLES10	system/boot/ix86/netboot/suse-SLES11
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#896">[ date ]</a>
+              <a href="thread.html#896">[ thread ]</a>
+              <a href="subject.html#896">[ subject ]</a>
+              <a href="author.html#896">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-11-24 15:55:47 +0100 (Mon, 24 Nov 2008)
+New Revision: 1793
+
+Modified:
+   kiwi-branches/KIWI-238-SuSE-10-1-Devel/modules/KIWIImage.pm
+   kiwi-branches/KIWI-238-SuSE-10-1-Devel/rpm/kiwi.changes
+Log:
+
+- fixed kernel extraction for isoboot with xen kernel
+
+
+
+Modified: kiwi-branches/KIWI-238-SuSE-10-1-Devel/modules/KIWIImage.pm
+===================================================================
+--- kiwi-branches/KIWI-238-SuSE-10-1-Devel/modules/KIWIImage.pm	2008-11-24 13:59:26 UTC (rev 1792)
++++ kiwi-branches/KIWI-238-SuSE-10-1-Devel/modules/KIWIImage.pm	2008-11-24 14:55:47 UTC (rev 1793)
+@@ -870,6 +870,7 @@
+ 	my $imageTreeReadOnly;
+ 	my $plinux;
+ 	my $pinitrd;
++	my $pxboot;
+ 	#==========================================
+ 	# Get system image name
+ 	#------------------------------------------
+@@ -1155,6 +1156,7 @@
+ 		return undef;
+ 	}
+ 	my $iso = $xml -&gt; getImageName();
++	my $ver = $xml -&gt; getImageVersion();
+ 	undef $main::SetImageType;
+ 	$kiwi -&gt; info (&quot;Checking for pre-built boot image&quot;);
+ 	if ((! $pblt) || ($pblt eq &quot;false&quot;) || ($pblt eq &quot;0&quot;)) {
+@@ -1171,8 +1173,9 @@
+ 		if (defined $main::PrebuiltBootImage) {
+ 			$lookup = $main::PrebuiltBootImage;
+ 		}
+-		$pinitrd = glob (&quot;$lookup/$iso*$arch*.gz&quot;);
+-		$plinux  = glob (&quot;$lookup/$iso*$arch*.kernel&quot;);
++		$pinitrd = glob (&quot;$lookup/$iso$arch-$ver.gz&quot;);
++		$plinux  = glob (&quot;$lookup/$iso$arch-$ver.kernel&quot;);
++		$pxboot  = glob (&quot;$lookup/$iso$arch-$ver*xen.gz&quot;);
+ 		if ((! -f $pinitrd) || (! -f $plinux)) {
+ 			$kiwi -&gt; skipped();
+ 			$kiwi -&gt; info (&quot;Cant't find pre-built boot image in $lookup&quot;);
+@@ -1321,6 +1324,14 @@
+ 		return undef;
+ 	}
+ 	#==========================================
++	# check if Xen kernel is used
++	#------------------------------------------
++	my $isxen = 0;
++	my $xboot = glob (&quot;$imageDest/$iso$arch-$ver*xen.gz&quot;);
++	if (-f $xboot) {
++		$isxen = 1;
++	}
++	#==========================================
+ 	# copy kernel and initrd
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Copying boot image and kernel [$isoarch]&quot;);
+@@ -1329,17 +1340,31 @@
+ 	if ($pblt) {
+ 		$data = qxx (&quot;cp $pinitrd $destination/initrd&quot;);
+ 	} else {
+-		$data = qxx (&quot;cp $imageDest/$iso*$arch*.gz $destination/initrd&quot;);
++		$data = qxx (
++			&quot;cp $imageDest/$iso$arch-$ver.gz $destination/initrd 2&gt;&amp;1&quot;
++		);
+ 	}
+ 	$code = $? &gt;&gt; 8;
+ 	if ($code == 0) {
+ 		if ($pblt) {
+ 			$data = qxx (&quot;cp $plinux $destination/linux&quot;);
+ 		} else {
+-			$data = qxx (&quot;cp $imageDest/$iso*$arch*.kernel $destination/linux&quot;);
++			$data = qxx (
++				&quot;cp $imageDest/$iso$arch-$ver.kernel $destination/linux 2&gt;&amp;1&quot;
++			);
+ 		}
+ 		$code = $? &gt;&gt; 8;
+ 	}
++	if (($code == 0) &amp;&amp; ($isxen)) {
++		if ($pblt) {
++			$data = qxx (&quot;cp $pxboot $destination/xen.gz 2&gt;&amp;1&quot;);
++		} else {
++			$data = qxx (
++				&quot;cp $xboot $destination/xen.gz 2&gt;&amp;1&quot;
++			);
++		}
++		$code = $? &gt;&gt; 8;
++	}
+ 	if ($code != 0) {
+ 		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error  (&quot;Copy failed: $data&quot;);
+
+Modified: kiwi-branches/KIWI-238-SuSE-10-1-Devel/rpm/kiwi.changes
+===================================================================
+--- kiwi-branches/KIWI-238-SuSE-10-1-Devel/rpm/kiwi.changes	2008-11-24 13:59:26 UTC (rev 1792)
++++ kiwi-branches/KIWI-238-SuSE-10-1-Devel/rpm/kiwi.changes	2008-11-24 14:55:47 UTC (rev 1793)
+@@ -1,4 +1,9 @@
+ -------------------------------------------------------------------
++Mon Nov 24 15:46:58 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed kernel extraction for isoboot with xen kernel
++
++-------------------------------------------------------------------
+ Wed Oct 22 12:17:46 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - open debug terminal only if kiwidebug is set (bnc #403207)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000895.html">[Kiwi-devel] r1792 - in kiwi-head: modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000899.html">[Kiwi-devel] r1794 - in kiwi-head: modules rpm	system/boot/ix86/netboot system/boot/ix86/netboot/suse-10.3	system/boot/ix86/netboot/suse-11.0	system/boot/ix86/netboot/suse-11.1	system/boot/ix86/netboot/suse-SLED10	system/boot/ix86/netboot/suse-SLED11	system/boot/ix86/netboot/suse-SLES10	system/boot/ix86/netboot/suse-SLES11
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#896">[ date ]</a>
+              <a href="thread.html#896">[ thread ]</a>
+              <a href="subject.html#896">[ subject ]</a>
+              <a href="author.html#896">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

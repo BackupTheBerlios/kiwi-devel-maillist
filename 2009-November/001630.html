@@ -1,0 +1,204 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. c7516ed6d446ee7c57a50df89b4e71f698f52054
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20c7516ed6d446ee7c57a50df89b4e71f698f52054&In-Reply-To=%3C200911261542.nAQFg0rC014024%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001629.html">
+   <LINK REL="Next"  HREF="001631.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. c7516ed6d446ee7c57a50df89b4e71f698f52054</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20c7516ed6d446ee7c57a50df89b4e71f698f52054&In-Reply-To=%3C200911261542.nAQFg0rC014024%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. c7516ed6d446ee7c57a50df89b4e71f698f52054">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Nov 26 16:42:00 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001629.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c7737af1921d60b41b5fe2bd6d98293983737b3c
+</A></li>
+        <LI>Next message: <A HREF="001631.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. adc16419afb678dd7a1eef618be9c32c64f5b04a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1630">[ date ]</a>
+              <a href="thread.html#1630">[ thread ]</a>
+              <a href="subject.html#1630">[ subject ]</a>
+              <a href="author.html#1630">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-374-SuSE-11-1-SLE-SP-Devel has been updated
+       via  c7516ed6d446ee7c57a50df89b4e71f698f52054 (commit)
+      from  e4d8efcc7a54f10497e86d2e53913730f211868c (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit c7516ed6d446ee7c57a50df89b4e71f698f52054
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Nov 26 16:41:48 2009 +0100
+
+    - call images.sh / config.sh scripts in POSIX env (bnc #558693)
+    - fixed invalid link setup in createImageLiveCD() (bnc #558666)
+    - fixed size / inode calcuation due to wrong unit (bnc #555688)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 5e7ecb6..cb9af44 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -15,6 +15,10 @@
+ # STATUS        : Development
+ #----------------
+ #======================================
++# work in POSIX environment
++#--------------------------------------
++export LANG=POSIX
++#======================================
+ # suseInsertService
+ #--------------------------------------
+ function suseInsertService {
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 7a9449d..76033ac 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -30,6 +30,7 @@ use File::Basename;
+ use File::Find qw(find);
+ use File::stat;
+ use Fcntl ':mode';
++use POSIX qw(getcwd);
+ use KIWIQX;
+ 
+ #==========================================
+@@ -59,6 +60,13 @@ sub new {
+ 	my $imageOrig  = shift;
+ 	my $configFile = $xml -&gt; getConfigName();
+ 	#==========================================
++	# Use absolute path for image destination
++	#------------------------------------------
++	if ($imageDest !~ /^\//) {
++		my $pwd = getcwd();
++		$imageDest = $pwd.&quot;/&quot;.$imageDest;
++	}
++	#==========================================
+ 	# Constructor setup
+ 	#------------------------------------------
+ 	if (! defined $kiwi) {
+@@ -897,7 +905,6 @@ sub createImageUSB {
+ 	#------------------------------------------
+ 	SWITCH: for ($type) {
+ 		/^ext2/       &amp;&amp; do {
+-			$ok = 1;
+ 			if (! $treeAccess) {
+ 				$ok = $this -&gt; createImageEXT2 ();
+ 			} else {
+@@ -907,7 +914,6 @@ sub createImageUSB {
+ 			last SWITCH;
+ 		};
+ 		/^ext3/       &amp;&amp; do {
+-			$ok = 1;
+ 			if (! $treeAccess) {
+ 				$ok = $this -&gt; createImageEXT3 ();
+ 			} else {
+@@ -917,7 +923,6 @@ sub createImageUSB {
+ 			last SWITCH;
+ 		};
+ 		/^ext4/       &amp;&amp; do {
+-			$ok = 1;
+ 			if (! $treeAccess) {
+ 				$ok = $this -&gt; createImageEXT4 ();
+ 			} else {
+@@ -927,7 +932,6 @@ sub createImageUSB {
+ 			last SWITCH;
+ 		};
+ 		/^reiserfs/   &amp;&amp; do {
+-			$ok = 1;
+ 			if (! $treeAccess) {
+ 				$ok = $this -&gt; createImageReiserFS ();
+ 			} else {
+@@ -3536,12 +3540,12 @@ sub setupLogicalExtend {
+ 	$this -&gt; cleanKernelFSMount();
+ 	my ($mbytesreal,$mbytes,$xmlsize) = $this -&gt; getSize ($imageTree);
+ 	if (! defined $quiet) {
+-		$kiwi -&gt; info (&quot;Image requires $mbytesreal MB, got $xmlsize MB&quot;);
++		$kiwi -&gt; info (&quot;Image requires &quot;.$mbytesreal.&quot;M, got $xmlsize&quot;);
+ 		$kiwi -&gt; done ();
+-		$kiwi -&gt; info (&quot;Suggested Image size: $mbytes MB&quot;);
++		$kiwi -&gt; info (&quot;Suggested Image size: $mbytes&quot;.&quot;M&quot;);
+ 		$kiwi -&gt; done ();
+ 	}
+-	return $xmlsize;
++	return $mbytes;
+ }
+ 
+ #==========================================
+@@ -4186,7 +4190,7 @@ sub getSize {
+ 	#------------------------------------------
+ 	my $xmlsize = $xml -&gt; getImageSize();
+ 	if ($xmlsize eq &quot;auto&quot;) {
+-		$xmlsize = $size;
++		$xmlsize = $size.&quot;M&quot;;
+ 	}
+ 	#==========================================
+ 	# return result list
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 06ac37d..bbc3000 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Thu Nov 26 16:41:23 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- call images.sh / config.sh scripts in POSIX env (bnc #558693)
++- fixed invalid link setup in createImageLiveCD() (bnc #558666)
++- fixed size / inode calcuation due to wrong unit (bnc #555688)
++
++-------------------------------------------------------------------
+ Wed Nov 25 13:08:59 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed setup of xencons when building Xen domU images (bnc #557791)
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001629.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c7737af1921d60b41b5fe2bd6d98293983737b3c
+</A></li>
+	<LI>Next message: <A HREF="001631.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. adc16419afb678dd7a1eef618be9c32c64f5b04a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1630">[ date ]</a>
+              <a href="thread.html#1630">[ thread ]</a>
+              <a href="subject.html#1630">[ subject ]</a>
+              <a href="author.html#1630">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

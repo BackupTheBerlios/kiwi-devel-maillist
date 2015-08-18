@@ -1,0 +1,146 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4727d09e584ce1ea2f98180b499bd3494fca6f37
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204727d09e584ce1ea2f98180b499bd3494fca6f37&In-Reply-To=%3C201006250837.o5P8b0fO014712%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002335.html">
+   <LINK REL="Next"  HREF="002341.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4727d09e584ce1ea2f98180b499bd3494fca6f37</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204727d09e584ce1ea2f98180b499bd3494fca6f37&In-Reply-To=%3C201006250837.o5P8b0fO014712%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4727d09e584ce1ea2f98180b499bd3494fca6f37">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Jun 25 10:37:00 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002335.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 926fa04985abd09a2eb40d57a9cc792c4fb653c1
+</A></li>
+        <LI>Next message: <A HREF="002341.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3c6567d87c339522900a3e0a7aab589a505bcfde
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2340">[ date ]</a>
+              <a href="thread.html#2340">[ thread ]</a>
+              <a href="subject.html#2340">[ subject ]</a>
+              <a href="author.html#2340">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  4727d09e584ce1ea2f98180b499bd3494fca6f37 (commit)
+      from  926fa04985abd09a2eb40d57a9cc792c4fb653c1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 4727d09e584ce1ea2f98180b499bd3494fca6f37
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Jun 25 10:36:47 2010 +0200
+
+    - fixed copy of root tree into final image. We used
+      cp -a $source/* $dest which did not match the dot files
+      in $source/.* Therefore I changed this to use a tar
+      based copy
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 1977f2d..f617dd9 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -1154,7 +1154,7 @@ sub setupBootStick {
+ 		# Copy root tree to virtual disk
+ 		#------------------------------------------
+ 		$kiwi -&gt; info (&quot;Copying system image tree on stick&quot;);
+-		$status = qxx (&quot;cp -a -x $system/* $loopdir 2&gt;&amp;1&quot;);
++		$status = qxx (&quot;tar -cf - -C $system . | tar -x -C $loopdir 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; failed ();
+@@ -2899,7 +2899,7 @@ sub setupBootDisk {
+ 		# Copy root tree to virtual disk
+ 		#------------------------------------------
+ 		$kiwi -&gt; info (&quot;Copying system image tree on virtual disk&quot;);
+-		$status = qxx (&quot;cp -a -x $system/* $loopdir 2&gt;&amp;1&quot;);
++		$status = qxx (&quot;tar -cf - -C $system . | tar -x -C $loopdir 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; failed ();
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index cbd9d28..32cbb42 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -3472,11 +3472,11 @@ sub installLogicalExtend {
+ 	$kiwi -&gt; info (&quot;Copying physical to logical [$name]...&quot;);
+ 	my $free = qxx (&quot;df -h $extend 2&gt;&amp;1&quot;);
+ 	$kiwi -&gt; loginfo (&quot;getSize: mount: $free\n&quot;);
+-	my $data = qxx (&quot;cp -a -x $source/* $extend 2&gt;&amp;1&quot;);
++	my $data = qxx (&quot;tar -cf - -C $source . | tar -x -C $extend 2&gt;&amp;1&quot;);
+ 	my $code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+ 		$kiwi -&gt; failed ();
+-		$kiwi -&gt; info   (&quot;No space left on device: $!&quot;);
++		$kiwi -&gt; info   (&quot;tar based copy failed: $data&quot;);
+ 		$kiwi -&gt; failed ();
+ 		$this -&gt; cleanMount();
+ 		return undef;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 66ab3dd..52c830d 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -26,6 +26,10 @@ Fri Jun 18 12:18:11 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ - added oem-inplace-recovery option which allows creation
+   of the recovery tarball at first deployment instead of
+   creating the tarball and store it inside the image
++- fixed copy of root tree into final image. We used
++  cp -a $source/* $dest which did not match the dot files
++  in $source/.* Therefore I changed this to use a tar
++  based copy
+ 
+ -------------------------------------------------------------------
+ Mon Jun 14 11:10:15 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002335.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 926fa04985abd09a2eb40d57a9cc792c4fb653c1
+</A></li>
+	<LI>Next message: <A HREF="002341.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3c6567d87c339522900a3e0a7aab589a505bcfde
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2340">[ date ]</a>
+              <a href="thread.html#2340">[ thread ]</a>
+              <a href="subject.html#2340">[ subject ]</a>
+              <a href="author.html#2340">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

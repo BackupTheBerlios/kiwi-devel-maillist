@@ -1,0 +1,318 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4e6478248ce5f0904ed64e232c04bdd6ad5b5ef3
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204e6478248ce5f0904ed64e232c04bdd6ad5b5ef3&In-Reply-To=%3C20100907155211.17F36480D4B%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002637.html">
+   <LINK REL="Next"  HREF="002639.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4e6478248ce5f0904ed64e232c04bdd6ad5b5ef3</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204e6478248ce5f0904ed64e232c04bdd6ad5b5ef3&In-Reply-To=%3C20100907155211.17F36480D4B%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4e6478248ce5f0904ed64e232c04bdd6ad5b5ef3">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Sep  7 17:52:11 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002637.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 79b98403c304933996fb629a57dd1a52b49d2637
+</A></li>
+        <LI>Next message: <A HREF="002639.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0e646239a427871c92630bde8c2bf74065b784b0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2638">[ date ]</a>
+              <a href="thread.html#2638">[ thread ]</a>
+              <a href="subject.html#2638">[ subject ]</a>
+              <a href="author.html#2638">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  4e6478248ce5f0904ed64e232c04bdd6ad5b5ef3 (commit)
+       via  9457750cf103d184b3ea1fb094811be8f88b86df (commit)
+      from  79b98403c304933996fb629a57dd1a52b49d2637 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 4e6478248ce5f0904ed64e232c04bdd6ad5b5ef3
+Author: root &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">root at s390vm05.suse.de</A>&gt;
+Date:   Tue Sep 7 17:50:38 2010 +0200
+
+    - fixed s390 support for DASD devices. The main problem here is
+      the detection of the disk. kiwi stores the busid value from the
+      disk it used to create the image on in the kernel cmdline.
+      We also had to add a function which set this disk online before
+      we can access it via the device node
+
+commit 9457750cf103d184b3ea1fb094811be8f88b86df
+Author: root &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">root at s390vm05.suse.de</A>&gt;
+Date:   Tue Sep 7 17:49:45 2010 +0200
+
+    - added hint about hvc console usage in README of s390 JeOS template
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 32418e0..f7bf4dc 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -59,6 +59,13 @@ our $ConfigStatus  = 0;
+ our $TL            = 1;
+ our $BT;
+ #============================================
++# check Partitioner for $arch
++#--------------------------------------------
++my $arch = qxx (&quot;uname -m&quot;); chomp $arch;
++if ($arch =~ /s390/) {
++	$Partitioner = &quot;fdasd&quot;;
++}
++#============================================
+ # Read $HOME/.kiwirc
+ #--------------------------------------------
+ if ( -f $ConfigFile) {
+@@ -212,6 +219,7 @@ our $MigrateNoFiles;        # migrate: don't create overlay files
+ our $MigrateNoTemplate;     # migrate: don't create image description template
+ our $Convert;               # convert image into given format/configuration
+ our $Format;                # format to convert to, vmdk, ovf, etc...
++our $targetDevice;          # alternative device instead of a loop device
+ our $kiwi;                  # global logging handler object
+ 
+ #============================================
+@@ -1295,7 +1303,7 @@ sub main {
+ 		if (! defined $boot) {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
+-		if (! $boot -&gt; setupBootDisk()) {
++		if (! $boot -&gt; setupBootDisk($targetDevice)) {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
+ 		$code = kiwiExit (0); return $code;
+@@ -1336,6 +1344,7 @@ sub init {
+ 	#------------------------------------------
+ 	my $result = GetOptions(
+ 		&quot;version&quot;               =&gt; \&amp;version,
++		&quot;targetdevice=s&quot;        =&gt; \$targetDevice,
+ 		&quot;v|verbose+&quot;            =&gt; \$Verbosity,
+ 		&quot;logfile=s&quot;             =&gt; \$LogFile,
+ 		&quot;build|b=s&quot;             =&gt; \$Build,
+@@ -1558,7 +1567,11 @@ sub init {
+ 		my $code = kiwiExit (1); return $code;
+ 	}
+ 	if (defined $Partitioner) {
+-		if (($Partitioner ne &quot;fdisk&quot;) &amp;&amp; ($Partitioner ne &quot;parted&quot;)) {
++		if (
++			($Partitioner ne &quot;fdisk&quot;)  &amp;&amp;
++			($Partitioner ne &quot;parted&quot;) &amp;&amp;
++			($Partitioner ne &quot;fdasd&quot;)
++		) {
+ 			$kiwi -&gt; error (&quot;Invalid partitioner, expected fdisk|parted&quot;);
+ 			$kiwi -&gt; failed ();
+ 			my $code = kiwiExit (1); return $code;
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 29b9da2..70d04cb 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -3469,6 +3469,23 @@ sub setupBootLoaderConfiguration {
+ 		print FD &quot;$this-&gt;{mbrid}&quot;;
+ 		close FD;
+ 		$kiwi -&gt; done();
++		my $busid;
++		#==========================================
++		# Create disk Bus-ID for online call
++		#------------------------------------------
++		if ($main::targetDevice) {
++			$kiwi -&gt; info (&quot;Saving disk Bus-ID...&quot;);
++			my $device = $main::targetDevice; $device =~ s/\/dev\///;
++			$busid  = qxx (&quot;lsdasd | grep $device | cut -f1 -d ' '&quot;);
++			chomp $busid;
++			if (! $busid) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;Can't find Bus-ID for $device&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			$kiwi -&gt; done();
++		}
+ 		#==========================================
+ 		# Create zipl.conf
+ 		#------------------------------------------
+@@ -3540,7 +3557,12 @@ sub setupBootLoaderConfiguration {
+ 			print FD &quot;\t&quot;.&quot;target  = boot/zipl&quot;.&quot;\n&quot;;
+ 			print FD &quot;\t&quot;.&quot;ramdisk = boot/initrd,0x2000000&quot;.&quot;\n&quot;;
+ 		}
+-		print FD &quot;\t&quot;.&quot;parameters = \&quot;loader=$bloader $cmdline\&quot;&quot;.&quot;\n&quot;;
++		print FD &quot;\t&quot;.&quot;parameters = \&quot;loader=$bloader&quot;;
++		if ($busid) {
++			print FD &quot; busid=$busid $cmdline\&quot;&quot;.&quot;\n&quot;;
++		} else {
++			print FD &quot; $cmdline\&quot;&quot;.&quot;\n&quot;;
++		}
+ 		#==========================================
+ 		# Failsafe boot
+ 		#------------------------------------------
+@@ -3560,7 +3582,11 @@ sub setupBootLoaderConfiguration {
+ 			print FD &quot;\t&quot;.&quot;ramdisk = boot/initrd,0x2000000&quot;.&quot;\n&quot;;
+ 		}
+ 		print FD &quot;\t&quot;.&quot;parameters = \&quot;x11failsafe loader=$bloader&quot;;
+-		print FD &quot; $cmdline\&quot;&quot;.&quot;\n&quot;;
++		if ($busid) {
++			print FD &quot; busid=$busid $cmdline\&quot;&quot;.&quot;\n&quot;;
++		} else {
++			print FD &quot; $cmdline\&quot;&quot;.&quot;\n&quot;;
++		}
+ 		close FD;
+ 		$kiwi -&gt; done();
+ 	}
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index e6e15ad..1099e3d 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -958,7 +958,7 @@ function suseStripInitrd {
+ 		lvchange lvresize lvextend lvcreate grub dcounter tty
+ 		dmsetup dialog awk gawk clicfs cryptsetup clear blkid fbiterm
+ 		gettext diff bc utimer cmp busybox kexec pam_console_apply
+-		setterm kpartx vgcfgbackup vgcfgrestore
++		setterm kpartx vgcfgbackup vgcfgrestore lsdasd
+ 	&quot;
+ 	tools=&quot;$tools $@&quot;
+ 	for path in /sbin /usr/sbin /usr/bin /bin;do
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 394520a..fb04dfd 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -2955,6 +2955,39 @@ function CDEject {
+ 	eject $cddev
+ }
+ #======================================
++# searchBusIDBootDevice
++#--------------------------------------
++function searchBusIDBootDevice {
++	# /.../
++	# on s390 we store the Bus-ID for the disk inside
++	# the initrd. This id is used to set the device online
++	# ----
++	local dlink=/sys/bus/ccw/devices/$busid
++	local id
++	local status
++	local device
++	local rest
++	if [ ! -e $dlink ];then
++		systemException \
++			&quot;Can't find disk with ID: $busid&quot; \
++		&quot;reboot&quot;
++	fi
++	echo 1 &gt; $dlink/online
++	lsdasd $busid | tail -n 1 | while read id status device rest;do
++		echo &quot;/dev/$device&quot; &gt; /tmp/biosBootDevice
++	done
++	if [ ! -e /tmp/biosBootDevice ];then
++		export biosBootDevice=&quot;Failed to set disk $busid online&quot;
++		return 1
++	fi
++	export biosBootDevice=$(cat /tmp/biosBootDevice)
++	if [ ! -e $biosBootDevice ];then
++		export biosBootDevice=&quot;Failed to set disk $busid online&quot;
++		return 1
++	fi
++	return 0
++}
++#======================================
+ # searchBIOSBootDevice
+ #--------------------------------------
+ function searchBIOSBootDevice {
+diff --git a/system/boot/s390/oemboot/suse-linuxrc b/system/boot/s390/oemboot/suse-linuxrc
+index 2083b85..a0c1b2c 100755
+--- a/system/boot/s390/oemboot/suse-linuxrc
++++ b/system/boot/s390/oemboot/suse-linuxrc
+@@ -208,7 +208,7 @@ fi
+ if [ -z &quot;$pxe&quot; ];then
+ 	Echo &quot;Searching for boot device...&quot;
+ 	if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+-		if ! searchBIOSBootDevice;then
++		if ! searchBusIDBootDevice;then
+ 			systemException &quot;$biosBootDevice&quot; &quot;reboot&quot;
+ 		fi
+ 		export imageDiskDevice=$biosBootDevice
+diff --git a/system/boot/s390/vmxboot/suse-SLES11/config.xml b/system/boot/s390/vmxboot/suse-SLES11/config.xml
+index 00d53d5..d06d800 100644
+--- a/system/boot/s390/vmxboot/suse-SLES11/config.xml
++++ b/system/boot/s390/vmxboot/suse-SLES11/config.xml
+@@ -100,7 +100,6 @@
+ 		&lt;package name=&quot;db&quot;/&gt;
+ 		&lt;package name=&quot;expat&quot;/&gt;
+ 		&lt;package name=&quot;fillup&quot;/&gt;
+-		&lt;package name=&quot;gawk&quot;/&gt;
+ 		&lt;package name=&quot;gdbm&quot;/&gt;
+ 		&lt;package name=&quot;glib2&quot;/&gt;
+ 		&lt;package name=&quot;gpg&quot;/&gt;
+diff --git a/system/boot/s390/vmxboot/suse-linuxrc b/system/boot/s390/vmxboot/suse-linuxrc
+index cecda81..185388a 100755
+--- a/system/boot/s390/vmxboot/suse-linuxrc
++++ b/system/boot/s390/vmxboot/suse-linuxrc
+@@ -127,7 +127,7 @@ selectLanguage
+ #--------------------------------------
+ Echo &quot;Searching for boot device...&quot;
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+-	if ! searchBIOSBootDevice;then
++	if ! searchBusIDBootDevice;then
+ 		systemException &quot;$biosBootDevice&quot; &quot;reboot&quot;
+ 	fi
+ 	export imageDiskDevice=$biosBootDevice
+diff --git a/template/s390/suse-SLE11-JeOS/README b/template/s390/suse-SLE11-JeOS/README
+index 3be4c86..d4516ce 100644
+--- a/template/s390/suse-SLE11-JeOS/README
++++ b/template/s390/suse-SLE11-JeOS/README
+@@ -8,3 +8,8 @@ Build instructions for local build
+ 	   --add-repo /path/to/SLE11/repo --add-repotype yast2 \
+        --add-repo /usr/share/kiwi/repo/suse-repo/suse-sle11-repo/ --add-repotype rpm-dir \
+ 	   -d /tmp/myimage --type vmx
++
++NOTE:
++this image uses the hvc console for KVM and therefore will not
++spawn a tty for zVM or LPAR based systems. Change /etc/inittab
++and /etc/securetty accordingly
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002637.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 79b98403c304933996fb629a57dd1a52b49d2637
+</A></li>
+	<LI>Next message: <A HREF="002639.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0e646239a427871c92630bde8c2bf74065b784b0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2638">[ date ]</a>
+              <a href="thread.html#2638">[ thread ]</a>
+              <a href="subject.html#2638">[ subject ]</a>
+              <a href="author.html#2638">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

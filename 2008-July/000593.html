@@ -1,0 +1,159 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1507 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1507%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200807311557.m6VFvXdi002950%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000592.html">
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1507 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1507%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200807311557.m6VFvXdi002950%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1507 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jul 31 17:57:33 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000592.html">[Kiwi-devel] r1506 - kiwi-head/modules
+</A></li>
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#593">[ date ]</a>
+              <a href="thread.html#593">[ thread ]</a>
+              <a href="subject.html#593">[ subject ]</a>
+              <a href="author.html#593">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-07-31 17:57:23 +0200 (Thu, 31 Jul 2008)
+New Revision: 1507
+
+Modified:
+   kiwi-head/modules/KIWIConfig.sh
+   kiwi-head/modules/KIWIImage.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- use get_kernel_version program, and make the kernel link
+  a relative link
+
+
+
+Modified: kiwi-head/modules/KIWIConfig.sh
+===================================================================
+--- kiwi-head/modules/KIWIConfig.sh	2008-07-31 15:56:34 UTC (rev 1506)
++++ kiwi-head/modules/KIWIConfig.sh	2008-07-31 15:57:23 UTC (rev 1507)
+@@ -1029,6 +1029,8 @@
+ 			if [ -f vmlinux-$VERSION.gz ];then
+ 				mv vmlinux-$VERSION.gz vmlinux.gz
+ 				mv vmlinuz-$VERSION vmlinuz
++			elif [ -f vmlinuz-$VERSION ];then
++				mv vmlinuz-$VERSION vmlinuz
+ 			else
+ 				rm -f vmlinux
+ 				cp vmlinux-$VERSION vmlinux
+
+Modified: kiwi-head/modules/KIWIImage.pm
+===================================================================
+--- kiwi-head/modules/KIWIImage.pm	2008-07-31 15:56:34 UTC (rev 1506)
++++ kiwi-head/modules/KIWIImage.pm	2008-07-31 15:57:23 UTC (rev 1507)
+@@ -3023,12 +3023,14 @@
+ 			last SWITCH;
+ 		};
+ 	}
+-	if ((-f &quot;$imageTree/boot/vmlinux.gz&quot;) || (-f &quot;$imageTree/boot/vmlinux&quot;)) {
++	if ((-f &quot;$imageTree/boot/vmlinux.gz&quot;) ||
++		(-f &quot;$imageTree/boot/vmlinux&quot;)    ||
++		(-f &quot;$imageTree/boot/vmlinuz&quot;)
++	) {
+ 		$kiwi -&gt; info (&quot;Extracting kernel...&quot;);
+ 		my $pwd = qxx (&quot;pwd&quot;); chomp $pwd;
+-		my $file = &quot;$imageDest/$name.kernel&quot;;
+-		my $lx = '&quot;^Linux version&quot;';
+-		my $sp = '-f3 -d&quot; &quot;';
++		my $shortfile = &quot;$name.kernel&quot;;
++		my $file = &quot;$imageDest/$shortfile&quot;;
+ 		if ($file !~ /^\//) {
+ 			$file = $pwd.&quot;/&quot;.$file;
+ 		}
+@@ -3042,14 +3044,14 @@
+ 			return undef;
+ 		}
+ 		my $kfile;
+-		my $zipped = 1;
+ 		if (-f &quot;$imageTree/boot/vmlinux.gz&quot;) {
+ 			$kfile = &quot;$imageTree/boot/vmlinux.gz&quot;;
+ 		} elsif (-f &quot;$imageTree/boot/xen.gz&quot;) {
+ 			$kfile = &quot;$imageTree/boot/xen.gz&quot;;
+ 		} elsif (-f &quot;$imageTree/boot/vmlinux&quot;) {
+ 			$kfile = &quot;$imageTree/boot/vmlinux&quot;;
+-			$zipped= 0;
++		} elsif (-f &quot;$imageTree/boot/vmlinuz&quot;) {
++			$kfile = &quot;$imageTree/boot/vmlinuz&quot;;
+ 		} else {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; info   (&quot;Couldn't find kernel file&quot;);
+@@ -3057,14 +3059,8 @@
+ 			return undef;
+ 		}
+ 		my $kernel;
+-		if ($zipped) {
+-			$kernel = qxx (&quot;$main::Gzip -dc $kfile| strings| grep $lx|cut $sp&quot;);
+-		} else {
+-			$kernel = qxx (&quot;cat $kfile| strings| grep $lx| cut $sp&quot;);
+-		}
+-		chomp $kernel;
+-		qxx (&quot;rm -f $file.$kernel&quot;);
+-		qxx (&quot;mv $file $file.$kernel &amp;&amp; ln -s $file.$kernel $file &quot;);
++		$kernel = qxx (&quot;/sbin/get_kernel_version $kfile&quot;); chomp $kernel;
++		qxx (&quot;mv -f $file $file.$kernel &amp;&amp; ln -s $shortfile.$kernel $file &quot;);
+ 		if (-f &quot;$imageTree/boot/xen.gz&quot;) {
+ 			$file = &quot;$imageDest/$name.kernel-xen&quot;;
+ 			qxx (&quot;cp $imageTree/boot/xen.gz $file&quot;);
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-07-31 15:56:34 UTC (rev 1506)
++++ kiwi-head/rpm/kiwi.changes	2008-07-31 15:57:23 UTC (rev 1507)
+@@ -2,6 +2,7 @@
+ Thu Jul 31 09:36:01 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.64
++- fixed shell exception on /dev/console (bnc #413474)
+ - added x bits on /init script (bnc #413610)
+ - increased boot timeout for lilo configuration
+ - improved migration code, makes use of patterns now and
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000592.html">[Kiwi-devel] r1506 - kiwi-head/modules
+</A></li>
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#593">[ date ]</a>
+              <a href="thread.html#593">[ thread ]</a>
+              <a href="subject.html#593">[ subject ]</a>
+              <a href="author.html#593">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

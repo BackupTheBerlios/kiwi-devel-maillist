@@ -1,0 +1,197 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 82ab64bf65e99efaf6f6ea3450ab40fc3dabb50e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2082ab64bf65e99efaf6f6ea3450ab40fc3dabb50e&In-Reply-To=%3C20101104151639.BDCE1480F6E%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002779.html">
+   <LINK REL="Next"  HREF="002775.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 82ab64bf65e99efaf6f6ea3450ab40fc3dabb50e</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2082ab64bf65e99efaf6f6ea3450ab40fc3dabb50e&In-Reply-To=%3C20101104151639.BDCE1480F6E%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 82ab64bf65e99efaf6f6ea3450ab40fc3dabb50e">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Nov  4 16:16:39 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002779.html">[Kiwi-devel] patch for new command line argument
+</A></li>
+        <LI>Next message: <A HREF="002775.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6799056b575e7af9f1e47ead872697b4fba7cb26
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2773">[ date ]</a>
+              <a href="thread.html#2773">[ thread ]</a>
+              <a href="subject.html#2773">[ subject ]</a>
+              <a href="author.html#2773">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  82ab64bf65e99efaf6f6ea3450ab40fc3dabb50e (commit)
+       via  11173fd25294f0b2023837dd3caa5548052bb640 (commit)
+      from  e70164c544335dcd24f34e0c7dc7e6f787c6542e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 82ab64bf65e99efaf6f6ea3450ab40fc3dabb50e
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Nov 4 15:58:14 2010 +0100
+
+    - fixed format conversion checks. iso type can't be converted
+
+commit 11173fd25294f0b2023837dd3caa5548052bb640
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Nov 4 15:57:45 2010 +0100
+
+    - fixed checkLVMbind() function to activate volume groups before
+      checking the device mapper nodes
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 8b9ea99..567a594 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -4052,19 +4052,39 @@ sub checkLVMbind {
+ 	# ---
+ 	my $this = shift;
+ 	my $sdev = shift;
+-	for (my $try=0;$try&lt;=3;$try++) {
+-		if (defined (my $lvroot = glob (&quot;/dev/mapper/*-LVRoot&quot;))) {
+-			$this-&gt;{lvm} = 1;
+-			$sdev = $lvroot;
+-			if (defined ($lvroot = glob (&quot;/dev/mapper/*-LVComp&quot;))) {
++	my @groups;
++	#==========================================
++	# activate volume groups
++	#------------------------------------------
++	open (my $SCAN,&quot;vgscan|&quot;);
++	while (my $line = &lt;$SCAN&gt;) {
++		if ($line =~ /\&quot;(.*)\&quot;/) {
++			push (@groups,$1);
++		}
++	}
++	close $SCAN;
++	#==========================================
++	# check the device node names for kiwi lvm
++	#------------------------------------------
++	foreach my $lvmgroup (@groups) {
++		qxx (&quot;vgchange -a y $lvmgroup 2&gt;&amp;1&quot;);
++		for (my $try=0;$try&lt;=3;$try++) {
++			if (defined (my $lvroot = glob (&quot;/dev/mapper/*-LVRoot&quot;))) {
++				$this-&gt;{lvm} = 1;
+ 				$sdev = $lvroot;
++				if (defined ($lvroot = glob (&quot;/dev/mapper/*-LVComp&quot;))) {
++					$sdev = $lvroot;
++				}
++				if ($lvroot =~ /mapper\/(.*)-.*/) {
++					$this-&gt;{lvmgroup} = $1;
++				}
++				last;
+ 			}
+-			if ($lvroot =~ /mapper\/(.*)-.*/) {
+-				$this-&gt;{lvmgroup} = $1;
+-			}
++			sleep 1;
++		}
++		if ($this-&gt;{lvm} == 1) {
+ 			last;
+ 		}
+-		sleep 1;
+ 	}
+ 	return $sdev;
+ }
+diff --git a/modules/KIWIImageFormat.pm b/modules/KIWIImageFormat.pm
+index fef01d6..959a977 100644
+--- a/modules/KIWIImageFormat.pm
++++ b/modules/KIWIImageFormat.pm
+@@ -140,16 +140,16 @@ sub createFormat {
+ 	# convert disk into specified format
+ 	#------------------------------------------
+ 	if ($format eq &quot;vmdk&quot;) {
+-		$kiwi -&gt; info (&quot;Starting $imgtype =&gt; $format conversion\n&quot;);
++		$kiwi -&gt; info (&quot;Starting raw =&gt; $format conversion\n&quot;);
+ 		return $this -&gt; createVMDK();
+ 	} elsif ($format eq &quot;ovf&quot;) {
+-		$kiwi -&gt; info (&quot;Starting $imgtype =&gt; $format conversion\n&quot;);
++		$kiwi -&gt; info (&quot;Starting raw =&gt; $format conversion\n&quot;);
+ 		return $this -&gt; createOVF();
+ 	} elsif ($format eq &quot;qcow2&quot;) {
+-		$kiwi -&gt; info (&quot;Starting $imgtype =&gt; $format conversion\n&quot;);
++		$kiwi -&gt; info (&quot;Starting raw =&gt; $format conversion\n&quot;);
+ 		return $this -&gt; createQCOW2();
+ 	} elsif ($format eq &quot;ec2&quot;) {
+-		$kiwi -&gt; info (&quot;Starting $imgtype =&gt; $format conversion\n&quot;);
++		$kiwi -&gt; info (&quot;Starting raw =&gt; $format conversion\n&quot;);
+ 		return $this -&gt; createEC2();
+ 	} else {
+ 		$kiwi -&gt; warning (
+@@ -176,6 +176,13 @@ sub createMaschineConfiguration {
+ 	if (defined $xenc{xen_domain}) {
+ 		$xend = $xenc{xen_domain};
+ 	}
++	if ($imgtype == &quot;iso&quot;) {
++		$kiwi -&gt; warning (
++			&quot;Can't create machine setup for selected $imgtype image type&quot;
++		);
++		$kiwi -&gt; skipped ();
++		return undef;
++	}
+ 	if (($type{type}) &amp;&amp; ($type{type} eq &quot;xen&quot;)) {
+ 		$kiwi -&gt; info (&quot;Starting $imgtype image machine configuration\n&quot;);
+ 		return $this -&gt; createXENConfiguration();
+@@ -193,7 +200,7 @@ sub createMaschineConfiguration {
+ 		return $this -&gt; createOVFConfiguration();
+ 	} else {
+ 		$kiwi -&gt; warning (
+-			&quot;Can't create machine configuration for $imgtype image&quot;
++			&quot;Can't create machine setup for selected $imgtype image type&quot;
+ 		);
+ 		$kiwi -&gt; skipped ();
+ 	}
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002779.html">[Kiwi-devel] patch for new command line argument
+</A></li>
+	<LI>Next message: <A HREF="002775.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6799056b575e7af9f1e47ead872697b4fba7cb26
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2773">[ date ]</a>
+              <a href="thread.html#2773">[ thread ]</a>
+              <a href="subject.html#2773">[ subject ]</a>
+              <a href="author.html#2773">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,187 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 510ebd712aaf5d862bc1213ab19a680697e6e297
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20510ebd712aaf5d862bc1213ab19a680697e6e297&In-Reply-To=%3C201005071042.o47Ag28P029680%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002157.html">
+   <LINK REL="Next"  HREF="002159.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 510ebd712aaf5d862bc1213ab19a680697e6e297</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20510ebd712aaf5d862bc1213ab19a680697e6e297&In-Reply-To=%3C201005071042.o47Ag28P029680%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 510ebd712aaf5d862bc1213ab19a680697e6e297">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri May  7 12:42:02 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002157.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 4a15942e1c1b53fc80e72873ad2e45ee3e8d1794
+</A></li>
+        <LI>Next message: <A HREF="002159.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7199959e91de136bd41a2a93dede5989502a8f58
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2158">[ date ]</a>
+              <a href="thread.html#2158">[ thread ]</a>
+              <a href="subject.html#2158">[ subject ]</a>
+              <a href="author.html#2158">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  510ebd712aaf5d862bc1213ab19a680697e6e297 (commit)
+      from  f251a14b49833545f0f0c41a2c79d69fe544d71e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 510ebd712aaf5d862bc1213ab19a680697e6e297
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri May 7 12:41:50 2010 +0200
+
+    - fixed old live iso type (no flags set) to work again.
+      The problem was that we prevent --follow-symlinks in this
+      mode but then we also have to copy the fixed read-write
+      part as file to the iso structure instead of linking it.
+      This fix is related to (bnc #599712)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 8b40cc4..1bed90d 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -1920,12 +1920,13 @@ sub createImageLiveCD {
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Moving CD image data into boot structure&quot;);
+ 	if (! defined $gzip) {
++		# /.../
++		# don't symlink these file because in this old live iso
++		# mode we don't allow mkisofs to follow symlinks
++		# ----
+ 		qxx (&quot;mv $this-&gt;{imageDest}/$namerw.md5 $main::RootTree/CD&quot;);
+-		#qxx (&quot;mv $this-&gt;{imageDest}/$namerw.gz $main::RootTree/CD&quot;);
+-		#qxx (&quot;rm $this-&gt;{imageDest}/$namerw.*&quot;);
+-		qxx (
+-			&quot;ln -s $this-&gt;{imageDest}/$namerw.gz $main::RootTree/CD/$namerw.gz&quot;
+-		);	
++		qxx (&quot;mv $this-&gt;{imageDest}/$namerw.gz $main::RootTree/CD&quot;);
++		qxx (&quot;rm $this-&gt;{imageDest}/$namerw.*&quot;);
+ 	}
+ 	if (defined $gzip) {
+ 		#qxx (&quot;mv $this-&gt;{imageDest}/$namero $main::RootTree/CD&quot;);
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 03e6936..d0c504b 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -5165,9 +5165,13 @@ function reloadKernel {
+ function resizeFilesystem {
+ 	local deviceResize=$1
+ 	local callme=$2
++	local ramdisk=0
+ 	local resize_fs
+ 	local resize_lucks
+ 	local check
++	if echo $deviceResize | grep -qi &quot;/dev/ram&quot;;then
++		ramdisk=1
++	fi
+ 	if [ -z &quot;$FSTYPE&quot; ];then
+ 		probeFileSystem $deviceResize
+ 	fi
+@@ -5180,21 +5184,35 @@ function resizeFilesystem {
+ 		Echo &quot;Resize EXT2 filesystem to full partition space...&quot;
+ 		resize_fs=&quot;resize2fs -f -F -p $deviceResize&quot;
+ 		check=&quot;e2fsck -p $deviceResize&quot;
++		if [ $ramdisk -eq 1 ];then
++			resize_fs=&quot;resize2fs -f $deviceResize&quot;
++		fi
+ 	elif [ &quot;$FSTYPE&quot; = &quot;ext3&quot; ];then
+ 		Echo &quot;Resize EXT3 filesystem to full partition space...&quot;
+ 		resize_fs=&quot;resize2fs -f -F -p $deviceResize&quot;
+ 		check=&quot;e2fsck -p $deviceResize&quot;
++		if [ $ramdisk -eq 1 ];then
++			resize_fs=&quot;resize2fs -f $deviceResize&quot;
++		fi
+ 	elif [ &quot;$FSTYPE&quot; = &quot;ext4&quot; ];then
+ 		Echo &quot;Resize EXT4 filesystem to full partition space...&quot;
+ 		resize_fs=&quot;resize2fs -f -F -p $deviceResize&quot;
+ 		check=&quot;e2fsck -p $deviceResize&quot;
++		if [ $ramdisk -eq 1 ];then
++			resize_fs=&quot;resize2fs -f $deviceResize&quot;
++		fi
+ 	else
+ 		# don't know how to resize this filesystem
+ 		return
+ 	fi
+ 	if [ -z &quot;$callme&quot; ];then
+-		eval $resize_lucks
+-		eval $resize_fs &amp;&amp; $check
++		if [ $ramdisk -eq 0 ];then
++			eval $resize_lucks
++			eval $resize_fs &amp;&amp; $check
++		else
++			eval $resize_lucks
++			eval $resize_fs
++		fi
+ 		if [ ! $? = 0 ];then
+ 			systemException \
+ 				&quot;Failed to resize/check filesystem&quot; \
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 16893d3..19a54fb 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,6 +1,11 @@
+ -------------------------------------------------------------------
+ Wed May  5 07:56:36 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- fixed old live iso type (no flags set) to work again.
++  The problem was that we prevent --follow-symlinks in this
++  mode but then we also have to copy the fixed read-write
++  part as file to the iso structure instead of linking it.
++  This fix is related to (bnc #599712)
+ - beautify migration report and fixed html code
+ - fixed warning message if URL can't be resolved
+ - fixed space problem when setting up boot partition for
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002157.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 4a15942e1c1b53fc80e72873ad2e45ee3e8d1794
+</A></li>
+	<LI>Next message: <A HREF="002159.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7199959e91de136bd41a2a93dede5989502a8f58
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2158">[ date ]</a>
+              <a href="thread.html#2158">[ thread ]</a>
+              <a href="subject.html#2158">[ subject ]</a>
+              <a href="author.html#2158">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

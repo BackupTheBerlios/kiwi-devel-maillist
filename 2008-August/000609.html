@@ -1,0 +1,291 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1527 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1527%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200808220934.m7M9Y1O7016922%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000608.html">
+   <LINK REL="Next"  HREF="000610.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1527 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1527%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200808220934.m7M9Y1O7016922%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1527 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Aug 22 11:34:01 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000608.html">[Kiwi-devel] r1526 - in kiwi-head: . modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000610.html">[Kiwi-devel] r1528 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#609">[ date ]</a>
+              <a href="thread.html#609">[ thread ]</a>
+              <a href="subject.html#609">[ subject ]</a>
+              <a href="author.html#609">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-08-22 11:33:50 +0200 (Fri, 22 Aug 2008)
+New Revision: 1527
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIManager.pm
+   kiwi-head/modules/KIWIRoot.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+Log:
+
+- v2.69
+- fixed cache usage, need bind mount in early prepare (bnc #417457)
+- fixed channel names, don't use PID here (bnc #417457)
+- zypper: keep packages from remote repos only (bnc #419380)
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-08-21 09:28:40 UTC (rev 1526)
++++ kiwi-head/kiwi.pl	2008-08-22 09:33:50 UTC (rev 1527)
+@@ -43,7 +43,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;2.68&quot;;
++our $Version       = &quot;2.69&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+ our $ConfigFile    = &quot;$ENV{'HOME'}/.kiwirc&quot;;
+ our $ConfigName    = &quot;config.xml&quot;;
+
+Modified: kiwi-head/modules/KIWIManager.pm
+===================================================================
+--- kiwi-head/modules/KIWIManager.pm	2008-08-21 09:28:40 UTC (rev 1526)
++++ kiwi-head/modules/KIWIManager.pm	2008-08-22 09:33:50 UTC (rev 1527)
+@@ -489,11 +489,17 @@
+ 		}
+ 		foreach my $alias (keys %{$source{$stype}}) {
+ 			my @sopts = @{$source{$stype}{$alias}};
+-			my @zopts = (&quot;--keep-packages&quot;);
++			my @zopts = ();
+ 			foreach my $opt (@sopts) {
+ 				next if ! defined $opt;
+ 				my ($key,$val) = split (/=/,$opt);
+ 				#==========================================
++				# keep packages on remote repos
++				#------------------------------------------
++				if ($val =~ /^'ftp:\/\/|http:\/\/|https:\/\/|opensuse:\/\//) {
++					push (@zopts,&quot;--keep-packages&quot;);
++				}
++				#==========================================
+ 				# Adapt URI parameter
+ 				#------------------------------------------
+ 				if (($key eq &quot;baseurl&quot;) || ($key eq &quot;path&quot;)) {
+
+Modified: kiwi-head/modules/KIWIRoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIRoot.pm	2008-08-21 09:28:40 UTC (rev 1526)
++++ kiwi-head/modules/KIWIRoot.pm	2008-08-22 09:33:50 UTC (rev 1527)
+@@ -112,7 +112,16 @@
+ 			$kiwi -&gt; done();
+ 			$type = $publics_type;
+ 		}
+-		my $channel = &quot;kiwi&quot;.$count.&quot;-&quot;.$$;
++		#==========================================
++		# build channel name/alias...
++		#------------------------------------------
++		my $channel = $publics_url;
++		$channel =~ s/\//_/g;
++		$channel =~ s/^_//;
++		$channel =~ s/_$//;
++		#==========================================
++		# build source key...
++		#------------------------------------------
+ 		my $srckey  = &quot;baseurl&quot;;
+ 		my $srcopt;
+ 		if ($type eq &quot;rpm-dir&quot;) {
+@@ -315,14 +324,20 @@
+ 	qxx (&quot; cp $main::KConfig $root/.kconfig 2&gt;&amp;1 &quot;);
+ 	$kiwi -&gt; done();
+ 	#==========================================
++	# Setup shared cache directory
++	#------------------------------------------
++	$this -&gt; setupCacheMount();
++	#==========================================
+ 	# Add source, install and clean source
+ 	#------------------------------------------
+ 	if (! $manager -&gt; setupInstallationSource()) {
++		$this -&gt; cleanMount();
+ 		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+ 	if (! $manager -&gt; setupRootSystem(@initPacs)) {
+ 		$manager -&gt; resetInstallationSource();
++		$this -&gt; cleanMount();
+ 		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+@@ -330,6 +345,7 @@
+ 	# reset installation source
+ 	#------------------------------------------
+ 	if (! $manager -&gt; resetInstallationSource()) {
++		$this -&gt; cleanMount();
+ 		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+@@ -337,9 +353,11 @@
+ 	# Reset preperation checks
+ 	#------------------------------------------
+ 	if (! $manager -&gt; resetSignatureCheck()) {
++		$this -&gt; cleanMount();
+ 		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
++	$this -&gt; cleanMount();
+ 	$manager -&gt; freeLock();
+ 	#==================================
+ 	# Create default fstab file
+@@ -841,6 +859,36 @@
+ }
+ 
+ #==========================================
++# setupCacheMount
++#------------------------------------------
++sub setupCacheMount {
++	# ...
++	# bind mount the specified cache directory into
++	# the chroot system. This is used to establish
++	# a shared cache over multiple prepare processes
++	# ---
++	my $this  = shift;
++	my $root  = $this-&gt;{root};
++	my $cache = &quot;/var/cache&quot;;
++	my @mountList;
++	if (defined $this-&gt;{mountList}) {
++		@mountList = @{$this-&gt;{mountList}};
++	} else {
++		@mountList = ();
++	}
++	if (! -d $cache) {
++		qxx (&quot;mkdir -p $cache&quot;);
++	}
++	if (! -d &quot;$root/$cache&quot;) {
++		qxx (&quot;mkdir -p $root/$cache 2&gt;&amp;1&quot;);
++	}
++	qxx (&quot;mount --bind $cache $root/$cache 2&gt;&amp;1&quot;);
++	push (@mountList,&quot;$root/$cache&quot;);
++	$this-&gt;{mountList} = \@mountList;
++	return @mountList;
++}
++
++#==========================================
+ # setupMount
+ #------------------------------------------
+ sub setupMount {
+@@ -853,7 +901,7 @@
+ 	my $root   = $this-&gt;{root};
+ 	my $baseSystem = $this-&gt;{baseSystem};
+ 	my $prefix = $root.&quot;/&quot;.$baseSystem;
+-	my $cache  = &quot;/var/cache/kiwi&quot;;
++	my $cache  = &quot;/var/cache&quot;;
+ 	my @mountList;
+ 	if (defined $this-&gt;{mountList}) {
+ 		@mountList = @{$this-&gt;{mountList}};
+@@ -861,9 +909,6 @@
+ 		@mountList = ();
+ 	}
+ 	$kiwi -&gt; info (&quot;Mounting required file systems&quot;);
+-	if (! -d $cache) {
+-		qxx (&quot;mkdir -p $cache&quot;);
+-	}
+ 	if (! -d $prefix) {
+ 	if (! mkdir $prefix) {
+ 		$kiwi -&gt; failed ();
+@@ -894,11 +939,8 @@
+ 		push (@mountList,&quot;$root/sys&quot;);
+ 		push (@mountList,&quot;$root/dev/pts&quot;);
+ 	}
+-	if (! -d &quot;$root/$cache&quot;) {
+-		qxx (&quot;mkdir -p $root/$cache 2&gt;&amp;1&quot;);
+-	}
+-	qxx (&quot;mount --bind $cache $root/$cache 2&gt;&amp;1&quot;);
+-	push (@mountList,&quot;$root/$cache&quot;);
++	$this-&gt;{mountList} = \@mountList;
++	@mountList = $this -&gt; setupCacheMount();
+ 	$kiwi -&gt; done();
+ 	foreach my $chl (keys %{$this-&gt;{sourceChannel}{private}}) {
+ 		my @opts = @{$this-&gt;{sourceChannel}{private}{$chl}};
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-08-21 09:28:40 UTC (rev 1526)
++++ kiwi-head/rpm/kiwi.changes	2008-08-22 09:33:50 UTC (rev 1527)
+@@ -1,4 +1,12 @@
+ -------------------------------------------------------------------
++Fri Aug 22 11:27:22 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v2.69
++- fixed cache usage, need bind mount in early prepare (bnc #417457)
++- fixed channel names, don't use PID here (bnc #417457)
++- zypper: keep packages from remote repos only (bnc #419380)
++
++-------------------------------------------------------------------
+ Thu Aug 21 10:45:59 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.68
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-08-21 09:28:40 UTC (rev 1526)
++++ kiwi-head/rpm/kiwi.spec	2008-08-22 09:33:50 UTC (rev 1527)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 2.68
++# spec file for package kiwi (Version 2.69
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        2.68
++Version:        2.69
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000608.html">[Kiwi-devel] r1526 - in kiwi-head: . modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000610.html">[Kiwi-devel] r1528 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#609">[ date ]</a>
+              <a href="thread.html#609">[ thread ]</a>
+              <a href="subject.html#609">[ subject ]</a>
+              <a href="author.html#609">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

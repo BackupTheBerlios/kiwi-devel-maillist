@@ -1,0 +1,172 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1519 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1519%20-%20kiwi-head/modules&In-Reply-To=%3C200808191636.m7JGa2uS019171%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000600.html">
+   <LINK REL="Next"  HREF="000602.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1519 - kiwi-head/modules</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1519%20-%20kiwi-head/modules&In-Reply-To=%3C200808191636.m7JGa2uS019171%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1519 - kiwi-head/modules">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Aug 19 18:36:02 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000600.html">[Kiwi-devel] r1518 - in kiwi-head: modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000602.html">[Kiwi-devel] r1520 - kiwi-head/rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#601">[ date ]</a>
+              <a href="thread.html#601">[ thread ]</a>
+              <a href="subject.html#601">[ subject ]</a>
+              <a href="author.html#601">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-08-19 18:35:44 +0200 (Tue, 19 Aug 2008)
+New Revision: 1519
+
+Modified:
+   kiwi-head/modules/KIWIManager.pm
+Log:
+
+- fixed cache update for smart and zypper
+- fixed dist upgrade mode for zypper
+
+
+
+Modified: kiwi-head/modules/KIWIManager.pm
+===================================================================
+--- kiwi-head/modules/KIWIManager.pm	2008-08-19 11:29:03 UTC (rev 1518)
++++ kiwi-head/modules/KIWIManager.pm	2008-08-19 16:35:44 UTC (rev 1519)
+@@ -733,9 +733,10 @@
+ 		print $fd &quot;function clean { kill \$SPID;&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+-		print $fd &quot;chroot $root @smart update\n&quot;;
+-		print $fd &quot;chroot $root @smart channel --show &amp;\n&quot;;
++		print $fd &quot;chroot $root @smart update &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
++		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @smart channel --show &amp;\n&quot;;
++		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @smart install -y &quot;;
+ 		print $fd &quot;@addonPackages || false &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+@@ -758,7 +759,7 @@
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+ 		print $fd &quot;export YAST_IS_RUNNING=true\n&quot;;
+-		print $fd &quot;chroot $root @zypper refresh &amp; &quot;;
++		print $fd &quot;chroot $root @zypper refresh &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @zypper install &quot;;
+ 		print $fd &quot;@installOpts @addonPackages &amp;\n&quot;;
+@@ -824,9 +825,10 @@
+ 		print $fd &quot;function clean { kill \$SPID;&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+-		print $fd &quot;chroot $root @smart update\n&quot;;
+-		print $fd &quot;chroot $root @smart channel --show &amp;\n&quot;;
++		print $fd &quot;chroot $root @smart update &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
++		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @smart channel --show &amp;\n&quot;;
++		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @smart remove -y &quot;;
+ 		print $fd &quot;@removePackages || false &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+@@ -849,7 +851,7 @@
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+ 		print $fd &quot;export YAST_IS_RUNNING=true\n&quot;;
+-		print $fd &quot;chroot $root @zypper refresh &amp; &quot;;
++		print $fd &quot;chroot $root @zypper refresh &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @zypper remove &quot;;
+ 		print $fd &quot;@installOpts @removePackages &amp;\n&quot;;
+@@ -917,7 +919,9 @@
+ 		print $fd &quot;function clean { kill \$SPID;&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+-		print $fd &quot;chroot $root @smart update\n&quot;;
++		print $fd &quot;chroot $root @smart update &amp;\n&quot;;
++		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
++		print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+ 		if (defined $addPacks) {
+ 			my @addonPackages = @{$addPacks};
+ 			print $fd &quot;chroot $root @smart channel --show &amp;\n&quot;;
+@@ -953,6 +957,9 @@
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+ 		print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+ 		print $fd &quot;export YAST_IS_RUNNING=true\n&quot;;
++		print $fd &quot;chroot $root @zypper refresh &amp;\n&quot;;
++		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
++		print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+ 		if (defined $addPacks) {
+ 			my @addonPackages = @{$addPacks};
+ 			my @newpatts = ();
+@@ -965,7 +972,7 @@
+ 				}
+ 			}
+ 			@addonPackages = @newpacks;
+-			print $fd &quot;chroot $root @zypper update &amp; &quot;;
++			print $fd &quot;chroot $root @zypper dist-upgrade &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			if (@addonPackages) {
+ 				print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @zypper install &quot;;
+@@ -978,7 +985,7 @@
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+ 		} else {
+-			print $fd &quot;chroot $root @zypper update &amp;\n&quot;;
++			print $fd &quot;chroot $root @zypper dist-upgrade &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		}
+ 		print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
+@@ -1175,6 +1182,9 @@
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+ 			print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+ 			print $fd &quot;export YAST_IS_RUNNING=true\n&quot;;
++			print $fd &quot;@zypper --root $root refresh &amp;\n&quot;;
++			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
++			print $fd &quot;test \$? = 0 &amp;&amp; &quot;;
+ 			if (@packs) {
+ 				print $fd &quot;@zypper --root $root install &quot;;
+ 				print $fd &quot;@installOpts @packs &amp;\n&quot;;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000600.html">[Kiwi-devel] r1518 - in kiwi-head: modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000602.html">[Kiwi-devel] r1520 - kiwi-head/rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#601">[ date ]</a>
+              <a href="thread.html#601">[ thread ]</a>
+              <a href="subject.html#601">[ subject ]</a>
+              <a href="author.html#601">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

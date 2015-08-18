@@ -1,0 +1,185 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 13751978c59af749d91c7d58272ec80ae39ea58d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%2013751978c59af749d91c7d58272ec80ae39ea58d&In-Reply-To=%3C201005101011.o4AABBVl005371%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002162.html">
+   <LINK REL="Next"  HREF="002164.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 13751978c59af749d91c7d58272ec80ae39ea58d</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%2013751978c59af749d91c7d58272ec80ae39ea58d&In-Reply-To=%3C201005101011.o4AABBVl005371%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 13751978c59af749d91c7d58272ec80ae39ea58d">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon May 10 12:11:11 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002162.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. cbf34603b4fb94aa8f96291a7e4d95b974eae97f
+</A></li>
+        <LI>Next message: <A HREF="002164.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. f7c7a8f230c93633879e2c7f363b0647d055494b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2163">[ date ]</a>
+              <a href="thread.html#2163">[ thread ]</a>
+              <a href="subject.html#2163">[ subject ]</a>
+              <a href="author.html#2163">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-374-SuSE-11-1-SLE-SP-Devel has been updated
+       via  13751978c59af749d91c7d58272ec80ae39ea58d (commit)
+      from  4a15942e1c1b53fc80e72873ad2e45ee3e8d1794 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 13751978c59af749d91c7d58272ec80ae39ea58d
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon May 10 12:07:51 2010 +0200
+
+    - image size calculation fixes:
+      * fixed size calculation in KIWIBoot.pm which did not take
+        the journal size into account
+      * minimum journal size set to 12 MB
+      * spare space set to 1.5 (former 1.3)
+      * min inode count is twice times the file count
+      All this is for bug (bnc #587361)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 657a632..15c38d9 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -287,7 +287,8 @@ sub new {
+ 		my $minInodes;
+ 		my $sizeXMLBytes = 0;
+ 		my $cmdlBytes    = 0;
+-		my $spare        = 1.3;
++		my $spare        = 1.5;
++		my $journal      = 12 * 1024 * 1024;
+ 		#==========================================
+ 		# Calculate minimum size of the system
+ 		#------------------------------------------
+@@ -295,9 +296,12 @@ sub new {
+ 			# System is specified as a directory...
+ 			$minInodes = qxx (&quot;find $system | wc -l&quot;);
+ 			$sizeBytes = qxx (&quot;du -s --block-size=1 $system | cut -f1&quot;);
++			chomp $minInodes;
+ 			chomp $sizeBytes;
++			$minInodes*= 2;
+ 			$sizeBytes+= $minInodes * $main::FSInodeSize;
+ 			$sizeBytes*= $spare;
++			$sizeBytes+= $journal;
+ 		} else {
+ 			# system is specified as a file...
+ 			$sizeBytes = -s $system;
+@@ -347,7 +351,7 @@ sub new {
+ 			# ----
+ 			$this-&gt;{inodes} = int ($sizeBytes / $main::FSInodeRatio);
+ 			$kiwi -&gt; loginfo (
+-				&quot;Using &quot;.$this-&gt;{inodes}.&quot; for the root filesystem\n&quot;
++				&quot;Using &quot;.$this-&gt;{inodes}.&quot; inodes for the root filesystem\n&quot;
+ 			);
+ 		}
+ 		#==========================================
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index dc18ffe..8480a49 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -4205,13 +4205,18 @@ sub getSize {
+ 	my $xml    = $this-&gt;{xml};
+ 	my $mini   = qxx (&quot;find $extend | wc -l&quot;); chomp $mini;
+ 	my $minsize= qxx (&quot;du -s --block-size=1 $extend | cut -f1&quot;); chomp $minsize;
+-	my $spare  = 1.3;
+-	my $journal= 5 * 1024 * 1024;
++	my $spare  = 1.5;
++	my $journal= 12 * 1024 * 1024;
++	my $files  = $mini;
+ 	my $xmlsize;
+ 	#==========================================
++	# Double minimum inode count
++	#------------------------------------------
++	$mini *= 2;
++	#==========================================
+ 	# Minimum size calculated in Byte + spare
+ 	#------------------------------------------
+-	$kiwi -&gt; loginfo (&quot;getSize: files: $mini\n&quot;);
++	$kiwi -&gt; loginfo (&quot;getSize: files: $files\n&quot;);
+ 	$kiwi -&gt; loginfo (&quot;getSize: spare: $spare\n&quot;);
+ 	$kiwi -&gt; loginfo (&quot;getSize: usage: $minsize Bytes\n&quot;);
+ 	$kiwi -&gt; loginfo (&quot;getSize: inode: $main::FSInodeSize Bytes\n&quot;);
+@@ -4252,7 +4257,7 @@ sub getSize {
+ 		$usedsize = $xmlsize;
+ 		$this-&gt;{inodes} = sprintf (&quot;%.0f&quot;,$usedsize / $main::FSInodeRatio);
+ 	} else {
+-		$this-&gt;{inodes} = $mini * 2;
++		$this-&gt;{inodes} = $mini;
+ 	}
+ 	#==========================================
+ 	# return result list in MB
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index fa7fa62..6c1256d 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,15 @@
+ -------------------------------------------------------------------
++Mon May 10 10:54:48 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- image size calculation fixes:
++  * fixed size calculation in KIWIBoot.pm which did not take
++    the journal size into account
++  * minimum journal size set to 12 MB
++  * spare space set to 1.5 (former 1.3)
++  * min inode count is twice times the file count
++  All this is for bug (bnc #587361)
++
++-------------------------------------------------------------------
+ Fri May  7 11:45:46 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed old live iso type (no flags set) to work again.
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002162.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. cbf34603b4fb94aa8f96291a7e4d95b974eae97f
+</A></li>
+	<LI>Next message: <A HREF="002164.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. f7c7a8f230c93633879e2c7f363b0647d055494b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2163">[ date ]</a>
+              <a href="thread.html#2163">[ thread ]</a>
+              <a href="subject.html#2163">[ subject ]</a>
+              <a href="author.html#2163">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

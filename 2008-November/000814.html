@@ -1,0 +1,737 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1735 - in kiwi-head: . modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ix86/usbboot system/boot/ix86/vmxboot	system/boot/ix86/xenboot system/boot/ppc/netboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1735%20-%20in%20kiwi-head%3A%20.%20modules%20rpm%0A%09system/boot/ix86/netboot%20system/boot/ix86/oemboot%0A%09system/boot/ix86/usbboot%20system/boot/ix86/vmxboot%0A%09system/boot/ix86/xenboot%20system/boot/ppc/netboot&In-Reply-To=%3C200811071154.mA7Bsq8D000533%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000813.html">
+   <LINK REL="Next"  HREF="000815.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1735 - in kiwi-head: . modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ix86/usbboot system/boot/ix86/vmxboot	system/boot/ix86/xenboot system/boot/ppc/netboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1735%20-%20in%20kiwi-head%3A%20.%20modules%20rpm%0A%09system/boot/ix86/netboot%20system/boot/ix86/oemboot%0A%09system/boot/ix86/usbboot%20system/boot/ix86/vmxboot%0A%09system/boot/ix86/xenboot%20system/boot/ppc/netboot&In-Reply-To=%3C200811071154.mA7Bsq8D000533%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1735 - in kiwi-head: . modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ix86/usbboot system/boot/ix86/vmxboot	system/boot/ix86/xenboot system/boot/ppc/netboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Nov  7 12:54:52 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000813.html">[Kiwi-devel] r1734 - kiwi-head/modules
+</A></li>
+        <LI>Next message: <A HREF="000815.html">[Kiwi-devel] r1736 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#814">[ date ]</a>
+              <a href="thread.html#814">[ thread ]</a>
+              <a href="subject.html#814">[ subject ]</a>
+              <a href="author.html#814">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-11-07 12:54:36 +0100 (Fri, 07 Nov 2008)
+New Revision: 1735
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+   kiwi-head/system/boot/ix86/netboot/suse-preinit
+   kiwi-head/system/boot/ix86/oemboot/suse-preinit
+   kiwi-head/system/boot/ix86/usbboot/suse-preinit
+   kiwi-head/system/boot/ix86/vmxboot/suse-preinit
+   kiwi-head/system/boot/ix86/xenboot/suse-linuxrc
+   kiwi-head/system/boot/ix86/xenboot/suse-preinit
+   kiwi-head/system/boot/ppc/netboot/suse-preinit
+Log:
+
+- start udevd in preinit stage (bnc #442302)
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-11-06 16:49:41 UTC (rev 1734)
++++ kiwi-head/kiwi.pl	2008-11-07 11:54:36 UTC (rev 1735)
+@@ -44,7 +44,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.00&quot;;
++our $Version       = &quot;3.01&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-11-06 16:49:41 UTC (rev 1734)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-11-07 11:54:36 UTC (rev 1735)
+@@ -285,9 +285,10 @@
+ 	# by ELOG_CONSOLE
+ 	# ----
+ 	if [ ! -f $ELOG_FILE ];then
+-		echo &quot;KIWI Log:&quot; &gt;$ELOG_FILE
++		echo &quot;KIWI Log:&quot; &gt;&gt; $ELOG_FILE
+ 	else
+-		echo &quot;KIWI PreInit Log&quot; &gt;&gt;$ELOG_FILE
++		killproc tail
++		echo &quot;KIWI PreInit Log&quot; &gt;&gt; $ELOG_FILE
+ 	fi
+ 	Echo &quot;Boot-Logging enabled on $ELOG_CONSOLE&quot;
+ 	setctsid -f $ELOG_CONSOLE /bin/bash -i -c &quot;tail -f $ELOG_FILE&quot; &amp;
+@@ -312,6 +313,17 @@
+ 	fi
+ }
+ #======================================
++# udevSystemStart
++#--------------------------------------
++function udevSystemStart {
++	# /.../
++	# start udev while in pre-init phase. This means we can
++	# run udev from the standard runlevel script
++	# ----
++	/etc/init.d/boot.udev start
++	echo
++}
++#======================================
+ # udevStart
+ #--------------------------------------
+ function udevStart {
+@@ -320,7 +332,9 @@
+ 	# ----
+ 	echo &quot;Creating device nodes with udev&quot;
+ 	# disable hotplug helper, udevd listens to netlink
+-	echo &quot;&quot; &gt; /proc/sys/kernel/hotplug
++	if [ -e /proc/sys/kernel/hotplug ];then
++		echo &quot;&quot; &gt; /proc/sys/kernel/hotplug
++	fi
+ 	# /.../
+ 	# At the moment we prevent udev from loading the storage
+ 	# modules because it does not make a propper choice if
+@@ -345,11 +359,6 @@
+ #--------------------------------------
+ function udevKill {
+ 	killproc /sbin/udevd
+-	rm -f /var/log/boot.msg
+-	umount -t devpts /mnt/dev/pts
+-	mkdir -p /mnt/var/log
+-	cp /mnt/dev/shm/initrd.msg /mnt/var/log/boot.msg
+-	cp -f /var/log/boot.kiwi /mnt/var/log/boot.kiwi
+ }
+ #======================================
+ # startSplashy
+@@ -3169,8 +3178,15 @@
+ 	reopenKernelConsole
+ 	udevPending
+ 	mount --move /dev /mnt/dev
++	umount -t devpts /mnt/dev/pts
+ 	udevKill
++	udevPending
+ 	#======================================
++	# copy boot log file into system image
++	#--------------------------------------
++	mkdir -p /mnt/var/log
++	cp /var/log/boot.kiwi /mnt/var/log/boot.kiwi
++	#======================================
+ 	# run preinit stage
+ 	#--------------------------------------
+ 	Echo &quot;Calling preinit phase...&quot;
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-11-06 16:49:41 UTC (rev 1734)
++++ kiwi-head/rpm/kiwi.changes	2008-11-07 11:54:36 UTC (rev 1735)
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Thu Nov  6 15:55:34 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.01
++- start udevd in preinit stage (bnc #442302)
++
++-------------------------------------------------------------------
+ Tue Nov  4 16:37:42 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.00
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2008-11-06 16:49:41 UTC (rev 1734)
++++ kiwi-head/rpm/kiwi.spec	2008-11-07 11:54:36 UTC (rev 1735)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.00
++# spec file for package kiwi (Version 3.01
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.00
++Version:        3.01
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+Modified: kiwi-head/system/boot/ix86/netboot/suse-preinit
+===================================================================
+--- kiwi-head/system/boot/ix86/netboot/suse-preinit	2008-11-06 16:49:41 UTC (rev 1734)
++++ kiwi-head/system/boot/ix86/netboot/suse-preinit	2008-11-07 11:54:36 UTC (rev 1735)
+@@ -22,8 +22,8 @@
+ #======================================
+ # 1) start error log
+ #--------------------------------------
++errorLogStart
+ Echo &quot;Calling pre-init stage in system image&quot;
+-errorLogStart
+ 
+ #======================================
+ # 2) check for LOCAL_BOOT
+@@ -33,17 +33,27 @@
+ fi
+ 
+ #======================================
+-# 3) update mount table
++# 3) start udev
+ #--------------------------------------
++if [ ! -z $DISK ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ]; then
++	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
++		mountSystemFilesystems
++		udevSystemStart
++	fi
++fi
++
++#======================================
++# 4) update mount table
++#--------------------------------------
+ updateMTAB
+ 
+ #======================================
+-# 4) create framebuffer devices
++# 5) create framebuffer devices
+ #--------------------------------------
+ createFramebufferDevices
+ 
+ #======================================
+-# 5) create initrd on diskful
++# 6) create initrd on diskful
+ #--------------------------------------
+ if [ ! -z $DISK ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ]; then
+ 	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+@@ -60,7 +70,7 @@
+ fi
+ 
+ #======================================
+-# 6) Install boot loader on diskful
++# 7) Install boot loader on diskful
+ #--------------------------------------
+ if [ ! -z $DISK ] &amp;&amp; [ $bootLoaderOK = 1 ];then
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+@@ -69,7 +79,7 @@
+ fi
+ 
+ #======================================
+-# 7) create /etc/ImagePackages
++# 8) create /etc/ImagePackages
+ #--------------------------------------
+ if test $systemIntegrity = &quot;clean&quot;;then
+ 	if [ -x /bin/rpm ];then
+@@ -79,7 +89,7 @@
+ fi
+ 
+ #======================================
+-# 8) Reset systemIntegrity
++# 9) Reset systemIntegrity
+ #--------------------------------------
+ if test ! -z $DISK;then
+ 	if test ! -z $RELOAD_CONFIG;then
+@@ -88,7 +98,7 @@
+ fi
+ 
+ #======================================
+-# 9) check for valid mount points 
++# 10) check for valid mount points 
+ #--------------------------------------
+ if test ! -z $DISK;then
+ 	IFS=&quot;:&quot; ; for i in $PART_MOUNT;do
+@@ -101,7 +111,7 @@
+ fi
+ 
+ #======================================
+-# 10) Update /etc/ImageVersion files
++# 11) Update /etc/ImageVersion files
+ #--------------------------------------
+ if test ! -z $DISK;then
+ 	count=0
+@@ -128,7 +138,7 @@
+ fi
+ 
+ #======================================
+-# 11) setup network for nfs boot
++# 12) setup network for nfs boot
+ #--------------------------------------
+ if test ! -z $NFSROOT;then
+ 	mount -o nolock -t proc  proc    /proc
+@@ -136,3 +146,13 @@
+ 	mount -o nolock -t devpts devpts /dev/pts
+ 	/etc/init.d/portmap start
+ fi
++
++#======================================
++# 13) kill udev
++#--------------------------------------
++if [ ! -z $DISK ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ]; then
++	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
++		udevKill
++		umountSystemFilesystems
++	fi
++fi
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-preinit
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-preinit	2008-11-06 16:49:41 UTC (rev 1734)
++++ kiwi-head/system/boot/ix86/oemboot/suse-preinit	2008-11-07 11:54:36 UTC (rev 1735)
+@@ -22,8 +22,8 @@
+ #======================================
+ # 1) start error log
+ #--------------------------------------
++errorLogStart
+ Echo &quot;Calling pre-init stage in system image&quot;
+-errorLogStart
+ 
+ #======================================
+ # 2) check for LOCAL_BOOT
+@@ -33,17 +33,23 @@
+ fi
+ 
+ #======================================
+-# 3) update mount table
++# 3) start udev
+ #--------------------------------------
++mountSystemFilesystems
++udevSystemStart
++
++#======================================
++# 4) update mount table
++#--------------------------------------
+ updateMTAB
+ 
+ #======================================
+-# 4) create framebuffer devices
++# 5) create framebuffer devices
+ #--------------------------------------
+ createFramebufferDevices
+ 
+ #======================================
+-# 5) create initrd on diskful
++# 6) create initrd on diskful
+ #--------------------------------------
+ if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+ 	#======================================
+@@ -72,14 +78,14 @@
+ fi
+ 
+ #======================================
+-# 6) Install boot loader if ok
++# 7) Install boot loader if ok
+ #--------------------------------------
+ if [ $bootLoaderOK = 1 ];then
+ 	installBootLoader
+ fi
+ 
+ #======================================
+-# 7) create /etc/ImagePackages
++# 8) create /etc/ImagePackages
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	if [ -x /bin/rpm ];then
+@@ -87,3 +93,9 @@
+ 		rpm -qa --last &gt; /etc/ImagePackages
+ 	fi
+ fi
++
++#======================================
++# 9) kill udev
++#--------------------------------------
++udevKill
++umountSystemFilesystems
+
+Modified: kiwi-head/system/boot/ix86/usbboot/suse-preinit
+===================================================================
+--- kiwi-head/system/boot/ix86/usbboot/suse-preinit	2008-11-06 16:49:41 UTC (rev 1734)
++++ kiwi-head/system/boot/ix86/usbboot/suse-preinit	2008-11-07 11:54:36 UTC (rev 1735)
+@@ -22,8 +22,8 @@
+ #======================================
+ # 1) start error log
+ #--------------------------------------
++errorLogStart
+ Echo &quot;Calling pre-init stage in system image&quot;
+-errorLogStart
+ 
+ #======================================
+ # 2) check for LOCAL_BOOT
+@@ -43,7 +43,7 @@
+ createFramebufferDevices
+ 
+ #======================================
+-# 4) create /etc/ImagePackages
++# 5) create /etc/ImagePackages
+ #--------------------------------------
+ if [ -x /bin/rpm ];then
+ 	Echo &quot;Creating initial image package info file&quot;
+
+Modified: kiwi-head/system/boot/ix86/vmxboot/suse-preinit
+===================================================================
+--- kiwi-head/system/boot/ix86/vmxboot/suse-preinit	2008-11-06 16:49:41 UTC (rev 1734)
++++ kiwi-head/system/boot/ix86/vmxboot/suse-preinit	2008-11-07 11:54:36 UTC (rev 1735)
+@@ -22,8 +22,8 @@
+ #======================================
+ # 1) start error log
+ #--------------------------------------
++errorLogStart
+ Echo &quot;Calling pre-init stage in system image&quot;
+-errorLogStart
+ 
+ #======================================
+ # 2) check for LOCAL_BOOT
+@@ -33,17 +33,23 @@
+ fi
+ 
+ #======================================
+-# 3) update mount table
++# 3) start udev
+ #--------------------------------------
++mountSystemFilesystems
++udevSystemStart
++
++#======================================
++# 4) update mount table
++#--------------------------------------
+ updateMTAB
+ 
+ #======================================
+-# 4) create framebuffer devices
++# 5) create framebuffer devices
+ #--------------------------------------
+ createFramebufferDevices
+ 
+ #======================================
+-# 5) create /etc/ImagePackages
++# 6) create /etc/ImagePackages
+ #--------------------------------------
+ if [ -x /bin/rpm ];then
+ 	Echo &quot;Creating initial image package info file&quot;
+@@ -51,20 +57,26 @@
+ fi
+ 
+ #======================================
+-# 6) check for union filesystem
++# 7) check for union filesystem
+ #--------------------------------------
+ if [ ! -z &quot;$UNIONFS_CONFIG&quot; ]; then
+ 	exit 0
+ fi
+ 
+ #======================================
+-# 7) create initrd on diskful
++# 8) create initrd on diskful
+ #--------------------------------------
+ setupSUSEInitrd
+ 
+ #======================================
+-# 8) Install boot loader on diskful
++# 9) Install boot loader on diskful
+ #--------------------------------------
+ if [ $bootLoaderOK = 1 ];then
+ 	installBootLoader
+ fi
++
++#======================================
++# 10) kill udev
++#--------------------------------------
++udevKill
++umountSystemFilesystems
+
+Modified: kiwi-head/system/boot/ix86/xenboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/xenboot/suse-linuxrc	2008-11-06 16:49:41 UTC (rev 1734)
++++ kiwi-head/system/boot/ix86/xenboot/suse-linuxrc	2008-11-07 11:54:36 UTC (rev 1735)
+@@ -22,6 +22,11 @@
+ export PATH=&quot;/sbin:/bin:/usr/sbin:/usr/bin&quot;
+ export IFS_ORIG=$IFS
+ export DEBUG=0
++
++#======================================
++# Exports (Booting)
++#--------------------------------------
++export LOCAL_BOOT=no
+ export systemIntegrity=clean
+ 
+ #======================================
+@@ -124,50 +129,66 @@
+ validateRootTree
+ 
+ #======================================
+-# 9) Create system dependant files
++# 9) check for local boot
+ #--------------------------------------
+-setupDefaultFstab /config
+-updateRootDeviceFstab /config $imageRootDevice
++if [ -e /mnt/etc/ImagePackages ];then
++	export LOCAL_BOOT=yes
++fi
+ 
+ #======================================
+-# 10) copy system dependant files
++# 10) Create system dependant files
+ #--------------------------------------
+-setupConfigFiles
++if [ $LOCAL_BOOT = &quot;no&quot; ];then
++	setupDefaultFstab /config
++	updateRootDeviceFstab /config $imageRootDevice
++fi
+ 
+ #======================================
+-# 11) update system dependant files
++# 11) copy system dependant files
+ #--------------------------------------
+-setupInittab /mnt
++if [ $LOCAL_BOOT = &quot;no&quot; ];then
++	setupConfigFiles
++fi
+ 
+ #======================================
+-# 12) setup real root device
++# 12) update system dependant files
+ #--------------------------------------
++if [ $LOCAL_BOOT = &quot;no&quot; ];then
++	setupInittab /mnt
++fi
++
++#======================================
++# 13) setup real root device
++#--------------------------------------
+ echo 256 &gt; /proc/sys/kernel/real-root-dev
+ 
+ #======================================
+-# 13) umount system filesystems
++# 14) umount system filesystems
+ #--------------------------------------
+ umountSystemFilesystems
+ 
+ #======================================
+-# 14) copy initrd files to image
++# 15) copy initrd files to image
+ #--------------------------------------
+-importBranding
++if [ ! -f /mnt/boot/deployed ];then
++	touch /mnt/boot/deployed
++	importBranding
++fi
+ cp /preinit /mnt
+ cp /include /mnt
+ 
+ #======================================
+-# 15) kill boot shell
++# 16) kill boot shell
+ #--------------------------------------
+ killShell
+ killBlogD
+ 
+ #======================================
+-# 16) Activate new root
++# 17) Activate new root
+ #--------------------------------------
+ activateImage
+ 
+ #======================================
+-# 17) Unmount initrd / system init
++# 18) Unmount initrd / system init
+ #--------------------------------------
+ bootImage $@
+
+Modified: kiwi-head/system/boot/ix86/xenboot/suse-preinit
+===================================================================
+--- kiwi-head/system/boot/ix86/xenboot/suse-preinit	2008-11-06 16:49:41 UTC (rev 1734)
++++ kiwi-head/system/boot/ix86/xenboot/suse-preinit	2008-11-07 11:54:36 UTC (rev 1735)
+@@ -22,10 +22,17 @@
+ #======================================
+ # 1) start error log
+ #--------------------------------------
++errorLogStart
+ Echo &quot;Calling pre-init stage in system image&quot;
+-errorLogStart
+ 
+ #======================================
++# 2) check for LOCAL_BOOT
++#--------------------------------------
++if [ $LOCAL_BOOT = &quot;yes&quot; ];then
++	exit 0
++fi
++
++#======================================
+ # 2) update mount table
+ #--------------------------------------
+ updateMTAB
+@@ -38,9 +45,7 @@
+ #======================================
+ # 4) create /etc/ImagePackages
+ #--------------------------------------
+-if test &quot;$systemIntegrity&quot; = &quot;clean&quot;;then
+-	if [ -x /bin/rpm ];then
+-		Echo &quot;Creating initial image package info file&quot;
+-		rpm -qa --last &gt; /etc/ImagePackages
+-	fi
++if [ -x /bin/rpm ];then
++	Echo &quot;Creating initial image package info file&quot;
++	rpm -qa --last &gt; /etc/ImagePackages
+ fi
+
+Modified: kiwi-head/system/boot/ppc/netboot/suse-preinit
+===================================================================
+--- kiwi-head/system/boot/ppc/netboot/suse-preinit	2008-11-06 16:49:41 UTC (rev 1734)
++++ kiwi-head/system/boot/ppc/netboot/suse-preinit	2008-11-07 11:54:36 UTC (rev 1735)
+@@ -22,8 +22,8 @@
+ #======================================
+ # 1) start error log
+ #--------------------------------------
++errorLogStart
+ Echo &quot;Calling pre-init stage in system image&quot;
+-errorLogStart
+ 
+ #======================================
+ # 2) check for LOCAL_BOOT
+@@ -33,17 +33,27 @@
+ fi
+ 
+ #======================================
+-# 3) update mount table
++# 3) start udev
+ #--------------------------------------
++if [ ! -z $DISK ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ]; then
++	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
++		mountSystemFilesystems
++		udevSystemStart
++	fi
++fi
++
++#======================================
++# 4) update mount table
++#--------------------------------------
+ updateMTAB
+ 
+ #======================================
+-# 4) create framebuffer devices
++# 5) create framebuffer devices
+ #--------------------------------------
+ createFramebufferDevices
+ 
+ #======================================
+-# 5) create initrd on diskful
++# 6) create initrd on diskful
+ #--------------------------------------
+ if [ ! -z $DISK ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ]; then
+ 	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+@@ -60,7 +70,7 @@
+ fi
+ 
+ #======================================
+-# 6) Install boot loader on diskful
++# 7) Install boot loader on diskful
+ #--------------------------------------
+ if [ ! -z $DISK ] &amp;&amp; [ $bootLoaderOK = 1 ];then
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+@@ -69,7 +79,7 @@
+ fi
+ 
+ #======================================
+-# 7) create /etc/ImagePackages
++# 8) create /etc/ImagePackages
+ #--------------------------------------
+ if test $systemIntegrity = &quot;clean&quot;;then
+ 	if [ -x /bin/rpm ];then
+@@ -79,7 +89,7 @@
+ fi
+ 
+ #======================================
+-# 8) Reset systemIntegrity
++# 9) Reset systemIntegrity
+ #--------------------------------------
+ if test ! -z $DISK;then
+ 	if test ! -z $RELOAD_CONFIG;then
+@@ -88,7 +98,7 @@
+ fi
+ 
+ #======================================
+-# 9) check for valid mount points 
++# 10) check for valid mount points 
+ #--------------------------------------
+ if test ! -z $DISK;then
+ 	IFS=&quot;:&quot; ; for i in $PART_MOUNT;do
+@@ -101,7 +111,7 @@
+ fi
+ 
+ #======================================
+-# 10) Update /etc/ImageVersion files
++# 11) Update /etc/ImageVersion files
+ #--------------------------------------
+ if test ! -z $DISK;then
+ 	count=0
+@@ -128,7 +138,7 @@
+ fi
+ 
+ #======================================
+-# 11) setup network for nfs boot
++# 12) setup network for nfs boot
+ #--------------------------------------
+ if test ! -z $NFSROOT;then
+ 	mount -o nolock -t proc  proc    /proc
+@@ -136,3 +146,13 @@
+ 	mount -o nolock -t devpts devpts /dev/pts
+ 	/etc/init.d/portmap start
+ fi
++
++#======================================
++# 13) kill udev
++#--------------------------------------
++if [ ! -z $DISK ] &amp;&amp; [ $systemIntegrity = &quot;clean&quot; ]; then
++	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
++		udevKill
++		umountSystemFilesystems
++	fi
++fi
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000813.html">[Kiwi-devel] r1734 - kiwi-head/modules
+</A></li>
+	<LI>Next message: <A HREF="000815.html">[Kiwi-devel] r1736 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#814">[ date ]</a>
+              <a href="thread.html#814">[ thread ]</a>
+              <a href="subject.html#814">[ subject ]</a>
+              <a href="author.html#814">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

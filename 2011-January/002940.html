@@ -1,0 +1,142 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Some restructuring
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Some%20restructuring&In-Reply-To=%3C20110110144918.GA9050%40D7.ddts.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002936.html">
+   <LINK REL="Next"  HREF="002941.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Some restructuring</H1>
+    <B>Marcus Sch&#228;fer</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Some%20restructuring&In-Reply-To=%3C20110110144918.GA9050%40D7.ddts.net%3E"
+       TITLE="[Kiwi-devel] Some restructuring">ms at suse.de
+       </A><BR>
+    <I>Mon Jan 10 15:49:18 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002936.html">[Kiwi-devel] Some restructuring
+</A></li>
+        <LI>Next message: <A HREF="002941.html">[Kiwi-devel] Some restructuring
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2940">[ date ]</a>
+              <a href="thread.html#2940">[ thread ]</a>
+              <a href="subject.html#2940">[ subject ]</a>
+              <a href="author.html#2940">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi,
+
+&gt;<i> Back to the effort of making the XML object a &quot;simple&quot; mostly dumb
+</I>&gt;<i> container. The attached patch contains the following changes:
+</I>&gt;<i> 
+</I>&gt;<i> - create new KIWILocator module
+</I>&gt;<i>    - implement getExecPath (previously called findExec in main)
+</I>&gt;<i>    - implement getControlFile (previously in kiwi.pl)
+</I>&gt;<i> - kiwi.pl
+</I>&gt;<i>    - remove findExec from kiwi.pl (now in KIWILocator module as
+</I>&gt;<i>                                    getExecPath)
+</I>&gt;<i>    - implement new checkImageIntegrity
+</I>&gt;<i>    - remove getControlFile (now in KIWILocator module)
+</I>&gt;<i> - KIWIXML
+</I>&gt;<i>    - remove unused member imageDesc
+</I>&gt;<i>    - remove unused method haveMD5File
+</I>&gt;<i>    - remove unused member havemd5File
+</I>&gt;<i>    - unload md5 integrity check to main (now in checkImageIntegrity() )
+</I>&gt;<i>    - changed ctor argument from image description directory to XML file
+</I>&gt;<i>    - removed algorithm to find alternate XML file (implemented in
+</I>&gt;<i>                                                    getControlFile() )
+</I>&gt;<i> 
+</I>&gt;<i> Notes:
+</I>&gt;<i> - inserted a call to checkImageIntegrity() for most calls to
+</I>&gt;<i>   &quot;new KIWIXML&quot; some of these are probably not necessary. The
+</I>&gt;<i>   overkill on calls preserves parity to the current behavior.
+</I>&gt;<i>   The extraneous calls should be cleaned up at some point.
+</I>&gt;<i> 
+</I>&gt;<i> We lost the calls to Carp::longmess() in getControlFile with the move of
+</I>&gt;<i> the function from kiwi.pl to KIWILocator.pm. KIWILocator will also need
+</I>&gt;<i> to gain a function to find the boot image description. But I have not
+</I>&gt;<i> searched the code where this is currently implemented.
+</I>&gt;<i> 
+</I>&gt;<i> Once the Locator has the &quot;find boot image&quot; functionality we can use it
+</I>&gt;<i> in the XMLValidator to make sure we can find the specified image. This
+</I>&gt;<i> validation is currently not possible. However, having a typo in this
+</I>&gt;<i> string can be very expensive as the problem is only detected at image
+</I>&gt;<i> creation time.
+</I>
+Hmm, I have some questions about this one:
+
+1) It's true that there is kiwi.pl and KIWIXML.pm which does the
+   check for an alternative XML control file. So moving that into
+   a function into a KIWILocator module is fine. But I don't
+   understand why you duplicated the call getControlFile() that many
+   times. Just replacing the two locations 1) kiwi.pl and 2)
+   KIWIXML constructor by a function call seems better and less
+   intrusive to me.
+
+   I'm also concerned (and don't understand the reason why) about
+   the change from the XML object parameter 'path to image description'
+   into 'path to control file'. This could create many regressions
+   and bugs which we are not able to cover in any test matrix. Because
+   the first is a directory path and the second is a file path.
+   I always try to avoid such changes whenever possible. And in this
+   special case I also don't see an advantage
+
+2) KIWILocator is a container module it's not possible to
+   create a KIWILocator object because it's not blessed and doesn't
+   provide a constructor. It would be good if the module has the
+   same structure like all others
+
+3) why can't the md5 hash check go into KIWIXMLValidator::validate() ?
+   we do more than just an XML validation here we also check the
+   consistency so I don't see any problem adding the md5 check there
+   too. That would prevent the new checkImageIntegrity() imho
+
+just my 2cents
+
+Regards,
+Marcus
+-- 
+ Public Key available
+ gpg --keyserver gpg-keyserver.de --recv-keys 0xCCE3C6A2
+ -------------------------------------------------------
+ Marcus Sch&#228;fer (Res. &amp; Dev.)   SUSE LINUX Products GmbH
+ Tel: 0911-740 53 0             Maxfeldstrasse 5
+ FAX: 0911-740 53 479           D-90409 N&#252;rnberg
+ GF: Markus Rex                 HRB: 16746 (AG N&#252;rnberg)
+ <A HREF="http://www.suse.de">http://www.suse.de</A>             Germany
+ -------------------------------------------------------
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002936.html">[Kiwi-devel] Some restructuring
+</A></li>
+	<LI>Next message: <A HREF="002941.html">[Kiwi-devel] Some restructuring
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2940">[ date ]</a>
+              <a href="thread.html#2940">[ thread ]</a>
+              <a href="subject.html#2940">[ subject ]</a>
+              <a href="author.html#2940">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

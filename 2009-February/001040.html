@@ -1,0 +1,211 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1916 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel:	modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1916%20-%20in%20kiwi-branches/KIWI-301-SuSE-11-1-Devel%3A%0A%09modules%20rpm&In-Reply-To=%3C200902201508.n1KF8iSU021704%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001039.html">
+   <LINK REL="Next"  HREF="001041.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1916 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel:	modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1916%20-%20in%20kiwi-branches/KIWI-301-SuSE-11-1-Devel%3A%0A%09modules%20rpm&In-Reply-To=%3C200902201508.n1KF8iSU021704%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1916 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel:	modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Feb 20 16:08:44 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001039.html">[Kiwi-devel] r1915 - kiwi-head/doc/LaTex
+</A></li>
+        <LI>Next message: <A HREF="001041.html">[Kiwi-devel] r1917 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1040">[ date ]</a>
+              <a href="thread.html#1040">[ thread ]</a>
+              <a href="subject.html#1040">[ subject ]</a>
+              <a href="author.html#1040">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-02-20 16:08:38 +0100 (Fri, 20 Feb 2009)
+New Revision: 1916
+
+Modified:
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWILinuxRC.sh
+   kiwi-branches/KIWI-301-SuSE-11-1-Devel/rpm/kiwi.changes
+Log:
+
+- fixed oem-reboot feature in KIWILinuxRC.sh (bnc #474043)
+- fixed searchBIOSBootDevice() to use the latest mbrid found
+  on all available disks. Also added a system exception if
+  no boot device could be found. Related to (bnc #474043)
+
+
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWILinuxRC.sh	2009-02-19 17:06:26 UTC (rev 1915)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/modules/KIWILinuxRC.sh	2009-02-20 15:08:38 UTC (rev 1916)
+@@ -1534,30 +1534,59 @@
+ 	local h=/usr/sbin/hwinfo
+ 	local c=&quot;Device File:|BIOS id&quot;
+ 	local ddevs=`$h --disk|grep -E &quot;$c&quot;|sed -e&quot;s@(.*)@@&quot;|cut -f2 -d:|tr -d &quot; &quot;`
++	local cmpd=/tmp/mbrids
++	local ifix=0
++	local file
+ 	local pred
++	#======================================
++	# Check for BIOS id 0x80
++	#--------------------------------------
+ 	for curd in $ddevs;do
+ 		if [ $curd = &quot;0x80&quot; ];then
+ 			echo $pred; return
+ 		fi
+ 		pred=$curd
+ 	done
++	#======================================
++	# Search and copy all mbrid files 
++	#--------------------------------------
++	mkdir -p $cmpd
+ 	for curd in $ddevs;do
+-		mbrM=`dd if=$curd bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
+-		mbrI=0
+ 		for id in 1 2;do
+-			if mount $curd$id /mnt;then
+-				if [ -f /mnt/boot/grub/mbrid ];then
+-					read mbrI &lt; /mnt/boot/grub/mbrid
+-					umount /mnt
+-					break
+-				fi
++			if ! mount $curd$id /mnt;then
++				continue
++			fi
++			if [ -f /mnt/boot/grub/mbrid ];then
++				cp -a /mnt/boot/grub/mbrid $cmpd/mbrid$ifix
++				ifix=$(expr $ifix + 1)
+ 				umount /mnt
++				break
+ 			fi
++			umount /mnt
+ 		done
++	done
++	#======================================
++	# Read mbrid from the newest mbrid file 
++	#--------------------------------------
++	file=$(ls -1t $cmpd 2&gt;/dev/null | head -n 1)
++	if [ -z &quot;$file&quot; ];then
++		systemException \
++			&quot;Failed to find MBR identifier !&quot; \
++		&quot;reboot&quot;
++	fi
++	read mbrI &lt; $cmpd/$file
++	#======================================
++	# Compare ID with MBR entry 
++	#--------------------------------------
++	for curd in $ddevs;do
++		mbrM=`dd if=$curd bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
+ 		if [ $mbrM = $mbrI ];then
+ 			echo $curd; return
+ 		fi
+ 	done
++	systemException \
++		&quot;No devices matches MBR identifier: $mbrI !&quot; \
++	&quot;reboot&quot;
+ }
+ #======================================
+ # searchVolumeGroup
+@@ -3371,23 +3400,14 @@
+ 	#======================================
+ 	# check for reboot request
+ 	#--------------------------------------
+-	if [ ! -z &quot;$OEM_REBOOT&quot; ];then
+-		reboot=yes
++	if [ $LOCAL_BOOT = &quot;no&quot; ];then
++		if [ ! -z &quot;$OEM_REBOOT&quot; ] || [ ! -z &quot;$REBOOT_IMAGE&quot; ];then
++			reboot=yes
++		fi
+ 	fi
+-	if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ ! -z &quot;$REBOOT_IMAGE&quot; ];then
+-		reboot=yes
+-	fi
+ 	#======================================
+-	# reboot if requested
++	# directly boot/reboot
+ 	#--------------------------------------
+-	if [ $reboot = &quot;yes&quot; ];then
+-		mount -n -o remount,ro / 2&gt;/dev/null
+-		Echo &quot;Reboot requested... rebooting now&quot;
+-		/sbin/reboot -f -i &gt;/dev/null 2&gt;&amp;1
+-	fi
+-	#======================================
+-	# directly boot
+-	#--------------------------------------
+ 	mount -n -o remount,rw / &amp;&gt;/dev/null
+ 	exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
+ 	if [ $PIVOT = &quot;true&quot; ];then
+@@ -3395,7 +3415,12 @@
+ 	fi
+ 	umount proc &amp;&gt;/dev/null &amp;&amp; \
+ 	umount proc &amp;&gt;/dev/null
+-	exec chroot . /sbin/init $option
++	if [ $reboot = &quot;yes&quot; ];then
++		Echo &quot;Reboot requested... rebooting now&quot;
++		exec chroot . /sbin/reboot -f -i
++	else
++		exec chroot . /sbin/init $option
++	fi
+ }
+ #======================================
+ # setupUnionFS
+
+Modified: kiwi-branches/KIWI-301-SuSE-11-1-Devel/rpm/kiwi.changes
+===================================================================
+--- kiwi-branches/KIWI-301-SuSE-11-1-Devel/rpm/kiwi.changes	2009-02-19 17:06:26 UTC (rev 1915)
++++ kiwi-branches/KIWI-301-SuSE-11-1-Devel/rpm/kiwi.changes	2009-02-20 15:08:38 UTC (rev 1916)
+@@ -1,4 +1,12 @@
+ -------------------------------------------------------------------
++Fri Feb 20 16:06:34 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed oem-reboot feature in KIWILinuxRC.sh (bnc #474043)
++- fixed searchBIOSBootDevice() to use the latest mbrid found
++  on all available disks. Also added a system exception if
++  no boot device could be found. Related to (bnc #474043)
++
++-------------------------------------------------------------------
+ Thu Feb 19 13:13:22 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed netboot to call e2fsck instead of fsck which doesn't
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001039.html">[Kiwi-devel] r1915 - kiwi-head/doc/LaTex
+</A></li>
+	<LI>Next message: <A HREF="001041.html">[Kiwi-devel] r1917 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1040">[ date ]</a>
+              <a href="thread.html#1040">[ thread ]</a>
+              <a href="subject.html#1040">[ subject ]</a>
+              <a href="author.html#1040">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

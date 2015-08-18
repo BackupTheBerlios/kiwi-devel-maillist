@@ -1,0 +1,330 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. de7eba2d6dccbfc8827387389d308227f421c419
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20de7eba2d6dccbfc8827387389d308227f421c419&In-Reply-To=%3C20100706151347.D7A1B480C24%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002367.html">
+   <LINK REL="Next"  HREF="002369.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. de7eba2d6dccbfc8827387389d308227f421c419</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20de7eba2d6dccbfc8827387389d308227f421c419&In-Reply-To=%3C20100706151347.D7A1B480C24%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. de7eba2d6dccbfc8827387389d308227f421c419">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jul  6 17:13:47 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002367.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 07c1983676b68b04e19f6e6406949c31869378f4
+</A></li>
+        <LI>Next message: <A HREF="002369.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f6f3f60f408502d69474ec3f354c0970ec04db8a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2368">[ date ]</a>
+              <a href="thread.html#2368">[ thread ]</a>
+              <a href="subject.html#2368">[ subject ]</a>
+              <a href="author.html#2368">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  de7eba2d6dccbfc8827387389d308227f421c419 (commit)
+      from  07c1983676b68b04e19f6e6406949c31869378f4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit de7eba2d6dccbfc8827387389d308227f421c419
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Jul 6 17:13:33 2010 +0200
+
+    - fill setupBootLoaderS390() with live
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 33629f0..a661ef1 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -590,8 +590,16 @@ function installBootLoaderRecovery {
+ # installBootLoaderS390
+ #--------------------------------------
+ function installBootLoaderS390 {
+-	# TODO
+-	:
++	if [ -x /sbin/zipl ];then
++		Echo &quot;Installing boot loader...&quot;
++		zipl -c /etc/zipl.conf 1&gt;&amp;2
++		if [ ! $? = 0 ];then
++			Echo &quot;Failed to install boot loader&quot;
++		fi
++	else
++		Echo &quot;Image doesn't have zipl installed&quot;
++		Echo &quot;Can't install boot loader&quot;
++	fi
+ }
+ #======================================
+ # installBootLoaderSyslinux
+@@ -653,8 +661,9 @@ function installBootLoaderLilo {
+ # installBootLoaderS390Recovery
+ #--------------------------------------
+ function installBootLoaderS390Recovery {
+-	# TODO
+-	:
++	systemException \
++		&quot;*** zipl: recovery boot not implemented ***&quot; \
++	&quot;reboot&quot;
+ }
+ #======================================
+ # installBootLoaderSyslinuxRecovery
+@@ -866,8 +875,9 @@ function setupBootLoaderRecovery {
+ # setupBootLoaderS390Recovery
+ #--------------------------------------
+ function setupBootLoaderS390Recovery {
+-	# TODO
+-	:
++	systemException \
++		&quot;*** zipl: recovery boot not implemented ***&quot; \
++	&quot;reboot&quot;
+ }
+ #======================================
+ # setupBootLoaderSyslinuxRecovery
+@@ -1108,8 +1118,192 @@ function setupBootLoaderGrubRecovery {
+ # setupBootLoaderS390
+ #--------------------------------------
+ function setupBootLoaderS390 {
+-	# TODO
+-	:
++	# /.../
++	# create /etc/zipl.conf used for the
++	# zipl bootloader
++	# ----
++	local mountPrefix=$1  # mount path of the image
++	local destsPrefix=$2  # base dir for the config files
++	local znum=$3         # boot partition ID
++	local rdev=$4         # root partition
++	local zfix=$5         # zipl title postfix
++	local swap=$6         # optional swap partition
++	local conf=$destsPrefix/etc/zipl.conf
++	local sysb=$destsPrefix/etc/sysconfig/bootloader
++	local kname=&quot;&quot;
++	local kernel=&quot;&quot;
++	local initrd=&quot;&quot;
++	local title=&quot;&quot;
++	#======================================
++	# check for device by ID
++	#--------------------------------------
++	local diskByID=`getDiskID $rdev`
++	local swapByID=`getDiskID $swap`
++	#======================================
++	# check for boot image .profile
++	#--------------------------------------
++	if [ -f /.profile ];then
++		importFile &lt; /.profile
++	fi
++	#======================================
++	# check for bootloader displayname
++	#--------------------------------------
++	if [ -z &quot;$kiwi_oemtitle&quot; ] &amp;&amp; [ ! -z &quot;$kiwi_displayname&quot; ];then
++		kiwi_oemtitle=$kiwi_displayname
++	fi
++	#======================================
++	# check for system image .profile
++	#--------------------------------------
++	if [ -f $mountPrefix/image/.profile ];then
++		importFile &lt; $mountPrefix/image/.profile
++	fi
++	#======================================
++	# check for kernel options
++	#--------------------------------------
++	if [ ! -z &quot;$kiwi_cmdline&quot; ];then
++		KIWI_KERNEL_OPTIONS=&quot;$KIWI_KERNEL_OPTIONS $kiwi_cmdline&quot;
++	fi
++	#======================================
++	# check for syslinux title postfix
++	#--------------------------------------
++	if [ -z &quot;$zfix&quot; ];then
++		zfix=&quot;unknown&quot;
++	fi
++	#======================================
++	# check for boot TIMEOUT
++	#--------------------------------------
++	if [ -z &quot;$KIWI_BOOT_TIMEOUT&quot; ];then
++		KIWI_BOOT_TIMEOUT=100;
++	fi
++	#======================================
++	# create directory structure
++	#--------------------------------------
++	for dir in $conf $sysb;do
++		dir=`dirname $dir`; mkdir -p $dir
++	done
++	#======================================
++	# create zipl.conf file
++	#--------------------------------------
++	local count
++	local title_default
++	local title_failsafe
++	echo &quot;[defaultboot]&quot;                      &gt; $conf
++	echo &quot;defaultmenu = menu&quot;                &gt;&gt; $conf
++	echo &quot;:menu&quot;                             &gt;&gt; $conf
++	echo &quot;    default = 1&quot;                   &gt;&gt; $conf
++	echo &quot;    prompt = 1&quot;                    &gt;&gt; $conf
++	echo &quot;    target = /boot/zipl&quot;           &gt;&gt; $conf
++	echo &quot;    timeout = $KIWI_BOOT_TIMEOUT&quot;  &gt;&gt; $conf
++	count=1
++	IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
++		if test -z &quot;$i&quot;;then
++			continue
++		fi
++		kname=${KERNEL_NAME[$count]}
++		if ! echo $zfix | grep -E -q &quot;OEM|USB|VMX|NET|unknown&quot;;then
++			if [ &quot;$count&quot; = &quot;1&quot; ];then
++				title_default=$(makeLabel &quot;$zfix&quot;)
++			else
++				title_default=$(makeLabel &quot;$kname [ $zfix ]&quot;)
++			fi
++		elif [ -z &quot;$kiwi_oemtitle&quot; ];then
++			title_default=$(makeLabel &quot;$kname [ $zfix ]&quot;)
++		else
++			if [ &quot;$count&quot; = &quot;1&quot; ];then
++				title_default=$(makeLabel &quot;$kiwi_oemtitle [ $zfix ]&quot;)
++			else
++				title_default=$(makeLabel &quot;$kiwi_oemtitle-$kname [ $zfix ]&quot;)
++			fi
++		fi
++		title_failsafe=$(makeLabel &quot;Failsafe -- $title&quot;)
++		echo &quot;    $count = $title_default&quot;  &gt;&gt; $conf
++		count=`expr $count + 1`
++		echo &quot;    $count = $title_failsafe&quot; &gt;&gt; $conf
++		count=`expr $count + 1`
++	done
++	count=1
++	IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
++		if test -z &quot;$i&quot;;then
++			continue
++		fi
++		kernel=`echo $i | cut -f1 -d:`
++		initrd=`echo $i | cut -f2 -d:`
++		kname=${KERNEL_NAME[$count]}
++		if ! echo $zfix | grep -E -q &quot;OEM|USB|VMX|NET|unknown&quot;;then
++			if [ &quot;$count&quot; = &quot;1&quot; ];then
++				title_default=$(makeLabel &quot;$zfix&quot;)
++			else
++				title_default=$(makeLabel &quot;$kname [ $zfix ]&quot;)
++			fi
++		elif [ -z &quot;$kiwi_oemtitle&quot; ];then
++			title_default=$(makeLabel &quot;$kname [ $zfix ]&quot;)
++		else
++			if [ &quot;$count&quot; = &quot;1&quot; ];then
++				title_default=$(makeLabel &quot;$kiwi_oemtitle [ $zfix ]&quot;)
++			else
++				title_default=$(makeLabel &quot;$kiwi_oemtitle-$kname [ $zfix ]&quot;)
++			fi
++		fi
++		title_failsafe=$(makeLabel &quot;Failsafe -- $title&quot;)
++		#======================================
++		# create standard entry
++		#--------------------------------------
++		echo &quot;[$title_default]&quot;                  &gt;&gt; $conf
++		echo &quot;target  = /boot/zipl&quot;              &gt;&gt; $conf
++		echo &quot;ramdisk = /boot/$initrd,0x2000000&quot; &gt;&gt; $conf
++		echo -n &quot;parameters = root=$diskByID&quot;    &gt;&gt; $conf
++		if [ ! -z &quot;$imageDiskDevice&quot; ];then
++			echo -n &quot; disk=$(getDiskID $imageDiskDevice)&quot;  &gt;&gt; $conf
++		fi
++		if [ ! -z &quot;$swap&quot; ];then
++			echo -n &quot; resume=$swapByID&quot; &gt;&gt; $conf
++		fi
++		if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
++			echo -n &quot; VGROUP=$VGROUP&quot; &gt;&gt; $conf
++		fi
++		echo -n &quot; $KIWI_INITRD_PARAMS&quot;  &gt;&gt; $conf
++		echo -n &quot; $KIWI_KERNEL_OPTIONS&quot; &gt;&gt; $conf
++		echo &quot; loader=$loader&quot;          &gt;&gt; $conf
++		#======================================
++		# create failsafe entry
++		#--------------------------------------
++		echo &quot;[$title_failsafe]&quot;                 &gt;&gt; $conf
++		echo &quot;target  = /boot/zipl&quot;              &gt;&gt; $conf
++		echo &quot;ramdisk = /boot/$initrd,0x2000000&quot; &gt;&gt; $conf
++		echo -n &quot;parameters = root=$diskByID&quot;    &gt;&gt; $conf
++		if [ ! -z &quot;$imageDiskDevice&quot; ];then
++			echo -n &quot; disk=$(getDiskID $imageDiskDevice)&quot;  &gt;&gt; $conf
++		fi
++		if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
++			echo -n &quot; VGROUP=$VGROUP&quot; &gt;&gt; $conf
++		fi
++		echo -n &quot; $KIWI_INITRD_PARAMS&quot;      &gt;&gt; $conf
++		echo -n &quot; $KIWI_KERNEL_OPTIONS&quot;     &gt;&gt; $conf
++		echo &quot; loader=$loader x11failsafe&quot;  &gt;&gt; $conf
++		count=`expr $count + 1`
++	done
++	#======================================
++	# create recovery entry
++	#--------------------------------------
++	if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
++		systemException \
++			&quot;*** zipl: recovery chain loading not implemented ***&quot; \
++		&quot;reboot&quot;
++	fi
++	#======================================
++	# create sysconfig/bootloader
++	#--------------------------------------
++	echo &quot;LOADER_TYPE=\&quot;$loader\&quot;&quot;                            &gt; $sysb
++	echo &quot;LOADER_LOCATION=\&quot;mbr\&quot;&quot;                           &gt;&gt; $sysb
++	echo -n &quot;DEFAULT_APPEND=\&quot;root=$diskByID splash=silent&quot;  &gt;&gt; $sysb
++	if [ ! -z &quot;$swap&quot; ];then
++		echo -n &quot; resume=$swapByID&quot;                          &gt;&gt; $sysb
++	fi
++	echo -n &quot; $KIWI_INITRD_PARAMS $KIWI_KERNEL_OPTIONS&quot;      &gt;&gt; $sysb
++	echo &quot; showopts\&quot;&quot;                                       &gt;&gt; $sysb
++	echo -n &quot;FAILSAFE_APPEND=\&quot;root=$diskByID&quot;               &gt;&gt; $sysb
++	echo -n &quot; $KIWI_INITRD_PARAMS $KIWI_KERNEL_OPTIONS&quot;      &gt;&gt; $sysb
++	echo -n &quot; x11failsafe noresume\&quot;&quot;                        &gt;&gt; $sysb
+ }
+ #======================================
+ # setupBootLoaderSyslinux
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002367.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 07c1983676b68b04e19f6e6406949c31869378f4
+</A></li>
+	<LI>Next message: <A HREF="002369.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f6f3f60f408502d69474ec3f354c0970ec04db8a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2368">[ date ]</a>
+              <a href="thread.html#2368">[ thread ]</a>
+              <a href="subject.html#2368">[ subject ]</a>
+              <a href="author.html#2368">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

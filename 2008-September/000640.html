@@ -1,0 +1,131 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Supporting zypp.conf
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Supporting%20zypp.conf&In-Reply-To=%3C1220549213.4585.21.camel%40megam.ott1.byward.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000639.html">
+   <LINK REL="Next"  HREF="000642.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Supporting zypp.conf</H1>
+    <B>Peter Bowen</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Supporting%20zypp.conf&In-Reply-To=%3C1220549213.4585.21.camel%40megam.ott1.byward.net%3E"
+       TITLE="[Kiwi-devel] Supporting zypp.conf">pzb at novell.com
+       </A><BR>
+    <I>Thu Sep  4 19:26:53 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000639.html">[Kiwi-devel] r1549 - in kiwi-branches/KIWI-265-Studio-Alpha1-Devel:	modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000642.html">[Kiwi-devel] Supporting zypp.conf
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#640">[ date ]</a>
+              <a href="thread.html#640">[ thread ]</a>
+              <a href="subject.html#640">[ subject ]</a>
+              <a href="author.html#640">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This patch causes zypper to use a private copy of zypp.conf (rather than
+the host system copy) and provides an interface to modify the config
+file.
+
+It also moves to using information from the %packageManager hash to
+initialize the KIWIManager object (this seems like the intent of the
+hash, as it is in the same file.
+
+Thanks.
+Peter
+
+Index: modules/KIWIManager.pm
+===================================================================
+--- modules/KIWIManager.pm	(revision 1548)
++++ modules/KIWIManager.pm	(working copy)
+@@ -21,6 +21,7 @@
+ use strict;
+ use FileHandle;
+ use File::Basename;
++use Config::IniFiles;
+ use KIWILog;
+ use KIWIQX;
+ 
+@@ -85,12 +86,18 @@
+ 		return undef;
+ 	}
+ 	if (! defined $manager) {
+-		$manager = &quot;smart&quot;;
++		$manager = $packageManager{default};
+ 	}
+ 	my $dataDir = &quot;/var/cache/kiwi/$manager&quot;;
+ 	if (! -d $dataDir) {
+ 		qxx (&quot;mkdir -p $dataDir&quot;);
+ 	}
++	my $zyppConf = &quot;/var/cache/kiwi/zypp.conf&quot;;
++	if (! -f $zyppConf) {
++		qxx (&quot;echo '[main]' &gt; $zyppConf&quot;);
++	}
++	$ENV{ZYPP_CONF} = $zyppConf;	
++	my $zconfig = new Config::IniFiles( -file =&gt; $zyppConf, -allowedcommentchars =&gt; '#');
+ 	my @channelList = ();
+ 	#==========================================
+ 	# Store object data
+@@ -107,20 +114,21 @@
+ 	$this-&gt;{screenCtrl}  = $root.&quot;/screenrc.ctrls&quot;;
+ 	$this-&gt;{screenLogs}  = $kiwi -&gt; getRootLog();
+ 	$this-&gt;{dataDir}     = $dataDir;
++	$this-&gt;{zconfig}     = $zconfig;
+ 	$this-&gt;{smart}       = [
+-		&quot;smart&quot;,&quot;--data-dir=$dataDir&quot;,&quot;-o remove-packages=false&quot;
++		$packageManager{smart},&quot;--data-dir=$dataDir&quot;,&quot;-o remove-packages=false&quot;
+ 	];
+ 	$this-&gt;{smartroot}   = [
+ 		&quot;-o rpm-root=$root&quot;,
+ 		&quot;-o deb-root=$root&quot;,
+ 	];
+ 	$this-&gt;{zypper}      = [
+-		&quot;zypper&quot;,&quot;--non-interactive&quot;,&quot;--no-gpg-checks&quot;,
++		$packageManager{zypper},&quot;--non-interactive&quot;,&quot;--no-gpg-checks&quot;,
+ 		&quot;--reposd-dir $dataDir&quot;,&quot;--cache-dir $dataDir&quot;,
+ 		&quot;--raw-cache-dir $dataDir&quot;
+ 	];
+ 	$this-&gt;{ensconce}    = [
+-		&quot;ensconce&quot;, &quot;-r /&quot;
++		$packageManager{ensconce}, &quot;-r /&quot;
+ 	];
+ 	#==========================================
+ 	# remove pre-defined smart channels
+
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000639.html">[Kiwi-devel] r1549 - in kiwi-branches/KIWI-265-Studio-Alpha1-Devel:	modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000642.html">[Kiwi-devel] Supporting zypp.conf
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#640">[ date ]</a>
+              <a href="thread.html#640">[ thread ]</a>
+              <a href="subject.html#640">[ subject ]</a>
+              <a href="author.html#640">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

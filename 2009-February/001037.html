@@ -1,0 +1,192 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1914 - in kiwi-head: modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ppc/netboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1914%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ix86/netboot%20system/boot/ix86/oemboot%0A%09system/boot/ppc/netboot&In-Reply-To=%3C200902191219.n1JCJbMm011396%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001036.html">
+   <LINK REL="Next"  HREF="001039.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1914 - in kiwi-head: modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ppc/netboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1914%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ix86/netboot%20system/boot/ix86/oemboot%0A%09system/boot/ppc/netboot&In-Reply-To=%3C200902191219.n1JCJbMm011396%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1914 - in kiwi-head: modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ppc/netboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Feb 19 13:19:37 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001036.html">[Kiwi-devel] r1913 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel:	modules rpm system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ppc/netboot
+</A></li>
+        <LI>Next message: <A HREF="001039.html">[Kiwi-devel] r1915 - kiwi-head/doc/LaTex
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1037">[ date ]</a>
+              <a href="thread.html#1037">[ thread ]</a>
+              <a href="subject.html#1037">[ subject ]</a>
+              <a href="author.html#1037">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-02-19 13:19:14 +0100 (Thu, 19 Feb 2009)
+New Revision: 1914
+
+Modified:
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/system/boot/ix86/netboot/suse-linuxrc
+   kiwi-head/system/boot/ix86/oemboot/suse-linuxrc
+   kiwi-head/system/boot/ppc/netboot/suse-linuxrc
+Log:
+
+- fixed netboot to call e2fsck instead of fsck which doesn't
+  exist. Also fixed e2fsck calls to use -p only instead
+  of -f -p (bnc #473355)
+
+
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2009-02-19 12:14:07 UTC (rev 1913)
++++ kiwi-head/modules/KIWILinuxRC.sh	2009-02-19 12:19:14 UTC (rev 1914)
+@@ -1879,7 +1879,7 @@
+ 		# create a filesystem on the root partition
+ 		# ----
+ 		if test $diskID -gt 2; then
+-			if ! fsck -f -p $diskPartition 1&gt;&amp;2; then
++			if ! e2fsck -p $diskPartition 1&gt;&amp;2; then
+ 				Echo &quot;Partition $diskPartition is not valid, formating...&quot;
+ 				mke2fs -j $diskPartition 1&gt;&amp;2
+ 				if test $? != 0; then
+@@ -2627,7 +2627,7 @@
+ 			probeFileSystem $rwDevice
+ 			if [ ! &quot;$FSTYPE&quot; = &quot;unknown&quot; ];then
+ 				Echo &quot;Checking filesystem for RW data on $rwDevice...&quot;
+-				e2fsck -f -p $rwDevice
++				e2fsck -p $rwDevice
+ 			fi
+ 			#======================================
+ 			# restore FSTYPE
+@@ -2643,7 +2643,7 @@
+ 					Echo &quot;Failed to create ext3 filesystem&quot;
+ 					return 1
+ 				fi
+-				e2fsck -f -p $rwDevice &gt;/dev/null
++				e2fsck -p $rwDevice &gt;/dev/null
+ 			fi
+ 		else
+ 			umount $rwDevice
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2009-02-19 12:14:07 UTC (rev 1913)
++++ kiwi-head/rpm/kiwi.changes	2009-02-19 12:19:14 UTC (rev 1914)
+@@ -2,6 +2,9 @@
+ Tue Feb 17 14:42:28 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.19
++- fixed netboot to call e2fsck instead of fsck which doesn't
++  exist. Also fixed e2fsck calls to use -p only instead
++  of -f -p (bnc #473355)
+ - add function canWrite() to check if we can write to
+   the destination before copying config / branding files
+ - fixed atftp option handling for the multicast setup
+
+Modified: kiwi-head/system/boot/ix86/netboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/netboot/suse-linuxrc	2009-02-19 12:14:07 UTC (rev 1913)
++++ kiwi-head/system/boot/ix86/netboot/suse-linuxrc	2009-02-19 12:19:14 UTC (rev 1914)
+@@ -527,14 +527,14 @@
+ 				Echo &quot;Resize EXT2 filesystem to full partition space...&quot;
+ 				resize2fs -f -F -p $imageDevice
+ 				Echo &quot;Checking EXT2 filesystem...&quot;
+-				e2fsck -f -p $imageDevice
++				e2fsck -p $imageDevice
+ 				INITRD_MODULES=&quot;$INITRD_MODULES ext2&quot;
+ 			fi
+ 			if test &quot;$FSTYPE&quot; = &quot;ext3&quot;;then
+ 				Echo &quot;Resize EXT3 filesystem to full partition space...&quot;
+ 				resize2fs -f -F -p $imageDevice
+ 				Echo &quot;Checking EXT3 filesystem...&quot;
+-				e2fsck -f -p $imageDevice
++				e2fsck -p $imageDevice
+ 				INITRD_MODULES=&quot;$INITRD_MODULES ext3&quot;
+ 			fi
+ 		fi
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-linuxrc	2009-02-19 12:14:07 UTC (rev 1913)
++++ kiwi-head/system/boot/ix86/oemboot/suse-linuxrc	2009-02-19 12:19:14 UTC (rev 1914)
+@@ -219,14 +219,14 @@
+ 				Echo &quot;Resize EXT2 filesystem to full partition space...&quot;
+ 				resize2fs -f -F -p $deviceResize
+ 				Echo &quot;Checking EXT2 filesystem...&quot;
+-				e2fsck -f -p $deviceResize
++				e2fsck -p $deviceResize
+ 				INITRD_MODULES=&quot;$INITRD_MODULES ext2&quot;
+ 			fi
+ 			if [ &quot;$FSTYPE&quot; = &quot;ext3&quot; ];then
+ 				Echo &quot;Resize EXT3 filesystem to full partition space...&quot;
+ 				resize2fs -f -F -p $deviceResize
+ 				Echo &quot;Checking EXT3 filesystem...&quot;
+-				e2fsck -f -p $deviceResize
++				e2fsck -p $deviceResize
+ 				INITRD_MODULES=&quot;$INITRD_MODULES ext3&quot;
+ 			fi
+ 		fi
+
+Modified: kiwi-head/system/boot/ppc/netboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ppc/netboot/suse-linuxrc	2009-02-19 12:14:07 UTC (rev 1913)
++++ kiwi-head/system/boot/ppc/netboot/suse-linuxrc	2009-02-19 12:19:14 UTC (rev 1914)
+@@ -527,14 +527,14 @@
+ 				Echo &quot;Resize EXT2 filesystem to full partition space...&quot;
+ 				resize2fs -f -F -p $imageDevice
+ 				Echo &quot;Checking EXT2 filesystem...&quot;
+-				e2fsck -f -p $imageDevice
++				e2fsck -p $imageDevice
+ 				INITRD_MODULES=&quot;$INITRD_MODULES ext2&quot;
+ 			fi
+ 			if test &quot;$FSTYPE&quot; = &quot;ext3&quot;;then
+ 				Echo &quot;Resize EXT3 filesystem to full partition space...&quot;
+ 				resize2fs -f -F -p $imageDevice
+ 				Echo &quot;Checking EXT3 filesystem...&quot;
+-				e2fsck -f -p $imageDevice
++				e2fsck -p $imageDevice
+ 				INITRD_MODULES=&quot;$INITRD_MODULES ext3&quot;
+ 			fi
+ 		fi
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001036.html">[Kiwi-devel] r1913 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel:	modules rpm system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ppc/netboot
+</A></li>
+	<LI>Next message: <A HREF="001039.html">[Kiwi-devel] r1915 - kiwi-head/doc/LaTex
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1037">[ date ]</a>
+              <a href="thread.html#1037">[ thread ]</a>
+              <a href="subject.html#1037">[ subject ]</a>
+              <a href="author.html#1037">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

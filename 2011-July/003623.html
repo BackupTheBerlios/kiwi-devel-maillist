@@ -1,0 +1,147 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ecdf521ada7a742a2366d145557bb6daaf3a96fc
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ecdf521ada7a742a2366d145557bb6daaf3a96fc&In-Reply-To=%3C20110718094603.846D14804B9%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003622.html">
+   <LINK REL="Next"  HREF="003624.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ecdf521ada7a742a2366d145557bb6daaf3a96fc</H1>
+    <B>adrians at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ecdf521ada7a742a2366d145557bb6daaf3a96fc&In-Reply-To=%3C20110718094603.846D14804B9%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ecdf521ada7a742a2366d145557bb6daaf3a96fc">adrians at mail.berlios.de
+       </A><BR>
+    <I>Mon Jul 18 11:46:03 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003622.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. a36775bdc676eb43ce51f773ac6cf6dcb242fa1d
+</A></li>
+        <LI>Next message: <A HREF="003624.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. e958800b4681eeea1e2ba04b7c0542452d358eed
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3623">[ date ]</a>
+              <a href="thread.html#3623">[ thread ]</a>
+              <a href="subject.html#3623">[ subject ]</a>
+              <a href="author.html#3623">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  ecdf521ada7a742a2366d145557bb6daaf3a96fc (commit)
+      from  6f33406e6824b28c1038daf9e023dab8a227aea8 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ecdf521ada7a742a2366d145557bb6daaf3a96fc
+Author: Adrian Schr&#195;&#182;ter &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">adrian at suse.de</A>&gt;
+Date:   Mon Jul 18 11:41:58 2011 +0200
+
+    - do not try to run boot loader setup code when no boot loader exists
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWICollect.pm b/modules/KIWICollect.pm
+index 8edb616..68b7d5a 100644
+--- a/modules/KIWICollect.pm
++++ b/modules/KIWICollect.pm
+@@ -658,11 +658,16 @@ sub mainTask
+                                $attr,
+                                $checkmedia);
+ 
+-      if(!$iso-&gt;callBootMethods()) {
+-        $this-&gt;logMsg(&quot;W&quot;, &quot;Creating boot methods failed, medium maybe not be bootable&quot;);
+-      }
+-      else {
+-        $this-&gt;logMsg(&quot;I&quot;, &quot;Boot methods called successfully&quot;);
++      # Just the first media is usually bootable at SUSE
++      my $is_bootable = 0;
++      if(-d &quot;$this-&gt;{m_basesubdir}-&gt;{$cd}/boot&quot;) {
++        if(!$iso-&gt;callBootMethods()) {
++          $this-&gt;logMsg(&quot;W&quot;, &quot;Creating boot methods failed, medium maybe not be bootable&quot;);
++        }
++        else {
++          $this-&gt;logMsg(&quot;I&quot;, &quot;Boot methods called successfully&quot;);
++          $is_bootable = 1;
++        }
+       }
+       if(!$iso-&gt;createISO()) {
+         $this-&gt;logMsg(&quot;E&quot;, &quot;Cannot create Iso image&quot;);
+@@ -671,19 +676,21 @@ sub mainTask
+       else {
+         $this-&gt;logMsg(&quot;I&quot;, &quot;Created Iso image &lt;$isoname&gt;&quot;);
+       }
+-      if (! $iso-&gt;relocateCatalog()) {
+-        return 1;     
+-      }
+-      if (! $iso-&gt;fixCatalog()) {
+-        return 1;
+-      }
+-      if ($hybridmedia) {
+-        if(!$iso-&gt;createHybrid()) {
+-          $this-&gt;logMsg(&quot;E&quot;, &quot;Isohybrid call failed&quot;);
++      if ($is_bootable) {
++        if (! $iso-&gt;relocateCatalog()) {
++          return 1;     
++        }
++        if (! $iso-&gt;fixCatalog()) {
+           return 1;
+         }
+-        else {
+-          $this-&gt;logMsg(&quot;I&quot;, &quot;Isohybrid call successful&quot;);
++        if ($hybridmedia) {
++          if(!$iso-&gt;createHybrid()) {
++            $this-&gt;logMsg(&quot;E&quot;, &quot;Isohybrid call failed&quot;);
++            return 1;
++          }
++          else {
++            $this-&gt;logMsg(&quot;I&quot;, &quot;Isohybrid call successful&quot;);
++          }
+         }
+       }
+       if(!$iso-&gt;checkImage()) {
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003622.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. a36775bdc676eb43ce51f773ac6cf6dcb242fa1d
+</A></li>
+	<LI>Next message: <A HREF="003624.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-485-SuSE-11-1-SLE-SP-Devel,	updated. e958800b4681eeea1e2ba04b7c0542452d358eed
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3623">[ date ]</a>
+              <a href="thread.html#3623">[ thread ]</a>
+              <a href="subject.html#3623">[ subject ]</a>
+              <a href="author.html#3623">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

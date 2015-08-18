@@ -1,0 +1,134 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] The initrd for OEM images
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20The%20initrd%20for%20OEM%20images&In-Reply-To=%3C20101221092839.GA10367%40D7.ddts.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002919.html">
+   <LINK REL="Next"  HREF="002921.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] The initrd for OEM images</H1>
+    <B>Marcus Sch&#228;fer</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20The%20initrd%20for%20OEM%20images&In-Reply-To=%3C20101221092839.GA10367%40D7.ddts.net%3E"
+       TITLE="[Kiwi-devel] The initrd for OEM images">ms at suse.de
+       </A><BR>
+    <I>Tue Dec 21 10:28:39 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002919.html">[Kiwi-devel] The initrd for OEM images
+</A></li>
+        <LI>Next message: <A HREF="002921.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 21fed0aa0f4c623347f3c621cc9b78f3c448fe72
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2920">[ date ]</a>
+              <a href="thread.html#2920">[ thread ]</a>
+              <a href="subject.html#2920">[ subject ]</a>
+              <a href="author.html#2920">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi,
+
+&gt;<i> I think there exists a good and valid use case where users need/want
+</I>&gt;<i> special/extra stuff in the initrd. We had this issue recently come up at
+</I>&gt;<i> EMC and I have also had this while working on a project with IBM.
+</I>
+Those issues were I also was part of the discussion ends all with
+the agreement that this does not belong to the initrd or should be
+at least part of the pre-init code but better run as part of a
+runlevel script. The problems related to missing drivers due the
+fact that they are propriatery could all be solved by a custom
+kmp package or archive which was bootincluded
+ 
+If the user need/want special/extra stuff which is beyond the
+purpose of the provided initrd code in terms of changing the
+current behavior or adding extensively more code a clone of the
+initrd should be created:
+
+   kiwi --clone oemboot/suse-11.3/ -d /tmp/myoem
+
+inside the /tmp/myoem/images.sh the user can easily prevent
+the strip down of the initrd by not calling suseStripInitrd()
+for example. The initrd code and everything else can also be
+changed like the user or our consultants wants it.
+
+&gt;<i> Naturally we want the image initrd as small as possible for performance
+</I>&gt;<i> reasons and thus the clean up kiwi performs today is a good feature.
+</I>&gt;<i> However, it is at the same time an annoying feature when something out
+</I>&gt;<i> of the ordinary is needed in the initrd. Having given this some thought
+</I>&gt;<i> I think the issue mostly occurs with OEM images and where one needs
+</I>&gt;<i> special features in the initrd. Therefore, I think it would be nice if
+</I>&gt;<i> we would add an option to kiwi that allows users to generate two initrd
+</I>&gt;<i> images, one that gets used when booting from CD/DVD/USB and the other
+</I>&gt;<i> the regular initrd that is basically the same as we have today.
+</I>
+If I understand you correctly you want to differentiate between
+the oem install initrd and the oem first boot initrd. The problem here
+is that I really enjoy the fact that they are sharing the same base
+especially for debugging problems and to avoid more bugs in that
+area.
+
+&gt;<i> My thought is that we would have a installbootinclude=&quot;true/false&quot;
+</I>&gt;<i> attribute and once this is set kiwi would generate an initrd that
+</I>&gt;<i> contains this package or archive, no questions ask, i.e. no cleanup
+</I>&gt;<i> performed. This initrd is then the one that ends up as the initrd of the
+</I>&gt;<i> live image created that does the installation. The initrd that is
+</I>&gt;<i> included in the image that gets dumped to disk would be different and is
+</I>&gt;<i> equivalent to what we do today.
+</I>
+The really annoying part is that suseStripInitrd() might remove what
+has been added via a bootincluded archive or package. A good
+improvement here would be to make sure that suseStripInitrd() does
+not remove stuff added by a bootincluded archive or package so
+that the user can be sure all his data is there.
+I opened bug #660743 for this one
+
+But after that it's still not guaranteed that the included programs
+work because of the strip down, required libraries and other data
+might be gone. So if the included data requires this a clone of
+the initrd seems to be better
+
+Regards,
+Marcus
+-- 
+ Public Key available
+ gpg --keyserver gpg-keyserver.de --recv-keys 0xCCE3C6A2
+ -------------------------------------------------------
+ Marcus Sch&#228;fer (Res. &amp; Dev.)   SUSE LINUX Products GmbH
+ Tel: 0911-740 53 0             Maxfeldstrasse 5
+ FAX: 0911-740 53 479           D-90409 N&#252;rnberg
+ GF: Markus Rex                 HRB: 16746 (AG N&#252;rnberg)
+ <A HREF="http://www.suse.de">http://www.suse.de</A>             Germany
+ -------------------------------------------------------
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002919.html">[Kiwi-devel] The initrd for OEM images
+</A></li>
+	<LI>Next message: <A HREF="002921.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 21fed0aa0f4c623347f3c621cc9b78f3c448fe72
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2920">[ date ]</a>
+              <a href="thread.html#2920">[ thread ]</a>
+              <a href="subject.html#2920">[ subject ]</a>
+              <a href="author.html#2920">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

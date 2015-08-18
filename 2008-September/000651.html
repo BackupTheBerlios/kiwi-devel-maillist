@@ -1,0 +1,294 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1555 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1555%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200809091519.m89FJBW1024805%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000650.html">
+   <LINK REL="Next"  HREF="000652.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1555 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1555%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200809091519.m89FJBW1024805%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1555 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Sep  9 17:19:11 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000650.html">[Kiwi-devel] easy-kiwi-build
+</A></li>
+        <LI>Next message: <A HREF="000652.html">[Kiwi-devel] r1556 - in kiwi-head/doc/schema: . kiwi.dia
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#651">[ date ]</a>
+              <a href="thread.html#651">[ thread ]</a>
+              <a href="subject.html#651">[ subject ]</a>
+              <a href="author.html#651">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-09-09 17:19:03 +0200 (Tue, 09 Sep 2008)
+New Revision: 1555
+
+Modified:
+   kiwi-head/modules/KIWICollect.pm
+   kiwi-head/modules/KIWIScheme.rnc
+   kiwi-head/modules/KIWIScheme.rng
+   kiwi-head/modules/KIWIXML.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- added schema adaptions for instsource creation
+
+
+
+Modified: kiwi-head/modules/KIWICollect.pm
+===================================================================
+--- kiwi-head/modules/KIWICollect.pm	2008-09-09 13:33:25 UTC (rev 1554)
++++ kiwi-head/modules/KIWICollect.pm	2008-09-09 15:19:03 UTC (rev 1555)
+@@ -546,13 +546,13 @@
+   PACK:foreach my $pack(sort(keys(%{$this-&gt;{m_packages}}))) {
+     my $tmp = $this-&gt;{m_packages}-&gt;{$pack}; #optimisation
+     #my $arch = $tmp-&gt;{'arch'};
+-    #my @archs = grep { $_ !~ m{(addarch|removearch|forcearch|priority|medium)}} keys(%{$tmp});
++    #my @archs = grep { $_ !~ m{(addarch|removearch|onlyarch|priority|medium)}} keys(%{$tmp});
+     my @omits = ();
+     my @archs = ();
+     my $nofallback = 0;
+-    if(defined($tmp-&gt;{'forcearch'})) {
+-      # allow 'forcearch=&quot;x86_64,i586&quot;'
+-      push @archs, split(',', $tmp-&gt;{'forcearch'});
++    if(defined($tmp-&gt;{'onlyarch'})) {
++      # allow 'onlyarch=&quot;x86_64,i586&quot;'
++      push @archs, split(',', $tmp-&gt;{'onlyarch'});
+       $nofallback = 1;
+     }
+     elsif(defined($tmp-&gt;{'addarch'})) {
+@@ -645,7 +645,7 @@
+ 	  }
+ 
+ 
+-	  my $dstfile = &quot;$this-&gt;{'m_basesubdir'}-&gt;{$medium}/suse/$ad/$tmp-&gt;{$fa}-&gt;{'targetfile'}&quot;;
++	  my $dstfile = &quot;$this-&gt;{'m_basesubdir'}-&gt;{$medium}/$base_on_cd/$ad/$tmp-&gt;{$fa}-&gt;{'targetfile'}&quot;;
+ 	  $dstfile =~ m{(.*/)(.*?/)(.*?/)(.*)[.]([rs]pm)$};
+ 	  if(not(defined($1) and defined($2) and defined($3) and defined($4) and defined($5))) {
+ 	    $this-&gt;{m_logger}-&gt;error(&quot;[E] [queryRpmHeaders] regexp didn't match path $tmp-&gt;{'source'}&quot;);
+@@ -1091,9 +1091,9 @@
+ 
+   my @repos = ();
+   # if for a package the &quot;priority=&lt;reponame&gt;&quot; is set, only look for package there:
+-  if(defined($this-&gt;{m_packages}-&gt;{$pack}) and defined($this-&gt;{m_packages}-&gt;{$pack}-&gt;{'priority'})) {
++  if(defined($this-&gt;{m_packages}-&gt;{$pack}) and defined($this-&gt;{m_packages}-&gt;{$pack}-&gt;{'forcerepo'})) {
+     $this-&gt;{m_logger}-&gt;info(&quot;[I] forcing repo &quot;.$this-&gt;{m_packages}-&gt;{$pack}.&quot; for package $pack&quot;);
+-    push @repos, $this-&gt;{m_packages}-&gt;{$pack}-&gt;{'priority'};
++    push @repos, $this-&gt;{m_packages}-&gt;{$pack}-&gt;{'forcerepo'};
+   }
+   else {
+     @repos = keys(%{$this-&gt;{m_repos}});
+@@ -1404,15 +1404,15 @@
+   # mapped to 0 means &quot;removed&quot;	(removearch)
+   #	      1 means &quot;original from xml&quot;
+   #	      2 means &quot;added&quot; (addarch)
+-  #	      3 means &quot;force&quot; (forcearch)
++  #	      3 means &quot;force&quot; (onlyarch)
+   # for ADDED (=2) archs no fallback expansion is done!
+   my %requiredarch = map { $_ =&gt; 1 } @{$this-&gt;{m_archlist}};
+ 
+   my @addarchs = ();
+   my @remarchs = ();
+ 
+-  if(defined($this-&gt;{m_packages}-&gt;{$pack}) and $this-&gt;{m_packages}-&gt;{$pack}-&gt;{'forcearch'}) {
+-    $requiredarch{$this-&gt;{m_packages}-&gt;{$pack}-&gt;{'forcearch'}} = 3;
++  if(defined($this-&gt;{m_packages}-&gt;{$pack}) and $this-&gt;{m_packages}-&gt;{$pack}-&gt;{'onlyarch'}) {
++    $requiredarch{$this-&gt;{m_packages}-&gt;{$pack}-&gt;{'onlyarch'}} = 3;
+   }
+   else {
+     # step 1 - sort out the one and only definite architecture list:
+@@ -1880,6 +1880,7 @@
+ 
+   my %src;
+   foreach my $a(keys(%{$this-&gt;{m_packages}-&gt;{$p}})) {
++    next if($a =~ m{addarch|removearch|onlyarch|source|script|medium});
+     if(!$this-&gt;{m_packages}-&gt;{$p}-&gt;{$a}-&gt;{'source'}) {
+       # pack without source is b&#228;h!
+       goto error;
+
+Modified: kiwi-head/modules/KIWIScheme.rnc
+===================================================================
+--- kiwi-head/modules/KIWIScheme.rnc	2008-09-09 13:33:25 UTC (rev 1554)
++++ kiwi-head/modules/KIWIScheme.rnc	2008-09-09 15:19:03 UTC (rev 1555)
+@@ -340,7 +340,9 @@
+ # common element &lt;instrepo&gt;
+ #
+ div {
+-	k.instrepo.name.attribute = k.name.attribute
++	#k.instrepo.name.attribute = k.id.attribute
++	k.instrepo.name.attribute = 
++		attribute name { xsd:ID }
+ 	k.instrepo.priority.attribute =
+ 		## Search priority for packages in this repo
+ 		attribute priority { text }
+@@ -510,9 +512,9 @@
+ div {
+ 	k.repopackage.name.attribute = k.name.attribute
+ 	k.repopackage.arch.attribute = k.arch.attribute
+-	k.repopackage.priority.attribute =
++	k.repopackage.forcerepo.attribute =
+ 		## Specifies the search priority
+-		attribute priority { text }
++		attribute forcerepo { xsd:IDREF }
+ 	k.repopackage.addarch.attribute =
+ 		## Specifies that this package should
+ 		## additionally add the same package from the given arch
+@@ -521,10 +523,10 @@
+ 		## Specifies that the package with the
+ 		## given arch should be removed
+ 		attribute removearch { text }
+-	k.repopackage.forcearch.attribute =
++	k.repopackage.onlyarch.attribute =
+ 		## Specifies that the package with
+ 		## the given arch should be used in any case
+-		attribute forcearch { text }
++		attribute onlyarch { text }
+ 	k.repopackage.medium.attribute =
+ 		## Specifies that the package will be put
+ 		## to the specific medium number (CD1, DVD7, ...)
+@@ -534,10 +536,10 @@
+ 	k.repopackage.attlist =
+ 		k.repopackage.name.attribute &amp; 
+ 		k.repopackage.arch.attribute? &amp;
+-		k.repopackage.priority.attribute? &amp;
++		k.repopackage.forcerepo.attribute? &amp;
+ 		k.repopackage.addarch.attribute? &amp;
+ 		k.repopackage.removearch.attribute? &amp;
+-		k.repopackage.forcearch.attribute? &amp;
++		k.repopackage.onlyarch.attribute? &amp;
+ 		k.repopackage.source.attribute? &amp;
+ 		k.repopackage.script.attribute? &amp;
+ 		k.repopackage.medium.attribute?
+
+Modified: kiwi-head/modules/KIWIScheme.rng
+===================================================================
+--- kiwi-head/modules/KIWIScheme.rng	2008-09-09 13:33:25 UTC (rev 1554)
++++ kiwi-head/modules/KIWIScheme.rng	2008-09-09 15:19:03 UTC (rev 1555)
+@@ -486,8 +486,11 @@
+     
+   --&gt;
+   &lt;div&gt;
++    &lt;!-- k.instrepo.name.attribute = k.id.attribute --&gt;
+     &lt;define name=&quot;k.instrepo.name.attribute&quot;&gt;
+-      &lt;ref name=&quot;k.name.attribute&quot;/&gt;
++      &lt;attribute name=&quot;name&quot;&gt;
++        &lt;data type=&quot;ID&quot;/&gt;
++      &lt;/attribute&gt;
+     &lt;/define&gt;
+     &lt;define name=&quot;k.instrepo.priority.attribute&quot;&gt;
+       &lt;attribute name=&quot;priority&quot;&gt;
+@@ -710,9 +713,10 @@
+     &lt;define name=&quot;k.repopackage.arch.attribute&quot;&gt;
+       &lt;ref name=&quot;k.arch.attribute&quot;/&gt;
+     &lt;/define&gt;
+-    &lt;define name=&quot;k.repopackage.priority.attribute&quot;&gt;
+-      &lt;attribute name=&quot;priority&quot;&gt;
++    &lt;define name=&quot;k.repopackage.forcerepo.attribute&quot;&gt;
++      &lt;attribute name=&quot;forcerepo&quot;&gt;
+         &lt;a:documentation&gt;Specifies the search priority&lt;/a:documentation&gt;
++        &lt;data type=&quot;IDREF&quot;/&gt;
+       &lt;/attribute&gt;
+     &lt;/define&gt;
+     &lt;define name=&quot;k.repopackage.addarch.attribute&quot;&gt;
+@@ -727,8 +731,8 @@
+ given arch should be removed&lt;/a:documentation&gt;
+       &lt;/attribute&gt;
+     &lt;/define&gt;
+-    &lt;define name=&quot;k.repopackage.forcearch.attribute&quot;&gt;
+-      &lt;attribute name=&quot;forcearch&quot;&gt;
++    &lt;define name=&quot;k.repopackage.onlyarch.attribute&quot;&gt;
++      &lt;attribute name=&quot;onlyarch&quot;&gt;
+         &lt;a:documentation&gt;Specifies that the package with
+ the given arch should be used in any case&lt;/a:documentation&gt;
+       &lt;/attribute&gt;
+@@ -753,7 +757,7 @@
+           &lt;ref name=&quot;k.repopackage.arch.attribute&quot;/&gt;
+         &lt;/optional&gt;
+         &lt;optional&gt;
+-          &lt;ref name=&quot;k.repopackage.priority.attribute&quot;/&gt;
++          &lt;ref name=&quot;k.repopackage.forcerepo.attribute&quot;/&gt;
+         &lt;/optional&gt;
+         &lt;optional&gt;
+           &lt;ref name=&quot;k.repopackage.addarch.attribute&quot;/&gt;
+@@ -762,7 +766,7 @@
+           &lt;ref name=&quot;k.repopackage.removearch.attribute&quot;/&gt;
+         &lt;/optional&gt;
+         &lt;optional&gt;
+-          &lt;ref name=&quot;k.repopackage.forcearch.attribute&quot;/&gt;
++          &lt;ref name=&quot;k.repopackage.onlyarch.attribute&quot;/&gt;
+         &lt;/optional&gt;
+         &lt;optional&gt;
+           &lt;ref name=&quot;k.repopackage.source.attribute&quot;/&gt;
+
+Modified: kiwi-head/modules/KIWIXML.pm
+===================================================================
+--- kiwi-head/modules/KIWIXML.pm	2008-09-09 13:33:25 UTC (rev 1554)
++++ kiwi-head/modules/KIWIXML.pm	2008-09-09 15:19:03 UTC (rev 1555)
+@@ -2171,8 +2171,8 @@
+ 	}
+ 	my %result;
+ 	my @attrib = (
+-		&quot;priority&quot; ,&quot;addarch&quot;,&quot;removearch&quot;,
+-		&quot;forcearch&quot;,&quot;source&quot; ,&quot;script&quot;, &quot;medium&quot;
++		&quot;forcerepo&quot; ,&quot;addarch&quot;,&quot;removearch&quot;,
++		&quot;onlyarch&quot;,&quot;source&quot; ,&quot;script&quot;, &quot;medium&quot;
+ 	);
+ 
+ 	if(not defined($this-&gt;{m_rpacks})) {
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-09-09 13:33:25 UTC (rev 1554)
++++ kiwi-head/rpm/kiwi.changes	2008-09-09 15:19:03 UTC (rev 1555)
+@@ -2,7 +2,9 @@
+ Tue Sep  9 10:40:54 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.75
+-- make create instsource a non root task
++- added schema adaptions for instsource creation
++- make create instsource a non root task, requested
++  by autobuild team (mls,jcborn)
+ 
+ -------------------------------------------------------------------
+ Fri Sep  5 12:13:44 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000650.html">[Kiwi-devel] easy-kiwi-build
+</A></li>
+	<LI>Next message: <A HREF="000652.html">[Kiwi-devel] r1556 - in kiwi-head/doc/schema: . kiwi.dia
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#651">[ date ]</a>
+              <a href="thread.html#651">[ thread ]</a>
+              <a href="subject.html#651">[ subject ]</a>
+              <a href="author.html#651">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

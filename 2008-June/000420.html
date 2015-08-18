@@ -1,0 +1,978 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1330 - in kiwi-head/modules: plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1330%20-%20in%20kiwi-head/modules%3A%20plugins&In-Reply-To=%3C200806131422.m5DEML6Y000178%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000419.html">
+   <LINK REL="Next"  HREF="000421.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1330 - in kiwi-head/modules: plugins</H1>
+    <B>jcborn at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1330%20-%20in%20kiwi-head/modules%3A%20plugins&In-Reply-To=%3C200806131422.m5DEML6Y000178%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1330 - in kiwi-head/modules: plugins">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Fri Jun 13 16:22:21 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000419.html">[Kiwi-devel] [SVN:KIWI-Team] r1329 - kiwi-head/modules
+</A></li>
+        <LI>Next message: <A HREF="000421.html">[Kiwi-devel] [SVN:KIWI-Team] r1331 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#420">[ date ]</a>
+              <a href="thread.html#420">[ thread ]</a>
+              <a href="subject.html#420">[ subject ]</a>
+              <a href="author.html#420">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: Fri Jun 13 16:22:18 2008
+New Revision: 1330
+
+Added:
+   kiwi-head/modules/KIWIRepoMetaHandler.pm
+   kiwi-head/modules/plugins/
+   kiwi-head/modules/plugins/KIWIInstSourceBasePlugin.pm
+   kiwi-head/modules/plugins/KIWIPatternsPlugin.pm
+Modified:
+   kiwi-head/modules/KIWICollect.pm
+   kiwi-head/modules/KIWIUtil.pm
+
+Log:
+- reorganisation: extracted metadata creation to separate plugins for
+  easier extension
+- moved functionality from KIWICollect to KIWIUtil
+- added access methods
+
+
+Modified: kiwi-head/modules/KIWICollect.pm
+==============================================================================
+--- kiwi-head/modules/KIWICollect.pm	(original)
++++ kiwi-head/modules/KIWICollect.pm	Fri Jun 13 16:22:18 2008
+@@ -29,6 +29,7 @@
+ use KIWIXML;
+ use KIWIUtil;
+ use KIWIURL;
++use KIWIRepoMetaHandler;
+ 
+ use RPMQ;
+ 
+@@ -72,6 +73,7 @@
+   my $class = shift;
+ 
+   my $this  = {
++    m_metacreator   =&gt; undef, # object handling the various metadata types
+     m_archlist	    =&gt; undef,
+     m_srclist	    =&gt; undef,
+     m_basedir	    =&gt; undef,
+@@ -87,16 +89,6 @@
+     m_fpacks	    =&gt; [],
+     m_fmpacks	    =&gt; [],
+     m_debug	    =&gt; undef,
+-    #m_fpath =&gt; {
+-    #  'intel' =&gt; ['i686', 'i586', 'i486', 'i386', 'noarch'],
+-    #  'amd'   =&gt; ['x86_64', 'noarch'],
+-    #  'ppc64' =&gt; ['ppc64', 'noarch'],
+-    #  'ppc'   =&gt; ['ppc', 'noarch'],
+-    #  'hp'    =&gt; ['hppa', 'noarch'],
+-    #  'ia'    =&gt; ['ia64', 'noarch'],
+-    #  's390'  =&gt; ['s390x', 's390', 'noarch'],
+-    #  #'none'  =&gt; ['noarch'],
+-    #  },
+   };
+ 
+   bless $this, $class;
+@@ -139,6 +131,51 @@
+ 
+ 
+ 
++sub logger
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  my $oldlog = $this-&gt;{m_logger};
++  if(@_) {
++    $this-&gt;{m_logger} = shift;
++  }
++  return $oldlog;
++}
++
++
++
++sub debugflag
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  my $olddeb = $this-&gt;{m_debug};
++  if(@_) {
++    $this-&gt;{m_debug} = shift;
++  }
++  return $olddeb;
++}
++
++
++
++sub unitedDir
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  my $oldunited = $this-&gt;{m_united};
++  if(@_) {
++    $this-&gt;{m_united} = shift;
++  }
++  return $oldunited;
++}
++
++
++
+ #==========================================
+ # Init
+ #------------------------------------------
+@@ -282,7 +319,7 @@
+       $this-&gt;{m_logger}-&gt;info(&quot;[INFO] [Init] resolving <A HREF="opensuse://">opensuse://</A> URL $this-&gt;{m_repos}-&gt;{$r}-&gt;{'source'}...&quot;);
+       $this-&gt;{m_repos}-&gt;{$r}-&gt;{'source'} = $this-&gt;{m_urlparser}-&gt;normalizePath($this-&gt;{m_repos}-&gt;{$r}-&gt;{'source'});
+     }
+-    $this-&gt;{m_repos}-&gt;{$r}-&gt;{'basedir'} = $this-&gt;{m_basedir}.$this-&gt;normaliseDirname($this-&gt;{m_repos}-&gt;{$r}-&gt;{'source'}, '-');
++    $this-&gt;{m_repos}-&gt;{$r}-&gt;{'basedir'} = $this-&gt;{m_basedir}.$this-&gt;{m_util}-&gt;normaliseDirname($this-&gt;{m_repos}-&gt;{$r}-&gt;{'source'}, '-');
+ 
+     $this-&gt;{m_dirlist}-&gt;{&quot;$this-&gt;{m_repos}-&gt;{$r}-&gt;{'basedir'}&quot;} = 1;
+ 
+@@ -312,56 +349,14 @@
+       $this-&gt;{m_repos}-&gt;{$r}-&gt;{'srcdirs'} = undef;
+     }
+   }
++  $this-&gt;{m_metacreator} = new KIWIRepoMetaHandler($this);
++  $this-&gt;{m_metacreator}-&gt;baseurl($this-&gt;{m_united});
+ }
+ # /Init
+ 
+ 
+ 
+ #==========================================
+-# normaliseDirname
+-#------------------------------------------
+-# Create a name without slashes, colons et cetera, replace
+-# all funny characters by dots and thus create a string which
+-# can be used as directory name.
+-#------------------------------------------
+-# Parameters:
+-#   $this - reference to the object for which it is called
+-#   $dirname - the RAW name, in the usual case an URL
+-#   $sepchar - the character that shall be used for token separation
+-#	Defaults to `.' if omitted.
+-# Returns:
+-#   a string consisting of letter tokens separated by dots
+-#------------------------------------------
+-sub normaliseDirname
+-{
+-  my $this    = shift;
+-  my $dirname = shift;
+-  my $sepchar = shift;
+-  if(!defined($sepchar)
+-      or $sepchar =~ m{[\w\s:\(\)\[\]\$]}) {
+-    $sepchar = &quot;-&quot;;
+-  }
+-
+-  # remove leading protocol name:
+-  $dirname =~ s{^(http|https|file|ftp)[:]/*}{};
+-  # remove some annoying chars:
+-  $dirname =~ s{[\/:]}{$sepchar}g;
+-  # remove double sep chars:
+-  $dirname =~ s{[$sepchar]+}{$sepchar}g;
+-  # remove leading and trailing sepchars:
+-  $dirname =~ s{^[$sepchar]}{}g;
+-  $dirname =~ s{[$sepchar]$}{}g;
+-  # remove trailing slashes:
+-  $dirname =~ s{/+$}{}g;
+-
+-  return $dirname;
+-}
+-# /normaliseDirname
+-
+-
+-
+-
+-#==========================================
+ # mainTask
+ #------------------------------------------
+ # After initialisation by the constructor the repositories
+@@ -381,10 +376,26 @@
+ 
+   return $retval if not defined($this);
+ 
+-  if(defined($this-&gt;collectPackages())) {
+-    $retval = 0;
+-  }
++  my ($collectret, $initmphandlers, $metadatacreate);
+ 
++  $collectret = $this-&gt;collectPackages();
++  if($collectret != 0) {
++    $this-&gt;{m_logger}-&gt;error(&quot;collecting packages failed!&quot;);
++    $retval = 1;
++  }
++  ## continue only in case of success
++  else {
++    $initmphandlers = $this-&gt;{m_metacreator}-&gt;initialiseHandlers();
++    if($initmphandlers == 0) {
++      $metadatacreate = $this-&gt;{m_metacreator}-&gt;createMetadata();
++      # handle return value here
++    }
++    else {
++      $this-&gt;{m_logger}-&gt;error(&quot;Initialisation of metadata handlers failed!&quot;);
++      $retval = 10;
++    }
++  }
++  
+   return $retval;
+ }
+ # /mainTask
+@@ -1449,22 +1460,33 @@
+   my $this = shift;
+ 
+ 
+-  ## step 1: create pattern list (just a simple ls)
+-  #=============================
+-  $this-&gt;{m_logger}-&gt;info(&quot;Creating patterns file:&quot;);
+-  if(!open(PAT, &quot;&gt;&quot;, &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/patterns&quot;)) {
+-    die &quot;Cannot create $this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/patterns!&quot;;
+-  }
+-  if(!opendir(PATDIR, &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/&quot;)) {
+-    die &quot;Cannot read $this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/!&quot;;
+-  }
+-  my @dirent = readdir(PATDIR);
+-  foreach(@dirent) {
+-    next if $_ !~ m{(.*[.]pat|.*[.]pat[.]gz)};
+-    print PAT &quot;$_\n&quot;;
++  ### step 1: create pattern list (just a simple ls)
++  ##=============================
++  #$this-&gt;{m_logger}-&gt;info(&quot;Creating patterns file:&quot;);
++  #if(!open(PAT, &quot;&gt;&quot;, &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/patterns&quot;)) {
++  #  die &quot;Cannot create $this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/patterns!&quot;;
++  #}
++  #if(!opendir(PATDIR, &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/&quot;)) {
++  #  die &quot;Cannot read $this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/!&quot;;
++  #}
++  #my @dirent = readdir(PATDIR);
++  #foreach(@dirent) {
++  #  next if $_ !~ m{(.*[.]pat|.*[.]pat[.]gz)};
++  #  print PAT &quot;$_\n&quot;;
++  #}
++  #close(PATDIR);	
++  #close(PAT);	
++  $this-&gt;{m_metacreator}-&gt;loadPlugins(&quot;/usr/share/kiwi/modules/plugins/&quot;);
++  $this-&gt;{m_metacreator}-&gt;mediaName($this-&gt;{m_prodvars}-&gt;{'MEDIUM_NAME'});
++  # testhack: set the plugin ready:
++  my $p = $this-&gt;{m_metacreator}-&gt;getPlugin(1);
++  if(defined($p)) {
++    $p-&gt;ready(1);
++    $this-&gt;{m_metacreator}-&gt;createMetadata();
++  }
++  else {
++    $this-&gt;{m_logger}-&gt;error(&quot;Metadata plugin not avalable&quot;);
+   }
+-  close(PATDIR);	
+-  close(PAT);	
+ 
+ 
+   ## step 2: create_package_descr
+
+Added: kiwi-head/modules/KIWIRepoMetaHandler.pm
+==============================================================================
+--- (empty file)
++++ kiwi-head/modules/KIWIRepoMetaHandler.pm	Fri Jun 13 16:22:18 2008
+@@ -0,0 +1,300 @@
++#================
++# FILE          : KIWIRepoMetaHandler.pm
++#----------------
++# PROJECT       : OpenSUSE Build-Service
++# COPYRIGHT     : (c) 2006 SUSE LINUX Products GmbH, Germany
++#               :
++# AUTHOR        : Jan-Christoph Bornschlegel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">jcborn at suse.de</A>&gt;
++#               :
++# BELONGS TO    : Operating System images
++#               :
++# DESCRIPTION   : This module handles a list of specialised
++#               : objects used to create all sort of metadata.
++#               :
++# STATUS        : Development
++#----------------
++
++package KIWIRepoMetaHandler;
++
++use strict;
++
++
++sub new
++{
++  # ...
++  # Create a new KIWIRepoMetaHandler object which administers
++  # a list of plugins used to do the concrete work of
++  # metadata creation
++  # ---
++  #==========================================
++  # Object setup
++  #------------------------------------------
++  my $class = shift;
++
++  my $this  = {
++    m_collect	=&gt; undef,     # phone back to KIWICollect (getMediaNumbers and the like)
++    m_handlers	=&gt; {},	      # list of specialised handlers
++    m_medianame	=&gt; undef,     # name of the media (CD, DVD, ...)
++    m_baseurl	=&gt; undef,     # base url where $MEDIUMNAME$NR reside
++  };
++  bless ($this, $class);
++
++  # other init work:
++  $this-&gt;{m_collect}	= shift;  # first and most important thing: store the caller object
++  if(not defined($this-&gt;{m_collect})) {
++    return undef; # rock hard get outta here: caller must check retval anyway
++  }
++  $this-&gt;{m_unitedir}	= $this-&gt;{m_collect}-&gt;unitedDir();
++  #$this-&gt;{m_logger}	= $this-&gt;{m_collect}-&gt;logger();
++
++  $this-&gt;gossip(&quot;Created $class object successfully.&quot;);
++
++  return $this;
++}
++# /constructor
++
++
++
++sub mediaName
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  my $oldorder = $this-&gt;{m_order};
++  if(@_) {
++    $this-&gt;{m_order} = shift;
++  }
++  return $oldorder;
++}
++
++
++
++sub collect
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  return $this-&gt;{m_collect};
++}
++
++
++
++sub baseurl
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  my $oldbaseurl = $this-&gt;{m_baseurl};
++  if(@_) {
++    $this-&gt;{m_baseurl} = shift;
++  }
++  return $oldbaseurl;
++}
++
++
++
++#sub initialiseHandlers
++#{
++#  #...
++#  # read all pm files from a given directory, try to load the handlers
++#  # and create a respective object for each (store in a list)
++#  #---
++#  my $this = shift;
++#
++#  my $retval = undef;
++#
++#  if(not defined($this-&gt;{m_plugindir})) {
++#    $this-&gt;{m_logger}-&gt;error(&quot;[ERROR] [RepoMetaHandler::initialiseHandlers] plugin directory not set!&quot;);
++#    return $retval;
++#  }
++#
++#  if(not opendiri(PLUGINDIR, $this-&gt;{m_plugindir})) {
++#    $this-&gt;{m_logger}-&gt;error(&quot;[ERROR] [RepoMetaHandler::initialiseHandlers] cannot open $this-&gt;{m_plugindir}&quot;);
++#    return $retval;
++#  }
++#  my @plugins = readdir(PLUGINDIR);
++#  closedir(PLUGINDIR);
++#}
++
++
++
++sub gossip
++{
++  my $this = shift;
++  my $message = shift;
++  if(defined($message) and $this-&gt;{m_collect}-&gt;debugflag()) {
++    $this-&gt;{m_collect}-&gt;logger()-&gt;info(&quot;$message&quot;);
++  }
++}
++
++
++
++#...
++# loadPlugins(DIR)
++# - load all plugins available in directory DIR
++# return number of loaded plugins, 0 in case of error
++#---
++sub loadPlugins
++{
++  my $this = shift;
++
++  my $retval = 0;
++  my $dir = shift;
++  if(not defined($dir)) {
++    return $retval;
++  }
++  # remove annoying trailing slashes:
++  #$dir =~ s{(.*)/+$}{$1};
++  unshift @INC, $dir;
++  if(not opendir(PLUGINDIR, &quot;$dir&quot;)) {
++    $this-&gt;gossip(&quot;loadPlugins: cannot open directory $dir&quot;);
++    return $retval;
++  }
++
++  my @plugins = readdir(PLUGINDIR);
++  closedir(PLUGINDIR);
++
++  foreach my $p(@plugins) {
++    chomp $p;
++    next if(-d &quot;$p&quot;);
++    next if($p !~ m{.*[.]pm});
++
++    my $loadsuccess = $this-&gt;loadPlugin(&quot;$dir/$p&quot;);
++    if($loadsuccess == 1) {
++      $this-&gt;gossip(&quot;loadPlugins: loaded plugin $p from url $dir successfully.&quot;);
++      $retval++;
++    }
++    else {
++      $this-&gt;gossip(&quot;loadPlugins: failed to load plugin $p from url $dir!&quot;);
++    }
++  }
++
++  return $retval;
++}
++
++
++
++#...
++# loadPlugin(FILE)
++# - load a specific plugin and do all the checks
++#   (required packages, directories, order number free etc.)
++# return 1 on success, 0 on failure
++#---
++sub loadPlugin
++{
++  my $this = shift;
++  my $retval = 0;
++
++  my $file = shift;
++  if(not(defined($file) and -f $file)) {
++    $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;loadPlugin: file=$file maybe not readable&quot;);
++    return $retval;
++  }
++
++  $file =~ m{(.*)/(.*)([.]pm)$};
++  my $plugin = $2;
++  if(not defined($plugin)) {
++    $this-&gt;{m_collect}-&gt;error(&quot;loadPlugin: something in regexp broken: $file =~ m{(.*)/(.*)([.]pm)$}...?&quot;);
++    return $retval;
++  }
++
++  eval &quot;require $plugin&quot;;
++  if($@) {
++    $this-&gt;{m_collect}-&gt;logger()-&gt;error(&quot;loadPlugin: loading $plugin failed&quot;);
++  }
++  else {
++    my $object = ($plugin)-&gt;new($this);
++    my $addsuccess = $this-&gt;_addPlugin($object);
++    #my $addsuccess = $this-&gt;_addPlugin(new($plugin, $this));
++    if($addsuccess) {
++      $retval = 1;
++    }
++  }
++  return $retval;
++}
++
++
++
++sub _addPlugin
++{
++  my $this = shift;
++  if(not ref $this) {
++    return undef;
++  }
++  my $retval = 0;
++  my $plugin = shift;
++
++  my $order = $plugin-&gt;order();
++  #my $name  = $plugin-&gt;name();
++  #my @dirs  = $plugin-&gt;requiredDirs();
++  #my @reqs  = $plugin-&gt;requires();
++  #my @desc  = $plugin-&gt;description();
++
++  if(not defined($order)) {
++    $this-&gt;{m_collect}-&gt;logger()-&gt;info(&quot;Undefined order of plugin $plugin-&gt;name()&quot;);
++  }
++  else {
++    if(defined($this-&gt;{m_handlers}-&gt;{$order})) {
++      # we have a problem: (TODO in the future)
++      die &quot;Can't handle mutliple occurences of ordernumbers yet! See next version!&quot;;
++    }
++    else {
++      $this-&gt;{m_handlers}-&gt;{$order} = $plugin;
++      $retval = 1;
++    }
++  }
++  return $retval;
++}
++
++
++
++sub getPlugin
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++
++  my $index = shift;
++  if(not defined($index)) {
++    return undef;
++  }
++  else {
++    if(not defined($this-&gt;{m_handlers}-&gt;{$index})) {
++      $this-&gt;{m_collect}-&gt;logger()-&gt;warning(&quot;no plugin defined with index $index&quot;);
++      return undef;
++    }
++    else {
++      return $this-&gt;{m_handlers}-&gt;{$index};
++    }
++  }
++}
++
++
++
++sub createMetadata
++{
++  my $this = shift;
++  if(not ref $this) {
++    return undef;
++  }
++  my $retval = 0;
++  # execute all registered and activated plugins:
++
++  foreach my $order(sort {$a lt $b } keys(%{$this-&gt;{m_handlers}})) {
++    if($this-&gt;{m_handlers}-&gt;{$order}-&gt;ready()) {
++      $this-&gt;{m_handlers}-&gt;{$order}-&gt;execute();
++    }
++    else {
++      $this-&gt;gossip(&quot;Plugin $this-&gt;{m_handlers}-&gt;{$order}-&gt;name() is not activated yet!&quot;);
++    }
++  }
++}
++
++
++
++1;
++
+
+Modified: kiwi-head/modules/KIWIUtil.pm
+==============================================================================
+--- kiwi-head/modules/KIWIUtil.pm	(original)
++++ kiwi-head/modules/KIWIUtil.pm	Fri Jun 13 16:22:18 2008
+@@ -23,34 +23,32 @@
+ use File::Find;
+ use File::Path;
+ use KIWIQX;
+-#use KIWIURL;
+ 
+ #==========================================
+ # Constructor
+ #------------------------------------------
+-# Create a new KIWIXML object which is used to access the
+-# configuration XML data saved as config.xml. The xml data
+-# is splitted into four major tags: preferences, drivers,
+-# repository and packages. While constructing an object of this
+-# type there will be a node list created for each of the
+-# major tags.
++# Create a new KIWIUtil object. It is used to perform
++# some utility methods that are not really bound to
++# a certain problem area class.
+ #------------------------------------------
+ sub new
+ {
++  my $class = shift;
+   my $this =
+   {
+     m_logger  =&gt; undef,
+     m_url     =&gt; undef,
+   };
+-  my $class = shift;
+-  bless $this, $class;
++  bless ($this, $class);
+ 
+   #==========================================
+   # Module Parameters
+   #------------------------------------------
+   $this-&gt;{m_logger} = shift;
+-  #$this-&gt;{m_url} = new KIWIURL($this-&gt;{m_logger});
+-  die &quot;No logger defined\n&quot; if(not defined $this-&gt;{m_logger});
++  if(not defined $this-&gt;{m_logger}) {
++    print &quot;No logger defined!&quot;;
++    return undef;
++  }
+ 
+   return $this;
+ }
+@@ -563,5 +561,48 @@
+ 
+ 
+ 
++#==========================================
++# normaliseDirname
++#------------------------------------------
++# Create a name without slashes, colons et cetera, replace
++# all funny characters by dots and thus create a string which
++# can be used as directory name.
++#------------------------------------------
++# Parameters:
++#   $this - reference to the object for which it is called
++#   $dirname - the RAW name, in the usual case an URL
++#   $sepchar - the character that shall be used for token separation
++#	Defaults to `.' if omitted.
++# Returns:
++#   a string consisting of letter tokens separated by dots
++#------------------------------------------
++sub normaliseDirname
++{
++  my $this    = shift;
++  my $dirname = shift;
++  my $sepchar = shift;
++  if(!defined($sepchar)
++      or $sepchar =~ m{[\w\s:\(\)\[\]\$]}) {
++    $sepchar = &quot;-&quot;;
++  }
++
++  # remove leading protocol name:
++  $dirname =~ s{^(http|https|file|ftp)[:]/*}{};
++  # remove some annoying chars:
++  $dirname =~ s{[\/:]}{$sepchar}g;
++  # remove double sep chars:
++  $dirname =~ s{[$sepchar]+}{$sepchar}g;
++  # remove leading and trailing sepchars:
++  $dirname =~ s{^[$sepchar]}{}g;
++  $dirname =~ s{[$sepchar]$}{}g;
++  # remove trailing slashes:
++  $dirname =~ s{/+$}{}g;
++
++  return $dirname;
++}
++# /normaliseDirname
++
++
++
+ 1;
+ 
+
+Added: kiwi-head/modules/plugins/KIWIInstSourceBasePlugin.pm
+==============================================================================
+--- (empty file)
++++ kiwi-head/modules/plugins/KIWIInstSourceBasePlugin.pm	Fri Jun 13 16:22:18 2008
+@@ -0,0 +1,158 @@
++#================
++# FILE          : KIWIInstSourceBasePlugin.pm
++#----------------
++# PROJECT       : OpenSUSE Build-Service
++# COPYRIGHT     : (c) 2006 SUSE LINUX Products GmbH, Germany
++#               :
++# AUTHOR        : Jan-Christoph Bornschlegel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">jcborn at suse.de</A>&gt;
++#               :
++# BELONGS TO    : Operating System images
++#               :
++# DESCRIPTION   : Base class for a loadable plugin which creates
++#               : a certain type of metadata
++#               :
++# STATUS        : Development
++#----------------
++
++package KIWIInstSourceBasePlugin;
++
++use strict;
++
++
++sub new
++{
++  # ...
++  # Create a new KIWIInstSourceBasePlugin object which creates
++  # one specific type of metadata
++  # ---
++  my $class = shift;
++  
++  my $this  = {
++    m_handler	  =&gt; undef, # know the handler object
++    m_name	  =&gt; undef, # name of the plugin (just sound nice)
++    m_order	  =&gt; undef, # order number, selects execution time
++    m_requireddirs =&gt; [],    # list of directories required before execution
++    m_descr	  =&gt; [],    # plaintext description of what the plugin does
++    m_requires	  =&gt; [],    # list of required packages for the plugin
++    m_ready	  =&gt; 0,	    # execution ready flag. Must be true to enable execute()
++  };
++  bless ($this, $class);
++
++  $this-&gt;{m_handler} = shift;
++
++  return $this;
++}
++# /constructor
++
++
++
++# access method for name:
++sub name
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  my $oldname = $this-&gt;{m_name};
++  if(@_) {
++    $this-&gt;{m_name} = shift;
++  }
++  return $oldname;
++}
++
++
++
++# access method for order:
++sub order
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  my $oldorder = $this-&gt;{m_order};
++  if(@_) {
++    $this-&gt;{m_order} = shift;
++  }
++  return $oldorder;
++}
++
++
++
++# access method for readyness:
++sub ready
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  my $oldready = $this-&gt;{m_ready};
++  if(@_) {
++    $this-&gt;{m_ready} = shift;
++  }
++  return $oldready;
++}
++
++
++
++# access method for required directories:
++sub requiredDirs
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  my @oldrd = $this-&gt;{m_requireddirs};
++  foreach my $entry(@_) {
++    push @{$this-&gt;{m_requireddirs}}, $entry;
++  }
++  return @oldrd;
++}
++
++
++
++# access method for description
++sub description
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  my @olddesc = $this-&gt;{m_descr};
++  foreach my $entry(@_) {
++    push @{$this-&gt;{m_descr}}, $entry;
++  }
++  return @olddesc;
++}
++
++
++
++# access method for requirements
++sub requires
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  my @oldreq = $this-&gt;{m_requires};
++  foreach my $entry(@_) {
++    push @{$this-&gt;{m_requires}}, $entry;
++  }
++  return @oldreq;
++}
++
++
++
++# access method for handler
++sub handler
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  return $this-&gt;{m_handler};
++}
++
++
++
++1;
++
+
+Added: kiwi-head/modules/plugins/KIWIPatternsPlugin.pm
+==============================================================================
+--- (empty file)
++++ kiwi-head/modules/plugins/KIWIPatternsPlugin.pm	Fri Jun 13 16:22:18 2008
+@@ -0,0 +1,87 @@
++
++#               :
++# AUTHOR        : Jan-Christoph Bornschlegel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">jcborn at suse.de</A>&gt;
++#               :
++# BELONGS TO    : Operating System images
++#               :
++# DESCRIPTION   : Module creating the &quot;patterns&quot; file
++#               :
++# STATUS        : Development
++#----------------
++
++package KIWIPatternsPlugin;
++
++use strict;
++
++use base &quot;KIWIInstSourceBasePlugin&quot;;
++
++sub new
++{
++  # ...
++  # Create a new KIWIPatternsPlugin object
++  # creates patterns file
++  # ---
++  my $class = shift;
++
++  #my $this  = {
++  #  m_name	  =&gt; &quot;PatternsPlugin&quot;,
++  #  m_order	  =&gt; 1,
++  #  m_requireddirs =&gt; [&quot;suse/setup/descr&quot;],
++  #  m_media	  =&gt; [1],
++  #  m_descr	  =&gt; [&quot;Creates patterns file&quot;,
++  #      	      &quot;This is basicallly a ls listing&quot;],
++  #  m_requires	  =&gt; [],
++  #  m_ready	  =&gt; 0,
++  #};
++  my $this = new KIWIInstSourceBasePlugin(shift);
++  bless ($this, $class);
++
++  $this-&gt;name(&quot;PatternsPlugin&quot;);
++  $this-&gt;order(1);
++  $this-&gt;requiredDirs(&quot;suse/setup/descr&quot;);
++  $this-&gt;description(&quot;Creates patterns file&quot;,
++        	      &quot;This is basicallly a ls listing&quot;);
++  #$this-&gt;requires();
++  $this-&gt;{m_media} = [1];
++  return $this;
++}
++# /constructor
++
++
++
++sub execute
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  my $retval = 0;
++  # sanity check:
++  if($this-&gt;{m_ready} == 0) {
++    return $retval;
++  }
++
++
++  my $dirname = $this-&gt;{m_handler}-&gt;baseurl().&quot;/&quot;.$this-&gt;{m_handler}-&gt;mediaName().$this-&gt;{m_media}-&gt;[0].&quot;/&quot;.$this-&gt;{m_requireddirs}-&gt;[0];
++  if(!open(PAT, &quot;&gt;&quot;, &quot;$dirname/patterns&quot;)) {
++    die &quot;Cannot create $this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/patterns!&quot;;
++  }
++  if(!opendir(PATDIR, &quot;$dirname&quot;)) {
++    die &quot;Cannot read $this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/!&quot;;
++  }
++  my @dirent = readdir(PATDIR);
++  foreach(@dirent) {
++    next if $_ !~ m{(.*[.]pat|.*[.]pat[.]gz)};
++    print PAT &quot;$_\n&quot;;
++  }
++  close(PATDIR);	
++  close(PAT);	
++
++  $retval = 1;
++  return $retval;
++}
++
++
++
++1;
++
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000419.html">[Kiwi-devel] [SVN:KIWI-Team] r1329 - kiwi-head/modules
+</A></li>
+	<LI>Next message: <A HREF="000421.html">[Kiwi-devel] [SVN:KIWI-Team] r1331 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#420">[ date ]</a>
+              <a href="thread.html#420">[ thread ]</a>
+              <a href="subject.html#420">[ subject ]</a>
+              <a href="author.html#420">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

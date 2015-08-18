@@ -1,0 +1,175 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 55c74dabd2ba95de8a37371afab6914be17bed01
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2055c74dabd2ba95de8a37371afab6914be17bed01&In-Reply-To=%3C20110908115435.5F1FA48124A%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003787.html">
+   <LINK REL="Next"  HREF="003789.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 55c74dabd2ba95de8a37371afab6914be17bed01</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2055c74dabd2ba95de8a37371afab6914be17bed01&In-Reply-To=%3C20110908115435.5F1FA48124A%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 55c74dabd2ba95de8a37371afab6914be17bed01">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Sep  8 13:54:35 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003787.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4eb9aef3ba377fc75d6425f7d2f27906d1fec3ef
+</A></li>
+        <LI>Next message: <A HREF="003789.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 86d9cc0d65ffd63befa991089aba7966cad13a6f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3788">[ date ]</a>
+              <a href="thread.html#3788">[ thread ]</a>
+              <a href="subject.html#3788">[ subject ]</a>
+              <a href="author.html#3788">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  55c74dabd2ba95de8a37371afab6914be17bed01 (commit)
+       via  b84f11bb69c7c641cabdf559822e6fb67261847a (commit)
+      from  4eb9aef3ba377fc75d6425f7d2f27906d1fec3ef (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 55c74dabd2ba95de8a37371afab6914be17bed01
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Sep 8 13:47:30 2011 +0200
+
+    - fixed addPackages. Only if the requested packages type
+      was 'image' it's allowed to add to 'bootstrap' if there
+      is no 'image' typed packages section
+
+commit b84f11bb69c7c641cabdf559822e6fb67261847a
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Sep 8 13:30:06 2011 +0200
+
+    - consistency fix for the vmxboot boot image descriptions.
+      all kernels should belong to the same typed packages section
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index deaf283..732a336 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -2028,12 +2028,17 @@ sub addPackages {
+ 		$kiwi -&gt; skipped ();
+ 		return $this;
+ 	}
+-	if ($nodeNumber &lt; 0) {
+-		$kiwi -&gt; loginfo (
+-			&quot;addPackages: no image section found, switching to bootstrap\n&quot;
++	if (($nodeNumber &lt; 0) &amp;&amp; ($ptype eq &quot;image&quot;)) {
++		$kiwi -&gt; warning (
++			&quot;addPackages: no image section found, adding to bootstrap&quot;
+ 		);
++		$kiwi -&gt; done();
+ 		$nodeNumber = $nodeNumberBootStrap;
+ 	}
++	if ($nodeNumber &lt; 0) {
++		$kiwi -&gt; loginfo (&quot;addPackages: no $ptype section found... skipped\n&quot;);
++		return $this;
++	}
+ 	foreach my $pack (@packs) {
+ 		next if ($pack eq &quot;&quot;);
+ 		my $addElement = new XML::LibXML::Element (&quot;package&quot;);
+diff --git a/system/boot/ix86/vmxboot/rhel-05.4/config.xml b/system/boot/ix86/vmxboot/rhel-05.4/config.xml
+index 525e214..3df4cd9 100644
+--- a/system/boot/ix86/vmxboot/rhel-05.4/config.xml
++++ b/system/boot/ix86/vmxboot/rhel-05.4/config.xml
+@@ -64,7 +64,7 @@
+ 	&lt;repository type=&quot;rpm-md&quot; status=&quot;fixed&quot; priority=&quot;1&quot;&gt;
+ 		&lt;source path=&quot;/usr/share/kiwi/repo/rhel-repo/rhel-054-repo&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;std&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;std&quot;&gt;
+ 		&lt;package name=&quot;kernel&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+diff --git a/system/boot/ix86/vmxboot/suse-11.3/config.xml b/system/boot/ix86/vmxboot/suse-11.3/config.xml
+index 06c6e65..86b5108 100644
+--- a/system/boot/ix86/vmxboot/suse-11.3/config.xml
++++ b/system/boot/ix86/vmxboot/suse-11.3/config.xml
+@@ -83,7 +83,7 @@
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;ec2&quot;&gt;
+ 		&lt;package name=&quot;kernel-ec2&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;desktop&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;desktop&quot;&gt;
+ 		&lt;package name=&quot;kernel-desktop&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+diff --git a/system/boot/ix86/vmxboot/suse-11.4/config.xml b/system/boot/ix86/vmxboot/suse-11.4/config.xml
+index bf6198d..78739d3 100644
+--- a/system/boot/ix86/vmxboot/suse-11.4/config.xml
++++ b/system/boot/ix86/vmxboot/suse-11.4/config.xml
+@@ -86,7 +86,7 @@
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;ec2&quot;&gt;
+ 		&lt;package name=&quot;kernel-ec2&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;desktop&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;desktop&quot;&gt;
+ 		&lt;package name=&quot;kernel-desktop&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+diff --git a/system/boot/ix86/vmxboot/suse-12.1/config.xml b/system/boot/ix86/vmxboot/suse-12.1/config.xml
+index 9c29430..c21462c 100644
+--- a/system/boot/ix86/vmxboot/suse-12.1/config.xml
++++ b/system/boot/ix86/vmxboot/suse-12.1/config.xml
+@@ -86,7 +86,7 @@
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;ec2&quot;&gt;
+ 		&lt;package name=&quot;kernel-ec2&quot;/&gt;
+ 	&lt;/packages&gt;
+-	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;desktop&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;desktop&quot;&gt;
+ 		&lt;package name=&quot;kernel-desktop&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003787.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4eb9aef3ba377fc75d6425f7d2f27906d1fec3ef
+</A></li>
+	<LI>Next message: <A HREF="003789.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 86d9cc0d65ffd63befa991089aba7966cad13a6f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3788">[ date ]</a>
+              <a href="thread.html#3788">[ thread ]</a>
+              <a href="subject.html#3788">[ subject ]</a>
+              <a href="author.html#3788">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

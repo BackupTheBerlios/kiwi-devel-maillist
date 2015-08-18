@@ -1,0 +1,148 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1630 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1630%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200810090935.m999ZuEt011059%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000723.html">
+   <LINK REL="Next"  HREF="000725.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1630 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1630%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200810090935.m999ZuEt011059%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1630 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Oct  9 11:35:56 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000723.html">[Kiwi-devel] r1628 - in kiwi-head: . doc doc/LaTex rpm
+</A></li>
+        <LI>Next message: <A HREF="000725.html">[Kiwi-devel] r1631 - kiwi-head
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#724">[ date ]</a>
+              <a href="thread.html#724">[ thread ]</a>
+              <a href="subject.html#724">[ subject ]</a>
+              <a href="author.html#724">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-09 11:35:51 +0200 (Thu, 09 Oct 2008)
+New Revision: 1630
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- added option to select between fdisk and parted
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-10-09 08:40:59 UTC (rev 1629)
++++ kiwi-head/kiwi.pl	2008-10-09 09:35:51 UTC (rev 1630)
+@@ -49,6 +49,7 @@
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+ our $ConfigFile    = &quot;$ENV{'HOME'}/.kiwirc&quot;;
+ our $ConfigName    = &quot;config.xml&quot;;
++our $Partitioner   = &quot;fdisk&quot;;
+ our $ConfigStatus  = 0;
+ #============================================
+ # Read $HOME/.kiwirc
+@@ -1142,6 +1143,7 @@
+ 		&quot;fs-blocksize=i&quot;        =&gt; \$FSBlockSize,
+ 		&quot;fs-journalsize=i&quot;      =&gt; \$FSJournalSize,
+ 		&quot;fs-inodesize=i&quot;        =&gt; \$FSInodeSize,
++		&quot;partitioner=s&quot;         =&gt; \$Partitioner,
+ 		&quot;help|h&quot;                =&gt; \&amp;usage,
+ 		&quot;&lt;&gt;&quot;                    =&gt; \&amp;usage
+ 	);
+@@ -1274,6 +1276,13 @@
+ 		$kiwi -&gt; failed ();
+ 		my $code = kiwiExit (1); return $code;
+ 	}
++	if (defined $Partitioner) {
++		if (($Partitioner ne &quot;fdisk&quot;) || ($Partitioner ne &quot;parted&quot;)) {
++			$kiwi -&gt; error (&quot;Invalid partitioner, expected fdisk|parted&quot;);
++			$kiwi -&gt; failed ();
++			my $code = kiwiExit (1); return $code;
++		}
++	}
+ }
+ 
+ #==========================================
+@@ -1466,6 +1475,10 @@
+ 	print &quot;    When calling kiwi in creation mode this option will set\n&quot;;
+ 	print &quot;    the inode size in bytes. This option has no effect if the\n&quot;;
+ 	print &quot;    reiser filesystem is used\n&quot;;
++	print &quot;\n&quot;;
++	print &quot;  [ --partitioner &lt;fdisk|parted ]\n&quot;;
++	print &quot;    Select the tool to create partition tables. Supported are\n&quot;;
++	print &quot;    fdisk (sfdisk) and parted. By default fdisk is used\n&quot;;
+ 	print &quot;--\n&quot;;
+ 	version();
+ }
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2008-10-09 08:40:59 UTC (rev 1629)
++++ kiwi-head/modules/KIWIBoot.pm	2008-10-09 09:35:51 UTC (rev 1630)
+@@ -341,7 +341,7 @@
+ 	$this-&gt;{isxen}  = $isxen;
+ 	$this-&gt;{xengz}  = $xengz;
+ 	$this-&gt;{arch}   = $arch;
+-	$this-&gt;{ptool}  = &quot;fdisk&quot;;
++	$this-&gt;{ptool}  = $main::Partitioner;
+ 	return $this;
+ }
+ 
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-09 08:40:59 UTC (rev 1629)
++++ kiwi-head/rpm/kiwi.changes	2008-10-09 09:35:51 UTC (rev 1630)
+@@ -3,6 +3,7 @@
+ 
+ - v2.89
+ - fixed typo in cookbook, thanks to <A HREF="nick://descriptor">nick://descriptor</A>
++- added option to select between fdisk and parted
+ - update scheme documentation according to last change
+   by Adrian
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000723.html">[Kiwi-devel] r1628 - in kiwi-head: . doc doc/LaTex rpm
+</A></li>
+	<LI>Next message: <A HREF="000725.html">[Kiwi-devel] r1631 - kiwi-head
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#724">[ date ]</a>
+              <a href="thread.html#724">[ thread ]</a>
+              <a href="subject.html#724">[ subject ]</a>
+              <a href="author.html#724">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

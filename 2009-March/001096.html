@@ -1,0 +1,1168 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 698d3f7a455ed842802d8db3cfd2e435d0f5ec6f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20698d3f7a455ed842802d8db3cfd2e435d0f5ec6f&In-Reply-To=%3C200903152237.n2FMbuA3006389%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001095.html">
+   <LINK REL="Next"  HREF="001097.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 698d3f7a455ed842802d8db3cfd2e435d0f5ec6f</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20698d3f7a455ed842802d8db3cfd2e435d0f5ec6f&In-Reply-To=%3C200903152237.n2FMbuA3006389%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 698d3f7a455ed842802d8db3cfd2e435d0f5ec6f">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Sun Mar 15 23:37:56 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001095.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 884304d74ab160f6c8bc283985233d2510099910
+</A></li>
+        <LI>Next message: <A HREF="001097.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2cc57bbe2dd959936e540b95f0d633cf8397a5ef
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1096">[ date ]</a>
+              <a href="thread.html#1096">[ thread ]</a>
+              <a href="subject.html#1096">[ subject ]</a>
+              <a href="author.html#1096">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  698d3f7a455ed842802d8db3cfd2e435d0f5ec6f (commit)
+      from  aaf6356084fc5e419a67cee92ed1ff0061523d03 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 698d3f7a455ed842802d8db3cfd2e435d0f5ec6f
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Sun Mar 15 23:37:43 2009 +0100
+
+    - v3.31
+    - fixed broken CD/DVD mount path in isoboot workflow
+    - fixed vmxboot workflow for dmsquash setup
+    - fixed oemboot workflow for dmsquash setup
+    - fixed usbboot workflow for dmsquash setup
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 71e0ab8..09f74b3 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -44,7 +44,7 @@ use KIWITest;
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.30&quot;;
++our $Version       = &quot;3.31&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 194b5ee..61ef93b 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -524,6 +524,8 @@ sub setupBootStick {
+ 	my $haveTree  = 0;
+ 	my $lvmbootMB = 0;
+ 	my $syslbootMB= 0;
++	my $dmbootMB  = 0;
++	my $dmapper   = 0;
+ 	my $bootloader= &quot;grub&quot;;
+ 	my $lvmsize;
+ 	my $syslsize;
+@@ -587,6 +589,14 @@ sub setupBootStick {
+ 	#------------------------------------------
+ 	my %type = %{$xml-&gt;getImageTypeAndAttributes()};
+ 	#==========================================
++	# check for device mapper snapshot
++	#------------------------------------------
++	if ($type{filesystem} == &quot;dmsquash&quot;) {
++		$this-&gt;{dmapper} = 1;
++		$dmapper  = 1;
++		$dmbootMB = 40;
++	}
++	#==========================================
+ 	# setup boot loader type
+ 	#------------------------------------------
+ 	if ($type{bootloader}) {
+@@ -620,6 +630,11 @@ sub setupBootStick {
+ 	if (($syszip) || ($haveSplit) || ($lvm)) {
+ 		$bootpart = &quot;1&quot;;
+ 	}
++	if (($dmapper) &amp;&amp; ($lvm)) {
++		$bootpart = &quot;1&quot;;
++	} elsif ($dmapper) {
++		$bootpart = &quot;2&quot;
++	}
+ 	$this-&gt;{bootpart} = $bootpart;
+ 	$this-&gt;{bootlabel}= $label;
+ 	#==========================================
+@@ -778,6 +793,8 @@ sub setupBootStick {
+ 							&quot;t&quot;,&quot;3&quot;,&quot;6&quot;,
+ 							&quot;a&quot;,&quot;3&quot;,&quot;w&quot;,&quot;q&quot;
+ 						);
++					} elsif ($dmapper) {
++						# TODO
+ 					} else {
+ 						@commands = (
+ 							&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$syszip.&quot;M&quot;,
+@@ -1138,6 +1155,8 @@ sub setupBootStick {
+ 			$status = qxx (&quot;mount $deviceMap{fat} $loopdir 2&gt;&amp;1&quot;);
+ 			$result = $? &gt;&gt; 8;
+ 		}
++	} elsif ($dmapper) {
++		# TODO
+ 	} elsif ($lvm) {
+ 		my %FSopts = main::checkFSOptions();
+ 		my $fsopts = $FSopts{ext2};
+@@ -1862,6 +1881,8 @@ sub setupBootDisk {
+ 	my $haveSplit = 0;
+ 	my $lvmbootMB = 0;
+ 	my $syslbootMB= 0;
++	my $dmbootMB  = 0;
++	my $dmapper   = 0;
+ 	my $bootloader= &quot;grub&quot;;
+ 	my $splitfile;
+ 	my $version;
+@@ -1934,6 +1955,14 @@ sub setupBootDisk {
+ 	#------------------------------------------
+ 	my %type = %{$xml-&gt;getImageTypeAndAttributes()};
+ 	#==========================================
++	# check for device mapper snapshot
++	#------------------------------------------
++	if ($type{filesystem} eq &quot;dmsquash&quot;) {
++		$this-&gt;{dmapper} = 1;
++		$dmapper  = 1;
++		$dmbootMB = 40;
++	}
++	#==========================================
+ 	# setup boot loader type
+ 	#------------------------------------------
+ 	if ($type{bootloader}) {
+@@ -1968,18 +1997,26 @@ sub setupBootDisk {
+ 		}
+ 	}
+ 	#==========================================
+-	# check image split portion
++	# increase vmsize if image split portion
+ 	#------------------------------------------
+-	if ($imgtype eq &quot;split&quot;) {
+-		if (-f $splitfile) {
+-			my $splitsize = -s $splitfile; $splitsize /= 1048576;
+-			$vmsize = $this-&gt;{vmmbyte} + ($splitsize * 1.3) + $lvmbootMB;
+-			$vmsize = sprintf (&quot;%.0f&quot;, $vmsize);
+-			$this-&gt;{vmmbyte} = $vmsize;
+-			$vmsize = $vmsize.&quot;M&quot;;
+-			$this-&gt;{vmsize}  = $vmsize;
+-			$haveSplit = 1;
+-		}
++	if (($imgtype eq &quot;split&quot;) &amp;&amp; (-f $splitfile)) {
++		my $splitsize = -s $splitfile; $splitsize /= 1048576;
++		$vmsize = $this-&gt;{vmmbyte} + ($splitsize * 1.3) + $lvmbootMB;
++		$vmsize = sprintf (&quot;%.0f&quot;, $vmsize);
++		$this-&gt;{vmmbyte} = $vmsize;
++		$vmsize = $vmsize.&quot;M&quot;;
++		$this-&gt;{vmsize}  = $vmsize;
++		$haveSplit = 1;
++	}
++	#==========================================
++	# increase vmsize if single boot partition
++	#------------------------------------------
++	if (($dmbootMB) || ($syslbootMB)) {
++		$vmsize = $this-&gt;{vmmbyte} + (($dmbootMB + $syslbootMB) * 1.3);
++		$vmsize = sprintf (&quot;%.0f&quot;, $vmsize);
++		$this-&gt;{vmmbyte} = $vmsize;
++		$vmsize = $vmsize.&quot;M&quot;;
++		$this-&gt;{vmsize}  = $vmsize;
+ 	}
+ 	#==========================================
+ 	# obtain filesystem type from xml data
+@@ -2014,6 +2051,11 @@ sub setupBootDisk {
+ 	if (($syszip) || ($haveSplit) || ($lvm)) {
+ 		$bootpart = &quot;1&quot;;
+ 	}
++	if (($dmapper) &amp;&amp; ($lvm)) {
++		$bootpart = &quot;1&quot;;
++	} elsif ($dmapper) {
++		$bootpart = &quot;2&quot;
++	}
+ 	$this-&gt;{bootpart} = $bootpart;
+ 	#==========================================
+ 	# Import boot loader stages
+@@ -2063,7 +2105,7 @@ sub setupBootDisk {
+ 		# create virtual disk partition
+ 		#------------------------------------------
+ 		if (! $lvm) {
+-			if (($syszip) || ($haveSplit)) {
++			if (($syszip) || ($haveSplit) || ($dmapper)) {
+ 				# xda1 ro / xda2 rw
+ 				if ($bootloader eq &quot;syslinux&quot;) {
+ 					my $syslsize = $this-&gt;{vmmbyte} - $syslbootMB - $syszip;
+@@ -2074,6 +2116,14 @@ sub setupBootDisk {
+ 						&quot;t&quot;,&quot;3&quot;,&quot;6&quot;,
+ 						&quot;a&quot;,&quot;3&quot;,&quot;w&quot;,&quot;q&quot;
+ 					);
++				} elsif ($dmapper) {
++					my $dmsize = $this-&gt;{vmmbyte} - $dmbootMB - $syszip;
++					@commands = (
++						&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$syszip.&quot;M&quot;,
++						&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;+&quot;.$dmsize.&quot;M&quot;,
++						&quot;n&quot;,&quot;p&quot;,&quot;3&quot;,&quot;.&quot;,&quot;.&quot;,
++						&quot;a&quot;,&quot;3&quot;,&quot;w&quot;,&quot;q&quot;
++					);
+ 				} else {
+ 					@commands = (
+ 						&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$syszip.&quot;M&quot;,
+@@ -2353,7 +2403,7 @@ sub setupBootDisk {
+ 	#==========================================
+ 	# create read/write filesystem if needed
+ 	#------------------------------------------
+-	if (($syszip) || ($haveSplit) || ($lvm)) {
++	if ((($syszip) || ($haveSplit) || ($lvm)) &amp;&amp; (! $dmapper)) {
+ 		$root = $deviceMap{2};
+ 		if ($lvm) {
+ 			$root = $deviceMap{0};
+@@ -2375,6 +2425,9 @@ sub setupBootDisk {
+ 			$kiwi -&gt; done();
+ 		}
+ 	}
++	#==========================================
++	# create bootloader filesystem if needed
++	#------------------------------------------
+ 	if ($bootloader eq &quot;syslinux&quot;) {
+ 		$root = $deviceMap{fat};
+ 		$status = qxx (&quot;/sbin/mkdosfs $root 2&gt;&amp;1&quot;);
+@@ -2385,6 +2438,19 @@ sub setupBootDisk {
+ 			$this -&gt; cleanLoop ();
+ 			return undef;
+ 		}
++	} elsif ($dmapper) {
++		$root = $deviceMap{dmapper};
++		my %FSopts = main::checkFSOptions();
++		my $fsopts = $FSopts{ext2};
++		$status = qxx (&quot;/sbin/mke2fs $fsopts $root 2&gt;&amp;1&quot;);
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Couldn't create filesystem: $status&quot;);
++			$kiwi -&gt; failed ();
++			$this -&gt; cleanLoop ();
++			return undef;
++		}
+ 	}
+ 	#==========================================
+ 	# Dump boot image on virtual disk
+@@ -4118,6 +4184,7 @@ sub setDefaultDeviceMap {
+ 	my $this   = shift;
+ 	my $device = shift;
+ 	my $loader = $this-&gt;{bootloader};
++	my $dmapper= $this-&gt;{dmapper};
+ 	my %result;
+ 	if (! defined $device) {
+ 		return undef;
+@@ -4133,6 +4200,8 @@ sub setDefaultDeviceMap {
+ 				last;
+ 			}
+ 		}
++	} elsif ($dmapper) {
++		$result{dmapper} = $device.&quot;3&quot;;
+ 	}
+ 	return %result;
+ }
+@@ -4148,6 +4217,7 @@ sub setLoopDeviceMap {
+ 	my $this   = shift;
+ 	my $device = shift;
+ 	my $loader = $this-&gt;{bootloader};
++	my $dmapper= $this-&gt;{dmapper};
+ 	my %result;
+ 	if (! defined $device) {
+ 		return undef;
+@@ -4164,6 +4234,8 @@ sub setLoopDeviceMap {
+ 				last;
+ 			}
+ 		}
++	} elsif ($dmapper) {
++		$result{dmapper} = &quot;/dev/mapper&quot;.$dmap.&quot;p3&quot;;
+ 	}
+ 	return %result;
+ }
+@@ -4182,6 +4254,7 @@ sub setLVMDeviceMap {
+ 	my $names  = shift;
+ 	my @names  = @{$names};
+ 	my $loader = $this-&gt;{bootloader};
++	my $dmapper= $this-&gt;{dmapper};
+ 	my %result;
+ 	if (! defined $group) {
+ 		return undef;
+@@ -4214,6 +4287,8 @@ sub setLVMDeviceMap {
+ 				}
+ 			}
+ 		}
++	} elsif ($dmapper) {
++		$result{dmapper} = $device.&quot;2&quot;;
+ 	}
+ 	return %result;
+ }
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index c52521a..4e77824 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -983,6 +983,8 @@ function setupBootLoaderGrub {
+ 	#--------------------------------------
+ 	if [ &quot;$haveLVM&quot; = &quot;yes&quot; ]; then
+ 		gnum=1
++	elif [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
++		gnum=2
+ 	elif [ ! -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ $gnum -gt 0 ]; then
+ 		rwDevice=`echo $UNIONFS_CONFIG | cut -d , -f 1`
+ 		gnum=`echo $rwDevice | sed -e &quot;s/\/dev.*\([0-9]\)/\\1/&quot;`
+@@ -1303,6 +1305,10 @@ function updateLVMBootDeviceFstab {
+ 	# ----
+ 	local prefix=$1
+ 	local sdev=$2
++	local mount=$3
++	if [ -z &quot;$mount&quot; ];then
++		mount=/lvmboot
++	fi
+ 	local diskByID=`getDiskID $sdev`
+ 	local nfstab=$prefix/etc/fstab
+ 	if [ ! -z &quot;$FSTYPE&quot; ];then
+@@ -1315,12 +1321,18 @@ function updateLVMBootDeviceFstab {
+ 	if [ -z $FSTYPE ] || [ $FSTYPE = &quot;unknown&quot; ];then
+ 		FSTYPE=&quot;auto&quot;
+ 	fi
+-	echo &quot;$diskByID /lvmboot $FSTYPE defaults 0 0&quot; &gt;&gt; $nfstab
++	echo &quot;$diskByID $mount $FSTYPE defaults 0 0&quot; &gt;&gt; $nfstab
+ 	if [ ! -z &quot;$FSTYPE_SAVE&quot; ];then
+ 		FSTYPE=$FSTYPE_SAVE
+ 	fi
+ }
+ #======================================
++# updateDMBootDeviceFstab
++#--------------------------------------
++function updateDMBootDeviceFstab {
++	updateLVMBootDeviceFstab $1 $2 &quot;/dmboot&quot;
++}
++#======================================
+ # updateSyslinuxBootDeviceFstab
+ #--------------------------------------
+ function updateSyslinuxBootDeviceFstab {
+@@ -2994,6 +3006,7 @@ function mountSystemUnified {
+ 	# check union mount method
+ 	#--------------------------------------
+ 	if [ -f $roDir/fsdata.ext3 ];then
++		export haveDMSquash=yes
+ 		mountSystemDMSquash
+ 	else
+ 		mountSystemOverlay
+@@ -3005,12 +3018,17 @@ function mountSystemUnified {
+ #--------------------------------------
+ function mountSystemDMSquash {
+ 	local roDir=/read-only
++	local snDevice=/dev/mapper/sys_snap
+ 	local rwDevice=`echo $UNIONFS_CONFIG | cut -d , -f 1`
+ 	local roDevice=`echo $UNIONFS_CONFIG | cut -d , -f 2`
+ 	local orig_loop=$(losetup -r -s -f $roDir/fsdata.ext3)
+ 	local orig_sectors=$(blockdev --getsize $orig_loop)
++	local snap_sectors=$(blockdev --getsz $rwDevice)
++	local free_sectors=0
++	local used_sectors=0
+ 	local chunk=8
+ 	local flags=p
++	local count=0
+ 	#======================================
+ 	# check read-write persistency
+ 	#--------------------------------------
+@@ -3030,7 +3048,31 @@ function mountSystemDMSquash {
+ 	#======================================
+ 	# mount snapshot as root to /mnt
+ 	#--------------------------------------
+-	mount /dev/mapper/sys_snap /mnt
++	mount $snDevice /mnt
++	#======================================
++	# check free size and snapshot size
++	#--------------------------------------
++	#snap_sectors=$(($snap_sectors * 80 / 100))
++	#for i in $(df --block-size 512 /mnt | tail -n1);do
++	#	count=`expr $count + 1`
++	#	if [ $count = 3 ];then
++	#		used_sectors=$i
++	#	fi
++	#	if [ $count = 4 ];then
++	#		free_sectors=$i
++	#	fi
++	#done
++	#if [ $snap_sectors -lt $free_sectors ];then
++	#	# /.../
++	#	# the snapshot space if less than the free space
++	#	# of the filesystem. Therefore we need to resize
++	#	# the filesystem to the free space of the snapshot
++	#	# ----
++	#	umount /mnt
++	#	snap_sectors=$(($snap_sectors + $used_sectors))
++	#	resize2fs -f -p $snDevice &quot;$snap_sectors&quot;s
++	#	mount $snDevice /mnt
++	#fi
+ }
+ 
+ #======================================
+@@ -3713,6 +3755,13 @@ function activateImage {
+ 		mkdir -p /mnt/$xiDir &amp;&amp; mount --move /$xiDir /mnt/$xiDir
+ 	fi
+ 	#======================================
++	# move live CD mount points to system
++	#--------------------------------------
++	local cdDir=/livecd
++	if [ -d $cdDir ];then
++		mkdir -p /mnt/$cdDir &amp;&amp; mount --move /$cdDir /mnt/$cdDir
++	fi
++	#======================================
+ 	# move device nodes
+ 	#--------------------------------------
+ 	Echo &quot;Activating Image: [$name]&quot;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 86b320f..0ce491f 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,13 @@
+ -------------------------------------------------------------------
++Fri Mar 13 14:46:49 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.31
++- fixed broken CD/DVD mount path in isoboot workflow
++- fixed vmxboot workflow for dmsquash setup
++- fixed oemboot workflow for dmsquash setup
++- fixed usbboot workflow for dmsquash setup
++
++-------------------------------------------------------------------
+ Thu Mar 12 17:27:20 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.30
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index cb9a07f..f113c09 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.30)
++# spec file for package kiwi (Version 3.31)
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@ Requires:       satsolver-tools
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.30
++Version:        3.31
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+diff --git a/system/boot/ix86/isoboot/suse-linuxrc b/system/boot/ix86/isoboot/suse-linuxrc
+index 9d88dcd..9cd4a7b 100755
+--- a/system/boot/ix86/isoboot/suse-linuxrc
++++ b/system/boot/ix86/isoboot/suse-linuxrc
+@@ -29,7 +29,7 @@ export ARCH=`arch`
+ #--------------------------------------
+ export systemIntegrity=clean
+ export LIVECD_CONFIG=&quot;/cdrom/config.isoclient&quot;
+-export LIVECD=&quot;livecd&quot;
++export LIVECD=&quot;/livecd&quot;
+ export LOCAL_BOOT=&quot;no&quot;
+ 
+ #======================================
+@@ -205,8 +205,10 @@ else
+ 			if [ $SWSIZE -lt 64 ];then
+ 				SWSIZE=64
+ 			fi
+-			SWFILE=/mnt/kiwiswap
+-			if ! mount -t $SWTYPE $swapDevice /mnt;then
++			SWDIR=/liveswap
++			SWFILE=$SWDIR/kiwiswap
++			mkdir -p $SWDIR
++			if ! mount -t $SWTYPE $swapDevice $SWDIR;then
+ 				Echo &quot;Failed to mount swap device on: $swapDevice&quot;
+ 				unset swapDevice
+ 			fi
+@@ -222,7 +224,7 @@ else
+ 				fi
+ 			fi
+ 			Echo &quot;Created swap file: kiwiswap [ $SWSIZE MB ]&quot;
+-			umount /mnt
++			umount $SWDIR
+ 		fi
+ 	fi
+ fi
+@@ -238,23 +240,22 @@ if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ];then
+ 	if ! mount $imageDevice /mnt &gt;/dev/null;then
+ 		systemException &quot;Failed to mount RW root filesystem&quot; &quot;reboot&quot;
+ 	fi
+-	mkdir -p /mnt/$LIVECD &amp;&amp; mount $cddev /mnt/$LIVECD &gt;/dev/null
+-
++	mkdir -p $LIVECD &amp;&amp; mount $cddev $LIVECD
+ 	#======================================
+ 	# 12.2) Create RO Link list
+ 	#--------------------------------------
+ 	cd /mnt
+ 	if [ ! -d $LIVECD/read-only-system ];then
+ 		Echo &quot;Mounting compressed read only tree...&quot;
+-		rosys=&quot;/mnt/read-only-system&quot;
+-		rosrc=&quot;/mnt/$LIVECD/$imageReadOnly&quot;
++		rosys=&quot;/read-only&quot;
++		rosrc=&quot;$LIVECD/$imageReadOnly&quot;
+ 		mkdir -p $rosys
+ 		if ! kiwiMount $rosrc $rosys &quot;-o loop&quot;;then
+ 			systemException &quot;Failed to mount RO root filesystem&quot; &quot;reboot&quot;
+ 		fi
+ 		Echo &quot;Creating live media links...&quot;
+-		for dir in bin boot lib opt sbin usr;do
+-			ln -s read-only-system/$dir $dir
++		for dir in bin boot lib lib64 opt sbin usr;do
++			ln -s read-only/$dir $dir
+ 		done
+ 	else
+ 		Echo &quot;Creating live media links...&quot;
+@@ -275,8 +276,8 @@ else
+ 	else
+ 		Echo &quot;Mounting compressed unified tree...&quot;
+ 	fi
+-	mkdir -p /mnt/$LIVECD &amp;&amp; mount $cddev /mnt/$LIVECD &gt;/dev/null
+-	if ! mountSystem /dev/loop1 /mnt/$LIVECD/$imageReadOnly;then
++	mkdir -p $LIVECD &amp;&amp; mount $cddev $LIVECD
++	if ! mountSystem /dev/loop1 $LIVECD/$imageReadOnly;then
+ 		systemException &quot;Failed to mount root filesystem&quot; &quot;reboot&quot;
+ 	fi
+ fi
+@@ -290,11 +291,10 @@ setupDefaultFstab /config
+ updateRootDeviceFstab /config $imageDevice
+ if [ ! -z &quot;$swapSpace&quot; ];then
+ 	updateSwapDeviceFstab /config $swapSpace
+-fi
+-if [ ! -z &quot;$swapDevice&quot; ];then
+-	mkdir -p /mnt/swap
+-	echo &quot;$swapDevice /swap $SWTYPE defaults 1 1&quot;   &gt;&gt; /config/etc/fstab
+-	echo &quot;/swap/kiwiswap none swap sw 0 0&quot;          &gt;&gt; /config/etc/fstab
++elif [ ! -z &quot;$swapDevice&quot; ];then
++	mkdir -p /mnt/liveswap
++	echo &quot;$swapDevice /liveswap $SWTYPE defaults 1 1&quot;  &gt;&gt; /config/etc/fstab
++	echo &quot;/liveswap/kiwiswap swap swap prio=42 0 0&quot;    &gt;&gt; /config/etc/fstab
+ fi
+ 
+ #======================================
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index 709461f..0d5801e 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -107,7 +107,7 @@ probeDevices
+ #======================================
+ # 7) Check for installation mode...
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	OEMInstall
+ fi
+ 
+@@ -177,7 +177,7 @@ fi
+ #======================================
+ # 12) Import OEM partition config
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ -f $OEM_PARTITION_CONFIG ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ] &amp;&amp; [ -f $OEM_PARTITION_CONFIG ];then
+ 	Echo &quot;Including oem partition info file&quot;
+ 	importFile &lt; $OEM_PARTITION_CONFIG
+ fi
+@@ -185,14 +185,14 @@ fi
+ #======================================
+ # 13) repartition the disk device
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	OEMRepart
+ fi
+ 
+ #======================================
+ # 14) Resize filesystem to full space
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	deviceResize=$imageRootDevice
+ 	fstypeRootFS=$FSTYPE
+ 	if [ ! -z $COMBINED_IMAGE ];then
+@@ -311,27 +311,45 @@ fi
+ #======================================
+ # 17) get installed kernels
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	kernelList /mnt
+ fi
+ 
+ #======================================
+ # 18) setup /lvmboot
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
+-	mkdir /mnt/lvmboot
+-	mount $imageBootDevice /mnt/lvmboot
+-	if [ -z $UNIONFS_CONFIG ];then
+-		cp -a /mnt/boot/* /mnt/lvmboot/boot
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ]; then
++	if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
++		#======================================
++		# LVM use second partition as boot
++		#--------------------------------------
++		mkdir /mnt/lvmboot
++		mount $imageBootDevice /mnt/lvmboot
++		if [ -z $UNIONFS_CONFIG ];then
++			cp -a /mnt/boot/* /mnt/lvmboot/boot
++		fi
++		rm -rf /mnt/boot
++		( cd /mnt &amp;&amp; ln -s lvmboot/boot boot )
++	elif [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
++		#======================================
++		# DM use third partition as boot
++		#--------------------------------------
++		mkdir /mnt/dmboot
++		bootid=2
++		export imageBootDevice=$imageDiskDevice&quot;3&quot;
++		mount $imageBootDevice /mnt/dmboot
++		if [ -z &quot;$UNIONFS_CONFIG&quot; ];then
++			cp -a /mnt/boot/* /mnt/dmboot/boot
++		fi
++		rm -rf /mnt/boot
++		( cd /mnt &amp;&amp; ln -s dmboot/boot boot )
+ 	fi
+-	rm -rf /mnt/boot
+-	( cd /mnt &amp;&amp; ln -s lvmboot/boot boot )
+ fi
+ 
+ #======================================
+ # 19) setup ird/kernel links for union
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then 
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then 
+ 	if [ &quot;$OEM_KIWI_INITRD&quot; = &quot;yes&quot; ] || isFSTypeReadOnly;then
+ 		# /.../
+ 		# we are using a special root setup with aufs. In this case
+@@ -341,6 +359,8 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 		mountCalled=no
+ 		if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
+ 			pushd /mnt/lvmboot/boot &gt;/dev/null
++		elif [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
++			pushd /mnt/dmboot/boot &gt;/dev/null
+ 		elif [ &quot;$OEM_KIWI_INITRD&quot; = &quot;yes&quot; ];then
+ 			pushd /mnt/boot &gt;/dev/null
+ 		else
+@@ -369,7 +389,7 @@ fi
+ #======================================
+ # 20) Create system dependant files
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	#======================================
+ 	# setup: /etc/fstab
+ 	#--------------------------------------
+@@ -377,6 +397,8 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	updateRootDeviceFstab /config $imageRootDevice
+ 	if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
+ 		updateLVMBootDeviceFstab /config $imageBootDevice
++	elif [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
++		updateDMBootDeviceFstab /config $imageBootDevice
+ 	fi
+ 	if partitionSize $imageSwapDevice &amp;&gt;/dev/null;then
+ 		updateSwapDeviceFstab /config $imageSwapDevice
+@@ -412,14 +434,14 @@ fi
+ #======================================
+ # 21) copy system dependant files
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	setupConfigFiles
+ fi
+ 
+ #======================================
+ # 22) copy recovery related files
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ ! -z &quot;$OEM_RECOVERY&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ] &amp;&amp; [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ 	IFS=$IFS_ORIG
+ 	Echo &quot;Setting up recovery configuration files...&quot;
+ 	mkdir -p /reco-save
+@@ -466,7 +488,7 @@ umountSystemFilesystems
+ #======================================
+ # 26) copy initrd files to image
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	importBranding
+ fi
+ cp /preinit /mnt
+diff --git a/system/boot/ix86/oemboot/suse-preinit b/system/boot/ix86/oemboot/suse-preinit
+index cb8f516..e7d538f 100755
+--- a/system/boot/ix86/oemboot/suse-preinit
++++ b/system/boot/ix86/oemboot/suse-preinit
+@@ -28,7 +28,7 @@ Echo &quot;Calling pre-init stage in system image&quot;
+ #======================================
+ # 2) check for LOCAL_BOOT
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;yes&quot; ] &amp;&amp; [ -z &quot;$KIWI_RECOVERY&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;yes&quot; ] &amp;&amp; [ -z &quot;$KIWI_RECOVERY&quot; ];then
+ 	exit 0
+ fi
+ 
+@@ -76,7 +76,7 @@ fi
+ #======================================
+ # 8) create /etc/ImagePackages
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	if [ -x /bin/rpm ];then
+ 		Echo &quot;Creating initial image package info file&quot;
+ 		rpm -qa --last &gt; /etc/ImagePackages
+diff --git a/system/boot/ix86/oemboot/suse-repart b/system/boot/ix86/oemboot/suse-repart
+index 5eb697c..2f6a68d 100755
+--- a/system/boot/ix86/oemboot/suse-repart
++++ b/system/boot/ix86/oemboot/suse-repart
+@@ -332,11 +332,15 @@ function OEMRepartOverlayed {
+ 	# calculate end block - swapspace
+ 	#--------------------------------------
+ 	swapXMBytes=$swapsize
++	bootXMBytes=0
++	if [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
++		bootXMBytes=40
++	fi
+ 	diskXMBytes=`partitionSize $imageDiskDevice`
+ 	diskXMBytes=`expr $diskXMBytes / 1024`
+ 	disk1MBytes=`partitionSize $imageDiskDevice&quot;1&quot;`
+ 	disk1MBytes=`expr $disk1MBytes / 1024`
+-	disk2MBytes=`expr $diskXMBytes - $disk1MBytes - $swapsize`
++	disk2MBytes=`expr $diskXMBytes - $disk1MBytes - $swapsize - $bootXMBytes`
+ 	if [ $disk2MBytes -lt 100 ];then
+ 		# /.../
+ 		# Very small disk which we will not re-partition
+@@ -372,22 +376,48 @@ function OEMRepartOverlayed {
+ 		input=/part.input
+ 		rm -f $input
+ 		if [ $swapsize = 0 ];then
+-			for cmd in d 2 n p 2 . . a 2 w q; do
+-				if [ $cmd = &quot;.&quot; ];then
+-					echo &gt;&gt; $input
+-					continue
+-				fi
+-				echo $cmd &gt;&gt; $input
+-			done
++			if [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
++				for cmd in d 2 n p 2 . +&quot;$disk2MBytes&quot;M n p 3 . . a 3 w q; do
++					if [ $cmd = &quot;.&quot; ];then
++						echo &gt;&gt; $input
++						continue
++					fi
++					echo $cmd &gt;&gt; $input
++				done
++			else
++				for cmd in d 2 n p 2 . . a 2 w q; do
++					if [ $cmd = &quot;.&quot; ];then
++						echo &gt;&gt; $input
++						continue
++					fi
++					echo $cmd &gt;&gt; $input
++				done
++			fi
+ 		else
+-			for cmd in d 2 n p 2 . +&quot;$disk2MBytes&quot;M n p 3 . . t 3 82 a 2 w q
+-			do
+-				if [ $cmd = &quot;.&quot; ];then
+-					echo &gt;&gt; $input
+-					continue
+-				fi
+-				echo $cmd &gt;&gt; $input
+-			done
++			if [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
++				for cmd in \
++					d 2 n p 2 . +&quot;$disk2MBytes&quot;M \
++					n p 3 . +&quot;$bootXMBytes&quot;M n p 4 . . \
++					t 4 82 a 3 w q
++				do
++					if [ $cmd = &quot;.&quot; ];then
++						echo &gt;&gt; $input
++						continue
++					fi
++					echo $cmd &gt;&gt; $input
++				done
++			else
++				for cmd in \
++					d 2 n p 2 . +&quot;$disk2MBytes&quot;M n p 3 . . \
++					t 3 82 a 2 w q
++				do
++					if [ $cmd = &quot;.&quot; ];then
++						echo &gt;&gt; $input
++						continue
++					fi
++					echo $cmd &gt;&gt; $input
++				done
++			fi
+ 		fi
+ 		Echo &quot;Repartition the disk according to current geometry&quot;
+ 		fdisk $imageDiskDevice &lt; $input 1&gt;&amp;2
+@@ -399,9 +429,19 @@ function OEMRepartOverlayed {
+ 	# Update new device names
+ 	#--------------------------------------
+ 	export imageRootDevice=$imageDiskDevice&quot;1&quot;
+-	export imageSwapDevice=$imageDiskDevice&quot;3&quot;
+ 	export imageIOWRDevice=$imageDiskDevice&quot;2&quot;
+-	bootid=1
++	if [ ! $swapsize = 0 ];then
++		if [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
++			export imageSwapDevice=$imageDiskDevice&quot;4&quot;
++		else
++			export imageSwapDevice=$imageDiskDevice&quot;3&quot;
++		fi
++	fi
++	if [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
++		bootid=2
++	else
++		bootid=1
++	fi
+ }
+ 
+ #======================================
+@@ -631,10 +671,12 @@ function OEMRepart {
+ 	#======================================
+ 	# Activate swap space
+ 	#--------------------------------------
+-	if partitionSize $imageSwapDevice &amp;&gt;/dev/null;then
+-		Echo &quot;Activating swap space on $imageSwapDevice&quot;
+-		if ! mkswap $imageSwapDevice &gt;/dev/null 2&gt;&amp;1;then
+-			systemException &quot;Failed to create swap signature&quot; &quot;reboot&quot;
++	if [ -z &quot;$DONT_PARTITION&quot; ] &amp;&amp; [ $swapsize -gt 0 ]; then
++		if partitionSize $imageSwapDevice &amp;&gt;/dev/null;then
++			Echo &quot;Activating swap space on $imageSwapDevice&quot;
++			if ! mkswap $imageSwapDevice &gt;/dev/null 2&gt;&amp;1;then
++				systemException &quot;Failed to create swap signature&quot; &quot;reboot&quot;
++			fi
+ 		fi
+ 	fi
+ 	#======================================
+diff --git a/system/boot/ix86/usbboot/suse-linuxrc b/system/boot/ix86/usbboot/suse-linuxrc
+index a890942..04ebb82 100755
+--- a/system/boot/ix86/usbboot/suse-linuxrc
++++ b/system/boot/ix86/usbboot/suse-linuxrc
+@@ -132,38 +132,80 @@ fi
+ #======================================
+ # 11) setup /lvmboot
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
+-	mkdir /mnt/lvmboot
+-	mount $stickBootDevice /mnt/lvmboot
+-	if [ -z $UNIONFS_CONFIG ];then
+-		cp -a /mnt/boot/* /mnt/lvmboot/boot
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
++	if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
++		#======================================
++		# LVM use second partition as boot
++		#--------------------------------------
++		mkdir /mnt/lvmboot
++		mount $stickBootDevice /mnt/lvmboot
++		if [ -z &quot;$UNIONFS_CONFIG&quot; ];then
++			cp -a /mnt/boot/* /mnt/lvmboot/boot
++		fi
++		rm -rf /mnt/boot
++		( cd /mnt &amp;&amp; ln -s lvmboot/boot boot )
++	elif [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
++		#======================================
++		# DM use third partition as boot
++		#--------------------------------------
++		mkdir /mnt/dmboot
++		export imageBootDevice=$stickRoot&quot;3&quot;
++		mount $imageBootDevice /mnt/dmboot
++		if [ -z &quot;$UNIONFS_CONFIG&quot; ];then
++			cp -a /mnt/boot/* /mnt/dmboot/boot
++		fi
++		rm -rf /mnt/boot
++		( cd /mnt &amp;&amp; ln -s dmboot/boot boot )
++	elif [ &quot;$loader&quot; = &quot;syslinux&quot; ];then
++		#======================================
++		# Syslinux search FAT and use as boot
++		#--------------------------------------
++		for i in 1 2 3;do
++			pType=`partitionID $stickRoot $i`
++			if [ &quot;$pType&quot; = &quot;6&quot; ];then
++				imageFatDevice=$stickRoot$i
++				break
++			fi
++		done
++		if [ -z &quot;$imageFatDevice&quot; ];then
++			systemException &quot;Can't find FAT partition&quot; &quot;reboot&quot;
++		fi
++		mkdir /mnt/syslboot
++		mount $imageFatDevice /mnt/syslboot
++		if [ -z &quot;$UNIONFS_CONFIG&quot; ];then
++			cp -a /mnt/boot/* /mnt/syslboot/boot
++		fi
++		rm -rf /mnt/boot
++		( cd /mnt &amp;&amp; ln -s syslboot/boot boot )
+ 	fi
+-	rm -rf /mnt/boot
+-	( cd /mnt &amp;&amp; ln -s lvmboot/boot boot )
+ fi
+ 
+ #======================================
+ # 12) Create system dependant files
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	setupDefaultFstab /config
+ 	updateRootDeviceFstab /config $stickDevice
+ 	if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
+ 		updateLVMBootDeviceFstab /config $stickBootDevice
++	elif [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
++		updateDMBootDeviceFstab /config $imageBootDevice
++	elif [ &quot;$loader&quot; = &quot;syslinux&quot; ];then
++		updateSyslinuxBootDeviceFstab /config $imageFatDevice
+ 	fi
+ fi
+ 
+ #======================================
+ # 13) copy system dependant files
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	setupConfigFiles
+ fi
+ 
+ #======================================
+ # 14) update system dependant files
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	setupInittab /mnt
+ fi
+ 
+diff --git a/system/boot/ix86/usbboot/suse-preinit b/system/boot/ix86/usbboot/suse-preinit
+index 0fdb02d..9ce8fc0 100755
+--- a/system/boot/ix86/usbboot/suse-preinit
++++ b/system/boot/ix86/usbboot/suse-preinit
+@@ -28,7 +28,7 @@ Echo &quot;Calling pre-init stage in system image&quot;
+ #======================================
+ # 2) check for LOCAL_BOOT
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;yes&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;yes&quot; ];then
+ 	exit 0
+ fi
+ 
+diff --git a/system/boot/ix86/vmxboot/suse-linuxrc b/system/boot/ix86/vmxboot/suse-linuxrc
+index e1870c6..79d6829 100755
+--- a/system/boot/ix86/vmxboot/suse-linuxrc
++++ b/system/boot/ix86/vmxboot/suse-linuxrc
+@@ -176,15 +176,27 @@ fi
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
+ 		#======================================
+-		# LVM use first partition as boot
++		# LVM use second partition as boot
+ 		#--------------------------------------
+ 		mkdir /mnt/lvmboot
+ 		mount $imageBootDevice /mnt/lvmboot
+-		if [ -z $UNIONFS_CONFIG ];then
++		if [ -z &quot;$UNIONFS_CONFIG&quot; ];then
+ 			cp -a /mnt/boot/* /mnt/lvmboot/boot
+ 		fi
+ 		rm -rf /mnt/boot
+ 		( cd /mnt &amp;&amp; ln -s lvmboot/boot boot )
++	elif [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
++		#======================================
++		# DM use third partition as boot
++		#--------------------------------------
++		mkdir /mnt/dmboot
++		export imageBootDevice=$imageDiskDevice&quot;3&quot;
++		mount $imageBootDevice /mnt/dmboot
++		if [ -z &quot;$UNIONFS_CONFIG&quot; ];then
++			cp -a /mnt/boot/* /mnt/dmboot/boot
++		fi
++		rm -rf /mnt/boot
++		( cd /mnt &amp;&amp; ln -s dmboot/boot boot )
+ 	elif [ &quot;$loader&quot; = &quot;syslinux&quot; ];then
+ 		#======================================
+ 		# Syslinux search FAT and use as boot
+@@ -201,7 +213,7 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 		fi
+ 		mkdir /mnt/syslboot
+ 		mount $imageFatDevice /mnt/syslboot
+-		if [ -z $UNIONFS_CONFIG ];then
++		if [ -z &quot;$UNIONFS_CONFIG&quot; ];then
+ 			cp -a /mnt/boot/* /mnt/syslboot/boot
+ 		fi
+ 		rm -rf /mnt/boot
+@@ -212,43 +224,51 @@ fi
+ #======================================
+ # 13) setup ird/kernel links for union
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; isFSTypeReadOnly;then
+-	# /.../
+-	# we are using a special root setup with aufs. In this case
+-	# we can't use the SuSE Linux initrd but must stick to the
+-	# kiwi boot system.
+-	# ----
+-	if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
+-		pushd /mnt/lvmboot/boot &gt;/dev/null
+-	else
+-		kiwiMount $imageRWDevice &quot;/mnt&quot;
+-		pushd /mnt/boot &gt;/dev/null
+-	fi
+-	IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
+-		if test -z &quot;$i&quot;;then
+-			continue
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
++	if isFSTypeReadOnly;then
++		# /.../
++		# we are using a special root setup with aufs. In this case
++		# we can't use the SuSE Linux initrd but must stick to the
++		# kiwi boot system.
++		# ----
++		mountCalled=no
++		if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
++			pushd /mnt/lvmboot/boot &gt;/dev/null
++		elif [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
++			pushd /mnt/dmboot/boot &gt;/dev/null
++		else
++			kiwiMount $imageRWDevice &quot;/mnt&quot;
++			pushd /mnt/boot &gt;/dev/null
++			mountCalled=yes
++		fi
++		IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
++			if test -z &quot;$i&quot;;then
++				continue
++			fi
++			kernel=`echo $i | cut -f1 -d:`
++			initrd=`echo $i | cut -f2 -d:`
++			rm -f $initrd &amp;&amp; ln -s initrd.vmx $initrd
++			rm -f $kernel &amp;&amp; ln -s linux.vmx  $kernel
++			break
++		done
++		IFS=$IFS_ORIG
++		popd &gt;/dev/null
++		if [ &quot;$mountCalled&quot; = &quot;yes&quot; ];then
++			umount /mnt
+ 		fi
+-		kernel=`echo $i | cut -f1 -d:`
+-		initrd=`echo $i | cut -f2 -d:`
+-		rm -f $initrd &amp;&amp; ln -s initrd.vmx $initrd
+-		rm -f $kernel &amp;&amp; ln -s linux.vmx  $kernel
+-		break
+-	done
+-	IFS=$IFS_ORIG
+-	popd &gt;/dev/null
+-	if [ ! &quot;$haveLVM&quot; = &quot;yes&quot; ];then
+-		umount /mnt
+ 	fi
+ fi
+ 
+ #======================================
+ # 14) Create system dependant files
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	setupDefaultFstab /config
+ 	updateRootDeviceFstab /config $imageRootDevice
+ 	if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
+ 		updateLVMBootDeviceFstab /config $imageBootDevice
++	elif [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ];then
++		updateDMBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$loader&quot; = &quot;syslinux&quot; ];then
+ 		updateSyslinuxBootDeviceFstab /config $imageFatDevice
+ 	fi
+@@ -258,18 +278,21 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	if [ ! -z &quot;$COMBINED_IMAGE&quot; ]; then
+ 		export KIWI_INITRD_PARAMS=&quot;COMBINED_IMAGE=local&quot;
+ 	fi
+-	if [ -z &quot;$UNIONFS_CONFIG&quot; ] &amp;&amp; [ -z &quot;$COMBINED_IMAGE&quot; ]; then
+-		setupBootLoader /mnt /config 0 $imageRootDevice VMX
+-	else
+-		setupBootLoader /mnt /config 1 $imageRootDevice VMX
++	bootid=0
++	if [ ! -z &quot;$UNIONFS_CONFIG&quot; ] || [ ! -z &quot;$COMBINED_IMAGE&quot; ]; then
++		bootid=1
++	fi
++	if [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$haveDMSquash&quot; = &quot;yes&quot; ]; then
++		bootid=$(($bootid + 1))
+ 	fi
++	setupBootLoader /mnt /config $bootid $imageRootDevice VMX
+ 	setupKernelModules /config
+ fi
+ 
+ #======================================
+ # 15) copy system dependant files
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	setupConfigFiles
+ fi
+ 
+@@ -291,7 +314,7 @@ umountSystemFilesystems
+ #======================================
+ # 19) copy initrd files to image
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	importBranding
+ fi
+ cp /preinit /mnt
+diff --git a/system/boot/ix86/vmxboot/suse-preinit b/system/boot/ix86/vmxboot/suse-preinit
+index badadc7..998b417 100755
+--- a/system/boot/ix86/vmxboot/suse-preinit
++++ b/system/boot/ix86/vmxboot/suse-preinit
+@@ -28,7 +28,7 @@ Echo &quot;Calling pre-init stage in system image&quot;
+ #======================================
+ # 2) check for LOCAL_BOOT
+ #--------------------------------------
+-if [ $LOCAL_BOOT = &quot;yes&quot; ];then
++if [ &quot;$LOCAL_BOOT&quot; = &quot;yes&quot; ];then
+ 	exit 0
+ fi
+ 
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001095.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 884304d74ab160f6c8bc283985233d2510099910
+</A></li>
+	<LI>Next message: <A HREF="001097.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2cc57bbe2dd959936e540b95f0d633cf8397a5ef
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1096">[ date ]</a>
+              <a href="thread.html#1096">[ thread ]</a>
+              <a href="subject.html#1096">[ subject ]</a>
+              <a href="author.html#1096">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

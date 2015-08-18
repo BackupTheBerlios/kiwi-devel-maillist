@@ -1,0 +1,351 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1960 - in kiwi-head: . modules rpm	system/boot/ix86/isoboot system/boot/ix86/oemboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1960%20-%20in%20kiwi-head%3A%20.%20modules%20rpm%0A%09system/boot/ix86/isoboot%20system/boot/ix86/oemboot&In-Reply-To=%3C200903061139.n26Bdgw9023771%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001081.html">
+   <LINK REL="Next"  HREF="001083.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1960 - in kiwi-head: . modules rpm	system/boot/ix86/isoboot system/boot/ix86/oemboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1960%20-%20in%20kiwi-head%3A%20.%20modules%20rpm%0A%09system/boot/ix86/isoboot%20system/boot/ix86/oemboot&In-Reply-To=%3C200903061139.n26Bdgw9023771%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1960 - in kiwi-head: . modules rpm	system/boot/ix86/isoboot system/boot/ix86/oemboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Mar  6 12:39:42 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001081.html">[Kiwi-devel] r1959 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel:	modules rpm system/boot/ix86/isoboot system/boot/ix86/oemboot
+</A></li>
+        <LI>Next message: <A HREF="001083.html">[Kiwi-devel] r1961 - in kiwi-head: rpm tools
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1082">[ date ]</a>
+              <a href="thread.html#1082">[ thread ]</a>
+              <a href="subject.html#1082">[ subject ]</a>
+              <a href="author.html#1082">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-03-06 12:39:32 +0100 (Fri, 06 Mar 2009)
+New Revision: 1960
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/modules/KIWIConfig.sh
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+   kiwi-head/system/boot/ix86/isoboot/suse-linuxrc
+   kiwi-head/system/boot/ix86/oemboot/suse-dump
+Log:
+
+- v3.26
+- added support for progress information when oem
+  install mode is active, SLE11 HP preload (bnc #479844)
+- added suse-SLE11-JeOS template
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2009-03-06 11:35:41 UTC (rev 1959)
++++ kiwi-head/kiwi.pl	2009-03-06 11:39:32 UTC (rev 1960)
+@@ -44,7 +44,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.25&quot;;
++our $Version       = &quot;3.26&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2009-03-06 11:35:41 UTC (rev 1959)
++++ kiwi-head/modules/KIWIBoot.pm	2009-03-06 11:39:32 UTC (rev 1960)
+@@ -1610,7 +1610,7 @@
+ 	$irdsize= ($irdsize / 1e6) + 10;
+ 	$irdsize= sprintf (&quot;%.0f&quot;, $irdsize);
+ 	$vmsize = -s $system;
+-	$vmsize = ($vmsize / 1e6) * 1.1 + $irdsize;
++	$vmsize = ($vmsize / 1e6) * 1.2 + $irdsize;
+ 	$vmsize = sprintf (&quot;%.0f&quot;, $vmsize);
+ 	$vmsize = $vmsize.&quot;M&quot;;
+ 	#==========================================
+
+Modified: kiwi-head/modules/KIWIConfig.sh
+===================================================================
+--- kiwi-head/modules/KIWIConfig.sh	2009-03-06 11:35:41 UTC (rev 1959)
++++ kiwi-head/modules/KIWIConfig.sh	2009-03-06 11:39:32 UTC (rev 1960)
+@@ -941,7 +941,7 @@
+ 		fuser udevadm blogd showconsole killproc curl tar cromfs-driver
+ 		cvcromfs ldd driveready checkmedia splashy bzip2 hexdump
+ 		pvchange pvresize pvscan vgscan vgchange vgextend vgdisplay
+-		lvchange lvresize lvextend lvcreate grub
++		lvchange lvresize lvextend lvcreate grub dcounter tty
+ 	&quot;
+ 	tools=&quot;$tools $@&quot;
+ 	for path in /sbin /usr/sbin /usr/bin /bin;do
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2009-03-06 11:35:41 UTC (rev 1959)
++++ kiwi-head/modules/KIWILinuxRC.sh	2009-03-06 11:39:32 UTC (rev 1960)
+@@ -281,6 +281,20 @@
+ 	fi
+ }
+ #======================================
++# errorLogStop
++#--------------------------------------
++function errorLogStop {
++	set +x
++	exec 2&gt;$ELOG_EXCEPTION
++}
++#======================================
++# errorLogContinue
++#--------------------------------------
++function errorLogContinue {
++	exec 2&gt;&gt;$ELOG_FILE
++	set -x
++}
++#======================================
+ # errorLogStart
+ #--------------------------------------
+ function errorLogStart {
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2009-03-06 11:35:41 UTC (rev 1959)
++++ kiwi-head/rpm/kiwi.changes	2009-03-06 11:39:32 UTC (rev 1960)
+@@ -1,4 +1,12 @@
+ -------------------------------------------------------------------
++Fri Mar  6 12:38:16 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.26
++- added support for progress information when oem
++  install mode is active, SLE11 HP preload (bnc #479844)
++- added suse-SLE11-JeOS template
++
++-------------------------------------------------------------------
+ Thu Mar  5 12:02:09 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarringer at suse.de</A>
+ 
+ - Fixed email address in imageburner subpackage in the spec file
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2009-03-06 11:35:41 UTC (rev 1959)
++++ kiwi-head/rpm/kiwi.spec	2009-03-06 11:39:32 UTC (rev 1960)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.25)
++# spec file for package kiwi (Version 3.26)
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.25
++Version:        3.26
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+@@ -418,6 +418,7 @@
+ %dir %{_datadir}/kiwi
+ %dir %{_datadir}/kiwi/image
+ %exclude %{_datadir}/kiwi/image/suse-11.1-JeOS
++%exclude %{_datadir}/kiwi/image/suse-SLE11-JeOS
+ %{_datadir}/kiwi/.revision
+ %{_datadir}/kiwi/modules
+ %{_datadir}/kiwi/repo
+@@ -554,5 +555,7 @@
+ %files -n kiwi-templates
+ %defattr(-, root, root)
+ %dir %{_datadir}/kiwi/image/suse-11.1-JeOS
++%dir %{_datadir}/kiwi/image/suse-SLE11-JeOS
+ %{_datadir}/kiwi/image/suse-11.1-JeOS
++%{_datadir}/kiwi/image/suse-SLE11-JeOS
+ %endif
+
+Modified: kiwi-head/system/boot/ix86/isoboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/isoboot/suse-linuxrc	2009-03-06 11:35:41 UTC (rev 1959)
++++ kiwi-head/system/boot/ix86/isoboot/suse-linuxrc	2009-03-06 11:39:32 UTC (rev 1960)
+@@ -120,8 +120,19 @@
+ 				&quot;Not enough RAM available for this image&quot; \
+ 			&quot;reboot&quot;
+ 		fi
+-		Echo &quot;Loading $imageName [$imageDevice]...&quot;
+-		gzip -cd $gzippName | dd of=$imageDevice
++		needBytes=`gzip -l $gzippName|tail -n1|sed -e &quot;s@ \+@:@g&quot;|cut -f3 -d:`
++		needMByte=`expr $needBytes / 1024 / 1024`
++		if [ -x /usr/bin/dcounter ];then
++			errorLogStop
++			Echo -n &quot;Loading $imageName [$imageDevice] &quot;
++			gzip -cd $gzippName |\
++				dcounter -s $needMByte | dd of=$imageDevice &amp;&gt;/dev/null
++			errorLogContinue
++			echo
++		else
++			Echo &quot;Loading $imageName [$imageDevice]...&quot;
++			gzip -cd $gzippName | dd of=$imageDevice
++		fi
+ 		dd if=$imageDevice bs=1024 |\
+ 			head --bytes=$((blocks * blocksize)) |\
+ 			md5sum - &gt; /etc/ireal.md5
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-dump
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-dump	2009-03-06 11:35:41 UTC (rev 1959)
++++ kiwi-head/system/boot/ix86/oemboot/suse-dump	2009-03-06 11:39:32 UTC (rev 1960)
+@@ -128,74 +128,83 @@
+ 	done
+ 	if [ &quot;$imageZipped&quot; = &quot;compressed&quot; ];then
+ 		imageName=&quot;/cdrom/$imageName.gz&quot;
+-		imageMD5=&quot;/cdrom/$imageName.gz.md5&quot;
++		imageMD5=&quot;$imageName.md5&quot;
+ 	else
+ 		imageName=&quot;/cdrom/$imageName&quot;
+-		imageMD5=&quot;/cdrom/$imageName.md5&quot;
++		imageMD5=&quot;$imageName.md5&quot;
+ 	fi
+ 	IFS=&quot; &quot;
+ 	#======================================
++	# Check MBR ID's...
++	#--------------------------------------
++	mbrI=&quot;cat $imageName&quot;
++	if [ &quot;$imageZipped&quot; = &quot;compressed&quot; ];then
++		mbrI=&quot;gzip -cd $imageName&quot;
++	fi
++	mbrM=`dd if=$instDisk  bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
++	mbrI=`$mbrI | dd bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
++	if [ $mbrM = $mbrI ];then
++		systemException \
++			&quot;Base system already installed&quot; \
++		&quot;reboot&quot;
++	fi	
++	#======================================
++	# read MD5 information...
++	#--------------------------------------
++	read sum1 blocks blocksize zblocks zblocksize &lt; $imageMD5
++	#======================================
+ 	# Get available disk space
+ 	#--------------------------------------
+ 	haveKByte=`partitionSize $imageDevice`
+ 	#======================================
+-	# Get required disk space
++	# Get required disk space, setup I/O
+ 	#--------------------------------------
+ 	needBytes=`du --bytes $imageName | cut -f1`
+ 	needKByte=`expr $needBytes / 1024`
++	needMByte=`expr $needKByte / 1024`
+ 	if test &quot;$imageZipped&quot; = &quot;compressed&quot;; then
+-		Echo &quot;Compressed image found, creating FIFO pipe&quot;
+-		test ! -p /dev/compressed_image &amp;&amp; mkfifo /dev/compressed_image
+-		cat /dev/compressed_image | gzip -d &gt; $imageDevice 2&gt;/dev/null &amp;
+-		imageDevice_orig=$imageDevice
+-		imageDevice=&quot;/dev/compressed_image&quot;
+ 		needBytes=`gzip -l $imageName|tail -n1|sed -e &quot;s@ \+@:@g&quot;|cut -f3 -d:`
+ 		needKByte=`expr $needBytes / 1024`
++		needMByte=`expr $needKByte / 1024`
+ 	fi
+ 	#======================================
+-	# Check MBR ID's...
+-	#--------------------------------------
+-	mbrM=`dd if=$instDisk  bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
+-	mbrI=`dd if=$imageName bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
+-	if [ $mbrM = $mbrI ];then
+-		systemException \
+-			&quot;Base system already installed&quot; \
+-		&quot;reboot&quot;
+-	fi	
+-	#======================================
+ 	# Check disk space...
+ 	#--------------------------------------
+ 	haveMByte=`expr $haveKByte / 1024`
+ 	needMByte=`expr $needKByte / 1024`
+ 	Echo &quot;Have size: $imageDevice -&gt; $haveMByte MB&quot;
+-	Echo &quot;Need size: $imageName -&gt; $needMByte MB [ $imageZipped ]&quot;
++	Echo &quot;Need size: $imageName -&gt; $needMByte MB&quot;
+ 	if [ $needMByte -gt $haveMByte ];then
+ 		systemException \
+ 			&quot;Not enough space available for this image&quot; \
+ 		&quot;reboot&quot;
+ 	fi
+ 	#======================================
+-	# read MD5 information...
+-	#--------------------------------------
+-	read sum1 blocks blocksize zblocks zblocksize &lt; $imageMD5
+-	#======================================
+ 	# Dump image on disk
+ 	#--------------------------------------
+-	Echo &quot;Loading $imageName [$imageDevice]...&quot;
+-	if ! dd bs=32k if=$imageName of=$imageDevice &gt;/dev/null 2&gt;&amp;1; then
++	dump=&quot;cat $imageName&quot;
++	if test &quot;$imageZipped&quot; = &quot;compressed&quot;; then
++		dump=&quot;gzip -cd $imageName&quot;
++	fi
++	if [ -x /usr/bin/dcounter ];then
++		errorLogStop
++		dump=&quot;$dump | dcounter -s $needMByte&quot;
++	fi
++	Echo -n &quot;Loading $imageName [$imageDevice] &quot;
++	if ! eval $dump | dd bs=32k of=$imageDevice &amp;&gt;/dev/null; then
+ 		systemException \
+ 			&quot;Failed to install image: $imageName -&gt; $imageDevice&quot; \
+ 		&quot;reboot&quot;
+ 	fi
+-	if [ &quot;$imageZipped&quot; = &quot;compressed&quot; ]; then
+-		imageDevice=$imageDevice_orig
+-		rm -f /dev/compressed_image
++	echo
++	if [ -x /usr/bin/dcounter ];then
++		errorLogContinue
+ 	fi
+ 	#======================================
+ 	# Check the md5sum of the raw disk
+ 	#--------------------------------------
+ 	Echo &quot;Download complete, checking data...&quot;
+-	dd if=$imageDevice bs=1024 2&gt;/dev/null |\
++	dd if=$imageDevice bs=1024 |\
+ 		head --bytes=$((blocks * blocksize)) |\
+ 		md5sum - &gt; /etc/ireal.md5
+ 	read sum2 dumy &lt; /etc/ireal.md5
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001081.html">[Kiwi-devel] r1959 - in kiwi-branches/KIWI-301-SuSE-11-1-Devel:	modules rpm system/boot/ix86/isoboot system/boot/ix86/oemboot
+</A></li>
+	<LI>Next message: <A HREF="001083.html">[Kiwi-devel] r1961 - in kiwi-head: rpm tools
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1082">[ date ]</a>
+              <a href="thread.html#1082">[ thread ]</a>
+              <a href="subject.html#1082">[ subject ]</a>
+              <a href="author.html#1082">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

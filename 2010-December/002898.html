@@ -1,0 +1,174 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bb6d909aff8c0dc81ba44846270363ab3fe447b1
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20bb6d909aff8c0dc81ba44846270363ab3fe447b1&In-Reply-To=%3C20101207125535.E980A480CA5%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002896.html">
+   <LINK REL="Next"  HREF="002900.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bb6d909aff8c0dc81ba44846270363ab3fe447b1</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20bb6d909aff8c0dc81ba44846270363ab3fe447b1&In-Reply-To=%3C20101207125535.E980A480CA5%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bb6d909aff8c0dc81ba44846270363ab3fe447b1">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Dec  7 13:55:35 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002896.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. b03cc462ee9278142adecd9a2a5d1dc37df7978a
+</A></li>
+        <LI>Next message: <A HREF="002900.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bf0411320d1b25fbef523d95fbd9c54aef04f28d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2898">[ date ]</a>
+              <a href="thread.html#2898">[ thread ]</a>
+              <a href="subject.html#2898">[ subject ]</a>
+              <a href="author.html#2898">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  bb6d909aff8c0dc81ba44846270363ab3fe447b1 (commit)
+      from  ece17bc2fc07b51a4f9e70b40452e675172a3045 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit bb6d909aff8c0dc81ba44846270363ab3fe447b1
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Dec 7 13:53:32 2010 +0100
+
+    - added updateTypeList() function in KIWIXML which is required
+      if an accessor function changes the XML tree the internal data
+      structures needs to be updated too
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 2b1b876..20bfe2f 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -174,16 +174,11 @@ sub new {
+ 	#==========================================
+ 	# Read and create profile hash
+ 	#------------------------------------------
+-	my $profileHash = $this -&gt; __populateProfiles();
++	$this-&gt;{profileHash} = $this -&gt; __populateProfiles();
+ 	#==========================================
+ 	# Read and create type hash
+ 	#------------------------------------------
+-	my $typeList = $this -&gt; __populateTypeInfo();
+-	#==========================================
+-	# Store object data
+-	#------------------------------------------
+-	$this-&gt;{profileHash} = $profileHash;
+-	$this-&gt;{typeList}    = $typeList;
++	$this-&gt;{typeList} = $this -&gt; __populateTypeInfo();
+ 	#==========================================
+ 	# Update XML data from changeset if exists
+ 	#------------------------------------------
+@@ -242,6 +237,20 @@ sub new {
+ }
+ 
+ #==========================================
++# updateTypeList
++#------------------------------------------
++sub updateTypeList {
++	# ...
++	# if the XML tree has changed because of a function
++	# changing the typenode, it's required to update the
++	# internal typeInfo hash too
++	# ---
++	my $this = shift;
++	$this-&gt;{typeList} = $this -&gt; __populateTypeInfo();
++	$this -&gt; __populateProfiledTypeInfo();
++}
++
++#==========================================
+ # updateXML
+ #------------------------------------------
+ sub updateXML {
+@@ -911,6 +920,7 @@ sub setImageType {
+ 		$tnode-&gt; setAttribute (&quot;image&quot;,&quot;$val&quot;);
+ 	}
+ 	$this-&gt;{imageType} = $val;
++	$this -&gt; updateTypeList();
+ 	$this -&gt; updateXML();
+ 	return $this;
+ }
+@@ -4275,6 +4285,7 @@ sub __setOEMOptionsElement {
+ 		$this-&gt;{typeNode} -&gt; appendChild ($opts);
+ 	}
+ 	$kiwi -&gt; done ();
++	$this -&gt; updateTypeList();
+ 	$this -&gt; updateXML();
+ 	return $this;
+ }
+@@ -4322,6 +4333,7 @@ sub __setSystemDiskElement {
+ 		$this-&gt;{typeNode} -&gt; appendChild ($disk);
+ 	}
+ 	$kiwi -&gt; done ();
++	$this -&gt; updateTypeList();
+ 	$this -&gt; updateXML();
+ 	return $this;
+ }
+@@ -4362,6 +4374,7 @@ sub __setMachineAttribute {
+ 		$this-&gt;{typeNode} -&gt; appendChild ($opts);
+ 	}
+ 	$kiwi -&gt; done ();
++	$this -&gt; updateTypeList();
+ 	$this -&gt; updateXML();
+ 	return $this;
+ }
+@@ -4387,6 +4400,7 @@ sub __setTypeAttribute {
+ 		$tnode-&gt; setAttribute (&quot;$attr&quot;,&quot;true&quot;);
+ 	}
+ 	$kiwi -&gt; done ();
++	$this -&gt; updateTypeList();
+ 	$this -&gt; updateXML();
+ 	return $this;
+ }
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002896.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. b03cc462ee9278142adecd9a2a5d1dc37df7978a
+</A></li>
+	<LI>Next message: <A HREF="002900.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bf0411320d1b25fbef523d95fbd9c54aef04f28d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2898">[ date ]</a>
+              <a href="thread.html#2898">[ thread ]</a>
+              <a href="subject.html#2898">[ subject ]</a>
+              <a href="author.html#2898">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

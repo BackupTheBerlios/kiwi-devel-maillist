@@ -1,0 +1,849 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. cdcf352b01b1507147f1ab18f5f68775a4db9e37
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20cdcf352b01b1507147f1ab18f5f68775a4db9e37&In-Reply-To=%3C201002181938.o1IJcaDa025355%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001920.html">
+   <LINK REL="Next"  HREF="001922.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. cdcf352b01b1507147f1ab18f5f68775a4db9e37</H1>
+    <B>mbarringer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20cdcf352b01b1507147f1ab18f5f68775a4db9e37&In-Reply-To=%3C201002181938.o1IJcaDa025355%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. cdcf352b01b1507147f1ab18f5f68775a4db9e37">mbarringer at mail.berlios.de
+       </A><BR>
+    <I>Thu Feb 18 20:38:36 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001920.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c58b92d849eb8b253af8e410b22f8ca6d0f43133
+</A></li>
+        <LI>Next message: <A HREF="001922.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7847941a36a21219973f9e1cca2f4b62ff78c5a2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1921">[ date ]</a>
+              <a href="thread.html#1921">[ thread ]</a>
+              <a href="subject.html#1921">[ subject ]</a>
+              <a href="author.html#1921">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  cdcf352b01b1507147f1ab18f5f68775a4db9e37 (commit)
+      from  c58b92d849eb8b253af8e410b22f8ca6d0f43133 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit cdcf352b01b1507147f1ab18f5f68775a4db9e37
+Author: Matt Barringer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarringer at suse.de</A>&gt;
+Date:   Thu Feb 18 20:36:53 2010 +0100
+
+    Cleaning the imagewriter up and also adding an &quot;about&quot; box
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/tools/burner/MainWindow.cpp b/tools/burner/MainWindow.cpp
+index 9e5f2a2..bf2c111 100644
+--- a/tools/burner/MainWindow.cpp
++++ b/tools/burner/MainWindow.cpp
+@@ -155,6 +155,10 @@ MainWindow::useNewUI()
+     bottomLayout-&gt;addLayout(pathSizeLayout, 0, 0);
+ 
+     mainLayout = new QVBoxLayout;
++    AboutLabel *aboutLabel = new AboutLabel();
++    aboutLabel-&gt;setText(&quot;&lt;u&gt;About&lt;/u&gt;&quot;);
++
++    mainLayout-&gt;addWidget(aboutLabel,0,Qt::AlignTop|Qt::AlignLeft);
+     mainLayout-&gt;addLayout(logoLayout, Qt::AlignHCenter);
+ 
+     QGridLayout *comboLayout = new QGridLayout;
+@@ -259,31 +263,39 @@ MainWindow::selectImage()
+         setFile(fileName);
+         setSizeLabel(fileName);
+         if (fileName.endsWith(&quot;.iso&quot;))
+-        {
+-            // For now we only support writing hybrid ISOs, so we need to check if there's an MBR signature.
+-            // It'll be in the last two bytes of the boot record.
+-            QByteArray mbr;
+-            QFile mbrTest(fileName);
+-            mbrTest.open(QIODevice::ReadOnly);
+-            mbrTest.seek(510);
+-            mbr = mbrTest.read(2);
+-            mbrTest.close();
+-            // I think it's safe to assume that we'll only be encountering little-endian boot images for a while.
+-            // If that changes, we'll need to test for 0xAA55
+-            if (mbr.toHex() != &quot;55aa&quot;)
+-            {
+-                setFile(&quot;&quot;);
+-                setSizeLabel(&quot;&quot;);
+-                QMessageBox msgBox;
+-                msgBox.setText(tr(&quot;Sorry, I can't write this ISO.  You need to use another program to write it to a DVD.&quot;));
+-                msgBox.exec();
+-            }
+-        }
++            checkIso(fileName);
+     }
+ 
+     return;
+ }
+ 
++bool
++MainWindow::checkIso(const QString &amp;fileName)
++{
++    // For now we only support writing hybrid ISOs, so we need to check if there's an MBR signature.
++    // It'll be in the last two bytes of the boot record.
++    QByteArray mbr;
++    QFile mbrTest(fileName);
++    mbrTest.open(QIODevice::ReadOnly);
++    mbrTest.seek(510);
++    mbr = mbrTest.read(2);
++    mbrTest.close();
++    // I think it's safe to assume that we'll only be encountering little-endian boot images for a while.
++    // If that changes, we'll need to test for 0xAA55
++    if (mbr.toHex() != &quot;55aa&quot;)
++    {
++        setFile(&quot;&quot;);
++        setSizeLabel(&quot;&quot;);
++        directive-&gt;setText(tr(&quot;Drag disk image here\n or click to select.&quot;));
++        QMessageBox msgBox;
++        msgBox.setText(tr(&quot;Sorry, I can't write this ISO.  You need to use another program to write it to a DVD.&quot;));
++        msgBox.exec();
++        return(false);
++    }
++
++    return(true);
++}
++
+ void
+ MainWindow::deviceInserted(QDBusMessage message)
+ {
+@@ -323,7 +335,7 @@ MainWindow::deviceRemoved(QDBusMessage message)
+ }
+ 
+ void
+-MainWindow::setSizeLabel(QString fileName)
++MainWindow::setSizeLabel(const QString &amp;fileName)
+ {
+     if (fileName != &quot;&quot;)
+     {
+@@ -349,8 +361,8 @@ void MainWindow::dragEnterEvent(QDragEnterEvent *event)
+     qDebug() &lt;&lt; event-&gt;mimeData()-&gt;urls();
+ #endif
+     if (event-&gt;mimeData()-&gt;hasFormat(&quot;text/uri-list&quot;))
+-        event-&gt;acceptProposedAction();
+-
++        if ((event-&gt;mimeData()-&gt;text().endsWith(&quot;iso&quot;)) || (event-&gt;mimeData()-&gt;text().endsWith(&quot;raw&quot;)))
++            event-&gt;acceptProposedAction();
+ }
+ 
+ void MainWindow::dropEvent(QDropEvent *event)
+@@ -358,9 +370,12 @@ void MainWindow::dropEvent(QDropEvent *event)
+     QString file = event-&gt;mimeData()-&gt;urls()[0].toLocalFile();
+     setFile(file);
+     setSizeLabel(file);
++    if (file.endsWith(&quot;iso&quot;))
++        checkIso(file);
++
+ }
+ 
+-void MainWindow::setFile(QString newFile)
++void MainWindow::setFile(const QString &amp;newFile)
+ {
+     if (newFile != &quot;&quot;)
+     {
+@@ -479,3 +494,32 @@ void CustomLabel::mousePressEvent(QMouseEvent *event)
+         window-&gt;selectImage();
+     }
+ }
++
++AboutLabel::AboutLabel(QWidget *parent)
++ : QLabel(parent)
++{
++    setStyleSheet(&quot;color: grey&quot;);
++}
++
++void
++AboutLabel::mousePressEvent(QMouseEvent *event)
++{
++    QMessageBox about(QMessageBox::Information, &quot;About SUSE Studio Imagewriter&quot;,
++                   &quot;The &lt;b&gt;SUSE Studio Imagewriter&lt;/b&gt; is (C) 2010 Novell, Inc.&lt;br&gt;&lt;br&gt;\
++                   It is cheerfully released under the GPL v2 license.  You can find the source code in the Kiwi project: <A HREF="http://kiwi.berlios.de.&lt;br">http://kiwi.berlios.de.&lt;br</A>&gt;&lt;br&gt;\
++                   It was written by Matt Barringer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarringer at suse.de</A>&gt;.  Please send complaints directly to him.&quot;);
++    about.exec();
++}
++
++void
++AboutLabel::enterEvent(QEvent *event)
++{
++    setCursor(Qt::PointingHandCursor);
++}
++
++void
++AboutLabel::leaveEvent(QEvent *event)
++{
++    setCursor(Qt::ArrowCursor);
++}
++
+diff --git a/tools/burner/MainWindow.h b/tools/burner/MainWindow.h
+index 8b39300..04dad69 100644
+--- a/tools/burner/MainWindow.h
++++ b/tools/burner/MainWindow.h
+@@ -54,14 +54,15 @@ private slots:
+ protected:
+     void dragEnterEvent(QDragEnterEvent *event);
+     void dropEvent(QDropEvent *event);
+-    void setSizeLabel(QString fileName);
++    void setSizeLabel(const QString &amp;fileName);
+ 
+ private:
+-    void setFile(QString newFile);
+-    void divineMeaning(QString path);
++    void setFile(const QString &amp;newFile);
++    void divineMeaning(const QString &amp;path);
+     void divineFurther(DeviceItem *item);
+-    bool isMounted(QString path);
+-    void writeData(QString path);
++    bool isMounted(const QString &amp;path);
++    void writeData(const QString &amp;path);
++    bool checkIso(const QString &amp;fileName);
+     void centerWindow();
+     void useNewUI();
+     void useOldUI();
+@@ -91,4 +92,15 @@ protected:
+     void mousePressEvent(QMouseEvent *event);
+ };
+ 
++// About box &quot;link&quot;
++class AboutLabel : public QLabel
++{
++public:
++    AboutLabel(QWidget *parent = 0);
++
++protected:
++    void mousePressEvent(QMouseEvent *event);
++    void enterEvent(QEvent *event);
++    void leaveEvent(QEvent *event);
++};
+ #endif
+diff --git a/tools/burner/Platform.cpp b/tools/burner/Platform.cpp
+index faa4984..568e74e 100644
+--- a/tools/burner/Platform.cpp
++++ b/tools/burner/Platform.cpp
+@@ -151,12 +151,14 @@ Platform::getNewDevice(QString devicePath, LibHalContext *context)
+         QString newDisplayString = QString(&quot;%1 %2 - %3 (%4 MB)&quot;).arg(devItem-&gt;getVendorString()).arg(devItem-&gt;getModelString()).arg(devItem-&gt;getPath()).arg(devItem-&gt;getSize() / 1048576);
+         devItem-&gt;setDisplayString(newDisplayString);
+ 
++    // TODO replace the kiosk hack with the unsafe mode
+     #ifdef KIOSKHACK
+         // VERY VERY VERY VERY VERY  ugly hack for kiosk: ignore hard disks bigger than 100GB
+         if((devItem-&gt;getSize() / 1048576) &lt; 200000)
+     #endif
+ 
+         // If a device is 0 megs we might as well just not list it
++        // TODO: Perhaps make kiosk mode the default in order to not list external hard drives &gt; 100GB?
+         if ((devItem-&gt;getSize() / 1048576) &gt; 0)
+             itemList &lt;&lt; devItem;
+ 
+diff --git a/tools/burner/PlatformLinux.cpp b/tools/burner/PlatformLinux.cpp
+deleted file mode 100644
+index 05cd5c3..0000000
+--- a/tools/burner/PlatformLinux.cpp
++++ /dev/null
+@@ -1,363 +0,0 @@
+-/*
+- *  Copyright (c) 2009 Novell, Inc.
+- *  All Rights Reserved.
+- *  
+- *  This program is free software; you can redistribute it and/or
+- *  modify it under the terms of version 2 of the GNU General Public License as
+- *  published by the Free Software Foundation.
+- *  
+- *  This program is distributed in the hope that it will be useful,
+- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.   See the
+- *  GNU General Public License for more details.
+- *  
+- *  You should have received a copy of the GNU General Public License
+- *  along with this program; if not, contact Novell, Inc.
+- *  
+- *  To contact Novell about this file by physical or electronic mail,
+- *  you may find current contact information at www.novell.com
+- *  
+- *  Author: Matt Barringer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarringer at suse.de</A>&gt;
+- *  
+- */
+-
+-#include &lt;sys/mount.h&gt;
+-#include &lt;sys/types.h&gt;
+-#include &lt;sys/stat.h&gt;
+-#include &lt;fcntl.h&gt;
+-#include &lt;errno.h&gt;
+-
+-#include &lt;QtCore&gt;
+-#include &lt;QtGui&gt;
+-#include &lt;QDir&gt;
+-#include &lt;QProgressDialog&gt;
+-#include &lt;QtDBus&gt;
+-
+-#include &quot;DeviceItem.h&quot;
+-#include &quot;PlatformLinux.h&quot;
+-
+-#define BLOCKSIZE 1048576
+-#define _GNU_SOURCE
+-
+-// Figure out which devices we should allow a user to write to.
+-void
+-PlatformLinux::findDevices(bool unsafe)
+-{
+-    char **drives;
+-    char *device, *product, *vendor;
+-    int drive_count, i;
+-    long long size;
+-    bool isRemovable = true;
+-    LibHalContext *context;
+-
+-    if ((context = initHal()) == NULL)
+-    {
+-        QMessageBox msgBox;
+-        msgBox.setText(QObject::tr(&quot;Could not initialize HAL.&quot;));
+-        msgBox.exec();
+-        return;
+-    }
+-
+-    // We want to only write to USB drives, unless the user specifies
+-    // the unsafe flag on the command line
+-    if (unsafe)
+-        drives = libhal_manager_find_device_string_match(context,
+-                                                        &quot;storage.drive_type&quot;,
+-                                                        &quot;disk&quot;,
+-                                                        &amp;drive_count,
+-                                                        NULL);
+-    else
+-        drives = libhal_manager_find_device_string_match(context,
+-                                                        &quot;storage.bus&quot;,
+-                                                        &quot;usb&quot;,
+-                                                        &amp;drive_count,
+-                                                        NULL);
+-
+-    for(i = 0; i &lt; drive_count; i++)
+-    {
+-        device = libhal_device_get_property_string(context,
+-                                                  drives[i],
+-                                                  &quot;block.device&quot;,
+-                                                  NULL);
+-        if (device == NULL)
+-            continue;
+-
+-        product = libhal_device_get_property_string(context,
+-                                                    drives[i],
+-                                                    &quot;info.product&quot;,
+-                                                    NULL);
+-
+-        vendor = libhal_device_get_property_string(context,
+-                                                   drives[i],
+-                                                   &quot;info.vendor&quot;,
+-                                                   NULL);
+-        size = libhal_device_get_property_uint64(context,
+-                                                 drives[i],
+-                                                 &quot;storage.removable.media_size&quot;,
+-                                                 NULL);
+-        
+-        isRemovable = libhal_device_get_property_bool(context,
+-                                                      drives[i],
+-                                                      &quot;storage.removable&quot;,
+-                                                      NULL);
+-
+-        DeviceItem *devItem = new DeviceItem;
+-        devItem-&gt;setUDI(drives[i]);
+-        devItem-&gt;setPath(device);
+-        devItem-&gt;setIsRemovable(isRemovable);
+-        devItem-&gt;setSize(size);
+-
+-        if (!strcmp(product, &quot;&quot;))
+-            devItem-&gt;setModelString(&quot;&quot;);
+-        else
+-            devItem-&gt;setModelString(product);
+-
+-        if (!strcmp(vendor, &quot;&quot;))
+-#ifdef KIOSKHACK
+-            devItem-&gt;setVendorString(&quot;SUSE Studio USB Key&quot;);
+-#else
+-            devItem-&gt;setVendorString(&quot;Unknown Device&quot;);
+-#endif
+-        else
+-            devItem-&gt;setVendorString(vendor);
+-
+-        QString newDisplayString = QString(&quot;%1 %2 - %3 (%4 MB)&quot;).arg(devItem-&gt;getVendorString()).arg(devItem-&gt;getModelString()).arg(devItem-&gt;getPath()).arg(devItem-&gt;getSize() / 1048576);
+-        devItem-&gt;setDisplayString(newDisplayString);
+-
+-#ifdef KIOSKHACK
+-        // VERY VERY VERY VERY VERY  ugly hack for kiosk: ignore hard disks bigger than 100GB
+-        if((devItem-&gt;getSize() / 1048576) &lt; 200000) 
+-#endif
+-            itemList &lt;&lt; devItem;
+-
+-        libhal_free_string(device);
+-        libhal_free_string(product);
+-        libhal_free_string(vendor);
+-    }
+-
+-    libhal_free_string_array(drives);
+-    libhal_ctx_shutdown(context, NULL);
+-    libhal_ctx_free(context);
+-
+-    return;
+-}
+-
+-LibHalContext *
+-PlatformLinux::initHal()
+-{
+-    DBusError error;
+-    DBusConnection *dbus_connection;
+-    LibHalContext *context;
+-    char **devices;
+-    int device_count;
+-
+-    if ((context = libhal_ctx_new()) == NULL)
+-        return(NULL);
+-
+-    dbus_error_init(&amp;error);
+-    dbus_connection = dbus_bus_get(DBUS_BUS_SYSTEM, &amp;error);
+-    if(dbus_error_is_set(&amp;error))
+-    {
+-            dbus_error_free(&amp;error);
+-            libhal_ctx_free(context);
+-            return(NULL);
+-    }
+-
+-    libhal_ctx_set_dbus_connection(context, dbus_connection);
+-    if(!libhal_ctx_init(context, &amp;error))
+-    {
+-            dbus_error_free(&amp;error);
+-            libhal_ctx_free(context);
+-            return(NULL);
+-    }
+-
+-    devices = libhal_get_all_devices(context, &amp;device_count, NULL);
+-    if(devices == NULL)
+-    {
+-            libhal_ctx_shutdown(context, NULL);
+-            libhal_ctx_free(context);
+-            context = NULL;
+-            return(NULL);
+-    }
+-
+-    libhal_free_string_array(devices);
+-    return(context);
+-}
+-
+-bool
+-PlatformLinux::isMounted(QString path)
+-{
+-    LibHalContext *context;
+-    LibHalVolume *halVolume;
+-    bool ret = false;
+-    char **volumes;
+-    int volumeCount, i;
+-    
+-    if ((context = initHal()) == NULL)
+-    {
+-        QMessageBox msgBox;
+-        msgBox.setText(QObject::tr(&quot;Could not initialize HAL.&quot;));
+-        msgBox.exec();
+-        return false;
+-    }
+-    
+-    volumes = libhal_manager_find_device_string_match(context,
+-                                                      &quot;info.parent&quot;,
+-                                                      path.toLatin1().data(),
+-                                                      &amp;volumeCount,
+-                                                      NULL);
+-    for(i = 0; i &lt; volumeCount; i++)
+-    {
+-        halVolume = libhal_volume_from_udi(context, volumes[i]);
+-        // I don't really know if this is better than just looking for the volume.is_mounted property,
+-        // might as well be on the safe side.
+-        if (libhal_volume_is_mounted(halVolume))
+-            ret = true;
+-        
+-        libhal_volume_free(halVolume);
+-    }
+-
+-    libhal_free_string_array(volumes);
+-    libhal_ctx_shutdown(context, NULL);
+-    libhal_ctx_free(context);
+-    return ret;
+-}
+-
+-bool
+-PlatformLinux::unmountDevice (QString path)
+-{
+-    LibHalContext *context;
+-    bool ret = true;
+-    char **volumes;
+-    int volumeCount, i;
+-    
+-    if ((context = initHal()) == NULL)
+-    {
+-        QMessageBox msgBox;
+-        msgBox.setText(QObject::tr(&quot;Could not initialize HAL.&quot;));
+-        msgBox.exec();
+-        return false;
+-    }
+-    
+-    volumes = libhal_manager_find_device_string_match(context,
+-                                                      &quot;info.parent&quot;,
+-                                                      path.toLatin1().data(),
+-                                                      &amp;volumeCount,
+-                                                      NULL);
+-    for(i = 0; i &lt; volumeCount; i++)
+-    {
+-        if (!performUnmount(volumes[i]))
+-            ret = false;
+-    }
+-
+-    libhal_free_string_array(volumes);
+-    libhal_ctx_shutdown(context, NULL);
+-    libhal_ctx_free(context);
+-    return ret;
+-}
+-
+-bool
+-PlatformLinux::performUnmount(QString udi)
+-{
+-    bool ret = true;
+-    QDBusConnection connection = QDBusConnection::systemBus();
+-    QDBusMessage message, reply;
+-    QList&lt;QVariant&gt; options;
+-
+-    message = QDBusMessage::createMethodCall(&quot;org.freedesktop.Hal&quot;, udi, &quot;org.freedesktop.Hal.Device.Volume&quot;, &quot;Unmount&quot;);
+-    message &lt;&lt; QStringList();
+-    reply = connection.call(message);
+-
+-    if (reply.type() == QDBusMessage::ErrorMessage)
+-    {
+-        qDebug() &lt;&lt; &quot;Failure: &quot; &lt;&lt;  reply;
+-        ret = false;
+-    }
+-
+-    return ret;
+-}
+-
+-// TODO make this routine not be shit
+-void
+-PlatformLinux::writeData(QString path, QString fileName, qint64 deviceSize)
+-{
+-    QFileInfo info(fileName);
+-    qint64 realSize = info.size();
+-
+-    if (realSize &gt; deviceSize)
+-    {
+-        QMessageBox msgBox;
+-        msgBox.setText(QObject::tr(&quot;The image you are trying to write is larger than your USB stick.&quot;));
+-        msgBox.exec();
+-        return;
+-    }
+-
+-    qint64 i = 0;
+-    char *buffer = (char *) malloc(BLOCKSIZE);
+-    qint64 read = 0;
+-    qint64 written = 0;
+-
+-    int ofd = -1;
+-    int ifd = -1;
+-
+-    int percentWritten, megsWritten, megsTotal;
+-    megsTotal = realSize / 1048576;
+-
+-    // Open the file to read from 
+-    if ((ifd = ::open(fileName.toLocal8Bit().data(), O_RDONLY|O_LARGEFILE)) == -1)
+-    {
+-        QMessageBox msgBox;
+-        msgBox.setText(QObject::tr(&quot;Couldn't open &quot;) + fileName + &quot;: &quot; + strerror(errno));
+-        msgBox.exec();
+-        return;
+-    }
+-
+-    if ((ofd = ::open(path.toLocal8Bit().data(), O_WRONLY|O_SYNC|O_LARGEFILE)) == -1)
+-    {
+-        QMessageBox msgBox;
+-        msgBox.setText(QObject::tr(&quot;Couldn't open &quot;) + path + &quot;: &quot; + strerror(errno));
+-        msgBox.exec();
+-        ::close(ifd);
+-        return;
+-    }
+-
+-    QProgressDialog progress(&quot; &quot;, &quot;Cancel&quot;, 0, 100);
+-    progress.setMinimumDuration(0);
+-    progress.setWindowModality(Qt::WindowModal);
+-    progress.setValue(100);
+-    progress.setWindowTitle(QObject::tr(&quot;Writing&quot;));
+-
+-    for (i = 0; i &lt;= realSize; i++)
+-    {
+-        if ((read = ::read(ifd, buffer, BLOCKSIZE)) == -1)
+-        {
+-            QMessageBox msgBox;
+-            msgBox.setText(QObject::tr(&quot;Read failure&quot;));
+-            msgBox.exec();
+-            break;
+-        }
+-
+-        written = ::write(ofd, buffer, read);
+-        if (written == -1)
+-        {
+-            QMessageBox msgBox;
+-            msgBox.setText(QObject::tr(&quot;Write failure&quot;));
+-            msgBox.exec();
+-            break;
+-        }
+-
+-        i += written;
+-        percentWritten = (i*100)/realSize;
+-        megsWritten = i / 1048576;
+-        progress.setValue(percentWritten);
+-        progress.setLabelText(QObject::tr(&quot;Written %1MB out of %2MB&quot;).arg(megsWritten).arg(megsTotal));
+-        qApp-&gt;processEvents();
+-
+-        if (progress.wasCanceled())
+-             break;
+-     }
+-    ::close(ofd);
+-    ::close(ifd);
+-    free(buffer);
+-    progress.setValue(100);
+-}
+diff --git a/tools/burner/PlatformLinux.h b/tools/burner/PlatformLinux.h
+deleted file mode 100644
+index 5267f69..0000000
+--- a/tools/burner/PlatformLinux.h
++++ /dev/null
+@@ -1,50 +0,0 @@
+-/*
+- *  Copyright (c) 2009 Novell, Inc.
+- *  All Rights Reserved.
+- *  
+- *  This program is free software; you can redistribute it and/or
+- *  modify it under the terms of version 2 of the GNU General Public License as
+- *  published by the Free Software Foundation.
+- *  
+- *  This program is distributed in the hope that it will be useful,
+- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.   See the
+- *  GNU General Public License for more details.
+- *  
+- *  You should have received a copy of the GNU General Public License
+- *  along with this program; if not, contact Novell, Inc.
+- *  
+- *  To contact Novell about this file by physical or electronic mail,
+- *  you may find current contact information at www.novell.com
+- *  
+- *  Author: Matt Barringer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarringer at suse.de</A>&gt;
+- *  
+- */
+-
+-#ifndef __PLATFORM_LINUX_H__
+-#define __PLATFORM_LINUX_H__
+-
+-#include &lt;hal/libhal.h&gt;
+-#include &lt;hal/libhal-storage.h&gt;
+-
+-#include &quot;Platform.h&quot;
+-
+-class PlatformLinux : public Platform
+-{
+-public:
+-    PlatformLinux() { };
+-    void findDevices(bool unsafe = false);
+-    bool isMounted(QString path);
+-    void writeData(QString path, QString fileName, qint64 deviceSize);
+-    bool unmountDevice(QString path);
+-
+-private:
+-    LibHalContext *initHal();
+-    bool performUnmount(QString udi);
+-
+-public slots:
+-    void tick(qint64 lastWritten, qint64 bytesWritten);
+-};
+-
+-
+-#endif
+diff --git a/tools/burner/imagewriter.desktop b/tools/burner/imagewriter.desktop
+index f3d2c8e..36fe079 100644
+--- a/tools/burner/imagewriter.desktop
++++ b/tools/burner/imagewriter.desktop
+@@ -3,8 +3,9 @@ Type=Application
+ Categories=Utilities;
+ X-KDE-RootOnly=true
+ Exec=imagewriter %F
++Icon=imagewriter
+ Name=SUSE Studio Imagewriter
+-GenericName=An easy way to write raw system images to USB keys
++GenericName=USB key writer 
+ X-KDE-SubstituteUID=true
+-Version=1.4
++Version=1.5
+ Type=Application
+diff --git a/tools/burner/imagewriter.pro b/tools/burner/imagewriter.pro
+index c0491c3..406f3e5 100644
+--- a/tools/burner/imagewriter.pro
++++ b/tools/burner/imagewriter.pro
+@@ -1,6 +1,12 @@
+ # #####################################################################
+ # Automatically generated by qmake (2.01a) Thu Oct 23 14:13:58 2008
+ # #####################################################################
++unix {
++  isEmpty(PREFIX) {
++    PREFIX = /usr/local
++  }
++}
++
+ TEMPLATE = app
+ TARGET = 
+ DEPENDPATH += .
+@@ -16,8 +22,21 @@ SOURCES += main.cpp \
+ 
+ CONFIG += link_pkgconfig qdbus
+ PKGCONFIG += hal hal-storage
+-imagewriter.path =/usr/bin
++
++imagewriter.path = $$PREFIX/bin
+ imagewriter.files = imagewriter
+-INSTALLS += imagewriter
++INSTALLS += imagewriter icon32 icon64 icon128 desktop
++
++desktop.path = $$PREFIX/share/applications/
++desktop.files += imagewriter.desktop
++
++icon32.path = $$PREFIX/share/icons/hicolor/32x32/apps
++icon32.files += icons/32x32/imagewriter.png
++
++icon64.path = $$PREFIX/share/icons/hicolor/64x64/apps
++icon64.files += icons/64x64/imagewriter.png
++
++icon128.path = $$PREFIX/share/icons/hicolor/128x128/apps
++icon128.files += icons/128x128/imagewriter.png
+ 
+ RESOURCES += imagewriter.qrc
+diff --git a/tools/burner/imagewriter.spec b/tools/burner/imagewriter.spec
+index f2ea4a2..aeedd92 100644
+--- a/tools/burner/imagewriter.spec
++++ b/tools/burner/imagewriter.spec
+@@ -7,22 +7,35 @@
+ #
+ 
+ # needsrootforbuild
+-%define qmake qmake
+-%define lrelease lrelease
+-
+ Url:            <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>
+ Name:           imagewriter
+-BuildRequires:  hal-devel 
++BuildRequires:  hal-devel
+ BuildRequires:  gcc-c++
+-BuildRequires:  libqt4 libqt4-devel
++
++%if 0%{?fedora_version}  
++    %define breq qt4-devel  
++    %define qmake /usr/bin/qmake-qt4  
++    %define lrelease /usr/bin/lrelease-qt4  
++%endif    
++%if 0%{?mandriva_version}  
++    %define breq libqt4-devel
++    %define qmake /usr/lib/qt4/bin/qmake  
++    %define lrelease /usr/lib/qt4/bin/lrelease  
++%endif  
++%if 0%{?suse_version}  
++    %define breq libqt4-devel  
++    %define qmake /usr/bin/qmake  
++    %define lrelease /usr/bin/lrelease  
++%endif
++
+ Summary:        SUSE Studio Imagewriter
+-Version:        1.4
++Version:        1.5
+ Release:        0
+ Group:          System/Tools
+ License:        GPL v2
+-Source:         imagewriter-1.4.tar.gz
++Source:         imagewriter-%{version}.tar.gz
+ BuildRoot:      %{_tmppath}/%{name}-%{version}-build
+-
++BuildRequires:  %{breq}
+ %description
+ Graphical image writer application
+ 
+@@ -30,15 +43,23 @@ Graphical image writer application
+ %setup 
+ 
+ %build
+-qmake -makefile imagewriter.pro
++%{qmake} PREFIX=%{_prefix} -makefile imagewriter.pro
+ make buildroot=$RPM_BUILD_ROOT CFLAGS=&quot;$RPM_OPT_FLAGS&quot;
++
+ %install
+ # build
+-install -d $RPM_BUILD_ROOT/usr/bin
+-install -m 755 -p imagewriter $RPM_BUILD_ROOT/usr/bin
++#install -d $RPM_BUILD_ROOT/usr/bin
++#install -m 755 -p imagewriter $RPM_BUILD_ROOT/usr/bin
++make install
+ 
+ %clean
+ rm -rf $RPM_BUILD_ROOT
+-%files 
+-%defattr(-, root, root, 0755)
++
++%files
++%defattr(-,root,root)
+ %{_bindir}/imagewriter
++%{_prefix}/share/applications/imagewriter.desktop
++%{_prefix}/share/icons/hicolor/*/apps/imagewriter.png 
++%doc COPYING
++
++%changelog
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001920.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c58b92d849eb8b253af8e410b22f8ca6d0f43133
+</A></li>
+	<LI>Next message: <A HREF="001922.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7847941a36a21219973f9e1cca2f4b62ff78c5a2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1921">[ date ]</a>
+              <a href="thread.html#1921">[ thread ]</a>
+              <a href="subject.html#1921">[ subject ]</a>
+              <a href="author.html#1921">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

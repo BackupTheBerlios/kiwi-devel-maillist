@@ -1,0 +1,189 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ab2929eb1e82e45567e2816c1ec9a5aa687794bc
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ab2929eb1e82e45567e2816c1ec9a5aa687794bc&In-Reply-To=%3C20110113142441.B27EA480ED9%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002955.html">
+   <LINK REL="Next"  HREF="002961.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ab2929eb1e82e45567e2816c1ec9a5aa687794bc</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ab2929eb1e82e45567e2816c1ec9a5aa687794bc&In-Reply-To=%3C20110113142441.B27EA480ED9%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ab2929eb1e82e45567e2816c1ec9a5aa687794bc">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jan 13 15:24:41 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002955.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8fb727cf8303a5611f7991f087d5b00428102871
+</A></li>
+        <LI>Next message: <A HREF="002961.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 22aac8e0cc44f5a7ec07554943320ca94d5328bc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2960">[ date ]</a>
+              <a href="thread.html#2960">[ thread ]</a>
+              <a href="subject.html#2960">[ subject ]</a>
+              <a href="author.html#2960">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  ab2929eb1e82e45567e2816c1ec9a5aa687794bc (commit)
+      from  8fb727cf8303a5611f7991f087d5b00428102871 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ab2929eb1e82e45567e2816c1ec9a5aa687794bc
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Jan 13 15:23:21 2011 +0100
+
+    - fixed fdisk setup in alignment mode. fdisk is not able
+      to suggest the correct next sector if called with the
+      option &quot;-u&quot;. Therefore only one partition is created in
+      that mode and the rest is created in fdisk cylinder
+      based mode (bnc #664236)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 4734f45..e5281fa 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -4342,21 +4342,19 @@ sub setStoragePartition {
+ 		# fdisk
+ 		#------------------------------------------
+ 		/^fdisk/  &amp;&amp; do {
+-			$kiwi -&gt; loginfo (
+-				&quot;FDISK input: $device [@commands]&quot;
+-			);
+ 			$status = qxx (&quot;dd if=/dev/zero of=$device bs=512 count=1 2&gt;&amp;1&quot;);
+ 			$result = $? &gt;&gt; 8;
+ 			if ($result != 0) {
+ 				$kiwi -&gt; loginfo ($status);
+ 				return undef;
+ 			}
+-			if (! open (FD,&quot;|/sbin/fdisk -u $device &amp;&gt; $tmpdir/fdisk.log&quot;)) {
+-				return undef;
+-			}
+ 			my $palign = $xml -&gt; getOEMAlignPartition();
+ 			if (($palign) &amp;&amp; (&quot;$palign&quot; eq &quot;true&quot;)) {
+-				# fix up the first sector
++				#==========================================
++				# create aligned table
++				#------------------------------------------
++				my @commands_first = ();
++				my @commands_next  = ();
+ 				for (my $count=0;$count&lt;@commands;$count++) {
+ 					if ($commands[$count] eq &quot;n&quot;) {
+ 						if (($commands[$count+2] eq &quot;1&quot;) &amp;&amp;
+@@ -4367,15 +4365,58 @@ sub setStoragePartition {
+ 						}
+ 					}
+ 				}
+-			}
+-			foreach my $cmd (@commands) {
+-				if ($cmd eq &quot;.&quot;) {
+-					print FD &quot;\n&quot;;
+-				} else {
+-					print FD &quot;$cmd\n&quot;;
++				for (my $count=0;$count&lt;=4;$count++) {
++					push @commands_first, $commands[$count];
++				}
++				push @commands_first, &quot;w&quot;;
++				push @commands_first, &quot;q&quot;;
++				for (my $count=5;$count&lt;@commands;$count++) {
++					push @commands_next, $commands[$count];
++				}
++				$kiwi -&gt; loginfo (
++					&quot;FDISK input aligned: $device [@commands]&quot;
++				);
++				if (! open (FD,&quot;|/sbin/fdisk -u $device &amp;&gt;$tmpdir/fdisk.log&quot;)) {
++					return undef;
++				}
++				foreach my $cmd (@commands_first) {
++					if ($cmd eq &quot;.&quot;) {
++						print FD &quot;\n&quot;;
++					} else {
++						print FD &quot;$cmd\n&quot;;
++					}
+ 				}
++				close FD;
++				if (! open (FD,&quot;|/sbin/fdisk $device &amp;&gt;$tmpdir/fdisk.log&quot;)) {
++					return undef;
++				}
++				foreach my $cmd (@commands_next) {
++					if ($cmd eq &quot;.&quot;) {
++						print FD &quot;\n&quot;;
++					} else {
++						print FD &quot;$cmd\n&quot;;
++					}
++				}
++				close FD;
++			} else {
++				#==========================================
++				# standard call without alignment
++				#------------------------------------------
++				$kiwi -&gt; loginfo (
++					&quot;FDISK input: $device [@commands]&quot;
++				);
++				if (! open (FD,&quot;|/sbin/fdisk $device &amp;&gt;$tmpdir/fdisk.log&quot;)) {
++					return undef;
++				}
++				foreach my $cmd (@commands) {
++					if ($cmd eq &quot;.&quot;) {
++						print FD &quot;\n&quot;;
++					} else {
++						print FD &quot;$cmd\n&quot;;
++					}
++				}
++				close FD;
+ 			}
+-			close FD;
+ 			$result = $? &gt;&gt; 8;
+ 			my $flog;
+ 			if (open (FD,&quot;$tmpdir/fdisk.log&quot;)) {
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002955.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8fb727cf8303a5611f7991f087d5b00428102871
+</A></li>
+	<LI>Next message: <A HREF="002961.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 22aac8e0cc44f5a7ec07554943320ca94d5328bc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2960">[ date ]</a>
+              <a href="thread.html#2960">[ thread ]</a>
+              <a href="subject.html#2960">[ subject ]</a>
+              <a href="author.html#2960">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

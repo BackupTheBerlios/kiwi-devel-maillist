@@ -1,0 +1,588 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0e5184933d81854b8a5dfbfa44206db9f48f6837
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%200e5184933d81854b8a5dfbfa44206db9f48f6837&In-Reply-To=%3C200903251626.n2PGQesB027118%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001138.html">
+   <LINK REL="Next"  HREF="001140.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0e5184933d81854b8a5dfbfa44206db9f48f6837</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%200e5184933d81854b8a5dfbfa44206db9f48f6837&In-Reply-To=%3C200903251626.n2PGQesB027118%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0e5184933d81854b8a5dfbfa44206db9f48f6837">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Mar 25 17:26:40 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001138.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 746ffd264b4481b25fc56c28074c73b2fd95697e
+</A></li>
+        <LI>Next message: <A HREF="001140.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 12a6a112d31fe8f4f5b424a54af04b7682d27a7c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1139">[ date ]</a>
+              <a href="thread.html#1139">[ thread ]</a>
+              <a href="subject.html#1139">[ subject ]</a>
+              <a href="author.html#1139">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  0e5184933d81854b8a5dfbfa44206db9f48f6837 (commit)
+      from  c96627e269da5c20029aec2bbf9b89caa88a3818 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 0e5184933d81854b8a5dfbfa44206db9f48f6837
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Mar 25 17:26:29 2009 +0100
+
+    - v3.36
+    - allow oem-reboot to take effect in recovery mode (bnc #487887)
+    - improved the --list-xmlinfo option which now also prints
+      information about the repositories used for the image
+      and it will print out the install size in kB by using
+      the satsolver. Users can so check how much space is
+      required to build the root tree of the image
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 153dcfd..248d4ca 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -44,7 +44,7 @@ use KIWITest;
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.35&quot;;
++our $Version       = &quot;3.36&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+@@ -1340,12 +1340,6 @@ sub init {
+ 		listProfiles();
+ 	}
+ 	#==========================================
+-	# non root task: Handle listXMLInfo option
+-	#------------------------------------------
+-	if (defined $listXMLInfo) {
+-		listXMLInfo();
+-	}
+-	#==========================================
+ 	# Check for root privileges
+ 	#------------------------------------------
+ 	if ($&lt; != 0) {
+@@ -1463,6 +1457,9 @@ sub init {
+ 		$kiwi -&gt; failed ();
+ 		my $code = kiwiExit (1); return $code;
+ 	}
++	if (defined $listXMLInfo) {
++		listXMLInfo();
++	}
+ }
+ 
+ #==========================================
+@@ -1721,14 +1718,74 @@ sub listXMLInfo {
+ 	if (! defined $xml) {
+ 		exit 1;
+ 	}
++	#==========================================
++	# Check for ignore-repos option
++	#------------------------------------------
++	if (defined $IgnoreRepos) {
++		$xml -&gt; ignoreRepositories ();
++	}
++	#==========================================
++	# Check for set-repo option
++	#------------------------------------------
++	if (defined $SetRepository) {
++		$xml -&gt; setRepository (
++			$SetRepositoryType,$SetRepository,
++			$SetRepositoryAlias,$SetRepositoryPriority
++		);
++	}
++	#==========================================
++	# Check for add-repo option
++	#------------------------------------------
++	if (defined @AddRepository) {
++		$xml -&gt; addRepository (
++			\@AddRepositoryType,\@AddRepository,
++			\@AddRepositoryAlias,\@AddRepositoryPriority
++		);
++	}
++	#==========================================
++	# Validate repo types
++	#------------------------------------------
++	$xml -&gt; setValidateRepositoryType();
+ 	my %type = %{$xml-&gt;getImageTypeAndAttributes()};
+ 	#==========================================
+ 	# print boot information of type section
+ 	#------------------------------------------
+ 	if (defined $type{boot}) {
+-		$kiwi -&gt; info (&quot;Boot Type: $type{type} @ $type{boot}\n&quot;);
++		$kiwi -&gt; info (&quot;Primary image type: $type{type} @ $type{boot}\n&quot;);
+ 	} else {
+-		$kiwi -&gt; info (&quot;Boot Type: $type{type}\n&quot;);
++		$kiwi -&gt; info (&quot;Primary image type: $type{type}\n&quot;);
++	}
++	#==========================================
++	# print repo information
++	#------------------------------------------
++	foreach my $url (@{$xml-&gt;{urllist}}) {
++		$kiwi -&gt; info (&quot;Source URL: $url\n&quot;);
++	}
++	#==========================================
++	# print install size information
++	#------------------------------------------
++	my ($meta,$delete) = $xml -&gt; getInstallSize();
++	my %meta = %{$meta};
++	my $size = 0;
++	foreach my $p (keys %meta) {
++		$size += $meta{$p};
++	}
++	if ($size &gt; 0) {
++		$kiwi -&gt; info (&quot;Install size for root tree: $size kB\n&quot;);
++	}
++	#==========================================
++	# print deletion size information
++	#------------------------------------------
++	$size = 0;
++	if ($delete) {
++		foreach my $del (@{$delete}) {
++			if ($meta{$del}) {
++				$size += $meta{$del};
++			}
++		}
++	}
++	if ($size &gt; 0) {
++		$kiwi -&gt; info (&quot;Deletion size for root tree; $size kB\n&quot;);
+ 	}
+ 	#==========================================
+ 	# more to come...
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 87720f8..0e0c59c 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -3816,7 +3816,7 @@ function bootImage {
+ 	#======================================
+ 	# check for reboot request
+ 	#--------------------------------------
+-	if [ $LOCAL_BOOT = &quot;no&quot; ];then
++	if [ $LOCAL_BOOT = &quot;no&quot; ] || [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 		if [ ! -z &quot;$OEM_REBOOT&quot; ] || [ ! -z &quot;$REBOOT_IMAGE&quot; ];then
+ 			reboot=yes
+ 		fi
+diff --git a/modules/KIWISatSolver.pm b/modules/KIWISatSolver.pm
+index 05befc6..6689879 100644
+--- a/modules/KIWISatSolver.pm
++++ b/modules/KIWISatSolver.pm
+@@ -71,6 +71,7 @@ sub new {
+ 	my $solvep  = shift;
+ 	my $repo    = shift;
+ 	my $pool    = shift;
++	my $quiet   = shift;
+ 	#==========================================
+ 	# Constructor setup
+ 	#------------------------------------------
+@@ -82,7 +83,9 @@ sub new {
+ 		$kiwi = new KIWILog(&quot;tiny&quot;);
+ 	}
+ 	if ((! defined $repo) || (! defined $pool)) {
+-		$kiwi -&gt; info (&quot;Setting up SaT solver...\n&quot;);
++		if (! defined $quiet) {
++			$kiwi -&gt; info (&quot;Setting up SaT solver...\n&quot;);
++		}
+ 	}
+ 	if (! $KIWISatSolver::haveSaT) {
+ 		$kiwi -&gt; error (&quot;--&gt; No SaT plugin installed&quot;);
+@@ -150,11 +153,30 @@ sub new {
+ 		my $solution = $this -&gt; getSolutions();
+ 		$kiwi -&gt; warning (&quot;--&gt; Solver Problems:\n$solution&quot;);
+ 	}
++	my $size = $solver -&gt; getInstallSizeKBytes();
+ 	my $list = $solver -&gt; getInstallList ($pool);
++	my @plist= ();
++	my %slist= ();
++	my $count= 0;
++	my $pprev;
+ 	foreach my $name (@{$list}) {
+-		if ($name =~ /^((pattern|product):.*)/) {
+-			$kiwi -&gt; info (&quot;Including $1&quot;);
+-			$kiwi -&gt; done ();
++		if ($count == 0) {
++			push @plist,$name;
++			$pprev = $name;
++			$count = 1;
++		} else {
++			$slist{$pprev} = &quot;$name&quot;;
++			$count = 0;
++		}
++	}
++	foreach my $name (@plist) {
++		if ($name =~ /^(pattern|product):(.*)/) {
++			my $type = $1;
++			my $text = $2;
++			if (! defined $quiet) {
++				$kiwi -&gt; info (&quot;Including $type $text&quot;);
++				$kiwi -&gt; done ();
++			}
+ 		} else {
+ 			push (@solved,$name);
+ 		}
+@@ -162,11 +184,13 @@ sub new {
+ 	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
++	$this-&gt;{size}    = $size;
+ 	$this-&gt;{urllist} = $urlref;
+ 	$this-&gt;{plist}   = $pref;
+ 	$this-&gt;{repo}    = $repo;
+ 	$this-&gt;{pool}    = $pool;
+ 	$this-&gt;{result}  = \@solved;
++	$this-&gt;{meta}    = \%slist;
+ 	return $this;
+ }
+ 
+@@ -227,6 +251,30 @@ sub getSolutions {
+ }
+ 
+ #==========================================
++# getInstallSizeKBytes
++#------------------------------------------
++sub getInstallSizeKBytes {
++	# /.../
++	# return install size in kB of the solved
++	# package list
++	# ----
++	my $this = shift;
++	return $this-&gt;{size};
++}
++
++#==========================================
++# getMetaData
++#------------------------------------------
++sub getMetaData {
++	# /.../
++	# return meta data hash, containing the install
++	# size per package
++	# ----
++	my $this = shift;
++	return %{$this-&gt;{meta}};
++}
++
++#==========================================
+ # getPackages
+ #------------------------------------------
+ sub getPackages {
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 115d9e3..3104bea 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -2520,6 +2520,91 @@ sub getList {
+ }
+ 
+ #==========================================
++# getInstallSize
++#------------------------------------------
++sub getInstallSize {
++	my $this  = shift;
++	my $kiwi  = $this-&gt;{kiwi};
++	my $nodes = $this-&gt;{packageNodeList};
++	my @result= ();
++	my @delete= ();
++	for (my $i=1;$i&lt;= $nodes-&gt;size();$i++) {
++		my $node = $nodes -&gt; get_node($i);
++		my $type = $node -&gt; getAttribute (&quot;type&quot;);
++		#============================================
++		# Check to see if node is in included profile
++		#--------------------------------------------
++		if (! $this -&gt; requestedProfile ($node)) {
++			next;
++		}
++		#==========================================
++		# Handle package names to be deleted later
++		#------------------------------------------
++		if ($type eq &quot;delete&quot;) {
++			my @dlist = $node -&gt; getElementsByTagName (&quot;package&quot;);
++			foreach my $element (@dlist) {
++				my $package = $element -&gt; getAttribute (&quot;name&quot;);
++				if (! $this -&gt; isArchAllowed ($element,&quot;packages&quot;)) {
++					next;
++				}
++				$package =~ s/@//;
++				if ($package) {
++					push @delete,$package;
++				}
++			}
++		}
++		#==========================================
++		# Handle package names
++		#------------------------------------------
++		my @plist = $node -&gt; getElementsByTagName (&quot;package&quot;);
++		foreach my $element (@plist) {
++			my $package = $element -&gt; getAttribute (&quot;name&quot;);
++			if (! $this -&gt; isArchAllowed ($element,&quot;packages&quot;)) {
++				next;
++			}
++			$package =~ s/@//;
++			if ($package) {
++				push @result,$package;
++			}
++		}
++		#==========================================
++		# Handle pattern/product names
++		#------------------------------------------
++		my @pattlist = ();
++		my @slist = $node -&gt; getElementsByTagName (&quot;opensuseProduct&quot;);
++		foreach my $element (@slist) {
++			if (! $this -&gt; isArchAllowed ($element,&quot;packages&quot;)) {
++				next;
++			}
++			my $product = $element -&gt; getAttribute (&quot;name&quot;);
++			if ($product) {
++				push @result,&quot;product:&quot;.$product;
++			}
++		}
++		@slist = $node -&gt; getElementsByTagName (&quot;opensusePattern&quot;);
++		foreach my $element (@slist) {
++			if (! $this -&gt; isArchAllowed ($element,&quot;packages&quot;)) {
++				next;
++			}
++			my $pattern = $element -&gt; getAttribute (&quot;name&quot;);
++			if ($pattern) {
++				push @result,&quot;pattern:&quot;.$pattern;
++			}
++		}
++	}
++	my $psolve = new KIWISatSolver (
++		$kiwi,\@result,$this-&gt;{urllist},&quot;solve-patterns&quot;,
++		undef,undef,&quot;quiet&quot;
++	);
++	if (! defined $psolve) {
++		$kiwi -&gt; warning (&quot;SaT solver setup failed&quot;);
++		return undef;
++	}
++	my %meta = $psolve -&gt; getMetaData();
++	return (\%meta,\@delete);
++}
++
++#==========================================
+ # getReplacePackageHash
+ #------------------------------------------
+ sub getReplacePackageHash {
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 5a1cbac..5163303 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,15 @@
+ -------------------------------------------------------------------
++Wed Mar 25 12:36:04 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.36
++- allow oem-reboot to take effect in recovery mode (bnc #487887)
++- improved the --list-xmlinfo option which now also prints
++  information about the repositories used for the image
++  and it will print out the install size in kB by using
++  the satsolver. Users can so check how much space is
++  required to build the root tree of the image
++
++-------------------------------------------------------------------
+ Mon Mar 23 17:33:54 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarringer at suse.de</A>
+ 
+ - Adding &quot;-m&quot; to the imagewriter to start in a maximized window
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index 78c8173..a62d717 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.35)
++# spec file for package kiwi (Version 3.36)
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@ Requires:       satsolver-tools
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.35
++Version:        3.36
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index 2b5fb3d..34eecbd 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -74,8 +74,8 @@ udevStart
+ #--------------------------------------
+ includeKernelParameters
+ if \
+-	[ ! -z $UNIONFS_CONFIG ] || [ &quot;$COMBINED_IMAGE&quot; = &quot;local&quot; ] ||\
+-	[ ! -z $KIWI_RECOVERY ]
++	[ ! -z &quot;$UNIONFS_CONFIG&quot; ] || [ &quot;$COMBINED_IMAGE&quot; = &quot;local&quot; ] ||\
++	[ ! -z &quot;$KIWI_RECOVERY&quot; ]
+ then
+ 	# /.../
+ 	# if the unionfs/combined information is already in place at this
+@@ -259,6 +259,7 @@ if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 	if [ ! $runReco = &quot;y&quot; ];then
+ 		systemException &quot;System-Recovery not started&quot; &quot;reboot&quot;
+ 	fi
++	importFile &lt; $OEM_PARTITION_CONFIG
+ 	Echo &quot;Starting System-Recovery...&quot;
+ 	#======================================
+ 	# 16.1) mount recovery partition
+diff --git a/tools/satplugin/SaT.i b/tools/satplugin/SaT.i
+index 3b31a39..bf991d0 100644
+--- a/tools/satplugin/SaT.i
++++ b/tools/satplugin/SaT.i
+@@ -208,10 +208,13 @@ extern &quot;C&quot;
+         solver_solve(self, job);
+     }
+ 
++    unsigned long getInstallSizeKBytes (void) {
++        return solver_calc_installsizechange (self);
++    }
++
+     SV* getInstallList (Pool *pool) {
+         int b = 0;
+         AV *myav = newAV();
+-        SV *mysv = 0;
+         SV *res  = 0;
+         int len = self-&gt;decisionq.count;
+         for (b = 0; b &lt; len; b++) {
+@@ -224,11 +227,18 @@ extern &quot;C&quot;
+             }
+             Solvable *s = self-&gt;pool-&gt;solvables + p;
+             //printf (&quot;SOLVER NAME: %d %s\n&quot;,p,id2str(pool, s-&gt;name));
++            unsigned int bytes=solvable_lookup_num(s, SOLVABLE_INSTALLSIZE, 0);
+             const char* myel = (char*)id2str(pool, s-&gt;name);
+-            mysv = sv_newmortal();
+-            mysv = perl_get_sv (myel,TRUE);
+-            sv_setpv(mysv, myel);
+-            av_push (myav,mysv);
++            char* myis = (char*)malloc (sizeof (char) * 5);
++            sprintf (myis,&quot;%u&quot;,bytes);
++            SV* mysv1 = sv_newmortal();
++            mysv1 = perl_get_sv (myel,TRUE);
++            sv_setpv(mysv1, myel);
++            av_push (myav,mysv1);
++            SV* mysv2 = sv_newmortal();
++            mysv2 = perl_get_sv ((const char*)myis,TRUE);
++            sv_setpv(mysv2, myis);
++            av_push (myav,mysv2);
+         }
+         res = newRV((SV*)myav);
+         sv_2mortal (res);
+diff --git a/tools/satplugin/example.pl b/tools/satplugin/example.pl
+index 89cb0fc..d81a013 100644
+--- a/tools/satplugin/example.pl
++++ b/tools/satplugin/example.pl
+@@ -6,7 +6,7 @@ use strict;
+ use KIWI::SaT;
+ 
+ # Open Solvable file
+-open(F, &quot;cat /var/cache/kiwi/satsolver/12e185e932ba137e4535d33ae2b97db4 |&quot;) || die;
++open(F, &quot;cat /var/cache/kiwi/satsolver/0df87b1388d164da67caf952a9ea49fc |&quot;) || die;
+ 
+ # Create Pool and Repository 
+ my $pool = new KIWI::SaT::_Pool;
+@@ -43,6 +43,9 @@ foreach my $p (@pats) {
+ # Solve the jobs
+ $solver -&gt; solve ($queue);
+ 
++my $size = $solver -&gt; getInstallSizeKBytes();
++print &quot;REQUIRED SIZE: $size kB\n&quot;;
++
+ if ($solver-&gt;getProblemsCount()) {
+ 	$a = $solver-&gt;getSolutions ($queue);
+ 	open FD,$a;
+diff --git a/tools/satplugin/sat.c b/tools/satplugin/sat.c
+index 1296fe4..fb2d5d6 100644
+--- a/tools/satplugin/sat.c
++++ b/tools/satplugin/sat.c
+@@ -15,7 +15,7 @@ int main (void) {
+ 	FILE   *fp     = 0;
+ 	int b;
+ 	Queue  queue;
+-	int fd = open (&quot;/var/cache/kiwi/satsolver/12e185e932ba137e4535d33ae2b97db4&quot;, O_RDONLY);
++	int fd = open (&quot;/var/cache/kiwi/satsolver/0df87b1388d164da67caf952a9ea49fc&quot;, O_RDONLY);
+ 	if (fd == -1) {
+ 		return 1;
+ 	}
+@@ -60,6 +60,10 @@ int main (void) {
+ 		solver_printsolutions(solver, &amp;queue);
+ 	}
+ 
++	unsigned long size = solver_calc_installsizechange (solver);
++	printf (&quot;REQUIRED SIZE: %ldkB\n&quot;,size);
++
++	size = 0;
+ 	for (b = 0; b &lt; solver-&gt;decisionq.count; b++) {
+ 		Id p = solver-&gt;decisionq.elements[b];
+ 		//printf (&quot;SOLVER DECISION ID: %d\n&quot;,p);
+@@ -71,11 +75,16 @@ int main (void) {
+ 			continue;
+ 		}
+ 		Solvable *s = solver-&gt;pool-&gt;solvables + p;
+-		printf (&quot;SOLVER NAME: %s\n&quot;,id2str(pool, s-&gt;name));
++		unsigned int bytes = solvable_lookup_num(s, SOLVABLE_INSTALLSIZE, 0);
++		size += bytes;
++		printf (&quot;SOLVER NAME: %s %ukB\n&quot;, id2str(pool, s-&gt;name),bytes);
+ 	}	
++	printf (&quot;REQUIRED SIZE: %ldkB\n&quot;,size);
+ 	return 0;
+ }
+ 
++
++
+ Id select_solvable (Repo *repo, Pool* pool,char *name) {
+ 	Id id;
+ 	Queue plist;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001138.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 746ffd264b4481b25fc56c28074c73b2fd95697e
+</A></li>
+	<LI>Next message: <A HREF="001140.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 12a6a112d31fe8f4f5b424a54af04b7682d27a7c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1139">[ date ]</a>
+              <a href="thread.html#1139">[ thread ]</a>
+              <a href="subject.html#1139">[ subject ]</a>
+              <a href="author.html#1139">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

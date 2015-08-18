@@ -1,0 +1,599 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 71817a644019012553e8932248030d37826616f2
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2071817a644019012553e8932248030d37826616f2&In-Reply-To=%3C200912091200.nB9C0vOV010006%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001670.html">
+   <LINK REL="Next"  HREF="001672.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 71817a644019012553e8932248030d37826616f2</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2071817a644019012553e8932248030d37826616f2&In-Reply-To=%3C200912091200.nB9C0vOV010006%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 71817a644019012553e8932248030d37826616f2">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Dec  9 13:00:57 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001670.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b9f5074b1ab3cb240362eb13c9f4bd69cd1415e3
+</A></li>
+        <LI>Next message: <A HREF="001672.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 83a1af025a2b8365288aba188ba22d8d409ec14e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1671">[ date ]</a>
+              <a href="thread.html#1671">[ thread ]</a>
+              <a href="subject.html#1671">[ subject ]</a>
+              <a href="author.html#1671">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  71817a644019012553e8932248030d37826616f2 (commit)
+      from  b9f5074b1ab3cb240362eb13c9f4bd69cd1415e3 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 71817a644019012553e8932248030d37826616f2
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Dec 9 13:00:42 2009 +0100
+
+    - moved repartition functions to KIWILinuxRC
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 639eea0..3850d4f 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -5176,7 +5176,6 @@ function SAPStartMediaChanger {
+ 	test -e /tmp/runme_at_boot &amp;&amp; mv /tmp/runme_at_boot $runme
+ 	test -e /tmp/install.inf &amp;&amp; mv /tmp/install.inf $ininf
+ }
+-
+ #======================================
+ # createHybridPersistent
+ #--------------------------------------
+@@ -5196,18 +5195,13 @@ function createHybridPersistent {
+ 			Echo -n &quot;Creating hybrid persistent partition for COW data: &quot;
+ 			Echo &quot;$dev$disknr id=$HYBRID_PERSISTENT_ID fs=$HYBRID_PERSISTENT_FS&quot;
+ 			if [ $disknr -lt 4 ];then
+-				createHybridPersistentPartition \
++				createPartitionerInput \
+ 					n p $disknr . . t $disknr $HYBRID_PERSISTENT_ID w
+ 			else
+-				createHybridPersistentPartition \
++				createPartitionerInput \
+ 					n p . . t 4 $HYBRID_PERSISTENT_ID w
+ 			fi
+-			fdisk $dev &lt; $input 1&gt;&amp;2
+-			if test $? != 0; then
+-				systemException \
+-					&quot;Failed to update hybrid partition table&quot; \
+-				&quot;reboot&quot;
+-			fi
++			callPartitioner $input
+ 			if ! mkfs.$HYBRID_PERSISTENT_FS $dev$disknr;then
+ 				Echo &quot;Failed to create hybrid persistent filesystem&quot;
+ 				Echo &quot;Persistent writing deactivated&quot;
+@@ -5217,11 +5211,43 @@ function createHybridPersistent {
+ 		fi
+ 	done
+ }
+-
+ #======================================
+-# createHybridPersistentPartition
++# callPartitioner
++#--------------------------------------
++function callPartitioner {
++	local input=$1
++	if [ $PARTITIONER = &quot;sfdisk&quot; ];then
++		Echo &quot;Repartition the disk according to real geometry [ fdisk ]&quot;
++		fdisk $imageDiskDevice &lt; $input 1&gt;&amp;2
++		if test $? != 0; then
++			systemException &quot;Failed to create partition table&quot; &quot;reboot&quot;
++		fi
++	else
++		# /.../
++		# nothing to do for parted here as we write
++		# imediately with parted and don't create a
++		# command input file as for fdisk but we re-read
++		# the disk so that the new table will be used
++		# ----
++		blockdev --rereadpt $imageDiskDevice
++	fi
++}
++#======================================
++# createPartitionerInput
++#--------------------------------------
++function createPartitionerInput {
++	if [ $PARTITIONER = &quot;sfdisk&quot; ];then
++		createFDiskInput $@
++	else
++		Echo &quot;Repartition the disk according to real geometry [ parted ]&quot;
++		partedInit $imageDiskDevice
++		createPartedInput $imageDiskDevice $@
++    fi
++}
++#======================================
++# createFDiskInput
+ #--------------------------------------
+-function createHybridPersistentPartition {
++function createFDiskInput {
+ 	local input=/part.input
+ 	rm -f $input
+ 	for cmd in $*;do
+@@ -5232,6 +5258,175 @@ function createHybridPersistentPartition {
+ 		echo $cmd &gt;&gt; $input
+ 	done
+ }
+-
++#======================================
++# partedInit
++#--------------------------------------
++function partedInit {
++	# /.../
++	# initialize current partition table output
++	# as well as the number of cylinders and the
++	# cyliner size in kB for this disk
++	# ----
++	local device=$1
++	local IFS=&quot;&quot;
++	local parted=$(parted -m $device unit cyl print)
++	local header=$(echo $parted | head -n 3 | tail -n 1)
++	local ccount=$(echo $header | cut -f1 -d:)
++	local cksize=$(echo $header | cut -f4 -d: | cut -f1 -dk)
++	export partedOutput=$parted
++	export partedCylCount=$ccount
++	export partedCylKSize=$cksize
++}
++#======================================
++# partedWrite
++#--------------------------------------
++function partedWrite {
++	# /.../
++	# call parted with current command queue.
++	# This will immediately change the partition table
++	# ----
++	local device=$1
++	local cmds=$2
++	if ! parted -m $device unit cyl $cmds;then
++		systemException &quot;Failed to create partition table&quot; &quot;reboot&quot;
++	fi
++	partedInit $device
++}
++#======================================
++# partedStartCylinder
++#--------------------------------------
++function partedStartCylinder {
++	# /.../
++	# return start cylinder of given partition.
++	# lowest cylinder number is 0
++	# ----
++	local part=$(($1 + 3))
++	local IFS=&quot;&quot;
++	local header=$(echo $partedOutput | head -n $part | tail -n 1)
++	local ccount=$(echo $header | cut -f2 -d: | tr -d cyl)
++	echo $ccount
++}
++#======================================
++# partedEndCylinder
++#--------------------------------------
++function partedEndCylinder {
++	# /.../
++	# return end cylinder of given partition, next
++	# partition must start at return value plus 1
++	# ----
++	local part=$(($1 + 3))
++	local IFS=&quot;&quot;
++	local header=$(echo $partedOutput | head -n $part | tail -n 1)
++	local ccount=$(echo $header | cut -f3 -d: | tr -d cyl)
++	echo $ccount
++}
++#======================================
++# partedMBToCylinder
++#--------------------------------------
++function partedMBToCylinder {
++	# /.../
++	# convert size given in MB to cylinder count
++	# ----
++	local sizeKB=$(($1 * 1024))
++	local cylreq=$(($sizeKB / $partedCylKSize))
++	echo $cylreq
++}
++#======================================
++# createPartedInput
++#--------------------------------------
++function createPartedInput {
++	# /.../
++	# evaluate partition instructions and turn them
++	# into a parted command line queue. As soon as the
++	# geometry data would be changed according to the
++	# last partedInit() call the command queue is processed
++	# and the partedInit() will be called afterwards
++	# ----
++	local disk=$1
++	shift
++	local index=0
++	local pcmds
++	local partid
++	local pstart
++	local pstopp
++	local value
++	local cmdq
++	#======================================
++	# create list of commands
++	#--------------------------------------
++	for cmd in $*;do
++		pcmds[$index]=$cmd
++		index=$(($index + 1))
++	done
++	index=0
++	#======================================
++	# process commands
++	#--------------------------------------
++	for cmd in ${pcmds[*]};do
++		case $cmd in
++			#======================================
++			# delete partition
++			#--------------------------------------
++			&quot;d&quot;)
++				partid=${pcmds[$index + 1]}
++				partid=$(($partid / 1))
++				if [ $partid -eq 0 ];then
++					partid=1
++				fi
++				cmdq=&quot;$cmdq rm $partid&quot;
++				;;
++			#======================================
++			# create new partition
++			#--------------------------------------
++			&quot;n&quot;)
++				partid=${pcmds[$index + 2]}
++				partid=$(($partid / 1))
++				if [ $partid -eq 0 ];then
++					partid=1
++				fi
++				pstart=${pcmds[$index + 3]}
++				if [ &quot;$pstart&quot; = &quot;1&quot; ];then
++					pstart=0
++				fi
++				if [ $pstart = &quot;.&quot; ];then
++					# start is next cylinder according to previous partition
++					pstart=$(($partid - 1))
++					if [ $pstart -gt 0 ];then
++						pstart=$(partedEndCylinder $pstart)
++						pstart=$(($pstart + 1))
++					fi
++				fi
++				pstopp=${pcmds[$index + 4]}
++				if [ $pstopp = &quot;.&quot; ];then
++					# use rest of the disk for partition end
++					pstopp=$partedCylCount
++				elif echo $pstopp | grep -qi M;then
++					# calculate stopp cylinder from size
++					pstopp=$(($partid - 1))
++					if [ $pstopp -gt 0 ];then
++						pstopp=$(partedEndCylinder $pstopp)
++					fi
++					value=$(echo ${pcmds[$index + 4]} | cut -f1 -dM | tr -d +)
++					value=$(partedMBToCylinder $value)
++					pstopp=$((1 + $pstopp + $value))
++				fi
++				cmdq=&quot;$cmdq mkpart primary $pstart $pstopp&quot;
++				partedWrite &quot;$disk&quot; &quot;$cmdq&quot;
++				cmdq=&quot;&quot;
++				;;
++			#======================================
++			# change partition ID
++			#--------------------------------------
++			&quot;t&quot;)
++				ptypex=${pcmds[$index + 2]}
++				partid=${pcmds[$index + 1]}
++				cmdq=&quot;$cmdq set $partid type 0x$ptypex&quot;
++				partedWrite &quot;$disk&quot; &quot;$cmdq&quot;
++				cmdq=&quot;&quot;
++				;;
++		esac
++		index=$(($index + 1))
++	done
++}
+ 
+ # vim: set noexpandtab:
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 6c5cad6..116951c 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -3,9 +3,10 @@ Wed Dec  9 10:30:44 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.85
+ - fixed user/group setup for multiple users (bnc #561749)
++- hybridpersistent key added. Patch by Uwe Gansert &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ug at novell.com</A>&gt;
++  Thanks Uwe (bnc #557100)
+ - fixed home device fstab entry, uses disk by id now
+-- hybridpersistent key added (bnc #557100). Patch by
+-  Uwe Gansert &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ug at novell.com</A>&gt;
++- moved repartition functions to KIWILinuxRC
+ 
+ -------------------------------------------------------------------
+ Tue Dec  8 12:42:11 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+diff --git a/system/boot/ix86/oemboot/suse-repart b/system/boot/ix86/oemboot/suse-repart
+index 0181b8f..6286490 100755
+--- a/system/boot/ix86/oemboot/suse-repart
++++ b/system/boot/ix86/oemboot/suse-repart
+@@ -898,231 +898,6 @@ function activateBootPartition {
+ }
+ 
+ #======================================
+-# callPartitioner
+-#--------------------------------------
+-function callPartitioner {
+-	local input=$1
+-	if [ $PARTITIONER = &quot;sfdisk&quot; ];then
+-		Echo &quot;Repartition the disk according to real geometry [ fdisk ]&quot;
+-		fdisk $imageDiskDevice &lt; $input 1&gt;&amp;2
+-		if test $? != 0; then
+-			systemException &quot;Failed to create partition table&quot; &quot;reboot&quot;
+-		fi
+-	else
+-		# /.../
+-		# nothing to do for parted here as we write
+-		# imediately with parted and don't create a
+-		# command input file as for fdisk
+-		# ----
+-		:
+-	fi
+-}
+-
+-#======================================
+-# createPartitionerInput
+-#--------------------------------------
+-function createPartitionerInput {
+-	if [ $PARTITIONER = &quot;sfdisk&quot; ];then
+-		createFDiskInput $@
+-	else
+-		Echo &quot;Repartition the disk according to real geometry [ parted ]&quot;
+-		partedInit $imageDiskDevice
+-		createPartedInput $imageDiskDevice $@
+-    fi
+-}
+-
+-#======================================
+-# createFDiskInput
+-#--------------------------------------
+-function createFDiskInput {
+-	local input=/part.input
+-	rm -f $input
+-	for cmd in $*;do
+-		if [ $cmd = &quot;.&quot; ];then
+-			echo &gt;&gt; $input
+-			continue
+-		fi
+-		echo $cmd &gt;&gt; $input
+-	done
+-}
+-
+-#======================================
+-# partedInit
+-#--------------------------------------
+-function partedInit {
+-	# /.../
+-	# initialize current partition table output
+-	# as well as the number of cylinders and the
+-	# cyliner size in kB for this disk
+-	# ----
+-	local device=$1
+-	local IFS=&quot;&quot;
+-	local parted=$(parted -m $device unit cyl print)
+-	local header=$(echo $parted | head -n 3 | tail -n 1)
+-	local ccount=$(echo $header | cut -f1 -d:)
+-	local cksize=$(echo $header | cut -f4 -d: | cut -f1 -dk)
+-	export partedOutput=$parted
+-	export partedCylCount=$ccount
+-	export partedCylKSize=$cksize
+-}
+-
+-#======================================
+-# partedWrite
+-#--------------------------------------
+-function partedWrite {
+-	# /.../
+-	# call parted with current command queue.
+-	# This will immediately change the partition table
+-	# ----
+-	local device=$1
+-	local cmds=$2
+-	if ! parted -m $device unit cyl $cmds;then
+-		systemException &quot;Failed to create partition table&quot; &quot;reboot&quot;
+-	fi
+-	partedInit $device
+-}
+-
+-#======================================
+-# partedStartCylinder
+-#--------------------------------------
+-function partedStartCylinder {
+-	# /.../
+-	# return start cylinder of given partition.
+-	# lowest cylinder number is 0
+-	# ----
+-	local part=$(($1 + 3))
+-	local IFS=&quot;&quot;
+-	local header=$(echo $partedOutput | head -n $part | tail -n 1)
+-	local ccount=$(echo $header | cut -f2 -d: | tr -d cyl)
+-	echo $ccount
+-}
+-
+-#======================================
+-# partedEndCylinder
+-#--------------------------------------
+-function partedEndCylinder {
+-	# /.../
+-	# return end cylinder of given partition, next
+-	# partition must start at return value plus 1
+-	# ----
+-	local part=$(($1 + 3))
+-	local IFS=&quot;&quot;
+-	local header=$(echo $partedOutput | head -n $part | tail -n 1)
+-	local ccount=$(echo $header | cut -f3 -d: | tr -d cyl)
+-	echo $ccount
+-}
+-
+-#======================================
+-# partedMBToCylinder
+-#--------------------------------------
+-function partedMBToCylinder {
+-	# /.../
+-	# convert size given in MB to cylinder count
+-	# ----
+-	local sizeKB=$(($1 * 1024))
+-	local cylreq=$(($sizeKB / $partedCylKSize))
+-	echo $cylreq
+-}
+-
+-#======================================
+-# createPartedInput
+-#--------------------------------------
+-function createPartedInput {
+-	# /.../
+-	# evaluate partition instructions and turn them
+-	# into a parted command line queue. As soon as the
+-	# geometry data would be changed according to the
+-	# last partedInit() call the command queue is processed
+-	# and the partedInit() will be called afterwards
+-	# ----
+-	local disk=$1
+-	shift
+-	local index=0
+-	local pcmds
+-	local partid
+-	local pstart
+-	local pstopp
+-	local value
+-	local cmdq
+-	#======================================
+-	# create list of commands
+-	#--------------------------------------
+-	for cmd in $*;do
+-		pcmds[$index]=$cmd
+-		index=$(($index + 1))
+-	done
+-	index=0
+-	#======================================
+-	# process commands
+-	#--------------------------------------
+-	for cmd in ${pcmds[*]};do
+-		case $cmd in
+-			#======================================
+-			# delete partition
+-			#--------------------------------------
+-			&quot;d&quot;)
+-				partid=${pcmds[$index + 1]}
+-				partid=$(($partid / 1))
+-				if [ $partid -eq 0 ];then
+-					partid=1
+-				fi
+-				cmdq=&quot;$cmdq rm $partid&quot;
+-				;;
+-			#======================================
+-			# create new partition
+-			#--------------------------------------
+-			&quot;n&quot;)
+-				partid=${pcmds[$index + 2]}
+-				partid=$(($partid / 1))
+-				if [ $partid -eq 0 ];then
+-					partid=1
+-				fi
+-				pstart=${pcmds[$index + 3]}
+-				if [ &quot;$pstart&quot; = &quot;1&quot; ];then
+-					pstart=0
+-				fi
+-				if [ $pstart = &quot;.&quot; ];then
+-					# start is next cylinder according to previous partition
+-					pstart=$(($partid - 1))
+-					if [ $pstart -gt 0 ];then
+-						pstart=$(partedEndCylinder $pstart)
+-						pstart=$(($pstart + 1))
+-					fi
+-				fi
+-				pstopp=${pcmds[$index + 4]}
+-				if [ $pstopp = &quot;.&quot; ];then
+-					# use rest of the disk for partition end
+-					pstopp=$partedCylCount
+-				elif echo $pstopp | grep -qi M;then
+-					# calculate stopp cylinder from size
+-					pstopp=$(($partid - 1))
+-					if [ $pstopp -gt 0 ];then
+-						pstopp=$(partedEndCylinder $pstopp)
+-					fi
+-					value=$(echo ${pcmds[$index + 4]} | cut -f1 -dM | tr -d +)
+-					value=$(partedMBToCylinder $value)
+-					pstopp=$((1 + $pstopp + $value))
+-				fi
+-				cmdq=&quot;$cmdq mkpart primary $pstart $pstopp&quot;
+-				partedWrite &quot;$disk&quot; &quot;$cmdq&quot;
+-				cmdq=&quot;&quot;
+-				;;
+-			#======================================
+-			# change partition ID
+-			#--------------------------------------
+-			&quot;t&quot;)
+-				ptypex=${pcmds[$index + 2]}
+-				partid=${pcmds[$index + 1]}
+-				cmdq=&quot;$cmdq set $partid type 0x$ptypex&quot;
+-				partedWrite &quot;$disk&quot; &quot;$cmdq&quot;
+-				cmdq=&quot;&quot;
+-				;;
+-		esac
+-		index=$(($index + 1))
+-	done
+-}
+-
+-#======================================
+ # setupDeviceNames
+ #--------------------------------------
+ function setupDeviceNames {
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001670.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b9f5074b1ab3cb240362eb13c9f4bd69cd1415e3
+</A></li>
+	<LI>Next message: <A HREF="001672.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 83a1af025a2b8365288aba188ba22d8d409ec14e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1671">[ date ]</a>
+              <a href="thread.html#1671">[ thread ]</a>
+              <a href="subject.html#1671">[ subject ]</a>
+              <a href="author.html#1671">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

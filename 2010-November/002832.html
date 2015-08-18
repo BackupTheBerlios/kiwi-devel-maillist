@@ -1,0 +1,245 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ef1ba679b0d4f5cd15bbeed33bc8484c74de80ce
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ef1ba679b0d4f5cd15bbeed33bc8484c74de80ce&In-Reply-To=%3C20101122151328.A3283481039%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002831.html">
+   <LINK REL="Next"  HREF="002833.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ef1ba679b0d4f5cd15bbeed33bc8484c74de80ce</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ef1ba679b0d4f5cd15bbeed33bc8484c74de80ce&In-Reply-To=%3C20101122151328.A3283481039%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ef1ba679b0d4f5cd15bbeed33bc8484c74de80ce">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Nov 22 16:13:28 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002831.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 965939ea277408fe99b43497dc84da20fc7b1a7c
+</A></li>
+        <LI>Next message: <A HREF="002833.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ee4324758e3ecc40859282715248e3e384d7455f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2832">[ date ]</a>
+              <a href="thread.html#2832">[ thread ]</a>
+              <a href="subject.html#2832">[ subject ]</a>
+              <a href="author.html#2832">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  ef1ba679b0d4f5cd15bbeed33bc8484c74de80ce (commit)
+       via  6f1e07daa77dbadd29c7eca71861c2581c90b769 (commit)
+      from  965939ea277408fe99b43497dc84da20fc7b1a7c (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ef1ba679b0d4f5cd15bbeed33bc8484c74de80ce
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Nov 22 16:10:47 2010 +0100
+
+    - fixed cleanImage() function to cleanly umount partitions before
+      calling init. Also make sure cleanImage reports its actions
+      as part of the boot.kiwi logfile
+    
+    - make sure system filesystems and mount options corresponds with
+      the default settings we use in a standard installation with yast
+
+commit 6f1e07daa77dbadd29c7eca71861c2581c90b769
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Nov 22 14:58:12 2010 +0100
+
+    - fixed typo in option description
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 482c76a..323591c 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -1601,7 +1601,7 @@ sub usage {
+ 	print &quot;    kiwi -c | --create  &lt;image-root&gt; -d &lt;destination&gt;\n&quot;;
+ 	print &quot;       [ --type &lt;image-type&gt; ]\n&quot;;
+ 	print &quot;Image Cache:\n&quot;;
+-	print &quot;    kiwi --image-cache &lt;image-path&gt;\n&quot;;
++	print &quot;    kiwi --init-cache &lt;image-path&gt;\n&quot;;
+ 	print &quot;       [ --cache &lt;dir&gt; ]\n&quot;;
+ 	print &quot;Image Upgrade:\n&quot;;
+ 	print &quot;    kiwi -u | --upgrade &lt;image-root&gt;\n&quot;;
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index af6c49f..4d9acc0 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -2085,9 +2085,11 @@ function setupDefaultFstab {
+ 	local nfstab=$prefix/etc/fstab
+ 	mkdir -p $prefix/etc
+ 	cat &gt; $nfstab &lt; /dev/null
+-	echo &quot;devpts  /dev/pts   devpts  mode=0620,gid=5 0 0&quot;   &gt;&gt; $nfstab
+-	echo &quot;proc    /proc      proc    defaults 0 0&quot;          &gt;&gt; $nfstab
+-	echo &quot;sysfs   /sys       sysfs   noauto 0 0&quot;            &gt;&gt; $nfstab
++	echo &quot;devpts  /dev/pts          devpts  mode=0620,gid=5 0 0&quot;  &gt;&gt; $nfstab
++	echo &quot;proc    /proc             proc    defaults        0 0&quot;  &gt;&gt; $nfstab
++	echo &quot;sysfs   /sys              sysfs   noauto          0 0&quot;  &gt;&gt; $nfstab
++	echo &quot;debugfs /sys/kernel/debug debugfs noauto          0 0&quot;  &gt;&gt; $nfstab
++	echo &quot;usbfs   /proc/bus/usb     usbfs   noauto          0 0&quot;  &gt;&gt; $nfstab
+ }
+ #======================================
+ # updateRootDeviceFstab
+@@ -2130,7 +2132,7 @@ function updateRootDeviceFstab {
+ 				[ ! $volume = &quot;Comp&quot; ] &amp;&amp; \
+ 				[ ! $volume = &quot;Swap&quot; ]
+ 			then
+-				echo &quot;/dev/$VGROUP/LV$volume /$mpoint $FSTYPE defaults 0 0&quot; \
++				echo &quot;/dev/$VGROUP/LV$volume /$mpoint $FSTYPE defaults 1 1&quot; \
+ 				&gt;&gt; $nfstab
+ 			fi
+ 		done
+@@ -2147,7 +2149,7 @@ function updateSwapDeviceFstab {
+ 	local sdev=$2
+ 	local diskByID=`getDiskID $sdev`
+ 	local nfstab=$prefix/etc/fstab
+-	echo &quot;$diskByID swap swap pri=42 0 0&quot; &gt;&gt; $nfstab
++	echo &quot;$diskByID swap swap defaults 0 0&quot; &gt;&gt; $nfstab
+ }
+ #======================================
+ # updateLVMBootDeviceFstab
+@@ -2175,7 +2177,7 @@ function updateLVMBootDeviceFstab {
+ 	if [ -z &quot;$FSTYPE&quot; ] || [ &quot;$FSTYPE&quot; = &quot;unknown&quot; ];then
+ 		FSTYPE=&quot;auto&quot;
+ 	fi
+-	echo &quot;$diskByID $mount $FSTYPE defaults 0 0&quot; &gt;&gt; $nfstab
++	echo &quot;$diskByID $mount $FSTYPE defaults 1 2&quot; &gt;&gt; $nfstab
+ 	echo &quot;$mount/boot /boot none bind 0 0&quot; &gt;&gt; $nfstab
+ 	if [ ! -z &quot;$FSTYPE_SAVE&quot; ];then
+ 		FSTYPE=$FSTYPE_SAVE
+@@ -2218,9 +2220,9 @@ function updateSyslinuxBootDeviceFstab {
+ 	local diskByID=`getDiskID $sdev`
+ 	local nfstab=$prefix/etc/fstab
+ 	if [ $loader = &quot;syslinux&quot; ];then
+-		echo &quot;$diskByID /syslboot vfat defaults 0 0&quot; &gt;&gt; $nfstab
++		echo &quot;$diskByID /syslboot vfat defaults 1 2&quot; &gt;&gt; $nfstab
+ 	else
+-		echo &quot;$diskByID /syslboot ext2 defaults 0 0&quot; &gt;&gt; $nfstab
++		echo &quot;$diskByID /syslboot ext2 defaults 1 2&quot; &gt;&gt; $nfstab
+ 	fi
+ 	echo &quot;/syslboot/boot /boot none bind 0 0&quot; &gt;&gt; $nfstab
+ }
+@@ -2256,7 +2258,7 @@ function updateOtherDeviceFstab {
+ 		then
+ 			device=$(ddn $DISK $count)
+ 			probeFileSystem $device
+-			echo &quot;$device $partMount $FSTYPE defaults 1 1&quot; &gt;&gt; $nfstab
++			echo &quot;$device $partMount $FSTYPE defaults 0 0&quot; &gt;&gt; $nfstab
+ 		fi
+ 	done
+ }
+@@ -4958,6 +4960,11 @@ function cleanImage {
+ 	# is called
+ 	# ----
+ 	#======================================
++	# setup logging in this mode
++	#--------------------------------------
++	exec 2&gt;&gt;$ELOG_FILE
++	set -x
++	#======================================
+ 	# kill second utimer and tail
+ 	#--------------------------------------
+ 	. /iprocs
+@@ -4991,22 +4998,37 @@ function cleanImage {
+ 		return
+ 	fi
+ 	#======================================
+-	# umount LVM root parts lazy
++	# umount LVM root parts
+ 	#--------------------------------------
+-	if [ &quot;$haveLVM&quot; = &quot;yes&quot; ]; then
+-		for i in /dev/$VGROUP/LV*;do
+-			if [ ! -e $i ];then
+-				continue
+-			fi
+-			if \
+-				[ ! $i = &quot;/dev/$VGROUP/LVRoot&quot; ] &amp;&amp; \
+-				[ ! $i = &quot;/dev/$VGROUP/LVComp&quot; ] &amp;&amp; \
+-				[ ! $i = &quot;/dev/$VGROUP/LVSwap&quot; ]
+-			then
+-				umount -l $i &amp;&gt;/dev/null
+-			fi
+-		done
+-	fi
++	for i in /dev/$VGROUP/LV*;do
++		if [ ! -e $i ];then
++			continue
++		fi
++		if \
++			[ ! $i = &quot;/dev/$VGROUP/LVRoot&quot; ] &amp;&amp; \
++			[ ! $i = &quot;/dev/$VGROUP/LVComp&quot; ] &amp;&amp; \
++			[ ! $i = &quot;/dev/$VGROUP/LVSwap&quot; ]
++		then
++			mpoint=$(echo ${i##/*/LV})
++			umount $mpoint 1&gt;&amp;2
++		fi
++	done
++	#======================================
++	# umount image boot partition if any
++	#--------------------------------------
++	for i in lvmboot btrboot clicboot xfsboot luksboot syslboot;do
++		if [ ! -e /$i ];then
++			continue
++		fi
++		umount /$i 1&gt;&amp;2
++	done
++	umount /boot 1&gt;&amp;2
++	#======================================
++	# turn off swap
++	#--------------------------------------
++	mount -t proc proc /proc
++	swapoff -a   1&gt;&amp;2
++	umount /proc 1&gt;&amp;2
+ }
+ #======================================
+ # bootImage
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002831.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 965939ea277408fe99b43497dc84da20fc7b1a7c
+</A></li>
+	<LI>Next message: <A HREF="002833.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ee4324758e3ecc40859282715248e3e384d7455f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2832">[ date ]</a>
+              <a href="thread.html#2832">[ thread ]</a>
+              <a href="subject.html#2832">[ subject ]</a>
+              <a href="author.html#2832">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

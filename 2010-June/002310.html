@@ -1,0 +1,209 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4a060d6234f328783b9664152c0ce98bcb603597
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204a060d6234f328783b9664152c0ce98bcb603597&In-Reply-To=%3C201006171436.o5HEaVVS008862%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002309.html">
+   <LINK REL="Next"  HREF="002311.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4a060d6234f328783b9664152c0ce98bcb603597</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%204a060d6234f328783b9664152c0ce98bcb603597&In-Reply-To=%3C201006171436.o5HEaVVS008862%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4a060d6234f328783b9664152c0ce98bcb603597">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jun 17 16:36:31 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002309.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 21dc2b9dead50935f959787a21f98511552ade2f
+</A></li>
+        <LI>Next message: <A HREF="002311.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 02a5d69e566f58c6f2aa8035a6aaca6010cdeefd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2310">[ date ]</a>
+              <a href="thread.html#2310">[ thread ]</a>
+              <a href="subject.html#2310">[ subject ]</a>
+              <a href="author.html#2310">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  4a060d6234f328783b9664152c0ce98bcb603597 (commit)
+      from  21dc2b9dead50935f959787a21f98511552ade2f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 4a060d6234f328783b9664152c0ce98bcb603597
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Jun 17 13:46:35 2010 +0200
+
+    - redesigned and restructure the kiwi migration module
+      we were working in a small workgroup this week to
+      establish a new version of the migration module. Thanks
+      to everybody in my team.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIMigrate.pm b/modules/KIWIMigrate.pm
+index 49750fb..87c4793 100644
+--- a/modules/KIWIMigrate.pm
++++ b/modules/KIWIMigrate.pm
+@@ -32,6 +32,7 @@ use Storable;
+ use KIWILog;
+ use KIWIQX;
+ use File::Spec;
++use Fcntl ':mode';
+ use Cwd 'abs_path';
+ 
+ #==========================================
+@@ -544,9 +545,15 @@ sub createReport {
+ 			my $count= 0;
+ 			foreach my $file (sort keys %{$nopackage}) {
+ 				my $fattr = $nopackage-&gt;{$file}-&gt;[1];
++				my $type  = &quot;file&quot;;
+ 				my $size  = 0;
+ 				my $mtime = &quot;unknown&quot;;
+ 				if ($fattr) {
++					if (S_ISDIR($fattr-&gt;mode)) {
++						$type = &quot;directory&quot;;
++					} elsif (S_ISLNK($fattr-&gt;mode)) {
++						$type = &quot;link&quot;;
++					}
+ 					$mtime = localtime ($fattr-&gt;mtime);
+ 					$size  = $fattr-&gt;size;
+ 				}
+@@ -561,13 +568,28 @@ sub createReport {
+ 				}
+ 				# ND: root-nopackage.html...
+ 				print ND '&lt;section class=&quot;row&quot;&gt;'.&quot;\n&quot;;
+-				print ND '&lt;dt&gt;'.$file.'&lt;/dt&gt;'.&quot;\n&quot;;
+-				print ND '&lt;dd class=&quot;size&quot;&gt;';
+-				print ND $size;
+-				print ND '&lt;/dd&gt;'.&quot;\n&quot;;
+-				print ND '&lt;dd class=&quot;modified&quot;&gt;';
+-				print ND $mtime;
+-				print ND '&lt;/dd&gt;'.&quot;\n&quot;;
++				if ($type eq &quot;directory&quot;) {
++					print ND '&lt;dt class=&quot;'.$type.'&quot;&gt;'.$file.'&lt;/dt&gt;'.&quot;\n&quot;;
++					print ND '&lt;dd class=&quot;file&quot;&gt;';
++					print ND &quot;directory&quot;;
++					print ND '&lt;/dd&gt;'.&quot;\n&quot;;
++					print ND '&lt;dd class=&quot;file&quot;/&gt;'.&quot;\n&quot;;
++				} elsif ($type eq &quot;link&quot;) {
++					my $target = readlink $file;
++					print ND '&lt;dt class=&quot;'.$type.'&quot;&gt;'.$file.'&lt;/dt&gt;'.&quot;\n&quot;;
++					print ND '&lt;dd class=&quot;file&quot;&gt;';
++					print ND &quot;link to -&gt; &quot;.$target;
++					print ND '&lt;/dd&gt;'.&quot;\n&quot;;
++					print ND '&lt;dd class=&quot;file&quot;/&gt;'.&quot;\n&quot;;
++				} else {
++					print ND '&lt;dt class=&quot;'.$type.'&quot;&gt;'.$file.'&lt;/dt&gt;'.&quot;\n&quot;;
++					print ND '&lt;dd class=&quot;size&quot;&gt;';
++					print ND $size;
++					print ND '&lt;/dd&gt;'.&quot;\n&quot;;
++					print ND '&lt;dd class=&quot;modified&quot;&gt;';
++					print ND $mtime;
++					print ND '&lt;/dd&gt;'.&quot;\n&quot;;
++				}
+ 				print ND '&lt;/section&gt;'.&quot;\n&quot;;
+ 				# JS: data.js...
+ 				if ($count) {
+@@ -1243,7 +1265,6 @@ sub setSystemOverlayFiles {
+ 	} else {
+ 		my @rpmcheck = qxx (&quot;rpm -qlav&quot;);
+ 		chomp @rpmcheck;
+-		my @rpm_dirf = ();
+ 		my @rpm_dir  = ();
+ 		my @rpm_file = ();
+ 		foreach my $dir (@rpmcheck) {
+@@ -1255,7 +1276,6 @@ sub setSystemOverlayFiles {
+ 				$base = &quot;$dirn/$name&quot;;
+ 				$base =~ s/\/+/\//g;
+ 				$base =~ s/^\///;
+-				push @rpm_dirf,$base;
+ 				push @rpm_file,$base;
+ 				push @rpm_dir,$base;
+ 			} elsif ($dir =~ /.*?\/(.*?)( -&gt; .*)?$/) {
+@@ -1272,10 +1292,8 @@ sub setSystemOverlayFiles {
+ 		my %file_rpm;
+ 		my %dirs_rpm;
+ 		my %dirs_cmp;
+-		my %dirs_rpmf;
+ 		@file_rpm{map {$_ = &quot;/$_&quot;} @rpm_file} = ();
+ 		@dirs_rpm{map {$_ = &quot;/$_&quot;} @rpm_dir}  = ();
+-		@dirs_rpmf{map {$_ = &quot;/$_&quot;} @rpm_dirf}  = ();
+ 		$dirs_cmp{&quot;/&quot;} = undef;
+ 		foreach my $dir (sort keys %dirs_rpm) {
+ 			while ($dir =~ s:/[^/]+$::) {
+@@ -1308,7 +1326,7 @@ sub setSystemOverlayFiles {
+ 			}
+ 		}
+ 		my $wref = generateWanted (\%result);
+-		find({ wanted =&gt; $wref, follow =&gt; 0 }, sort keys %dirs_rpmf);
++		find({ wanted =&gt; $wref, follow =&gt; 0 }, sort keys %dirs_rpm);
+ 		foreach my $file (sort keys %result) {
+ 			if (exists $file_rpm{$file}) {
+ 				delete $result{$file};
+diff --git a/modules/KIWIMigrate.tgz b/modules/KIWIMigrate.tgz
+index fef371f..8766a8d 100644
+Binary files a/modules/KIWIMigrate.tgz and b/modules/KIWIMigrate.tgz differ
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 6f9c48a..3ce1752 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,6 +1,10 @@
+ -------------------------------------------------------------------
+ Mon Jun 14 11:10:15 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- redesigned and restructure the kiwi migration module
++  we were working in a small workgroup this week to
++  establish a new version of the migration module. Thanks
++  to everybody in my team.
+ - Remove some code duplication by using the functions:
+   createDirInteractive() , getDefaultBaseRoot()
+ 
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002309.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 21dc2b9dead50935f959787a21f98511552ade2f
+</A></li>
+	<LI>Next message: <A HREF="002311.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 02a5d69e566f58c6f2aa8035a6aaca6010cdeefd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2310">[ date ]</a>
+              <a href="thread.html#2310">[ thread ]</a>
+              <a href="subject.html#2310">[ subject ]</a>
+              <a href="author.html#2310">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

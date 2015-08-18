@@ -1,0 +1,183 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ebc03e30a9c853c0b7bffc0284259f38b53bb1f9
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ebc03e30a9c853c0b7bffc0284259f38b53bb1f9&In-Reply-To=%3C201002041127.o14BR0TV022620%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001848.html">
+   <LINK REL="Next"  HREF="001850.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ebc03e30a9c853c0b7bffc0284259f38b53bb1f9</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ebc03e30a9c853c0b7bffc0284259f38b53bb1f9&In-Reply-To=%3C201002041127.o14BR0TV022620%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ebc03e30a9c853c0b7bffc0284259f38b53bb1f9">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Feb  4 12:27:00 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001848.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4557e53de3fcbfe894a8b139bd2bb1338d6400dc
+</A></li>
+        <LI>Next message: <A HREF="001850.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d5367465fa82ed7e3020e411cc4cee87e3e07b9b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1849">[ date ]</a>
+              <a href="thread.html#1849">[ thread ]</a>
+              <a href="subject.html#1849">[ subject ]</a>
+              <a href="author.html#1849">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  ebc03e30a9c853c0b7bffc0284259f38b53bb1f9 (commit)
+      from  4557e53de3fcbfe894a8b139bd2bb1338d6400dc (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ebc03e30a9c853c0b7bffc0284259f38b53bb1f9
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Feb 4 12:26:48 2010 +0100
+
+    - fixed templates, Xen based OEM image should be a dom0
+    - Xen dom0 images doesn't require a xenconfig file
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index a79d3e3..6b901b9 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -1214,9 +1214,15 @@ sub createImageVMX {
+ 	my %xenc = $xml  -&gt; getXenConfig();
+ 	my %type = %{$xml -&gt; getImageTypeAndAttributes()};
+ 	my $name = $this -&gt; createImageUSB ($para,&quot;VMX&quot;);
++	my $xendomain;
+ 	if (! defined $name) {
+ 		return undef;
+ 	}
++	if (defined $xenc{xen_domain}) {
++		$xendomain = $xenc{xen_domain};
++	} else {
++		$xendomain = &quot;dom0&quot;;
++	}
+ 	undef $main::Prepare;
+ 	undef $main::Create;
+ 	#==========================================
+@@ -1235,7 +1241,7 @@ sub createImageVMX {
+ 	#==========================================
+ 	# Create virtual disk configuration for Xen
+ 	#------------------------------------------
+-	if ($type{bootprofile} eq &quot;xen&quot;) {
++	if (($type{bootprofile} eq &quot;xen&quot;) &amp;&amp; ($xendomain ne &quot;dom0&quot;)) {
+ 		# Xen config file
+ 		if (! $this -&gt; buildXenConfig ($main::Destination,$name,\%xenc,&quot;VMX&quot;)) {
+ 			$main::Survive = &quot;default&quot;;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index bfa315c..a9b032f 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -2,6 +2,8 @@
+ Wed Feb  3 11:04:09 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v4.13
++- fixed templates, Xen based OEM image should be a dom0
++- Xen dom0 images doesn't require a xenconfig file
+ - prevent XML pretty printer from swallowing comments
+ - fixed migration mount setup and clean code
+ 
+diff --git a/template/suse-11.1-JeOS/config.xml b/template/suse-11.1-JeOS/config.xml
+index 1c905ec..9533f64 100644
+--- a/template/suse-11.1-JeOS/config.xml
++++ b/template/suse-11.1-JeOS/config.xml
+@@ -31,7 +31,7 @@
+ 				&lt;oem-home&gt;false&lt;/oem-home&gt;
+ 				&lt;oem-systemsize&gt;2048&lt;/oem-systemsize&gt;
+ 			&lt;/oemconfig&gt;
+-			&lt;xenconfig memory=&quot;512&quot; domain=&quot;domU&quot;&gt;
++			&lt;xenconfig memory=&quot;512&quot; domain=&quot;dom0&quot;&gt;
+ 				&lt;xendisk device=&quot;/dev/xvda&quot;/&gt;
+ 				&lt;xenbridge name=&quot;&quot;/&gt;
+ 			&lt;/xenconfig&gt;
+diff --git a/template/suse-11.2-JeOS/config.xml b/template/suse-11.2-JeOS/config.xml
+index 0061674..52ca0a2 100644
+--- a/template/suse-11.2-JeOS/config.xml
++++ b/template/suse-11.2-JeOS/config.xml
+@@ -36,7 +36,7 @@
+ 				&lt;oem-home&gt;false&lt;/oem-home&gt;
+ 				&lt;oem-systemsize&gt;2048&lt;/oem-systemsize&gt;
+ 			&lt;/oemconfig&gt;
+-			&lt;xenconfig memory=&quot;512&quot; domain=&quot;domU&quot;&gt;
++			&lt;xenconfig memory=&quot;512&quot; domain=&quot;dom0&quot;&gt;
+ 				&lt;xendisk device=&quot;/dev/xvda&quot;/&gt;
+ 				&lt;xenbridge name=&quot;&quot;/&gt;
+ 			&lt;/xenconfig&gt;
+diff --git a/template/suse-SLE10-JeOS/config.xml b/template/suse-SLE10-JeOS/config.xml
+index 37ce756..cfb53ce 100644
+--- a/template/suse-SLE10-JeOS/config.xml
++++ b/template/suse-SLE10-JeOS/config.xml
+@@ -32,7 +32,7 @@
+ 				&lt;oem-home&gt;false&lt;/oem-home&gt;
+ 				&lt;oem-systemsize&gt;2048&lt;/oem-systemsize&gt;
+ 			&lt;/oemconfig&gt;
+-			&lt;xenconfig memory=&quot;512&quot; domain=&quot;domU&quot;&gt;
++			&lt;xenconfig memory=&quot;512&quot; domain=&quot;dom0&quot;&gt;
+ 				&lt;xendisk device=&quot;/dev/xvda&quot;/&gt;
+ 				&lt;xenbridge name=&quot;&quot;/&gt;
+ 			&lt;/xenconfig&gt;
+diff --git a/template/suse-SLE11-JeOS/config.xml b/template/suse-SLE11-JeOS/config.xml
+index f4abaca..8122ca3 100644
+--- a/template/suse-SLE11-JeOS/config.xml
++++ b/template/suse-SLE11-JeOS/config.xml
+@@ -31,7 +31,7 @@
+ 				&lt;oem-home&gt;false&lt;/oem-home&gt;
+ 				&lt;oem-systemsize&gt;2048&lt;/oem-systemsize&gt;
+ 			&lt;/oemconfig&gt;
+-			&lt;xenconfig memory=&quot;512&quot; domain=&quot;domU&quot;&gt;
++			&lt;xenconfig memory=&quot;512&quot; domain=&quot;dom0&quot;&gt;
+ 				&lt;xendisk device=&quot;/dev/xvda&quot;/&gt;
+ 				&lt;xenbridge name=&quot;&quot;/&gt;
+ 			&lt;/xenconfig&gt;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001848.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4557e53de3fcbfe894a8b139bd2bb1338d6400dc
+</A></li>
+	<LI>Next message: <A HREF="001850.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d5367465fa82ed7e3020e411cc4cee87e3e07b9b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1849">[ date ]</a>
+              <a href="thread.html#1849">[ thread ]</a>
+              <a href="subject.html#1849">[ subject ]</a>
+              <a href="author.html#1849">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

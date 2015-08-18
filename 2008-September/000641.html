@@ -1,0 +1,333 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Exclude Documentation
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-September/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Exclude%20Documentation&In-Reply-To=%3C1220549370.4585.25.camel%40megam.ott1.byward.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000642.html">
+   <LINK REL="Next"  HREF="000643.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Exclude Documentation</H1>
+    <B>Peter Bowen</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Exclude%20Documentation&In-Reply-To=%3C1220549370.4585.25.camel%40megam.ott1.byward.net%3E"
+       TITLE="[Kiwi-devel] Exclude Documentation">pzb at novell.com
+       </A><BR>
+    <I>Thu Sep  4 19:29:30 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000642.html">[Kiwi-devel] Supporting zypp.conf
+</A></li>
+        <LI>Next message: <A HREF="000643.html">[Kiwi-devel] Exclude Documentation
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#641">[ date ]</a>
+              <a href="thread.html#641">[ thread ]</a>
+              <a href="subject.html#641">[ subject ]</a>
+              <a href="author.html#641">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>RPM has a feature that allows automatic exclusion of documentation
+during install.  Smart and zypper both (as of current versions) support
+setting  options that pass the right flag to rpm on the backend.  This
+patch adds a new element in config.xml that allows setting this option.
+
+Note that, by definition, files marked %doc should not be required for
+package operation.  If they are, then this is an error and needs to be
+corrected in the package.
+
+Thanks.
+Peter
+
+Index: doc/LaTex/description.tex
+===================================================================
+--- doc/LaTex/description.tex	(revision 1548)
++++ doc/LaTex/description.tex	(working copy)
+@@ -312,6 +312,8 @@
+       This is not the filesystem compression just the image file compression
+ \item \textbf{rpm-check-signatures}\\
+       Specifies whether RPM should check the package signature or not
++\item \textbf{rpm-excludedocs}\\
++      Specifies whether RPM should skip installing package documentation
+ \item \textbf{rpm-force}\\
+       Specifies whether RPM should be called with --force
+ \item \textbf{keytable}\\
+Index: modules/KIWIRoot.pm
+===================================================================
+--- modules/KIWIRoot.pm	(revision 1548)
++++ modules/KIWIRoot.pm	(working copy)
+@@ -277,6 +277,9 @@
+ 	if (! $manager -&gt; setupSignatureCheck()) {
+ 		return undef;
+ 	}
++	if (! $manager -&gt; setupExcludeDocs()) {
++		return undef;
++	}
+ 	#==================================
+ 	# Copy/touch some defaults files
+ 	#----------------------------------
+@@ -606,6 +609,10 @@
+ 		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
++	if (! $manager -&gt; setupExcludeDocs()) {
++		$manager -&gt; freeLock();
++		return undef;
++	}
+ 	#==========================================
+ 	# Add source(s) and install
+ 	#------------------------------------------
+Index: modules/KIWIXML.pm
+===================================================================
+--- modules/KIWIXML.pm	(revision 1548)
++++ modules/KIWIXML.pm	(working copy)
+@@ -1259,6 +1259,23 @@
+ }
+ 
+ #==========================================
++# getRPMExcludeDocs
++#------------------------------------------
++sub getRPMExcludeDocs {
++	# ...
++	# Check if the package manager should exclude docs
++	# from installed files or not
++	# ---
++	my $this = shift;
++	my $node = $this-&gt; getPreferencesNodeByTagName (&quot;rpm-excludedocs&quot;);
++	my $xdoc = $node -&gt; getElementsByTagName (&quot;rpm-excludedocs&quot;);
++	if ((! defined $xdoc) || (&quot;$xdoc&quot; eq &quot;&quot;)) {
++		return undef;
++	}
++	return $xdoc;
++}
++
++#==========================================
+ # getRPMForce
+ #------------------------------------------
+ sub getRPMForce {
+Index: modules/KIWIManager.pm
+===================================================================
+--- modules/KIWIManager.pm	(revision 1548)
++++ modules/KIWIManager.pm	(working copy)
+@@ -413,6 +421,148 @@
+ }
+ 
+ #==========================================
++# setupExcludeDocs
++#------------------------------------------
++sub setupExcludeDocs {
++	# ...
++	# Check if the image description contains the exclude
++	# docs option or not. If yes activate or deactivate it
++	# according to the used package manager
++	# ---
++	my $this = shift;
++	my $kiwi = $this-&gt;{kiwi};
++	my $xml  = $this-&gt;{xml};
++	my $manager = $this-&gt;{manager};
++	my $chroot  = $this-&gt;{chroot};
++	my $root    = $this-&gt;{root};
++	my $data;
++	my $code;
++	#==========================================
++	# Get docs information
++	#------------------------------------------
++	my $imgExclDocs = $xml -&gt; getRPMExcludeDocs();
++	$this-&gt;{imgExclDocs} = $imgExclDocs;
++
++	#==========================================
++	# smart
++	#------------------------------------------
++	if ($manager eq &quot;smart&quot;) {
++		my $optionName  = &quot;rpm-excludedocs&quot;;
++		my $curExclDocs = qxx (&quot;@smart config --show $optionName|tr -d '\\n'&quot;);
++		$this-&gt;{curExclDocs} = $curExclDocs;
++		if (defined $imgExclDocs) {
++			my $option = &quot;$optionName=$imgExclDocs&quot;;
++			if (! $chroot) {
++				$kiwi -&gt; info (&quot;Setting RPM doc exclusion to: $imgExclDocs&quot;);
++				$data = qxx (&quot;@smart config --set $option 2&gt;&amp;1&quot;);
++			} else {
++				$kiwi -&gt; info (&quot;Setting RPM doc exclusion to: $imgExclDocs&quot;);
++				$data=qxx (&quot;chroot \&quot;$root\&quot; @smart config --set $option 2&gt;&amp;1&quot;);
++			}
++			$code = $? &gt;&gt; 8;
++			if ($code != 0) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  ($data);
++				return undef;
++			}
++			$kiwi -&gt; done ();
++		}
++	}
++	#==========================================
++	# zypper
++	#------------------------------------------
++	if ($manager eq &quot;zypper&quot;) {
++		my $zconfig = $this-&gt;{zconfig};
++		my $optionParam = 'rpm.install.excludedocs';
++		my $curExclDocs = $zconfig-&gt;val('main', $optionParam);
++		$this-&gt;{curExclDocs} = $curExclDocs;
++		if (defined $imgExclDocs) {
++			$kiwi -&gt; info (&quot;Setting RPM doc exclusion to: $imgExclDocs&quot;);
++			if (defined $curExclDocs) {
++				$zconfig-&gt;setval('main', $optionParam, 'yes');
++			} else {
++				$zconfig-&gt;newval('main', $optionParam, 'yes');
++			}
++			$zconfig-&gt;RewriteConfig;
++		}
++	}
++
++	#==========================================
++	# ensconce
++	#------------------------------------------
++	if ($manager eq &quot;ensconce&quot;) {
++		# nothing to do here for ensconce...
++	}
++	return $this;
++}
++
++#==========================================
++# resetExcludeDocs
++#------------------------------------------
++sub resetExcludeDocs {
++	# ...
++	# reset the signature check option to the previos
++	# value of the package manager
++	# ---
++	my $this   = shift;
++	my $kiwi   = $this-&gt;{kiwi};
++	my $chroot = $this-&gt;{chroot};
++	my $manager= $this-&gt;{manager};
++	my $root   = $this-&gt;{root};
++	my $curExclDocs = $this-&gt;{curExclDocs};
++	my $data;
++	my $code;
++	#==========================================
++	# smart
++	#------------------------------------------
++	if ($manager eq &quot;smart&quot;) {
++		if (defined $this-&gt;{imgExclDocs}) {
++			my $optionName  = &quot;rpm-excludedocs&quot;;
++			my $option = &quot;$optionName=$curExclDocs&quot;;
++			if (! $chroot) {
++				$kiwi -&gt; info (&quot;Resetting RPM doc exclusion to: $curExclDocs&quot;);
++				$data = qxx (&quot;@smart config --set $option 2&gt;&amp;1&quot;);
++			} else {
++				$kiwi -&gt; info (&quot;Resetting RPM doc exclusion to: $curExclDocs&quot;);
++				$data=qxx (&quot;chroot \&quot;$root\&quot; @smart config --set $option 2&gt;&amp;1&quot;);
++			}
++			$code = $? &gt;&gt; 8;
++			if ($code != 0) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  ($data);
++				return undef;
++			}
++			$kiwi -&gt; done ();
++		}
++	}
++	#==========================================
++	# zypper
++	#------------------------------------------
++	if ($manager eq &quot;zypper&quot;) {
++		if (defined $this-&gt;{imgExclDocs}) {
++			my $zconfig = $this-&gt;{zconfig};
++			my $optionParam = 'rpm.install.excludedocs';
++			if (defined $curExclDocs) {
++				$kiwi -&gt; info (&quot;Resetting RPM doc exclusion to: $curExclDocs&quot;);
++				$zconfig-&gt;setval('main', $optionParam, $curExclDocs);
++			} else {
++				$kiwi -&gt; info (&quot;Unsetting RPM doc exclusion&quot;);
++				$zconfig-&gt;delval('main', $optionParam);
++			}
++			$zconfig-&gt;RewriteConfig;
++		}
++	}
++	
++	#==========================================
++	# ensconce
++	#------------------------------------------
++	if ($manager eq &quot;ensconce&quot;) {
++		# nothing to do here for ensconce...
++	}
++	return $this;
++}
++
++#==========================================
+ # setupInstallationSource
+ #------------------------------------------
+ sub setupInstallationSource {
+Index: modules/KIWIScheme.rnc
+===================================================================
+--- modules/KIWIScheme.rnc	(revision 1548)
++++ modules/KIWIScheme.rnc	(working copy)
+@@ -744,6 +744,26 @@
+ }
+ 
+ #==========================================
++# common element &lt;rpm-excludedocs&gt;
++#
++div {
++	k.rpm-excludedocs = empty
++	k.rpm-excludedocs =
++		## Setup a Package Signature
++		[
++		db:para [
++			&quot;Setup if the package manager should exclude docs files\x{a}&quot;~
++			&quot;during package installation. This option could be ignored\x{a}&quot;~
++			&quot;according to the used package manager.&quot;
++		]
++		]
++		element rpm-excludedocs {
++			k.rpm-excludedocs.attlist,
++			text
++		}
++}
++
++#==========================================
+ # common element &lt;rpm-force&gt;
+ #
+ div {
+@@ -1706,6 +1726,7 @@
+ 			k.oem-recovery? &amp;
+ 			k.packagemanager? &amp;
+ 			k.rpm-check-signatures? &amp;
++			k.rpm-excludedocs? &amp;
+ 			k.rpm-force? &amp;
+ 			k.keytable? &amp;
+ 			k.timezone? &amp;
+
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000642.html">[Kiwi-devel] Supporting zypp.conf
+</A></li>
+	<LI>Next message: <A HREF="000643.html">[Kiwi-devel] Exclude Documentation
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#641">[ date ]</a>
+              <a href="thread.html#641">[ thread ]</a>
+              <a href="subject.html#641">[ subject ]</a>
+              <a href="author.html#641">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,255 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7988144753caa55ffc594868473cafb2cac7470a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%207988144753caa55ffc594868473cafb2cac7470a&In-Reply-To=%3C201004151443.o3FEhluB008060%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002104.html">
+   <LINK REL="Next"  HREF="002106.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7988144753caa55ffc594868473cafb2cac7470a</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%207988144753caa55ffc594868473cafb2cac7470a&In-Reply-To=%3C201004151443.o3FEhluB008060%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7988144753caa55ffc594868473cafb2cac7470a">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Apr 15 16:43:47 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002104.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0f563535173769b3bd657f47616abde766a951ea
+</A></li>
+        <LI>Next message: <A HREF="002106.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 5e8b29f1a990711a4b9a85a8a6fc7d9dd92f8fd0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2105">[ date ]</a>
+              <a href="thread.html#2105">[ thread ]</a>
+              <a href="subject.html#2105">[ subject ]</a>
+              <a href="author.html#2105">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  7988144753caa55ffc594868473cafb2cac7470a (commit)
+      from  0f563535173769b3bd657f47616abde766a951ea (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 7988144753caa55ffc594868473cafb2cac7470a
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Apr 15 16:43:39 2010 +0200
+
+    - changed info module to print XML output
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 1e9f80f..c24e57c 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -1843,6 +1843,10 @@ sub listXMLInfo {
+ 	}
+ 	*cleanMount = newCleanMount (@mountlist);
+ 	#==========================================
++	# Initialize XML imagescan element
++	#------------------------------------------
++	my $scan = new XML::LibXML::Element (&quot;imagescan&quot;);
++	#==========================================
+ 	# Walk through selection list
+ 	#------------------------------------------
+ 	foreach my $info (@listXMLInfoSelection) {
+@@ -1863,10 +1867,13 @@ sub listXMLInfo {
+ 					my @patterns = qxx (
+ 						&quot;dumpsolv $solfile|grep 'name: pattern'|cut -f4 -d :&quot;
+ 					);
+-					$kiwi -&gt; info (&quot;Available patterns in repository set\n\n&quot;);
+ 					foreach my $p (@patterns) {
+ 						next if ($p eq &quot;\n&quot;);
+-						$kiwi -&gt; note (&quot;=&gt; $p&quot;);
++						$p =~ s/^\s+//;
++						$p =~ s/\s+$//;
++						my $pattern = new XML::LibXML::Element (&quot;repopattern&quot;);
++						$pattern -&gt; setAttribute (&quot;name&quot;,&quot;$p&quot;);
++						$scan -&gt; appendChild ($pattern);
+ 					}
+ 				}
+ 				last SWITCH;
+@@ -1887,10 +1894,12 @@ sub listXMLInfo {
+ 				if (! keys %{$meta}) {
+ 					$kiwi -&gt; info (&quot;No packages/patterns solved\n&quot;);
+ 				} else {
+-					$kiwi -&gt; info (&quot;Image Patterns/Products:\n\n&quot;);
+ 					foreach my $p (sort keys %{$meta}) {
+ 						if ($p =~ /pattern:(.*)/) {
+-							$kiwi -&gt; note (&quot;=&gt; $1\n&quot;);
++							my $name = $1;
++							my $pattern = new XML::LibXML::Element (&quot;pattern&quot;);
++							$pattern -&gt; setAttribute (&quot;name&quot;,&quot;$name&quot;);
++							$scan -&gt; appendChild ($pattern);
+  						}
+ 					}
+ 				}
+@@ -1900,14 +1909,15 @@ sub listXMLInfo {
+ 			# types
+ 			#------------------------------------------
+ 			/^types/         &amp;&amp; do {
+-				$kiwi -&gt; info (&quot;Image Types:\n&quot;);
+ 				foreach my $t ($xml -&gt; getTypes()) {
+ 					my %type = %{$t};
+-					$kiwi -&gt; info (&quot;--&gt; $type{type} primary=$type{primary}&quot;);
++					my $type = new XML::LibXML::Element (&quot;type&quot;);
++					$type -&gt; setAttribute (&quot;name&quot;,&quot;$type{type}&quot;);
++					$type -&gt; setAttribute (&quot;primary&quot;,&quot;$type{primary}&quot;);
+ 					if (defined $type{boot}) {
+-						$kiwi -&gt; note (&quot; boot=$type{boot}&quot;);
++						$type -&gt; setAttribute (&quot;boot&quot;,&quot;$type{boot}&quot;);
+ 					}
+-					$kiwi -&gt; note (&quot;\n&quot;);
++					$scan -&gt; appendChild ($type);
+ 				}
+ 				last SWITCH;
+ 			};
+@@ -1916,7 +1926,9 @@ sub listXMLInfo {
+ 			#------------------------------------------
+ 			/^sources/       &amp;&amp; do {
+ 				foreach my $url (@{$xml-&gt;{urllist}}) {
+-					$kiwi -&gt; info (&quot;Source URL: $url\n&quot;);
++					my $source = new XML::LibXML::Element (&quot;source&quot;);
++					$source -&gt; setAttribute (&quot;path&quot;,&quot;$url&quot;);
++					$scan -&gt; appendChild ($source);
+ 				}
+ 				last SWITCH;
+ 			};
+@@ -1939,8 +1951,9 @@ sub listXMLInfo {
+ 					my @metalist = split (/:/,$meta{$p});
+ 					$size += $metalist[0];
+ 				}
++				my $sizenode = new XML::LibXML::Element (&quot;size&quot;);
+ 				if ($size &gt; 0) {
+-					$kiwi-&gt;info (&quot;Estimated root tree size: $size kB\n&quot;);
++					$sizenode -&gt; setAttribute (&quot;rootsizeKB&quot;,&quot;$size&quot;);
+ 				}
+ 				$size = 0;
+ 				if ($delete) {
+@@ -1952,8 +1965,9 @@ sub listXMLInfo {
+ 					}
+ 				}
+ 				if ($size &gt; 0) {
+-					$kiwi -&gt; info (&quot;Estimated deletion size; $size kB\n&quot;);
++					$sizenode -&gt; setAttribute (&quot;deletionsizeKB&quot;,&quot;$size&quot;);
+ 				}
++				$scan -&gt; appendChild ($sizenode);
+ 				last SWITCH;
+ 			};
+ 			#==========================================
+@@ -1972,14 +1986,16 @@ sub listXMLInfo {
+ 				if (! keys %{$meta}) {
+ 					$kiwi -&gt; info (&quot;No packages/patterns solved\n&quot;);
+ 				} else {
+-					$kiwi -&gt; info (&quot;Image Packages:\n\n&quot;);
+ 					foreach my $p (sort keys %{$meta}) {
+ 						if ($p =~ /pattern:.*/) {
+ 							next;
+ 						}
+ 						my @m = split (/:/,$meta-&gt;{$p});
+-						my $l = sprintf (&quot;=&gt; %-20s | %-8s | %s&quot;,$p,$m[1],$m[2]);
+-						$kiwi -&gt; note (&quot;$l\n&quot;);
++						my $pacnode = new XML::LibXML::Element (&quot;package&quot;);
++						$pacnode -&gt; setAttribute (&quot;name&quot;,&quot;$p&quot;);
++						$pacnode -&gt; setAttribute (&quot;arch&quot;,&quot;$m[1]&quot;);
++						$pacnode -&gt; setAttribute (&quot;version&quot;,&quot;$m[2]&quot;);
++						$scan -&gt; appendChild ($pacnode);
+ 					}
+ 				}
+ 				last SWITCH;
+@@ -1991,17 +2007,30 @@ sub listXMLInfo {
+ 				my @profiles = $xml -&gt; getProfiles ();
+ 				if ((scalar @profiles) == 0) {
+ 					$kiwi -&gt; info (&quot;No profiles available\n&quot;);
+-				}
+-				foreach my $profile (@profiles) {
+-					my $name = $profile -&gt; {name};
+-					my $desc = $profile -&gt; {description};
+-					$kiwi -&gt; info (&quot;$name: [ $desc ]\n&quot;);
++				} else {
++					foreach my $profile (@profiles) {
++						my $name = $profile -&gt; {name};
++						my $desc = $profile -&gt; {description};
++						my $pnode = new XML::LibXML::Element (&quot;profile&quot;);
++						$pnode -&gt; setAttribute (&quot;name&quot;,&quot;$name&quot;);
++						$pnode -&gt; setAttribute (&quot;description&quot;,&quot;$desc&quot;);
++						$scan -&gt; appendChild ($pnode);
++					}
+ 				}
+ 				last SWITCH;
+ 			};
+ 		}
+ 	}
++	#==========================================
++	# Cleanup mount list
++	#------------------------------------------
+ 	cleanMount();
++	#==========================================
++	# print scan results
++	#------------------------------------------
++	open (my $F, &quot;|xsltproc $main::Pretty -&quot;);
++	print $F $scan-&gt;toString();
++	close $F;
+ 	exit 0;
+ }
+ 
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 6ad3ee0..3e57922 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -11,6 +11,7 @@ Wed Apr 14 11:27:45 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+   invoking it
+ - added package version and architecture information when
+   requesting the solved packages list via --info
++- changed info module to print XML output
+ 
+ -------------------------------------------------------------------
+ Fri Apr  9 15:21:18 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002104.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 0f563535173769b3bd657f47616abde766a951ea
+</A></li>
+	<LI>Next message: <A HREF="002106.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 5e8b29f1a990711a4b9a85a8a6fc7d9dd92f8fd0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2105">[ date ]</a>
+              <a href="thread.html#2105">[ thread ]</a>
+              <a href="subject.html#2105">[ subject ]</a>
+              <a href="author.html#2105">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

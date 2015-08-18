@@ -1,0 +1,129 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Support multiple vmnic elements
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Support%20multiple%20vmnic%20elements&In-Reply-To=%3C4CCED7E0.7020803%40novell.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002757.html">
+   <LINK REL="Next"  HREF="002766.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Support multiple vmnic elements</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Support%20multiple%20vmnic%20elements&In-Reply-To=%3C4CCED7E0.7020803%40novell.com%3E"
+       TITLE="[Kiwi-devel] Support multiple vmnic elements">rschweikert at novell.com
+       </A><BR>
+    <I>Mon Nov  1 16:08:16 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002757.html">[Kiwi-devel] Support multiple vmnic elements
+</A></li>
+        <LI>Next message: <A HREF="002766.html">[Kiwi-devel] Support multiple vmnic elements
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2763">[ date ]</a>
+              <a href="thread.html#2763">[ thread ]</a>
+              <a href="subject.html#2763">[ subject ]</a>
+              <a href="author.html#2763">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>
+
+On 11/01/2010 06:50 AM, Marcus Sch&#228;fer wrote:
+&gt;<i> Hi Robert,
+</I>&gt;<i> 
+</I>&gt;&gt;<i> The attached patch implements support for multiple NICs for vmware
+</I>&gt;&gt;<i> images. I suppose we should extend this to Xen and OVF as well. This
+</I>&gt;&gt;<i> should suffice for the recent feature request.
+</I>&gt;<i> 
+</I>&gt;<i> Thanks for the patch it looks good to me. But to check it in we need
+</I>&gt;<i> to support it for Xen too because we have only one section for the
+</I>&gt;<i> vm configuration. 
+</I>
+The Xen code already supports multiple nics, it has the following loop:
+
+        my $bridges = $node -&gt; getElementsByTagName (&quot;vmnic&quot;);
+	my %vifs = ();
+	for (my $i=1;$i&lt;= $bridges-&gt;size();$i++) {
+		my $bridge = $bridges -&gt; get_node($i);
+		if ($bridge) {
+			my $mac   = $bridge -&gt; getAttribute (&quot;mac&quot;);
+			my $bname = $bridge -&gt; getAttribute (&quot;interface&quot;);
+			if (! $bname) {
+				$bname = &quot;undef&quot;;
+			}
+			$vifs{$bname} = $mac;
+		}
+	}
+
+I checked it with the followig in a config.xml file:
+
+&lt;type image=&quot;vmx&quot; filesystem=&quot;ext4&quot; boot=&quot;vmxboot/suse-11.3&quot;
+bootprofile=&quot;xen&quot; bootkernel=&quot;xenk&quot;&gt;
+            &lt;machine memory=&quot;512&quot; domain=&quot;domU&quot;&gt;
+                &lt;vmdisk controller=&quot;ide&quot; id=&quot;0&quot; device=&quot;/dev/xvda&quot;/&gt;
+                &lt;vmnic interface=&quot;br0&quot; mac=&quot;00:0C:6E:AA:57:2F&quot;/&gt;
+                &lt;vmnic interface=&quot;br1&quot; mac=&quot;00:0C:6E:AA:57:3F&quot;/&gt;
+            &lt;/machine&gt;
+        &lt;/type&gt;
+
+The result in .xenconfig was:
+
+vif=[ &quot;mac=00:0C:6E:AA:57:3F,bridge=br1&quot;,
+&quot;mac=00:0C:6E:AA:57:2F,bridge=br0&quot; ]
+
+Thus, this should work.
+
+I do not have any machines setup that run Xen, thus I cannot test the
+resulting VM image.
+
+Robert
+
+&gt;<i> The ovf is created by the conversion of the vmdk.
+</I>&gt;<i> I suppose that the ovftool als converts the description. kiwi doesn't
+</I>&gt;<i> have code to create a ovf vm configuration, I guess that's not required
+</I>&gt;<i> if you have the vmdk vm configuration at hand.
+</I>&gt;<i> 
+</I>&gt;<i> Regards,
+</I>&gt;<i> Marcus
+</I>
+-- 
+Robert Schweikert                           MAY THE SOURCE BE WITH YOU
+Software Engineer Consultant                          LINUX
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>
+781-464-8147
+
+Novell
+Making IT Work As One
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002757.html">[Kiwi-devel] Support multiple vmnic elements
+</A></li>
+	<LI>Next message: <A HREF="002766.html">[Kiwi-devel] Support multiple vmnic elements
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2763">[ date ]</a>
+              <a href="thread.html#2763">[ thread ]</a>
+              <a href="subject.html#2763">[ subject ]</a>
+              <a href="author.html#2763">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

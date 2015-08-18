@@ -1,0 +1,1927 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. fcad6b10187da44703f9561df34984b836a73814
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20fcad6b10187da44703f9561df34984b836a73814&In-Reply-To=%3C20110518133751.8B4F248112A%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003434.html">
+   <LINK REL="Next"  HREF="003435.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. fcad6b10187da44703f9561df34984b836a73814</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20fcad6b10187da44703f9561df34984b836a73814&In-Reply-To=%3C20110518133751.8B4F248112A%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. fcad6b10187da44703f9561df34984b836a73814">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed May 18 15:37:51 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003434.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4a5aa0bf074e49269d49d100cb7c5aeda92688b7
+</A></li>
+        <LI>Next message: <A HREF="003435.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ca0c8af50c42676693eb6f4ed6a93a6a6dbd08b2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3439">[ date ]</a>
+              <a href="thread.html#3439">[ thread ]</a>
+              <a href="subject.html#3439">[ subject ]</a>
+              <a href="author.html#3439">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  fcad6b10187da44703f9561df34984b836a73814 (commit)
+      from  4a5aa0bf074e49269d49d100cb7c5aeda92688b7 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit fcad6b10187da44703f9561df34984b836a73814
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed May 18 14:57:21 2011 +0200
+
+    - moved the image create step into the KIWIImageCreator code
+      There is now a function createImage / createBootImage which
+      is also used by the build step. Along with this change I
+      removed all occurences of the main::Survive variable and
+      thus removed all recursive kiwi calls now from the code.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 2c01d49..3552349 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -153,7 +153,6 @@ our $Upgrade;               # upgrade physical extend
+ our $Destination;           # destination directory for logical extends
+ our $LogFile;               # optional file name for logging
+ our $RootTree;              # optional root tree destination
+-our $Survive;               # if set to &quot;yes&quot; don't exit kiwi
+ our $BootVMSystem;          # system image to be copied on a VM disk
+ our $BootVMDisk;            # deploy initrd booting from a VM 
+ our $BootVMSize;            # size of virtual disk
+@@ -227,9 +226,6 @@ our $icache;                # global Image Cache object
+ #============================================
+ # Globals
+ #--------------------------------------------
+-my $root;       # KIWIRoot  object for installations
+-my $image;      # KIWIImage object for logical extends
+-my $boot;       # KIWIBoot  object for logical extends
+ my $migrate;    # KIWIMigrate object for system to image migration
+ 
+ #============================================
+@@ -274,9 +270,7 @@ sub main {
+ 	#==========================================
+ 	# Initialize and check options
+ 	#------------------------------------------
+-	if ((! defined $Survive) || ($Survive ne &quot;yes&quot;)) {
+-		init();
+-	}
++	init();
+ 	#==========================================
+ 	# Create logger object
+ 	#------------------------------------------
+@@ -302,11 +296,9 @@ sub main {
+ 	# Setup logging location
+ 	#------------------------------------------
+ 	if (defined $LogFile) {
+-		if ((! defined $Survive) || ($Survive ne &quot;yes&quot;)) {
+-			$kiwi -&gt; info (&quot;Setting log file to: $LogFile\n&quot;);
+-			if (! $kiwi -&gt; setLogFile ( $LogFile )) {
+-				my $code = kiwiExit (1); return $code;
+-			}
++		$kiwi -&gt; info (&quot;Setting log file to: $LogFile\n&quot;);
++		if (! $kiwi -&gt; setLogFile ( $LogFile )) {
++			my $code = kiwiExit (1); return $code;
+ 		}
+ 	}
+ 	#========================================
+@@ -335,12 +327,17 @@ sub main {
+ 		#==========================================
+ 		# Setup create 
+ 		#------------------------------------------
+-		undef $main::Prepare;
+-		undef $main::Build;
+-		$main::Survive = &quot;default&quot;;
+-		$main::Create = $rootTarget;
++		$ImageDescription = $rootTarget;
++		if ((! -d $rootTarget) &amp;&amp; (open FD,&quot;$rootTarget/image/main::Prepare&quot;)) {
++			$ImageDescription = &lt;FD&gt;; close FD;
++		}
++		$cmdL -&gt; setImagetargetDir ($Destination);
++		$cmdL -&gt; setConfigDir ($ImageDescription);
+ 		$cmdL -&gt; setForceNewRoot (0);
+-		main::main();
++		$kic  -&gt; initialize();
++		if (! $kic -&gt; createImage ($kiwi,$cmdL)) {
++			my $code = kiwiExit (1); return $code;
++		}
+ 	}
+ 
+ 	#========================================
+@@ -402,311 +399,14 @@ sub main {
+ 	# Create image from chroot system
+ 	#------------------------------------------
+ 	if (defined $Create) {
+-		#==========================================
+-		# Check the tree first...
+-		#------------------------------------------
+-		if (-f &quot;$Create/.broken&quot;) {
+-			$kiwi -&gt; error  (&quot;Image root tree $Create is broken&quot;);
+-			$kiwi -&gt; failed ();
+-			my $code = kiwiExit (1); return $code;
+-		}
+-		#==========================================
+-		# Process system image description
+-		#------------------------------------------
+-		$kiwi -&gt; info (&quot;Reading image description [Create]...\n&quot;);
+-		my $xml = new KIWIXML (
+-			$kiwi,&quot;$Create/image&quot;,$SetImageType,\@Profiles
+-		);
+-		if (! defined $xml) {
+-			my $code = kiwiExit (1); return $code;
+-		}
+-		my $pkgMgr = $cmdL -&gt; getPackageManager();
+-		if ($pkgMgr) {
+-			$xml -&gt; setPackageManager($pkgMgr);
+-		}
+-		my $krc = new KIWIRuntimeChecker ($kiwi,$cmdL,$xml);
+-		if (! $krc -&gt; createChecks()) {
+-			my $code = kiwiExit (1); return $code;
+-		}
+-		my %attr = %{$xml-&gt;getImageTypeAndAttributes()};
+-		#==========================================
+-		# Check for default destination in XML
+-		#------------------------------------------
+-		if (! defined $Destination) {
+-			$kiwi -&gt; info (&quot;Checking for defaultdestination in XML data...&quot;);
+-			$Destination = $xml -&gt; getImageDefaultDestination();
+-			if (! $Destination) {
+-				$kiwi -&gt; failed ();
+-				$kiwi -&gt; info   (&quot;No destination directory specified&quot;);
+-				$kiwi -&gt; failed ();
+-				my $code = kiwiExit (1); return $code;
+-			}
+-			$kiwi -&gt; done();
+-		}
+-		#==========================================
+-		# Check for ignore-repos option
+-		#------------------------------------------
+-		if (defined $IgnoreRepos) {
+-			$xml -&gt; ignoreRepositories ();
+-		}
+-		#==========================================
+-		# Check for set-repo option
+-		#------------------------------------------
+-		if (defined $SetRepository) {
+-			$xml -&gt; setRepository (
+-				$SetRepositoryType,$SetRepository,
+-				$SetRepositoryAlias,$SetRepositoryPriority
+-			);
+-		}
+-		#==========================================
+-		# Check for add-repo option
+-		#------------------------------------------
+-		if (defined @AddRepository) {
+-			$xml -&gt; addRepository (
+-				\@AddRepositoryType,\@AddRepository,
+-				\@AddRepositoryAlias,\@AddRepositoryPriority
+-			);
+-		}
+-		#==========================================
+-		# Create destdir if needed
+-		#------------------------------------------
+-		my $dirCreated = createDirInteractive($kiwi, $Destination);
+-		if (! defined $dirCreated) {
+-			my $code = kiwiExit (1); return $code;
+-		}
+-		#==========================================
+-		# Check tool set
+-		#------------------------------------------
+-		my $para = checkType ( $xml,\%attr,$Create );
+-		if (! defined $para) {
+-			my $code = kiwiExit (1); return $code;
+-		}
+-		#==========================================
+-		# Check for packages updates if needed
+-		#------------------------------------------
+-		my @addonList;   # install this packages
+-		my @deleteList;  # remove this packages
+-		my @replAdd;
+-		my @replDel;
+-		$xml -&gt; getBaseList();
+-		@replAdd = $xml -&gt; getReplacePackageAddList();
+-		@replDel = $xml -&gt; getReplacePackageDelList();
+-		if (@replAdd) {
+-			push @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">addonList, at replAdd</A>;
+-		}
+-		if (@replDel) {
+-			push @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">deleteList, at replDel</A>;
+-		}
+-		$xml -&gt; getInstallList();
+-		@replAdd = $xml -&gt; getReplacePackageAddList();
+-		@replDel = $xml -&gt; getReplacePackageDelList();
+-		if (@replAdd) {
+-			push @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">addonList, at replAdd</A>;
+-		}
+-		if (@replDel) {
+-			push @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">deleteList, at replDel</A>;
+-		}
+-		$xml -&gt; getTypeList();
+-		@replAdd = $xml -&gt; getReplacePackageAddList();
+-		@replDel = $xml -&gt; getReplacePackageDelList();
+-		if (@replAdd) {
+-			push @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">addonList, at replAdd</A>;
+-		}
+-		if (@replDel) {
+-			push @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">deleteList, at replDel</A>;
+-		}
+-		if (@addonList) {
+-			my %uniq;
+-			foreach my $item (@addonList) { $uniq{$item} = $item; }
+-			@addonList = keys %uniq;
+-		}
+-		if (@deleteList) {
+-			my %uniq;
+-			foreach my $item (@deleteList) { $uniq{$item} = $item; }
+-			@deleteList = keys %uniq;
+-		}
+-		if ((@addonList) || (@deleteList)) {
+-			$kiwi -&gt; info (&quot;Image update:&quot;);
+-			if (@addonList) {
+-				$kiwi -&gt; info (&quot;--&gt; Install/Update: @addonList\n&quot;);
+-			}
+-			if (@deleteList) {
+-				$kiwi -&gt; info (&quot;--&gt; Remove: @deleteList\n&quot;);
+-			}
+-			#==========================================
+-			# temporary store config dir location
+-			#------------------------------------------
+-			my $cdir = $cmdL -&gt; getConfigDir();
+-			#==========================================
+-			# make sure config dir is image tree
+-			#------------------------------------------
+-			$cmdL -&gt; setConfigDir ($Create);
+-			#==========================================
+-			# upgrade the tree
+-			#------------------------------------------
+-			my $kic  = new KIWIImageCreator ($kiwi, $cmdL);
+-			if (! $kic) {
+-				my $code = kiwiExit (1); return $code;
+-			}
+-			if (! $kic -&gt; upgradeImage()) {
+-				my $code = kiwiExit (1); return $code;
+-			}
+-			#==========================================
+-			# reset config dir location
+-			#------------------------------------------
+-			$cmdL -&gt; setConfigDir ($cdir);
+-		}
+-		#==========================================
+-		# Create KIWIImage object
+-		#------------------------------------------
+-		$image = new KIWIImage (
+-			$kiwi,$xml,$Create,$Destination,$StripImage,
+-			&quot;/base-system&quot;,$Create,undef,$cmdL
+-		);
+-		if (! defined $image) {
+-			my $code = kiwiExit (1); return $code;
+-		}
+-		#==========================================
+-		# Obtain currently used image tree path
+-		#------------------------------------------
+-		my $tree = $image -&gt; getImageTree();
+-		#==========================================
+-		# Cleanup the tree according to prev runs
+-		#------------------------------------------
+-		if (-f &quot;$tree/rootfs.tar&quot;) {
+-			qxx (&quot;rm -f $tree/rootfs.tar&quot;);
+-		}
+-		if (-f &quot;$tree/recovery.tar.gz&quot;) {
+-			qxx (&quot;rm -f $tree/recovery.*&quot;);
+-		}
+-		#==========================================
+-		# Check for optional config-cdroot archive
+-		#------------------------------------------
+-		qxx (&quot;rm -f $Destination/config-cdroot.tgz&quot;);
+-		if (-f &quot;$tree/image/config-cdroot.tgz&quot;) {
+-			qxx (&quot;mv $tree/image/config-cdroot.tgz $Destination&quot;);
+-		}
+-		#==========================================
+-		# Check for optional config-cdroot.sh
+-		#------------------------------------------
+-		qxx (&quot;rm -f $Destination/config-cdroot.sh&quot;);
+-		if (-f &quot;$tree/image/config-cdroot.sh&quot;) {
+-			qxx (&quot;mv $tree/image/config-cdroot.sh $Destination&quot;);
+-		}
+-		#==========================================
+-		# Update .profile env, current type
+-		#------------------------------------------
+-		$kiwi -&gt; info (&quot;Updating type in .profile environment&quot;);
+-		my $type = $attr{type};
+-		qxx (
+-			&quot;sed -i -e 's#kiwi_type=.*#kiwi_type=\&quot;$type\&quot;#' $tree/.profile&quot;
+-		);
+-		$kiwi -&gt; done();
+-		#==========================================
+-		# Create recovery archive if specified
+-		#------------------------------------------
+-		if ($type eq &quot;oem&quot;) {
+-			my $configure = new KIWIConfigure (
+-				$kiwi,$xml,$tree,$tree.&quot;/image&quot;,$Destination
+-			);
+-			if (! defined $configure) {
+-				my $code = kiwiExit (1); return $code;
+-			}
+-			if (! $configure -&gt; setupRecoveryArchive($attr{filesystem})) {
+-				my $code = kiwiExit (1); return $code;
+-			}
+-		}
+-		#==========================================
+-		# Initialize logical image extend
+-		#------------------------------------------
+-		my $ok;
+-		my $checkFormat = 0;
+-		SWITCH: for ($attr{type}) {
+-			/^ext2/     &amp;&amp; do {
+-				$ok = $image -&gt; createImageEXT2 ( $targetDevice );
+-				$checkFormat = 1;
+-				last SWITCH;
+-			};
+-			/^ext3/     &amp;&amp; do {
+-				$ok = $image -&gt; createImageEXT3 ( $targetDevice );
+-				$checkFormat = 1;
+-				last SWITCH;
+-			};
+-			/^ext4/     &amp;&amp; do {
+-				$ok = $image -&gt; createImageEXT4 ( $targetDevice );
+-				$checkFormat = 1;
+-				last SWITCH;
+-			};
+-			/^reiserfs/ &amp;&amp; do {
+-				$ok = $image -&gt; createImageReiserFS ( $targetDevice );
+-				$checkFormat = 1;
+-				last SWITCH;
+-			};
+-			/^btrfs/    &amp;&amp; do {
+-				$ok = $image -&gt; createImageBTRFS ( $targetDevice );
+-				$checkFormat = 1;
+-				last SWITCH;
+-			};
+-			/^squashfs/ &amp;&amp; do {
+-				$ok = $image -&gt; createImageSquashFS ();
+-				last SWITCH;
+-			};
+-			/^clicfs/   &amp;&amp; do {
+-				$ok = $image -&gt; createImageClicFS ();
+-				last SWITCH;
+-			};
+-			/^cpio/     &amp;&amp; do {
+-				$ok = $image -&gt; createImageCPIO ();
+-				last SWITCH;
+-			};
+-			/^iso/      &amp;&amp; do {
+-				$ok = $image -&gt; createImageLiveCD ( $para );
+-				last SWITCH;
+-			};
+-			/^split/    &amp;&amp; do {
+-				$ok = $image -&gt; createImageSplit ( $para );
+-				last SWITCH;
+-			};
+-			/^vmx/      &amp;&amp; do {
+-				$ok = $image -&gt; createImageVMX ( $para );
+-				last SWITCH;
+-			};
+-			/^oem/      &amp;&amp; do {
+-				$ok = $image -&gt; createImageVMX ( $para );
+-				last SWITCH;
+-			};
+-			/^pxe/      &amp;&amp; do {
+-				$ok = $image -&gt; createImagePXE ( $para );
+-				last SWITCH;
+-			};
+-			/^xfs/    &amp;&amp; do {
+-				$ok = $image -&gt; createImageXFS ();
+-				$checkFormat = 1;
+-				last SWITCH;
+-			};
+-			$kiwi -&gt; error  (&quot;Unsupported type: $attr{type}&quot;);
+-			$kiwi -&gt; failed ();
+-			undef $image;
++		$kic = new KIWIImageCreator ($kiwi, $cmdL);
++		if (! $kic) {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
+-		if ($ok) {
+-			if (($checkFormat) &amp;&amp; ($attr{format})) {
+-				my $haveFormat = $attr{format};
+-				my $imgfile= $main::Destination.&quot;/&quot;.$image -&gt; buildImageName();
+-				my $format = new KIWIImageFormat ($kiwi,$imgfile,$haveFormat);
+-				if (! $format) {
+-					my $code = kiwiExit (1); return $code;
+-				}
+-				if (! $format -&gt; createFormat()) {
+-					my $code = kiwiExit (1); return $code;
+-				}
+-			}
+-			undef $image;
+-			my $code = kiwiExit (0); return $code;
+-		} else {
+-			undef $image;
++		if (! $kic -&gt; createImage()) {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
++		kiwiExit (0);
+ 	}
+ 
+ 	#==========================================
+@@ -1315,7 +1015,7 @@ sub init {
+ 	}
+ 	if (defined $Create) {
+ 		$ImageDescription = $Create;
+-		if (open FD,&quot;$Create/image/main::Prepare&quot;) {
++		if ((! -d $Create) &amp;&amp; (open FD,&quot;$Create/image/main::Prepare&quot;)) {
+ 			$ImageDescription = &lt;FD&gt;; close FD;
+ 		}
+ 		$cmdL -&gt; setConfigDir ($ImageDescription);
+@@ -1907,15 +1607,6 @@ sub kiwiExit {
+ 		$kiwi -&gt; writeXML();
+ 	}
+ 	#==========================================
+-	# Survive because kiwi called itself
+-	#------------------------------------------
+-	if ((defined $Survive) &amp;&amp; ($Survive eq &quot;yes&quot;)) {
+-		if ($code != 0) {
+-			return undef;
+-		}
+-		return $code;
+-	}
+-	#==========================================
+ 	# Create log object if we don't have one...
+ 	#------------------------------------------
+ 	if (! defined $kiwi) {
+@@ -1983,14 +1674,6 @@ sub cleanup {
+ 	if ($icache) {
+ 		undef $icache;
+ 	}
+-	if (defined $boot) {
+-		$boot -&gt; cleanLoop ();
+-	}
+-	if (defined $image) {
+-		$image -&gt; cleanMount ();
+-		$image -&gt; restoreCDRootData ();
+-		$image -&gt; restoreSplitExtend ();
+-	}
+ 	if (defined $migrate) {
+ 		$migrate -&gt; cleanMount ();
+ 	}
+@@ -2106,156 +1789,6 @@ sub createHash {
+ }
+ 
+ #==========================================
+-# checkType
+-#------------------------------------------
+-sub checkType {
+-	my $xml    = $_[0];
+-	my (%type) = %{$_[1]};
+-	my $root   = $_[2];
+-	my $para   = &quot;ok&quot;;
+-	my $type  = $type{type};
+-	my $flags = $type{flags};
+-	my $fs    = $type{filesystem};
+-	#==========================================
+-	# check for required image attributes
+-	#------------------------------------------
+-	if (defined $main::FatStorage) {
+-		# /.../
+-		# if the option --fat-storage is set, we set syslinux
+-		# as bootloader because it works better on USB sticks.
+-		# Additionally we use LVM because it allows to better
+-		# resize the stick
+-		# ----
+-		$xml -&gt; __setTypeAttribute (&quot;bootloader&quot;,&quot;syslinux&quot;);
+-		$xml -&gt; __setSystemDiskElement ();
+-		$xml -&gt; writeXMLDescription ($root);
+-	} elsif (defined $main::LVM) {
+-		# /.../
+-		# if the option --lvm is set, we add/update a systemdisk
+-		# element which triggers the use of LVM
+-		# ----
+-		$xml -&gt; __setSystemDiskElement ();
+-		$xml -&gt; writeXMLDescription ($root);
+-	}
+-	#==========================================
+-	# check for required filesystem tool(s)
+-	#------------------------------------------
+-	if (($flags) || ($fs)) {
+-		my @fs = ();
+-		if (($flags) &amp;&amp; ($type eq &quot;iso&quot;)) {
+-			push (@fs,$type{flags});
+-		} else {
+-			@fs = split (/,/,$type{filesystem});
+-		}
+-		foreach my $fs (@fs) {
+-			my %result = checkFileSystem ($fs);
+-			if (%result) {
+-				if (! $result{hastool}) {
+-					$kiwi -&gt; error (
+-						&quot;Can't find filesystem tool for: $result{type}&quot;
+-					);
+-					$kiwi -&gt; failed ();
+-					return undef;
+-				}
+-			} else {
+-				$kiwi -&gt; error (&quot;Can't check filesystem attributes from: $fs&quot;);
+-				$kiwi -&gt; failed ();
+-				return undef;
+-			}
+-		}
+-	}
+-	#==========================================
+-	# check tool/driver compatibility
+-	#------------------------------------------
+-	my $check_mksquashfs = 0;
+-	if ($type{type} eq &quot;squashfs&quot;) {
+-		$check_mksquashfs = 1;
+-	}
+-	if (($type{installiso}) || ($type{installstick})) {
+-		$check_mksquashfs = 1;
+-	}
+-	if (($fs) &amp;&amp; ($fs =~ /squashfs/)) {
+-		$check_mksquashfs = 1;
+-	}
+-	if (($flags) &amp;&amp; ($flags =~ /compressed|unified/)) {
+-		$check_mksquashfs = 1;
+-	}
+-	#==========================================
+-	# squashfs...
+-	#------------------------------------------
+-	if ($check_mksquashfs) {
+-		my $km = glob (&quot;$root/lib/modules/*/kernel/fs/squashfs/squashfs.ko&quot;);
+-		if ($km) {
+-			my $mktool_vs = qxx (&quot;mksquashfs -version 2&gt;&amp;1 | head -n 1&quot;);
+-			my $module_vs = qxx (&quot;modinfo -d $km 2&gt;&amp;1&quot;);
+-			my $error = 0;
+-			if ($mktool_vs =~ /^mksquashfs version (\d)\.\d \(/) {
+-				$mktool_vs = $1;
+-				$error++;
+-			}
+-			if ($module_vs =~ /^squashfs (\d)\.\d,/) {
+-				$module_vs = $1;
+-				$error++;
+-			}
+-			$kiwi -&gt; loginfo (&quot;squashfs mktool major version: $mktool_vs\n&quot;);
+-			$kiwi -&gt; loginfo (&quot;squashfs module major version: $module_vs\n&quot;);
+-			my $msg = &quot;--&gt; squashfs tool/driver mismatch&quot;;
+-			if (($error == 2) &amp;&amp; ($mktool_vs ne $module_vs)) {
+-				$kiwi -&gt; error (
+-					&quot;$msg: $mktool_vs vs $module_vs&quot;
+-				);
+-				$kiwi -&gt; failed ();
+-				return undef;
+-			}
+-		}
+-	}
+-	#==========================================
+-	# build and check KIWIImage method params
+-	#------------------------------------------
+-	SWITCH: for ($type{type}) {
+-		/^iso/ &amp;&amp; do {
+-			if (! defined $type{boot}) {
+-				$kiwi -&gt; error (&quot;$type{type}: No boot image specified&quot;);
+-				$kiwi -&gt; failed ();
+-				return undef;
+-			}
+-			$para = $type{boot};
+-			if ((defined $type{flags}) &amp;&amp; ($type{flags} ne &quot;&quot;)) {
+-				$para .= &quot;,$type{flags}&quot;;
+-			} 
+-			last SWITCH;
+-		};
+-		/^split/ &amp;&amp; do {
+-			if (! defined $type{filesystem}) {
+-				$kiwi -&gt; error (&quot;$type{type}: No filesystem pair specified&quot;);
+-				$kiwi -&gt; failed ();
+-				return undef;
+-			}
+-			$para = $type{filesystem};
+-			if (defined $type{boot}) {
+-				$para .= &quot;:&quot;.$type{boot};
+-			}
+-			last SWITCH;
+-		};
+-		/^vmx|oem|pxe/ &amp;&amp; do {
+-			if (! defined $type{filesystem}) {
+-				$kiwi -&gt; error (&quot;$type{type}: No filesystem specified&quot;);
+-				$kiwi -&gt; failed ();
+-				return undef;
+-			}
+-			if (! defined $type{boot}) {
+-				$kiwi -&gt; error (&quot;$type{type}: No boot image specified&quot;);
+-				$kiwi -&gt; failed ();
+-				return undef;
+-			}
+-			$para = $type{filesystem}.&quot;:&quot;.$type{boot};
+-			last SWITCH;
+-		};
+-	}
+-	return $para;
+-}
+-
+-#==========================================
+ # checkFSOptions
+ #------------------------------------------
+ sub checkFSOptions {
+@@ -2515,107 +2048,6 @@ sub isize {
+ }
+ 
+ #==========================================
+-# checkFileSystem
+-#------------------------------------------
+-sub checkFileSystem {
+-	# /.../
+-	# checks attributes of the given filesystem(s) and returns
+-	# a summary hash containing the following information
+-	# ---
+-	# $filesystem{hastool}  --&gt; has the tool to create the filesystem
+-	# $filesystem{readonly} --&gt; is a readonly filesystem
+-	# $filesystem{type}     --&gt; what filesystem type is this
+-	# ---
+-	my $fs     = shift;
+-	my %result = ();
+-	if (defined $KnownFS{$fs}) {
+-		#==========================================
+-		# got a known filesystem type
+-		#------------------------------------------
+-		$result{type}     = $fs;
+-		$result{readonly} = $KnownFS{$fs}{ro};
+-		$result{hastool}  = 0;
+-		if (($KnownFS{$fs}{tool}) &amp;&amp; (-x $KnownFS{$fs}{tool})) {
+-			$result{hastool} = 1;
+-		}
+-	} else {
+-		#==========================================
+-		# got a file, block special or something
+-		#------------------------------------------
+-		if (-e $fs) {
+-			my $data = qxx (&quot;dd if=$fs bs=128k count=1 2&gt;/dev/null | file -&quot;);
+-			my $code = $? &gt;&gt; 8;
+-			my $type;
+-			if ($code != 0) {
+-				if ($main::kiwi -&gt; trace()) {
+-					$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+-				}
+-				return undef;
+-			}
+-			SWITCH: for ($data) {
+-				/ext4/      &amp;&amp; do {
+-					$type = &quot;ext4&quot;;
+-					last SWITCH;
+-				};
+-				/ext3/      &amp;&amp; do {
+-					$type = &quot;ext3&quot;;
+-					last SWITCH;
+-				};
+-				/ext2/      &amp;&amp; do {
+-					$type = &quot;ext2&quot;;
+-					last SWITCH;
+-				};
+-				/ReiserFS/  &amp;&amp; do {
+-					$type = &quot;reiserfs&quot;;
+-					last SWITCH;
+-				};
+-				/BTRFS/     &amp;&amp; do {
+-					$type = &quot;btrfs&quot;;
+-					last SWITCH;
+-				};
+-				/Squashfs/  &amp;&amp; do {
+-					$type = &quot;squashfs&quot;;
+-					last SWITCH;
+-				};
+-				/LUKS/      &amp;&amp; do {
+-					$type = &quot;luks&quot;;
+-					last SWITCH;
+-				};
+-				/XFS/     &amp;&amp; do {
+-					$type = &quot;xfs&quot;;
+-					last SWITCH;
+-				};
+-				# unknown filesystem type check clicfs...
+-				$data = qxx (
+-					&quot;dd if=$fs bs=128k count=1 2&gt;/dev/null | grep -q CLIC&quot;
+-				);
+-				$code = $? &gt;&gt; 8;
+-				if ($code == 0) {
+-					$type = &quot;clicfs&quot;;
+-					last SWITCH;
+-				}
+-				# unknown filesystem type use auto...
+-				$type = &quot;auto&quot;;
+-			};
+-			$result{type}     = $type;
+-			$result{readonly} = $KnownFS{$type}{ro};
+-			$result{hastool}  = 0;
+-			if (defined $KnownFS{$type}{tool}) {
+-				if (-x $KnownFS{$type}{tool}) {
+-					$result{hastool} = 1;
+-				}
+-			}
+-		} else {
+-			if ($main::kiwi -&gt; trace()) {
+-				$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
+-			}
+-			return ();
+-		}
+-	}
+-	return %result;
+-}
+-
+-#==========================================
+ # createInstSource
+ #------------------------------------------
+ sub createInstSource {
+@@ -2710,6 +2142,107 @@ sub getMBRDiskLabel {
+ 	}
+ }
+ 
++#==========================================
++# checkFileSystem
++#------------------------------------------
++sub checkFileSystem {
++	# /.../
++	# checks attributes of the given filesystem(s) and returns
++	# a summary hash containing the following information
++	# ---
++	# $filesystem{hastool}  --&gt; has the tool to create the filesystem
++	# $filesystem{readonly} --&gt; is a readonly filesystem
++	# $filesystem{type}     --&gt; what filesystem type is this
++	# ---
++	my $fs     = shift;
++	my %result = ();
++	if (defined $main::KnownFS{$fs}) {
++		#==========================================
++		# got a known filesystem type
++		#------------------------------------------
++		$result{type}     = $fs;
++		$result{readonly} = $main::KnownFS{$fs}{ro};
++		$result{hastool}  = 0;
++		if (($main::KnownFS{$fs}{tool}) &amp;&amp; (-x $main::KnownFS{$fs}{tool})) {
++			$result{hastool} = 1;
++		}
++	} else {
++		#==========================================
++		# got a file, block special or something
++		#------------------------------------------
++		if (-e $fs) {
++			my $data = qxx (&quot;dd if=$fs bs=128k count=1 2&gt;/dev/null | file -&quot;);
++			my $code = $? &gt;&gt; 8;
++			my $type;
++			if ($code != 0) {
++				if ($main::kiwi -&gt; trace()) {
++					$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
++				}
++				return undef;
++			}
++			SWITCH: for ($data) {
++				/ext4/      &amp;&amp; do {
++					$type = &quot;ext4&quot;;
++					last SWITCH;
++				};
++				/ext3/      &amp;&amp; do {
++					$type = &quot;ext3&quot;;
++					last SWITCH;
++				};
++				/ext2/      &amp;&amp; do {
++					$type = &quot;ext2&quot;;
++					last SWITCH;
++				};
++				/ReiserFS/  &amp;&amp; do {
++					$type = &quot;reiserfs&quot;;
++					last SWITCH;
++				};
++				/BTRFS/     &amp;&amp; do {
++					$type = &quot;btrfs&quot;;
++					last SWITCH;
++				};
++				/Squashfs/  &amp;&amp; do {
++					$type = &quot;squashfs&quot;;
++					last SWITCH;
++				};
++				/LUKS/      &amp;&amp; do {
++					$type = &quot;luks&quot;;
++					last SWITCH;
++				};
++				/XFS/     &amp;&amp; do {
++					$type = &quot;xfs&quot;;
++					last SWITCH;
++				};
++				# unknown filesystem type check clicfs...
++				$data = qxx (
++					&quot;dd if=$fs bs=128k count=1 2&gt;/dev/null | grep -q CLIC&quot;
++				);
++				$code = $? &gt;&gt; 8;
++				if ($code == 0) {
++					$type = &quot;clicfs&quot;;
++					last SWITCH;
++				}
++				# unknown filesystem type use auto...
++				$type = &quot;auto&quot;;
++			};
++			$result{type}     = $type;
++			$result{readonly} = $main::KnownFS{$type}{ro};
++			$result{hastool}  = 0;
++			if (defined $main::KnownFS{$type}{tool}) {
++				if (-x $main::KnownFS{$type}{tool}) {
++					$result{hastool} = 1;
++				}
++			}
++		} else {
++			if ($main::kiwi -&gt; trace()) {
++				$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
++			}
++			return ();
++		}
++	}
++	return %result;
++}
++
+ main();
+ 
+ # vim: set noexpandtab:
+diff --git a/modules/KIWICommandLine.pm b/modules/KIWICommandLine.pm
+index d46c4b5..73a6995 100644
+--- a/modules/KIWICommandLine.pm
++++ b/modules/KIWICommandLine.pm
+@@ -221,6 +221,17 @@ sub getImageTargetDir {
+ }
+ 
+ #==========================================
++# getInitrdImageTargetDir
++#------------------------------------------
++sub getInitrdImageTargetDir {
++	# ...
++	# Return the location of the target directory for the boot image
++	# ---
++	my $this = shift;
++	return $this -&gt; {imageInitrdTgtDir};
++}
++
++#==========================================
+ # getLogFile
+ #------------------------------------------
+ sub getLogFile {
+@@ -658,6 +669,18 @@ sub setImagetargetDir {
+ }
+ 
+ #==========================================
++# setInitrdImageTargetDir
++#------------------------------------------
++sub setInitrdImageTargetDir {
++	# ...
++	# Set the destination directory for the completed boot image
++	# ---
++	my $this = shift;
++	$this -&gt; {imageInitrdTgtDir} = shift;
++	return 1;
++}
++
++#==========================================
+ # setLogFile
+ #------------------------------------------
+ sub setLogFile {
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 0ada55b..eb77777 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -120,31 +120,6 @@ sub new {
+ 	my $arch = qxx (&quot;uname -m&quot;); chomp ( $arch );
+ 	$arch = &quot;.$arch&quot;;
+ 	#==========================================
+-	# Store initial values of main variables
+-	#------------------------------------------
+-	sub reset_sub {
+-		my @backupProfiles     = @main::Profiles;
+-		my $backupCreate       = $main::Create;
+-		my $backupPrepare      = $main::Prepare;
+-		my $backupRootTree     = $main::RootTree;
+-		my $backupForceNewRoot = $main::ForceNewRoot;
+-		my @backupPatterns     = @main::AddPattern;
+-		my @backupPackages     = @main::AddPackage;
+-		my $backupSetImageType = $main::SetImageType;
+-		return sub {
+-			@main::Profiles     = @backupProfiles;
+-			$main::Prepare      = $backupPrepare;
+-			$main::Create       = $backupCreate;
+-			$main::ForceNewRoot = $backupForceNewRoot;
+-			@main::AddPattern   = @backupPatterns;
+-			@main::AddPackage   = @backupPackages;
+-			$main::RootTree     = $backupRootTree;
+-			$main::SetImageType = $backupSetImageType;
+-			$main::Survive      = &quot;default&quot;;
+-			undef %main::XMLChangeSet;
+-		}
+-	}
+-	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
+ 	$this-&gt;{kiwi}       = $kiwi;
+@@ -156,7 +131,6 @@ sub new {
+ 	$this-&gt;{imageStrip} = $imageStrip;
+ 	$this-&gt;{baseSystem} = $baseSystem;
+ 	$this-&gt;{arch}       = $arch;
+-	$this-&gt;{resetvars}  = reset_sub();
+ 	#==========================================
+ 	# Mount overlay tree if required...
+ 	#------------------------------------------
+@@ -1026,7 +1000,7 @@ sub createImageRootAndBoot {
+ 		chomp $tmpdir;
+ 		push @{$this-&gt;{tmpdirs}},$tmpdir;
+ 		#==========================================
+-		# Setup boot prepare and create...
++		# Prepare boot image...
+ 		#------------------------------------------
+ 		my $configDir;
+ 		if (($stype{boot} !~ /^\//) &amp;&amp; (! -d $stype{boot})) {
+@@ -1038,40 +1012,31 @@ sub createImageRootAndBoot {
+ 		$cmdL -&gt; setInitrdConfigDir ($configDir);
+ 		$cmdL -&gt; setInitrdRootTargetDir ($rootTarget);
+ 		my $kic = new KIWIImageCreator ($kiwi, $cmdL);
+-		if ((! $kic) || (! $kic-&gt;prepareBootImage())) {
++		if ((! $kic) || (! $kic -&gt; prepareBootImage())) {
+ 			undef $kic;
+ 			if (! -d $main::RootTree.$baseSystem) {
+ 				qxx (&quot;rm -rf $tmpdir&quot;);
+ 			}
+-			&amp;{$this-&gt;{resetvars}};
+ 			return undef;
+ 		}
+ 		undef %main::XMLChangeSet;
+-		$main::Create   = $rootTarget;
+-		$main::RootTree = $rootTarget;
+-		$main::Survive  = &quot;yes&quot;;
+-		undef @main::Profiles;
+-		undef @main::AddPackage;
+-		undef @main::RemovePackage;
+-		undef $main::SetImageType;
+ 		#==========================================
+-		# Call kiwi again
++		# Create boot image...
+ 		#------------------------------------------
+-		if (! defined main::main()) {
++		$cmdL -&gt; setInitrdConfigDir ($rootTarget);
++		$cmdL -&gt; setInitrdImageTargetDir ($this-&gt;{imageDest});
++		$kic  -&gt; initialize();
++		if ((! $kic) || (! $kic -&gt; createBootImage())) {
++			undef $kic;
+ 			if (! -d $main::RootTree.$baseSystem) {
+ 				qxx (&quot;rm -rf $tmpdir&quot;);
+ 			}
+-			&amp;{$this-&gt;{resetvars}};
+ 			return undef;
+ 		}
+ 		#==========================================
+ 		# Clean up tmp directory
+ 		#------------------------------------------
+ 		qxx (&quot;rm -rf $tmpdir&quot;);
+-		#==========================================
+-		# Reset variables
+-		#------------------------------------------
+-		&amp;{$this-&gt;{resetvars}};
+ 	}
+ 	#==========================================
+ 	# setup initrd name
+@@ -1126,7 +1091,6 @@ sub createImagePXE {
+ 	if (! defined $name) {
+ 		return undef;
+ 	}
+-	&amp;{$this-&gt;{resetvars}};
+ 	return $this;
+ }
+ 
+@@ -1518,7 +1482,7 @@ sub createImageLiveCD {
+ 		chomp $tmpdir;
+ 		push @{$this-&gt;{tmpdirs}},$tmpdir;
+ 		#==========================================
+-		# Setup boot prepare and create...
++		# Prepare boot image...
+ 		#------------------------------------------
+ 		my $configDir;
+ 		if (($stype{boot} !~ /^\//) &amp;&amp; (! -d $stype{boot})) {
+@@ -1530,40 +1494,31 @@ sub createImageLiveCD {
+ 		$cmdL -&gt; setInitrdConfigDir ($configDir);
+ 		$cmdL -&gt; setInitrdRootTargetDir ($rootTarget);
+ 		my $kic = new KIWIImageCreator ($kiwi, $cmdL);
+-		if ((! $kic) || (! $kic-&gt;prepareBootImage())) {
++		if ((! $kic) || (! $kic -&gt; prepareBootImage())) {
+ 			undef $kic;
+ 			if (! -d $main::RootTree.$baseSystem) {
+ 				qxx (&quot;rm -rf $tmpdir&quot;);
+ 			}
+-			&amp;{$this-&gt;{resetvars}};
+ 			return undef;
+ 		}
+ 		undef %main::XMLChangeSet;
+-		$main::Create   = $rootTarget;
+-		$main::RootTree = $rootTarget;
+-		$main::Survive  = &quot;yes&quot;;
+-		undef @main::Profiles;
+-		undef @main::AddPackage;
+-		undef @main::RemovePackage;
+-		undef $main::SetImageType;
+ 		#==========================================
+-		# Call kiwi again
++		# Create boot image...
+ 		#------------------------------------------
+-		if (! defined main::main()) {
++		$cmdL -&gt; setInitrdConfigDir ($rootTarget);
++		$cmdL -&gt; setInitrdImageTargetDir ($this-&gt;{imageDest});
++		$kic  -&gt; initialize();
++		if ((! $kic) || (! $kic -&gt; createBootImage())) {
++			undef $kic;
+ 			if (! -d $main::RootTree.$baseSystem) {
+ 				qxx (&quot;rm -rf $tmpdir&quot;);
+ 			}
+-			&amp;{$this-&gt;{resetvars}};
+ 			return undef;
+ 		}
+ 		#==========================================
+ 		# Clean up tmp directory
+ 		#------------------------------------------
+ 		qxx (&quot;rm -rf $tmpdir&quot;);
+-		#==========================================
+-		# Reset variables
+-		#------------------------------------------
+-		&amp;{$this-&gt;{resetvars}};
+ 	}
+ 	#==========================================
+ 	# setup initrd/kernel names
+@@ -2568,7 +2523,7 @@ sub createImageSplit {
+ 		chomp $tmpdir;
+ 		push @{$this-&gt;{tmpdirs}},$tmpdir;
+ 		#==========================================
+-		# Setup boot prepare and create...
++		# Prepare boot image...
+ 		#------------------------------------------
+ 		my $configDir;
+ 		if (($type{boot} !~ /^\//) &amp;&amp; (! -d $type{boot})) {
+@@ -2580,40 +2535,31 @@ sub createImageSplit {
+ 		$cmdL -&gt; setInitrdConfigDir ($configDir);
+ 		$cmdL -&gt; setInitrdRootTargetDir ($rootTarget);
+ 		my $kic = new KIWIImageCreator ($kiwi, $cmdL);
+-		if ((! $kic) || (! $kic-&gt;prepareBootImage())) {
++		if ((! $kic) || (! $kic -&gt; prepareBootImage())) {
+ 			undef $kic;
+ 			if (! -d $main::RootTree.$baseSystem) {
+ 				qxx (&quot;rm -rf $tmpdir&quot;);
+ 			}
+-			&amp;{$this-&gt;{resetvars}};
+ 			return undef;
+ 		}
+ 		undef %main::XMLChangeSet;
+-		$main::Create   = $rootTarget;
+-		$main::RootTree = $rootTarget;
+-		$main::Survive  = &quot;yes&quot;;
+-		undef @main::Profiles;
+-		undef @main::AddPackage;
+-		undef @main::RemovePackage;
+-		undef $main::SetImageType;
+ 		#==========================================
+-		# Call kiwi again
++		# Create boot image...
+ 		#------------------------------------------
+-		if (! defined main::main()) {
++		$cmdL -&gt; setInitrdConfigDir ($rootTarget);
++		$cmdL -&gt; setInitrdImageTargetDir ($this-&gt;{imageDest});
++		$kic  -&gt; initialize();
++		if ((! $kic) || (! $kic -&gt; createBootImage())) {
++			undef $kic;
+ 			if (! -d $main::RootTree.$baseSystem) {
+ 				qxx (&quot;rm -rf $tmpdir&quot;);
+ 			}
+-			&amp;{$this-&gt;{resetvars}};
+ 			return undef;
+ 		}
+ 		#==========================================
+ 		# Clean up tmp directory
+ 		#------------------------------------------
+ 		qxx (&quot;rm -rf $tmpdir&quot;);
+-		#==========================================
+-		# Reset variables
+-		#------------------------------------------
+-		&amp;{$this-&gt;{resetvars}};
+ 	}
+ 	#==========================================
+ 	# setup initrd name
+diff --git a/modules/KIWIImageCreator.pm b/modules/KIWIImageCreator.pm
+index cc3a030..f84b2c7 100644
+--- a/modules/KIWIImageCreator.pm
++++ b/modules/KIWIImageCreator.pm
+@@ -76,6 +76,24 @@ sub new {
+ 	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
++	$this-&gt;{kiwi}             = $kiwi;
++	$this-&gt;{cmdL}             = $cmdL;
++	#==========================================
++	# Store object data
++	#------------------------------------------
++	$this -&gt; initialize();
++	return $this;
++}
++
++#==========================================
++# initialize
++#------------------------------------------
++sub initialize {
++	my $this = shift;
++	my $cmdL = $this-&gt;{cmdL};
++	#==========================================
++	# Store object data
++	#------------------------------------------
+ 	$this-&gt;{addlPackages}     = $cmdL -&gt; getAdditionalPackages();
+ 	$this-&gt;{addlPatterns}     = $cmdL -&gt; getAdditionalPatterns();
+ 	$this-&gt;{addlRepos}        = $cmdL -&gt; getAdditionalRepos();
+@@ -88,6 +106,8 @@ sub new {
+ 	$this-&gt;{removePackages}   = $cmdL -&gt; getPackagesToRemove();
+ 	$this-&gt;{replRepo}         = $cmdL -&gt; getReplacementRepo();
+ 	$this-&gt;{rootTgtDir}       = $cmdL -&gt; getRootTargetDir();
++	$this-&gt;{imageTgtDir}      = $cmdL -&gt; getImageTargetDir();
++	$this-&gt;{imageInitrdTgtDir}= $cmdL -&gt; getInitrdImageTargetDir();
+ 	$this-&gt;{rootInitrdTgtDir} = $cmdL -&gt; getInitrdRootTargetDir();
+ 	$this-&gt;{initrd}           = $cmdL -&gt; getInitrdFile();
+ 	$this-&gt;{sysloc}           = $cmdL -&gt; getSystemLocation();
+@@ -96,27 +116,8 @@ sub new {
+ 	$this-&gt;{format}           = $cmdL -&gt; getImageFormat();
+ 	$this-&gt;{configDir}        = $cmdL -&gt; getConfigDir();
+ 	$this-&gt;{configInitrdDir}  = $cmdL -&gt; getInitrdConfigDir();
+-	$this-&gt;{kiwi}             = $kiwi;
+-	$this-&gt;{cmdL}             = $cmdL;
+-	return $this;
+-}
+-
+-#==========================================
+-# getBuildProfile
+-#------------------------------------------
+-sub getBuildProfile {
+-	# ...
+-	# Return the primary build profile (default build profile)
+-	# ---
+-}
+-
+-#==========================================
+-# getBuildType
+-#------------------------------------------
+-sub getBuildType {
+-	# ...
+-	# Return the current build type
+-	# ---
++	$this-&gt;{buildType}        = $cmdL -&gt; getBuildType();
++	return 1;
+ }
+ 
+ #==========================================
+@@ -130,8 +131,8 @@ sub prepareBootImage {
+ 	my $configDir  = $this-&gt;{configInitrdDir};
+ 	my $rootTgtDir = $this-&gt;{rootInitrdTgtDir};
+ 	my $kiwi       = $this-&gt;{kiwi};
+-	my $ignore     = $this -&gt; {ignoreRepos};
+-	my $pkgMgr    = $this -&gt; {packageManager};
++	my $ignore     = $this-&gt;{ignoreRepos};
++	my $pkgMgr     = $this-&gt;{packageManager};
+ 	if (! $configDir) {
+ 		$kiwi -&gt; error ('prepareBootImage: no configuration directory defined');
+ 		$kiwi -&gt; failed ();
+@@ -255,6 +256,7 @@ sub prepareImage {
+ 	# ---
+ 	my $this      = shift;
+ 	my $configDir = $this -&gt; {configDir};
++	my $rootTgtDir= $this -&gt; {rootTgtDir};
+ 	my $kiwi      = $this -&gt; {kiwi};
+ 	my $pkgMgr    = $this -&gt; {packageManager};
+ 	my $ignore    = $this -&gt; {ignoreRepos};
+@@ -295,12 +297,13 @@ sub prepareImage {
+ 	#==========================================
+ 	# Verify we have a prepare target directory
+ 	#------------------------------------------
+-	if (! $this -&gt; {rootTgtDir}) {
++	if (! $rootTgtDir) {
+ 		$kiwi -&gt; info (&quot;Checking for default root in XML data...&quot;);
+ 		my $rootTgt =  $xml -&gt; getImageDefaultRoot();
+ 		if ($rootTgt) {
+ 			$this -&gt; {cmdL} -&gt; setRootTargetDir($rootTgt);
+-			$this -&gt; {rootTgtDir} = $this -&gt; {cmdL} -&gt; getRootTargetDir();
++			$this -&gt; {rootTgtDir} = $rootTgt;
++			$rootTgtDir = $rootTgt;
+ 			$kiwi -&gt; done();
+ 		} else {
+ 			my $msg = 'No target directory set for the unpacked image tree.';
+@@ -349,8 +352,454 @@ sub prepareImage {
+ 		return undef;
+ 	}
+ 	return $this -&gt; __prepareTree(
+-		$xml,$this-&gt;{configDir},$this-&gt;{rootTgtDir}
++		$xml,$this-&gt;{configDir},$rootTgtDir
++	);
++}
++
++#==========================================
++# createBootImage
++#------------------------------------------
++sub createBootImage {
++	# ...
++	# Create the boot image
++	# ---
++	my $this         = shift;
++	my $configDir    = $this-&gt;{configInitrdDir};
++	my $destination  = $this-&gt;{imageInitrdTgtDir};
++	my $kiwi         = $this-&gt;{kiwi};
++	my $pkgMgr       = $this-&gt;{packageManager};
++	my $ignore       = $this-&gt;{ignoreRepos};
++	my $cmdL         = $this-&gt;{cmdL};
++	#==========================================
++	# Setup the image XML description
++	#------------------------------------------
++	my $locator = new KIWILocator($kiwi);
++	my $controlFile = $locator -&gt; getControlFile ($configDir);;
++	if (! $controlFile) {
++		return undef;
++	}
++	my $validator = new KIWIXMLValidator (
++		$kiwi,$controlFile,$main::Revision,$main::Schema,$main::SchemaCVT
++	);
++	my $isValid = $validator ? $validator -&gt; validate() : undef;
++	if (! $isValid) {
++		return undef;
++	}
++	$kiwi -&gt; info (&quot;Create boot image (initrd)...\n&quot;);
++	my $xml = new KIWIXML (
++		$kiwi,$configDir,&quot;cpio&quot;,undef
++	);
++	if (! defined $xml) {
++		return undef;
++	}
++	#==========================================
++	# Apply XML over rides from command line
++	#------------------------------------------
++	if ($pkgMgr) {
++		$xml -&gt; setPackageManager($pkgMgr);
++	}
++	if ($ignore) {
++		$xml -&gt; ignoreRepositories ();
++	}
++	if ($this -&gt; {addlRepos}) {
++		my %addlRepos = %{$this -&gt; {addlRepos}};
++		$xml -&gt; addRepository (
++			$addlRepos{repositoryTypes},
++			$addlRepos{repositories},
++			$addlRepos{repositoryAlia},
++			$addlRepos{repositoryPriorities}
++		);
++	}
++	if ($this -&gt; {replRepo}) {
++		my %replRepo = %{$this -&gt; {replRepo}};
++		$xml -&gt; setRepository (
++			$replRepo{repositoryType},
++			$replRepo{repository},
++			$replRepo{repositoryAlias},
++			$replRepo{respositoryPriority}
++		);
++	}
++	#==========================================
++	# Create destdir if needed
++	#------------------------------------------
++	my $dirCreated = $this -&gt; createDirInteractive(
++		$destination
+ 	);
++	if (! defined $dirCreated) {
++		return undef;
++	}
++	#==========================================
++	# Create KIWIImage object
++	#------------------------------------------
++	my $image = new KIWIImage (
++		$kiwi,$xml,$configDir,$destination,undef,
++		&quot;/base-system&quot;,$configDir,undef,$cmdL
++	);
++	if (! defined $image) {
++		return undef;
++	}
++	$this-&gt;{image} = $image;
++	#==========================================
++	# Create cpio image
++	#------------------------------------------
++	if (! $image -&gt; createImageCPIO()) {
++		undef $image;
++		return undef;
++	}
++	return 1;
++}
++
++#==========================================
++# createImage
++#------------------------------------------
++sub createImage {
++	# ...
++	# Create the image
++	# ---
++	my $this         = shift;
++	my $configDir    = $this -&gt; {configDir};
++	my $buildProfs   = $this -&gt; {buildProfiles};
++	my $type         = $this -&gt; {buildType};
++	my $kiwi         = $this -&gt; {kiwi};
++	my $pkgMgr       = $this -&gt; {packageManager};
++	my $ignore       = $this -&gt; {ignoreRepos};
++	my $target       = $this -&gt; {imageTgtDir};
++	my $cmdL         = $this -&gt; {cmdL};
++	my $targetDevice = $this -&gt; {targetdevice};
++	#==========================================
++	# Check the tree first...
++	#------------------------------------------
++	if (-f &quot;$configDir/.broken&quot;) {
++		$kiwi -&gt; error  (&quot;Image root tree $configDir is broken&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	#==========================================
++	# Setup the image XML description
++	#------------------------------------------
++	my $locator = new KIWILocator($kiwi);
++	my $controlFile = $locator -&gt; getControlFile ($configDir);;
++	if (! $controlFile) {
++		return undef;
++	}
++	my $validator = new KIWIXMLValidator (
++		$kiwi,$controlFile,$main::Revision,$main::Schema,$main::SchemaCVT
++	);
++	my $isValid = $validator ? $validator -&gt; validate() : undef;
++	if (! $isValid) {
++		return undef;
++	}
++	$kiwi -&gt; info (&quot;Reading image description [Create]...\n&quot;);
++	my $xml = new KIWIXML (
++		$kiwi,$configDir,$type,$buildProfs
++	);
++	if (! defined $xml) {
++		return undef;
++	}
++	my %attr = %{$xml-&gt;getImageTypeAndAttributes()};
++	my $krc = new KIWIRuntimeChecker (
++		$kiwi,$cmdL,$xml
++	);
++	#==========================================
++	# Check for default destination in XML
++	#------------------------------------------
++	if (! $target) {
++		$kiwi -&gt; info (&quot;Checking for defaultdestination in XML data...&quot;);
++		my $defaultDestination = $xml -&gt; getImageDefaultDestination();
++		if (! $defaultDestination) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; info   (&quot;No destination directory specified&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		$this -&gt; {imageTgtDir} = $defaultDestination;
++		$cmdL -&gt; setImagetargetDir ($defaultDestination);
++		$kiwi -&gt; done();
++	}
++	my $destination = $this -&gt; {imageTgtDir};
++	#==========================================
++	# Apply XML over rides from command line
++	#------------------------------------------
++	if ($pkgMgr) {
++		$xml -&gt; setPackageManager($pkgMgr);
++	}
++	if ($ignore) {
++		$xml -&gt; ignoreRepositories ();
++	}
++	if ($this -&gt; {addlPackages}) {
++		$xml -&gt; addImagePackages (@{$this -&gt; {addlPackages}});
++	}
++	if ($this -&gt; {addlPatterns}) {
++		$xml -&gt; addImagePatterns (@{$this -&gt; {addlPatterns}});
++	}
++	if ($this -&gt; {addlRepos}) {
++		my %addlRepos = %{$this -&gt; {addlRepos}};
++		$xml -&gt; addRepository (
++			$addlRepos{repositoryTypes},
++			$addlRepos{repositories},
++			$addlRepos{repositoryAlia},
++			$addlRepos{repositoryPriorities}
++		);
++	}
++	if ($this -&gt; {removePackages}) {
++		$xml -&gt; addRemovePackages (@{$this -&gt; {removePackages}});
++	}
++	if ($this -&gt; {replRepo}) {
++		my %replRepo = %{$this -&gt; {replRepo}};
++		$xml -&gt; setRepository (
++			$replRepo{repositoryType},
++			$replRepo{repository},
++			$replRepo{repositoryAlias},
++			$replRepo{respositoryPriority}
++		);
++	}
++	if (! $krc -&gt; createChecks()) {
++		return undef;
++	}
++	#==========================================
++	# Create destdir if needed
++	#------------------------------------------
++	my $dirCreated = $this -&gt; createDirInteractive(
++		$destination
++	);
++	if (! defined $dirCreated) {
++		return undef;
++	}
++	#==========================================
++	# Check tool set
++	#------------------------------------------
++	my $para = $this -&gt; checkType (
++		$xml,\%attr,$configDir
++	);
++	if (! defined $para) {
++		return undef;
++	}
++	#==========================================
++	# Check for packages updates if needed
++	#------------------------------------------
++	my @addonList;   # install this packages
++	my @deleteList;  # remove this packages
++	my @replAdd;
++	my @replDel;
++	$xml -&gt; getBaseList();
++	@replAdd = $xml -&gt; getReplacePackageAddList();
++	@replDel = $xml -&gt; getReplacePackageDelList();
++	if (@replAdd) {
++		push @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">addonList, at replAdd</A>;
++	}
++	if (@replDel) {
++		push @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">deleteList, at replDel</A>;
++	}
++	$xml -&gt; getInstallList();
++	@replAdd = $xml -&gt; getReplacePackageAddList();
++	@replDel = $xml -&gt; getReplacePackageDelList();
++	if (@replAdd) {
++		push @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">addonList, at replAdd</A>;
++	}
++	if (@replDel) {
++		push @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">deleteList, at replDel</A>;
++	}
++	$xml -&gt; getTypeList();
++	@replAdd = $xml -&gt; getReplacePackageAddList();
++	@replDel = $xml -&gt; getReplacePackageDelList();
++	if (@replAdd) {
++		push @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">addonList, at replAdd</A>;
++	}
++	if (@replDel) {
++		push @<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">deleteList, at replDel</A>;
++	}
++	if (@addonList) {
++		my %uniq;
++		foreach my $item (@addonList) { $uniq{$item} = $item; }
++		@addonList = keys %uniq;
++	}
++	if (@deleteList) {
++		my %uniq;
++		foreach my $item (@deleteList) { $uniq{$item} = $item; }
++		@deleteList = keys %uniq;
++	}
++	if ((@addonList) || (@deleteList)) {
++		$kiwi -&gt; info (&quot;Image update:&quot;);
++		if (@addonList) {
++			$kiwi -&gt; info (&quot;--&gt; Install/Update: @addonList\n&quot;);
++		}
++		if (@deleteList) {
++			$kiwi -&gt; info (&quot;--&gt; Remove: @deleteList\n&quot;);
++		}
++		#==========================================
++		# upgrade the tree
++		#------------------------------------------
++		my $addp = $cmdL -&gt; getAdditionalPackages();
++		my $delp = $cmdL -&gt; getPackagesToRemove();
++		if ($addp) {
++			push @addonList,@{$addp};
++		}
++		if ($delp) {
++			push @deleteList,@{$delp};
++		}
++		$cmdL -&gt; setAdditionalPackages (\@addonList);
++		$cmdL -&gt; setPackagesToRemove (\@deleteList);
++		my $kic  = new KIWIImageCreator ($kiwi, $cmdL);
++		if (! $kic) {
++			return undef;
++		}
++		if (! $kic -&gt; upgradeImage()) {
++			return undef;
++		}
++		$cmdL -&gt; setAdditionalPackages ([]);
++		$cmdL -&gt; setPackagesToRemove ([]);
++	}
++	#==========================================
++	# Create KIWIImage object
++	#------------------------------------------
++	my $image = new KIWIImage (
++		$kiwi,$xml,$configDir,$destination,$main::StripImage,
++		&quot;/base-system&quot;,$configDir,undef,$cmdL
++	);
++	if (! defined $image) {
++		return undef;
++	}
++	$this-&gt;{image} = $image;
++	#==========================================
++	# Obtain currently used image tree path
++	#------------------------------------------
++	my $tree = $image -&gt; getImageTree();
++	#==========================================
++	# Cleanup the tree according to prev runs
++	#------------------------------------------
++	if (-f &quot;$tree/rootfs.tar&quot;) {
++		qxx (&quot;rm -f $tree/rootfs.tar&quot;);
++	}
++	if (-f &quot;$tree/recovery.tar.gz&quot;) {
++		qxx (&quot;rm -f $tree/recovery.*&quot;);
++	}
++	#==========================================
++	# Check for optional config-cdroot archive
++	#------------------------------------------
++	qxx (&quot;rm -f $destination/config-cdroot.tgz&quot;);
++	if (-f &quot;$tree/image/config-cdroot.tgz&quot;) {
++		qxx (&quot;mv $tree/image/config-cdroot.tgz $destination&quot;);
++	}
++	#==========================================
++	# Check for optional config-cdroot.sh
++	#------------------------------------------
++	qxx (&quot;rm -f $destination/config-cdroot.sh&quot;);
++	if (-f &quot;$tree/image/config-cdroot.sh&quot;) {
++		qxx (&quot;mv $tree/image/config-cdroot.sh $destination&quot;);
++	}
++	#==========================================
++	# Update .profile env, current type
++	#------------------------------------------
++	$kiwi -&gt; info (&quot;Updating type in .profile environment&quot;);
++	qxx (
++		&quot;sed -i -e 's#kiwi_type=.*#kiwi_type=\&quot;$type\&quot;#' $tree/.profile&quot;
++	);
++	$kiwi -&gt; done();
++	#==========================================
++	# Create recovery archive if specified
++	#------------------------------------------
++	if ($type eq &quot;oem&quot;) {
++		my $configure = new KIWIConfigure (
++			$kiwi,$xml,$tree,$tree.&quot;/image&quot;,$destination
++		);
++		if (! defined $configure) {
++			return undef;
++		}
++		if (! $configure -&gt; setupRecoveryArchive($attr{filesystem})) {
++			return undef;
++		}
++	}
++	#==========================================
++	# Initialize logical image extend
++	#------------------------------------------
++	my $ok;
++	my $checkFormat = 0;
++	SWITCH: for ($attr{type}) {
++		/^ext2/     &amp;&amp; do {
++			$ok = $image -&gt; createImageEXT2 ( $targetDevice );
++			$checkFormat = 1;
++			last SWITCH;
++		};
++		/^ext3/     &amp;&amp; do {
++			$ok = $image -&gt; createImageEXT3 ( $targetDevice );
++			$checkFormat = 1;
++			last SWITCH;
++		};
++		/^ext4/     &amp;&amp; do {
++			$ok = $image -&gt; createImageEXT4 ( $targetDevice );
++			$checkFormat = 1;
++			last SWITCH;
++		};
++		/^reiserfs/ &amp;&amp; do {
++			$ok = $image -&gt; createImageReiserFS ( $targetDevice );
++			$checkFormat = 1;
++			last SWITCH;
++		};
++		/^btrfs/    &amp;&amp; do {
++			$ok = $image -&gt; createImageBTRFS ( $targetDevice );
++			$checkFormat = 1;
++			last SWITCH;
++		};
++		/^squashfs/ &amp;&amp; do {
++			$ok = $image -&gt; createImageSquashFS ();
++			last SWITCH;
++		};
++		/^clicfs/   &amp;&amp; do {
++			$ok = $image -&gt; createImageClicFS ();
++			last SWITCH;
++		};
++		/^cpio/     &amp;&amp; do {
++			$ok = $image -&gt; createImageCPIO ();
++			last SWITCH;
++		};
++		/^iso/      &amp;&amp; do {
++			$ok = $image -&gt; createImageLiveCD ( $para );
++			last SWITCH;
++		};
++		/^split/    &amp;&amp; do {
++			$ok = $image -&gt; createImageSplit ( $para );
++			last SWITCH;
++		};
++		/^vmx/      &amp;&amp; do {
++			$ok = $image -&gt; createImageVMX ( $para );
++			last SWITCH;
++		};
++		/^oem/      &amp;&amp; do {
++			$ok = $image -&gt; createImageVMX ( $para );
++			last SWITCH;
++		};
++		/^pxe/      &amp;&amp; do {
++			$ok = $image -&gt; createImagePXE ( $para );
++			last SWITCH;
++		};
++		/^xfs/    &amp;&amp; do {
++			$ok = $image -&gt; createImageXFS ();
++			$checkFormat = 1;
++			last SWITCH;
++		};
++		$kiwi -&gt; error  (&quot;Unsupported type: $attr{type}&quot;);
++		$kiwi -&gt; failed ();
++		undef $image;
++		return undef;
++	}
++	if ($ok) {
++		if (($checkFormat) &amp;&amp; ($attr{format})) {
++			my $haveFormat = $attr{format};
++			my $imgfile= $destination.&quot;/&quot;.$image -&gt; buildImageName();
++			my $format = new KIWIImageFormat ($kiwi,$imgfile,$haveFormat);
++			if (! $format) {
++				return undef;
++			}
++			if (! $format -&gt; createFormat()) {
++				return undef;
++			}
++		}
++		undef $image;
++		return 1;
++	} else {
++		undef $image;
++		return undef;
++	}
+ }
+ 
+ #==========================================
+@@ -745,6 +1194,187 @@ sub __prepareTree {
+ 	return 1;
+ }
+ 
++#============================================
++# createDirInteractive
++#--------------------------------------------
++sub createDirInteractive {
++	my $this      = shift;
++	my $targetDir = shift;
++	my $kiwi      = $this-&gt;{kiwi};
++	if (! -d $targetDir) {
++		my $prefix = $kiwi -&gt; getPrefix (1);
++		my $answer = (defined $main::defaultAnswer) ? &quot;yes&quot; : &quot;unknown&quot;;
++		$kiwi -&gt; info (&quot;Destination: $targetDir doesn't exist\n&quot;);
++		while ($answer !~ /^yes$|^no$/) {
++			print STDERR $prefix,
++				&quot;Would you like kiwi to create it [yes/no] ? &quot;;
++			chomp ($answer = &lt;&gt;);
++		}
++		if ($answer eq &quot;yes&quot;) {
++			qxx (&quot;mkdir -p $targetDir&quot;);
++			return 1;
++		}
++	} else {
++		# Directory exists
++		return 1;
++	}
++	# Directory does not exist and user did
++	# not request dir creation.
++	return undef;
++}
++
++#==========================================
++# checkType
++#------------------------------------------
++sub checkType {
++	my $this   = shift;
++	my $kiwi   = $this-&gt;{kiwi};
++	my $xml    = $_[0];
++	my (%type) = %{$_[1]};
++	my $root   = $_[2];
++	my $para   = &quot;ok&quot;;
++	my $type   = $type{type};
++	my $flags  = $type{flags};
++	my $fs     = $type{filesystem};
++	#==========================================
++	# check for required image attributes
++	#------------------------------------------
++	if (defined $main::FatStorage) {
++		# /.../
++		# if the option --fat-storage is set, we set syslinux
++		# as bootloader because it works better on USB sticks.
++		# Additionally we use LVM because it allows to better
++		# resize the stick
++		# ----
++		$xml -&gt; __setTypeAttribute (&quot;bootloader&quot;,&quot;syslinux&quot;);
++		$xml -&gt; __setSystemDiskElement ();
++		$xml -&gt; writeXMLDescription ($root);
++	} elsif (defined $main::LVM) {
++		# /.../
++		# if the option --lvm is set, we add/update a systemdisk
++		# element which triggers the use of LVM
++		# ----
++		$xml -&gt; __setSystemDiskElement ();
++		$xml -&gt; writeXMLDescription ($root);
++	}
++	#==========================================
++	# check for required filesystem tool(s)
++	#------------------------------------------
++	if (($flags) || ($fs)) {
++		my @fs = ();
++		if (($flags) &amp;&amp; ($type eq &quot;iso&quot;)) {
++			push (@fs,$type{flags});
++		} else {
++			@fs = split (/,/,$type{filesystem});
++		}
++		foreach my $fs (@fs) {
++			my %result = main::checkFileSystem ($fs);
++			if (%result) {
++				if (! $result{hastool}) {
++					$kiwi -&gt; error (
++						&quot;Can't find filesystem tool for: $result{type}&quot;
++					);
++					$kiwi -&gt; failed ();
++					return undef;
++				}
++			} else {
++				$kiwi -&gt; error (&quot;Can't check filesystem attributes from: $fs&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++		}
++	}
++	#==========================================
++	# check tool/driver compatibility
++	#------------------------------------------
++	my $check_mksquashfs = 0;
++	if ($type{type} eq &quot;squashfs&quot;) {
++		$check_mksquashfs = 1;
++	}
++	if (($type{installiso}) || ($type{installstick})) {
++		$check_mksquashfs = 1;
++	}
++	if (($fs) &amp;&amp; ($fs =~ /squashfs/)) {
++		$check_mksquashfs = 1;
++	}
++	if (($flags) &amp;&amp; ($flags =~ /compressed|unified/)) {
++		$check_mksquashfs = 1;
++	}
++	#==========================================
++	# squashfs...
++	#------------------------------------------
++	if ($check_mksquashfs) {
++		my $km = glob (&quot;$root/lib/modules/*/kernel/fs/squashfs/squashfs.ko&quot;);
++		if ($km) {
++			my $mktool_vs = qxx (&quot;mksquashfs -version 2&gt;&amp;1 | head -n 1&quot;);
++			my $module_vs = qxx (&quot;modinfo -d $km 2&gt;&amp;1&quot;);
++			my $error = 0;
++			if ($mktool_vs =~ /^mksquashfs version (\d)\.\d \(/) {
++				$mktool_vs = $1;
++				$error++;
++			}
++			if ($module_vs =~ /^squashfs (\d)\.\d,/) {
++				$module_vs = $1;
++				$error++;
++			}
++			$kiwi -&gt; loginfo (&quot;squashfs mktool major version: $mktool_vs\n&quot;);
++			$kiwi -&gt; loginfo (&quot;squashfs module major version: $module_vs\n&quot;);
++			my $msg = &quot;--&gt; squashfs tool/driver mismatch&quot;;
++			if (($error == 2) &amp;&amp; ($mktool_vs ne $module_vs)) {
++				$kiwi -&gt; error (
++					&quot;$msg: $mktool_vs vs $module_vs&quot;
++				);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++		}
++	}
++	#==========================================
++	# build and check KIWIImage method params
++	#------------------------------------------
++	SWITCH: for ($type{type}) {
++		/^iso/ &amp;&amp; do {
++			if (! defined $type{boot}) {
++				$kiwi -&gt; error (&quot;$type{type}: No boot image specified&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			$para = $type{boot};
++			if ((defined $type{flags}) &amp;&amp; ($type{flags} ne &quot;&quot;)) {
++				$para .= &quot;,$type{flags}&quot;;
++			} 
++			last SWITCH;
++		};
++		/^split/ &amp;&amp; do {
++			if (! defined $type{filesystem}) {
++				$kiwi -&gt; error (&quot;$type{type}: No filesystem pair specified&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			$para = $type{filesystem};
++			if (defined $type{boot}) {
++				$para .= &quot;:&quot;.$type{boot};
++			}
++			last SWITCH;
++		};
++		/^vmx|oem|pxe/ &amp;&amp; do {
++			if (! defined $type{filesystem}) {
++				$kiwi -&gt; error (&quot;$type{type}: No filesystem specified&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			if (! defined $type{boot}) {
++				$kiwi -&gt; error (&quot;$type{type}: No boot image specified&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			$para = $type{filesystem}.&quot;:&quot;.$type{boot};
++			last SWITCH;
++		};
++	}
++	return $para;
++}
++
+ #==========================================
+ # Destructor
+ #------------------------------------------
+@@ -753,6 +1383,7 @@ sub DESTROY {
+ 	my $ok   = shift;
+ 	my $root = $this-&gt;{root};
+ 	my $boot = $this-&gt;{boot};
++	my $image= $this-&gt;{image};
+ 	if ($root) {
+ 		if ($ok) {
+ 			$root -&gt; cleanBroken ();
+@@ -763,9 +1394,15 @@ sub DESTROY {
+ 		$root -&gt; cleanMount  ();
+ 		undef $root;
+ 	}
++	if ($image) {
++		$image -&gt; cleanMount ();
++		$image -&gt; restoreCDRootData ();
++		$image -&gt; restoreSplitExtend ();
++	}
+ 	if ($boot) {
+ 		undef $boot;
+ 	}
+ }
+ 
+ 1;
++
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003434.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4a5aa0bf074e49269d49d100cb7c5aeda92688b7
+</A></li>
+	<LI>Next message: <A HREF="003435.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ca0c8af50c42676693eb6f4ed6a93a6a6dbd08b2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3439">[ date ]</a>
+              <a href="thread.html#3439">[ thread ]</a>
+              <a href="subject.html#3439">[ subject ]</a>
+              <a href="author.html#3439">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

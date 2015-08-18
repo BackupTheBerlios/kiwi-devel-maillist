@@ -1,0 +1,185 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Some restructuring
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Some%20restructuring&In-Reply-To=%3C4D2B33A6.7060207%40novell.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002940.html">
+   <LINK REL="Next"  HREF="002942.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Some restructuring</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Some%20restructuring&In-Reply-To=%3C4D2B33A6.7060207%40novell.com%3E"
+       TITLE="[Kiwi-devel] Some restructuring">rschweikert at novell.com
+       </A><BR>
+    <I>Mon Jan 10 17:28:22 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002940.html">[Kiwi-devel] Some restructuring
+</A></li>
+        <LI>Next message: <A HREF="002942.html">[Kiwi-devel] Some restructuring
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2941">[ date ]</a>
+              <a href="thread.html#2941">[ thread ]</a>
+              <a href="subject.html#2941">[ subject ]</a>
+              <a href="author.html#2941">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>
+
+On 01/10/2011 09:49 AM, Marcus Sch&#228;fer wrote:
+&gt;<i> Hi,
+</I>&gt;<i> 
+</I>&gt;&gt;<i> Back to the effort of making the XML object a &quot;simple&quot; mostly dumb
+</I>&gt;&gt;<i> container. The attached patch contains the following changes:
+</I>&gt;&gt;<i>
+</I>&gt;&gt;<i> - create new KIWILocator module
+</I>&gt;&gt;<i>    - implement getExecPath (previously called findExec in main)
+</I>&gt;&gt;<i>    - implement getControlFile (previously in kiwi.pl)
+</I>&gt;&gt;<i> - kiwi.pl
+</I>&gt;&gt;<i>    - remove findExec from kiwi.pl (now in KIWILocator module as
+</I>&gt;&gt;<i>                                    getExecPath)
+</I>&gt;&gt;<i>    - implement new checkImageIntegrity
+</I>&gt;&gt;<i>    - remove getControlFile (now in KIWILocator module)
+</I>&gt;&gt;<i> - KIWIXML
+</I>&gt;&gt;<i>    - remove unused member imageDesc
+</I>&gt;&gt;<i>    - remove unused method haveMD5File
+</I>&gt;&gt;<i>    - remove unused member havemd5File
+</I>&gt;&gt;<i>    - unload md5 integrity check to main (now in checkImageIntegrity() )
+</I>&gt;&gt;<i>    - changed ctor argument from image description directory to XML file
+</I>&gt;&gt;<i>    - removed algorithm to find alternate XML file (implemented in
+</I>&gt;&gt;<i>                                                    getControlFile() )
+</I>&gt;&gt;<i>
+</I>&gt;&gt;<i> Notes:
+</I>&gt;&gt;<i> - inserted a call to checkImageIntegrity() for most calls to
+</I>&gt;&gt;<i>   &quot;new KIWIXML&quot; some of these are probably not necessary. The
+</I>&gt;&gt;<i>   overkill on calls preserves parity to the current behavior.
+</I>&gt;&gt;<i>   The extraneous calls should be cleaned up at some point.
+</I>&gt;&gt;<i>
+</I>&gt;&gt;<i> We lost the calls to Carp::longmess() in getControlFile with the move of
+</I>&gt;&gt;<i> the function from kiwi.pl to KIWILocator.pm. KIWILocator will also need
+</I>&gt;&gt;<i> to gain a function to find the boot image description. But I have not
+</I>&gt;&gt;<i> searched the code where this is currently implemented.
+</I>&gt;&gt;<i>
+</I>&gt;&gt;<i> Once the Locator has the &quot;find boot image&quot; functionality we can use it
+</I>&gt;&gt;<i> in the XMLValidator to make sure we can find the specified image. This
+</I>&gt;&gt;<i> validation is currently not possible. However, having a typo in this
+</I>&gt;&gt;<i> string can be very expensive as the problem is only detected at image
+</I>&gt;&gt;<i> creation time.
+</I>&gt;<i> 
+</I>&gt;<i> Hmm, I have some questions about this one:
+</I>&gt;<i> 
+</I>&gt;<i> 1) It's true that there is kiwi.pl and KIWIXML.pm which does the
+</I>&gt;<i>    check for an alternative XML control file. So moving that into
+</I>&gt;<i>    a function into a KIWILocator module is fine. But I don't
+</I>&gt;<i>    understand why you duplicated the call getControlFile() that many
+</I>&gt;<i>    times. Just replacing the two locations 1) kiwi.pl and 2)
+</I>&gt;<i>    KIWIXML constructor by a function call seems better and less
+</I>&gt;<i>    intrusive to me.
+</I>&gt;<i> 
+</I>&gt;<i>    I'm also concerned (and don't understand the reason why) about
+</I>&gt;<i>    the change from the XML object parameter 'path to image description'
+</I>&gt;<i>    into 'path to control file'. This could create many regressions
+</I>&gt;<i>    and bugs which we are not able to cover in any test matrix. Because
+</I>&gt;<i>    the first is a directory path and the second is a file path.
+</I>&gt;<i>    I always try to avoid such changes whenever possible. And in this
+</I>&gt;<i>    special case I also don't see an advantage
+</I>
+It all goes back to the attempt of turning KIWIXML into a mostly dumb
+container object with no knowledge of state or other things, and letting
+knowledge such as control file name and state be managed by objects
+external to KIWIXML. If we leave 'path to image description' as the
+argument then KIWIXML has to know to look for config.xml or an alternate
+name. However, if the argument is 'path to control file' than the XML
+object does not need to know anything about the name. All KIWIXML has to
+know is:
+
+1.) open the file I am given
+2.) validate
+3.) populate myself
+
+(this applies after the state has been removed from KIWIXML). further,
+there is no other data in the image description that is useful/required
+for KIWIXML to do it's job. Thus, providing the directory location
+instead of just the control file location provides too much information
+to the KIWIXML object.
+
+&gt;<i> 
+</I>&gt;<i> 2) KIWILocator is a container module it's not possible to
+</I>&gt;<i>    create a KIWILocator object because it's not blessed and doesn't
+</I>&gt;<i>    provide a constructor. It would be good if the module has the
+</I>&gt;<i>    same structure like all others
+</I>
+At this point I do not see the need for object data for the Locator.
+Thus, I did not create a class, but rather the module as a collector for
+functions. It could be that the implementation of the &quot;boot description
+location&quot; function requires object data in the form of the hard coded
+/usr/share/kiwi/image/ path, but as I didn't implement this location
+function/method yet I thought an object implementation for the current
+Locator was overkill at this point.
+
+&gt;<i> 
+</I>&gt;<i> 3) why can't the md5 hash check go into KIWIXMLValidator::validate() ?
+</I>
+Because the md5 validation has nothing to do with XML validation. The
+md5 validation works on the image description not the XML and the
+KIWIXMLValidator should only validate the XML, nothing else. I am
+certain a better place than kiwi.pl will emerge for this function at
+some point.
+
+&gt;<i>    we do more than just an XML validation here we also check the
+</I>&gt;<i>    consistency 
+</I>
+But only consistency of the content of the XML file, not anything else
+in the image description.
+
+&gt;<i>    so I don't see any problem adding the md5 check there
+</I>&gt;<i>    too. 
+</I>
+IMHO that would be mingling of concerns, something we should try to avoid.
+
+Robert
+
+-- 
+Robert Schweikert                           MAY THE SOURCE BE WITH YOU
+Software Engineer Consultant                          LINUX
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>
+781-464-8147
+
+Novell
+Making IT Work As One
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002940.html">[Kiwi-devel] Some restructuring
+</A></li>
+	<LI>Next message: <A HREF="002942.html">[Kiwi-devel] Some restructuring
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2941">[ date ]</a>
+              <a href="thread.html#2941">[ thread ]</a>
+              <a href="subject.html#2941">[ subject ]</a>
+              <a href="author.html#2941">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

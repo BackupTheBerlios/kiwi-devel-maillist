@@ -1,0 +1,629 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1517 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1517%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200808181539.m7IFdWSg018310%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000598.html">
+   <LINK REL="Next"  HREF="000600.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1517 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1517%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200808181539.m7IFdWSg018310%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1517 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Aug 18 17:39:32 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000598.html">[Kiwi-devel] r1516 - in kiwi-head: . modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000600.html">[Kiwi-devel] r1518 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#599">[ date ]</a>
+              <a href="thread.html#599">[ thread ]</a>
+              <a href="subject.html#599">[ subject ]</a>
+              <a href="author.html#599">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-08-18 17:39:27 +0200 (Mon, 18 Aug 2008)
+New Revision: 1517
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIManager.pm
+   kiwi-head/modules/KIWIRoot.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- fixed use of package manager cache. kiwi uses a global cache
+  for building now. This is below /var/cache/kiwi/&lt;manager&gt;.
+  The package manager data is temporarly bind mounted into the
+  image root system for any package manager operation.
+  This allows a faster processing within the second stage of
+  the image preparation and also alows re-use of already
+  downloaded remote packages (bnc #417457)
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2008-08-18 08:32:35 UTC (rev 1516)
++++ kiwi-head/kiwi.pl	2008-08-18 15:39:27 UTC (rev 1517)
+@@ -634,13 +634,6 @@
+ 			undef $main::Upgrade;
+ 		}
+ 		#==========================================
+-		# Hide package manager cache
+-		#------------------------------------------
+-		my $manager = new KIWIManager (
+-			$kiwi,$xml,$xml,$Create,$xml -&gt; getPackageManager()
+-		);
+-		$manager -&gt; hidePackageManagerCache();
+-		#==========================================
+ 		# Create recovery archive if specified
+ 		#------------------------------------------
+ 		if ($type eq &quot;oem&quot;) {
+@@ -726,13 +719,11 @@
+ 			if (defined $BaseRoot) {
+ 				$overlay -&gt; resetOverlay();
+ 			}
+-			$manager -&gt; restorePackageManagerCache();
+ 			my $code = kiwiExit (1); return $code;
+ 		}
+ 		if (defined $BaseRoot) {
+ 			$overlay -&gt; resetOverlay();
+ 		}
+-		$manager -&gt; restorePackageManagerCache();
+ 		if ($ok) {
+ 			my $code = kiwiExit (0); return $code;
+ 		} else {
+
+Modified: kiwi-head/modules/KIWIManager.pm
+===================================================================
+--- kiwi-head/modules/KIWIManager.pm	2008-08-18 08:32:35 UTC (rev 1516)
++++ kiwi-head/modules/KIWIManager.pm	2008-08-18 15:39:27 UTC (rev 1517)
+@@ -87,11 +87,9 @@
+ 	if (! defined $manager) {
+ 		$manager = &quot;smart&quot;;
+ 	}
+-	my $dataDir = &quot;$root/var/lib/smart&quot;;
+-	if ($manager eq &quot;smart&quot;) {
+-		if (! -d $dataDir) {
+-			qxx (&quot;mkdir -p $dataDir&quot;);
+-		}
++	my $dataDir = &quot;/var/cache/kiwi/$manager&quot;;
++	if (! -d $dataDir) {
++		qxx (&quot;mkdir -p $dataDir&quot;);
+ 	}
+ 	my @channelList = ();
+ 	#==========================================
+@@ -110,12 +108,16 @@
+ 	$this-&gt;{screenLogs}  = $kiwi -&gt; getRootLog();
+ 	$this-&gt;{dataDir}     = $dataDir;
+ 	$this-&gt;{smart}       = [
+-		&quot;smart&quot;,&quot;--data-dir=$dataDir&quot;,
+-		&quot;-o rpm-root=$root&quot;,&quot;-o deb-root=$root&quot;,
+-		&quot;-o remove-packages=false&quot;
++		&quot;smart&quot;,&quot;--data-dir=$dataDir&quot;,&quot;-o remove-packages=false&quot;
+ 	];
++	$this-&gt;{smartroot}   = [
++		&quot;-o rpm-root=$root&quot;,
++		&quot;-o deb-root=$root&quot;,
++	];
+ 	$this-&gt;{zypper}      = [
+-		&quot;zypper&quot;,&quot;--non-interactive&quot;,&quot;--no-gpg-checks&quot;
++		&quot;zypper&quot;,&quot;--non-interactive&quot;,&quot;--no-gpg-checks&quot;,
++		&quot;--reposd-dir $dataDir&quot;,&quot;--cache-dir $dataDir&quot;,
++		&quot;--raw-cache-dir $dataDir&quot;
+ 	];
+ 	$this-&gt;{ensconce}    = [
+ 		&quot;ensconce&quot;, &quot;-r /&quot;
+@@ -329,7 +331,7 @@
+ 				$this -&gt; freeLock();
+ 			} else {
+ 				$kiwi -&gt; info (&quot;Setting RPM signature check to: $imgCheckSig&quot;);
+-				$data =qxx (&quot;chroot \&quot;$root\&quot; smart config --set $option 2&gt;&amp;1&quot;);
++				$data=qxx (&quot;chroot \&quot;$root\&quot; @smart config --set $option 2&gt;&amp;1&quot;);
+ 			}
+ 			$code = $? &gt;&gt; 8;
+ 			if ($code != 0) {
+@@ -388,7 +390,7 @@
+ 				$this -&gt; freeLock();
+ 			} else {
+ 				$kiwi -&gt; info (&quot;Reset RPM signature check to: $curCheckSig&quot;);
+-				$data =qxx (&quot;chroot \&quot;$root\&quot; smart config --set $option 2&gt;&amp;1&quot;);
++				$data=qxx (&quot;chroot \&quot;$root\&quot; @smart config --set $option 2&gt;&amp;1&quot;);
+ 			}
+ 			$code = $? &gt;&gt; 8;
+ 			if ($code != 0) {
+@@ -430,6 +432,8 @@
+ 	my $manager= $this-&gt;{manager};
+ 	my @zypper = @{$this-&gt;{zypper}};
+ 	my @smart  = @{$this-&gt;{smart}};
++	my @rootdir= @{$this-&gt;{smartroot}};
++	my $dataDir= $this-&gt;{dataDir};
+ 	my $lock   = $this-&gt;{lock};
+ 	my $data;
+ 	my $code;
+@@ -442,11 +446,12 @@
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
+-		my $stype = &quot;private&quot;;
+-		my $cmds  = &quot;smart channel --add&quot;;
++		my $stype  = &quot;private&quot;;
++		my $cmds   = &quot;@smart channel --add&quot;;
++		qxx (&quot;rm -f $dataDir/channels/*&quot;);
+ 		if (! $chroot) {
+ 			$stype = &quot;public&quot;;
+-			$cmds  = &quot;@smart channel --add&quot;;
++			$cmds  = &quot;@smart @rootdir channel --add&quot;;
+ 		}
+ 		foreach my $chl (keys %{$source{$stype}}) {
+ 			my @opts = @{$source{$stype}{$chl}};
+@@ -477,6 +482,7 @@
+ 	#------------------------------------------
+ 	if ($manager eq &quot;zypper&quot;) {
+ 		my $stype = &quot;private&quot;;
++		qxx (&quot;rm -f $dataDir/*.repo&quot;);
+ 		if (! $chroot) {
+ 			$stype = &quot;public&quot;;
+ 		}
+@@ -558,6 +564,7 @@
+ 	my $root   = $this-&gt;{root};
+ 	my @zypper = @{$this-&gt;{zypper}};
+ 	my @smart  = @{$this-&gt;{smart}};
++	my @rootdir= @{$this-&gt;{smartroot}};
+ 	my $lock   = $this-&gt;{lock};
+ 	my @channelList = @{$this-&gt;{channelList}};
+ 	my $data;
+@@ -566,10 +573,10 @@
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
+-		my @list = @channelList;
+-		my $cmds = &quot;smart channel --remove&quot;;
++		my @list   = @channelList;
++		my $cmds   = &quot;@smart channel --remove&quot;;
+ 		if (! $chroot) {
+-			$cmds = &quot;@smart channel --remove&quot;;
++			$cmds=&quot;@smart @rootdir channel --remove&quot;;
+ 		}
+ 		if (! $chroot) {
+ 			$this -&gt; checkExclusiveLock();
+@@ -719,6 +726,7 @@
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $root = $this-&gt;{root};
+ 	my $manager = $this-&gt;{manager};
++	my @smart   = @{$this-&gt;{smart}};
+ 	my @zypper  = @{$this-&gt;{zypper}};
+ 	my @ensconce = @{$this-&gt;{ensconce}};
+ 	my $screenCall = $this-&gt;{screenCall};
+@@ -747,10 +755,10 @@
+ 		print $fd &quot;function clean { kill \$SPID;&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+-		print $fd &quot;chroot $root smart update\n&quot;;
+-		print $fd &quot;chroot $root smart channel --show &amp;\n&quot;;
++		print $fd &quot;chroot $root @smart update\n&quot;;
++		print $fd &quot;chroot $root @smart channel --show &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root smart install -y &quot;;
++		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @smart install -y &quot;;
+ 		print $fd &quot;@addonPackages || false &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
+@@ -809,6 +817,7 @@
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $root = $this-&gt;{root};
+ 	my $manager = $this-&gt;{manager};
++	my @smart   = @{$this-&gt;{smart}};
+ 	my @zypper  = @{$this-&gt;{zypper}};
+ 	my @ensconce = @{$this-&gt;{ensconce}};
+ 	my $screenCall = $this-&gt;{screenCall};
+@@ -837,10 +846,10 @@
+ 		print $fd &quot;function clean { kill \$SPID;&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+-		print $fd &quot;chroot $root smart update\n&quot;;
+-		print $fd &quot;chroot $root smart channel --show &amp;\n&quot;;
++		print $fd &quot;chroot $root @smart update\n&quot;;
++		print $fd &quot;chroot $root @smart channel --show &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root smart remove -y &quot;;
++		print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @smart remove -y &quot;;
+ 		print $fd &quot;@removePackages || false &amp;\n&quot;;
+ 		print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
+@@ -898,7 +907,9 @@
+ 	my $addPacks = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $root = $this-&gt;{root};
++	my $xml  = $this-&gt;{xml};
+ 	my $manager = $this-&gt;{manager};
++	my @smart   = @{$this-&gt;{smart}};
+ 	my @zypper  = @{$this-&gt;{zypper}};
+ 	my @ensconce = @{$this-&gt;{ensconce}};
+ 	my $screenCall = $this-&gt;{screenCall};
+@@ -913,6 +924,14 @@
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
++		my @opts = (
++			&quot;--log-level=error&quot;,
++			&quot;-y&quot;
++		);
++		my $force = $xml -&gt; getRPMForce();
++		if (defined $force) {
++			push (@opts,&quot;-o rpm-force=yes&quot;);
++		}
+ 		#==========================================
+ 		# Create screen call file
+ 		#------------------------------------------
+@@ -920,21 +939,21 @@
+ 		print $fd &quot;function clean { kill \$SPID;&quot;;
+ 		print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 		print $fd &quot;trap clean INT TERM\n&quot;;
+-		print $fd &quot;chroot $root smart update\n&quot;;
++		print $fd &quot;chroot $root @smart update\n&quot;;
+ 		if (defined $addPacks) {
+ 			my @addonPackages = @{$addPacks};
+-			print $fd &quot;chroot $root smart channel --show &amp;\n&quot;;
++			print $fd &quot;chroot $root @smart channel --show &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-			print $fd &quot;test \$? = 0 &amp;&amp; chroot $root smart upgrade -y &quot;;
++			print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @smart upgrade @opts &quot;;
+ 			print $fd &quot;|| false &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-			print $fd &quot;test \$? = 0 &amp;&amp; chroot $root smart install -y &quot;;
++			print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @smart install @opts &quot;;
+ 			print $fd &quot;@addonPackages || false &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		} else {
+-			print $fd &quot;chroot $root smart channel --show &amp;\n&quot;;
++			print $fd &quot;chroot $root @smart channel --show &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-			print $fd &quot;test \$? = 0 &amp;&amp; chroot $root smart upgrade -y &amp;\n&quot;;
++			print $fd &quot;test \$? = 0 &amp;&amp; chroot $root @smart upgrade @opts &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		}
+ 		print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
+@@ -1069,6 +1088,7 @@
+ 	my $manager= $this-&gt;{manager};
+ 	my @zypper = @{$this-&gt;{zypper}};
+ 	my @smart  = @{$this-&gt;{smart}};
++	my @rootdir= @{$this-&gt;{smartroot}};
+ 	my @ensconce = @{$this-&gt;{ensconce}};
+ 	my $lock   = $this-&gt;{lock};
+ 	my @channelList = @{$this-&gt;{channelList}};
+@@ -1106,32 +1126,19 @@
+ 			print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+ 			print $fd &quot;touch $lock\n&quot;;
+-			print $fd &quot;@smart channel --show &amp;\n&quot;;
++			print $fd &quot;@smart @rootdir channel --show &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-			print $fd &quot;test \$? = 0 &amp;&amp; @smart update @channelList || false &amp;\n&quot;;
++			print $fd &quot;test \$? = 0 &amp;&amp; @smart @rootdir update &quot;;
++			print $fd &quot;@channelList || false &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-			print $fd &quot;test \$? = 0 &amp;&amp; @smart install @packs @installOpts &amp;\n&quot;;
++			print $fd &quot;test \$? = 0 &amp;&amp; @smart @rootdir install &quot;;
++			print $fd &quot;@packs @installOpts &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
+ 			print $fd &quot;rm -f $root/etc/smart/channels/*\n&quot;;
+ 			print $fd &quot;rm -f $lock\n&quot;;
+ 		} else {
+-			$kiwi -&gt; info (&quot;Checking for already installed packages...&quot;);
+-			my $querypack = &quot;smart query '*' --installed --hide-version&quot;;
+-			my @installed = qxx (&quot; chroot \&quot;$root\&quot; $querypack 2&gt;/dev/null&quot;);
+-			chomp ( @installed );
+-			my @install   = ();
+-			foreach my $need (@packs) {
+-				my $found = 0;
+-				foreach my $have (@installed) {
+-					if ($have eq $need) {
+-						$found = 1; last;
+-					}
+-				}
+-				if (! $found) {
+-					push @install,$need;
+-				}
+-			}
++			my @install = @packs;
+ 			my @installOpts = (
+ 				&quot;--explain&quot;,
+ 				&quot;--log-level=error&quot;,
+@@ -1141,7 +1148,6 @@
+ 			if (defined $force) {
+ 				push (@installOpts,&quot;-o rpm-force=yes&quot;);
+ 			}
+-			$kiwi -&gt; done();
+ 			#==========================================
+ 			# Create screen call file
+ 			#------------------------------------------
+@@ -1149,11 +1155,9 @@
+ 			print $fd &quot;function clean { kill \$SPID;&quot;;
+ 			print $fd &quot;echo 1 &gt; $screenCall.exit;exit 1; }\n&quot;;
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+-			print $fd &quot;chroot $root smart channel --show &amp;\n&quot;;
++			print $fd &quot;chroot $root @smart channel --show &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-			print $fd &quot;test \$? = 0 &amp;&amp; chroot $root smart update || false &amp;\n&quot;;
+-			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+-			print $fd &quot;test \$? = 0 &amp;&amp; chroot $root smart install @install &quot;;
++			print $fd &quot;chroot $root @smart install @install &quot;;
+ 			print $fd &quot;@installOpts &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
+@@ -1215,10 +1219,6 @@
+ 			print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
+ 			print $fd &quot;rm -f $lock\n&quot;;
+ 		} else {
+-			$kiwi -&gt; info (&quot;Checking for already Installed image packages...&quot;);
+-			my $querypack = &quot;rpm -qa --qf %'{NAME}\\n'&quot;;
+-			my @installed = qxx (&quot;chroot \&quot;$root\&quot; $querypack 2&gt;/dev/null&quot;);
+-			chomp ( @installed );
+ 			my @install   = ();
+ 			my @newpatts  = ();
+ 			foreach my $need (@packs) {
+@@ -1226,20 +1226,11 @@
+ 					push @newpatts,$1;
+ 					next;
+ 				}
+-				my $found = 0;
+-				foreach my $have (@installed) {
+-					if ($have eq $need) {
+-						$found = 1; last;
+-					}
+-				}
+-				if (! $found) {
+-					push @install,$need;
+-				}
++				push @install,$need;
+ 			}
+ 			my @installOpts = (
+ 				&quot;--auto-agree-with-licenses&quot;
+ 			);
+-			$kiwi -&gt; done();
+ 			#==========================================
+ 			# Create screen call file
+ 			#------------------------------------------
+@@ -1287,73 +1278,6 @@
+ }
+ 
+ #==========================================
+-# hidePackageManagerCache
+-#------------------------------------------
+-sub hidePackageManagerCache {
+-	my $this = shift;
+-	my $root = $this-&gt;{root};
+-	my $manager = $this-&gt;{manager};
+-	my $cache;
+-	#==========================================
+-	# smart
+-	#------------------------------------------
+-	if ($manager eq &quot;smart&quot;) {	
+-		$cache = $root.&quot;/var/lib/smart/packages&quot;;
+-		if (-d $cache) {
+-			if (-d &quot;$root.cache&quot;) {
+-				qxx (&quot;rm -rf $root.cache&quot;);
+-			}
+-			qxx (&quot;mv $cache $root.cache&quot;);
+-		}
+-	}
+-	#==========================================
+-	# zypper
+-	#------------------------------------------
+-	if ($manager eq &quot;zypper&quot;) {
+-		return $this;
+-	}
+-	#==========================================
+-	# ensconce
+-	#------------------------------------------
+-	if ($manager eq &quot;ensconce&quot;) {
+-		return $this;
+-	}
+-}
+-
+-#==========================================
+-# restorePackageManagerCache 
+-#------------------------------------------
+-sub restorePackageManagerCache {
+-	my $this = shift;
+-	my $root = $this-&gt;{root};
+-	my $manager = $this-&gt;{manager};
+-	my $cache;
+-	#==========================================
+-	# smart
+-	#------------------------------------------
+-	if ($manager eq &quot;smart&quot;) {
+-		$cache = $root.&quot;.cache&quot;;
+-		if ((-d $cache) &amp;&amp; (-d &quot;$root/var/lib/smart&quot;)) {
+-			qxx (&quot;mv $cache \&quot;$root/var/lib/smart/packages\&quot; 2&gt;&amp;1&quot;);
+-		} else {
+-			qxx (&quot;rm -rf $cache&quot;);
+-		}
+-	}
+-	#==========================================
+-	# zypper
+-	#------------------------------------------
+-	if ($manager eq &quot;zypper&quot;) {
+-		return $this;
+-	}
+-	#==========================================
+-	# ensconce
+-	#------------------------------------------
+-	if ($manager eq &quot;ensconce&quot;) {
+-		return $this;
+-	}
+-}
+-
+-#==========================================
+ # resetSource
+ #------------------------------------------
+ sub resetSource {
+@@ -1380,7 +1304,7 @@
+ 	if ($manager eq &quot;smart&quot;) {
+ 		foreach my $channel (keys %{$source{public}}) {
+ 			$kiwi -&gt; info (&quot;Removing smart channel: $channel\n&quot;);
+-			qxx (&quot;smart --data-dir=$dataDir channel --remove $channel -y 2&gt;&amp;1&quot;);
++			qxx (&quot;@smart channel --remove $channel -y 2&gt;&amp;1&quot;);
+ 		}
+ 	}
+ 	#==========================================
+@@ -1418,6 +1342,7 @@
+ 	my $manager= $this-&gt;{manager};
+ 	my @zypper = @{$this-&gt;{zypper}};
+ 	my @smart  = @{$this-&gt;{smart}};
++	my @rootdir= @{$this-&gt;{smartroot}};
+ 	my $lock   = $this-&gt;{lock};
+ 	my $data;
+ 	my $code;
+@@ -1429,13 +1354,13 @@
+ 			$this -&gt; checkExclusiveLock();
+ 			$kiwi -&gt; info (&quot;Checking for package: $pack&quot;);
+ 			$this -&gt; setLock();
+-			$data = qxx (&quot;@smart query --installed $pack 2&gt;/dev/null&quot;);
++			$data = qxx (&quot;@smart @rootdir query --installed $pack 2&gt;/dev/null&quot;);
+ 			$code = $? &gt;&gt; 8;
+ 			$this -&gt; freeLock();
+ 		} else {
+ 			$kiwi -&gt; info (&quot;Checking for package: $pack&quot;);
+ 			$data = qxx (
+-				&quot;chroot \&quot;$root\&quot; smart query --installed $pack 2&gt;/dev/null&quot;
++				&quot;chroot \&quot;$root\&quot; @smart query --installed $pack 2&gt;/dev/null&quot;
+ 			);
+ 			$code = $? &gt;&gt; 8;
+ 		}
+
+Modified: kiwi-head/modules/KIWIRoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIRoot.pm	2008-08-18 08:32:35 UTC (rev 1516)
++++ kiwi-head/modules/KIWIRoot.pm	2008-08-18 15:39:27 UTC (rev 1517)
+@@ -275,6 +275,9 @@
+ 	qxx (&quot;mknod -m 640 $root/dev/loop3 b 7 3&quot;);
+ 	qxx (&quot;mkdir -p $root/etc/sysconfig&quot;);
+ 	qxx (&quot;mkdir -p $root/var/log/YaST2&quot;);
++	# for smart we need the dpkg default file
++	qxx (&quot;mkdir -p $root/var/lib/dpkg&quot;);
++	qxx (&quot;touch $root/var/lib/dpkg/status&quot;);
+ 	# for building in suse autobuild we need the following file
+ 	qxx (&quot;touch $root/.buildenv&quot;);
+ 	# need mtab at least empty for mount calls
+@@ -392,6 +395,9 @@
+ 	#==========================================
+ 	# Upgrade system
+ 	#------------------------------------------
++	if (! $manager -&gt; setupSignatureCheck()) {
++		return undef;
++	}
+ 	if (! $manager -&gt; setupInstallationSource()) {
+ 		$this -&gt; cleanupResolvConf();
+ 		return undef;
+@@ -807,7 +813,8 @@
+ 	my $kiwi   = $this-&gt;{kiwi};
+ 	my $root   = $this-&gt;{root};
+ 	my $baseSystem = $this-&gt;{baseSystem};
+-	my $prefix     = $root.&quot;/&quot;.$baseSystem;
++	my $prefix = $root.&quot;/&quot;.$baseSystem;
++	my $cache  = &quot;/var/cache/kiwi&quot;;
+ 	my @mountList;
+ 	if (defined $this-&gt;{mountList}) {
+ 		@mountList = @{$this-&gt;{mountList}};
+@@ -815,6 +822,9 @@
+ 		@mountList = ();
+ 	}
+ 	$kiwi -&gt; info (&quot;Mounting required file systems&quot;);
++	if (! -d $cache) {
++		qxx (&quot;mkdir -p $cache&quot;);
++	}
+ 	if (! -d $prefix) {
+ 	if (! mkdir $prefix) {
+ 		$kiwi -&gt; failed ();
+@@ -845,6 +855,11 @@
+ 		push (@mountList,&quot;$root/sys&quot;);
+ 		push (@mountList,&quot;$root/dev/pts&quot;);
+ 	}
++	if (! -d &quot;$root/$cache&quot;) {
++		qxx (&quot;mkdir -p $root/$cache 2&gt;&amp;1&quot;);
++	}
++	qxx (&quot;mount --bind $cache $root/$cache 2&gt;&amp;1&quot;);
++	push (@mountList,&quot;$root/$cache&quot;);
+ 	$kiwi -&gt; done();
+ 	foreach my $chl (keys %{$this-&gt;{sourceChannel}{private}}) {
+ 		my @opts = @{$this-&gt;{sourceChannel}{private}{$chl}};
+@@ -855,16 +870,12 @@
+ 			next;
+ 		}
+ 		$kiwi -&gt; info (&quot;Mounting local channel: $chl&quot;);
+-		my $cache = &quot;/var/cache/kiwi&quot;;
+ 		my $roopt = &quot;dirs=$cache=rw:$path=ro,ro&quot;;
+ 		my $auopt = &quot;dirs=$path=ro&quot;;
+ 		my $mount = $prefix.$path;
+ 		push (@mountList,$mount);
+-		if (! -d $cache) {
+-			qxx (&quot; mkdir -p $cache &quot;);
+-		}
+ 		qxx (&quot;mkdir -p \&quot;$mount\&quot;&quot;);
+-		my $data = qxx (&quot; touch $path/bob 2&gt;&amp;1 &quot;);
++		my $data = qxx (&quot;touch $path/bob 2&gt;&amp;1&quot;);
+ 		my $code = $? &gt;&gt; 8;
+ 		if ($code == 0) {
+ 			#==========================================
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-08-18 08:32:35 UTC (rev 1516)
++++ kiwi-head/rpm/kiwi.changes	2008-08-18 15:39:27 UTC (rev 1517)
+@@ -3,6 +3,13 @@
+ 
+ - v2.66
+ - fixed adapter type detection in KIWIBoot (bnc #417461)
++- fixed use of package manager cache. kiwi uses a global cache
++  for building now. This is below /var/cache/kiwi/&lt;manager&gt;.
++  The package manager data is temporarly bind mounted into the
++  image root system for any package manager operation.
++  This allows a faster processing within the second stage of
++  the image preparation and also alows re-use of already
++  downloaded remote packages (bnc #417457)
+ 
+ -------------------------------------------------------------------
+ Mon Aug 11 09:53:52 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000598.html">[Kiwi-devel] r1516 - in kiwi-head: . modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000600.html">[Kiwi-devel] r1518 - in kiwi-head: modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#599">[ date ]</a>
+              <a href="thread.html#599">[ thread ]</a>
+              <a href="subject.html#599">[ subject ]</a>
+              <a href="author.html#599">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,220 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e6c86cfc9b15e845860f3830322d2f4b39bce200
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20e6c86cfc9b15e845860f3830322d2f4b39bce200&In-Reply-To=%3C20101102083249.3BC03480C33%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002761.html">
+   <LINK REL="Next"  HREF="002767.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e6c86cfc9b15e845860f3830322d2f4b39bce200</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20e6c86cfc9b15e845860f3830322d2f4b39bce200&In-Reply-To=%3C20101102083249.3BC03480C33%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e6c86cfc9b15e845860f3830322d2f4b39bce200">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Nov  2 09:32:48 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002761.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f4f99bf4b0fc748ed45a22c8f59edf4927f3d270
+</A></li>
+        <LI>Next message: <A HREF="002767.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 817057a3fc6c4ae8c7ab7ff2b7ad3c306e34b7cd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2765">[ date ]</a>
+              <a href="thread.html#2765">[ thread ]</a>
+              <a href="subject.html#2765">[ subject ]</a>
+              <a href="author.html#2765">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  e6c86cfc9b15e845860f3830322d2f4b39bce200 (commit)
+      from  f4f99bf4b0fc748ed45a22c8f59edf4927f3d270 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit e6c86cfc9b15e845860f3830322d2f4b39bce200
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Nov 2 09:32:35 2010 +0100
+
+    - support multiple vmnic elements for VMware
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index e81fa97..beee019 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -953,7 +953,7 @@ sub createImagePXE {
+ sub createImageVMX {
+ 	# ...
+ 	# Create virtual machine disks. By default a raw disk image will
+-	# created from which other types can be converted. The output
++	# be created from which other types are derived via conversion. The output
+ 	# format is specified by the format attribute in the type section.
+ 	# Supported formats are: vvfat vpc bochs dmg vmdk qcow cow raw
+ 	# The process will create the system image and the appropriate vmx
+@@ -972,9 +972,7 @@ sub createImageVMX {
+ 	my $para = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $xml  = $this-&gt;{xml};
+-	my %vmwc = $xml  -&gt; getVMwareConfig ();
+ 	my %xenc = $xml  -&gt; getXenConfig();
+-	my %type = %{$xml -&gt; getImageTypeAndAttributes()};
+ 	my $name = $this -&gt; createImageUSB ($para,&quot;VMX&quot;);
+ 	my $xendomain;
+ 	if (! defined $name) {
+diff --git a/modules/KIWIImageFormat.pm b/modules/KIWIImageFormat.pm
+index 7f9e93f..fef01d6 100644
+--- a/modules/KIWIImageFormat.pm
++++ b/modules/KIWIImageFormat.pm
+@@ -641,20 +641,23 @@ sub createVMwareConfiguration {
+ 	#==========================================
+ 	# network setup
+ 	#------------------------------------------
+-	if (defined $vmwconfig{vmware_niciface}) {
+-		my $driver = $vmwconfig{vmware_nicdriver};
+-		my $mode   = $vmwconfig{vmware_nicmode};
+-		my $nic    = &quot;ethernet&quot;.$vmwconfig{vmware_niciface};
+-		print $FD $nic.'.present = &quot;true&quot;'.&quot;\n&quot;;
+-		print $FD $nic.'.addressType = &quot;generated&quot;'.&quot;\n&quot;;
+-		if ($driver) {
+-			print $FD $nic.'.virtualDev = &quot;'.$driver.'&quot;'.&quot;\n&quot;;
+-		}
+-		if ($mode) {
+-			print $FD $nic.'.connectionType = &quot;'.$mode.'&quot;'.&quot;\n&quot;;
+-		}
+-		if ($vmwconfig{vmware_arch} =~ /64$/) {
+-			print $FD $nic.'.allow64bitVmxnet = &quot;true&quot;'.&quot;\n&quot;;
++	if (defined $vmwconfig{vmware_nic}) {
++		my %vmnics = %{$vmwconfig{vmware_nic}};
++		while (my @nic_info = each %vmnics) {
++			my $driver = $nic_info[1] -&gt; { drv };
++			my $mode   = $nic_info[1] -&gt; { mode };
++			my $nic    = &quot;ethernet&quot;.$nic_info[0];
++			print $FD $nic.'.present = &quot;true&quot;'.&quot;\n&quot;;
++			print $FD $nic.'.addressType = &quot;generated&quot;'.&quot;\n&quot;;
++			if ($driver) {
++				print $FD $nic.'.virtualDev = &quot;'.$driver.'&quot;'.&quot;\n&quot;;
++			}
++			if ($mode) {
++				print $FD $nic.'.connectionType = &quot;'.$mode.'&quot;'.&quot;\n&quot;;
++			}
++			if ($vmwconfig{vmware_arch} =~ /64$/) {
++				print $FD $nic.'.allow64bitVmxnet = &quot;true&quot;'.&quot;\n&quot;;
++			}
+ 		}
+ 	}
+ 	#==========================================
+diff --git a/modules/KIWISchema.rnc b/modules/KIWISchema.rnc
+index 7719bbb..86cf60d 100644
+--- a/modules/KIWISchema.rnc
++++ b/modules/KIWISchema.rnc
+@@ -2181,7 +2181,7 @@ div {
+ 		]
+ 		element machine {
+ 			k.machine.attlist &amp;
+-			k.vmnic ? &amp;
++			k.vmnic * &amp;
+ 			k.vmdisk ? &amp;
+ 			k.vmdvd ?
+ 		}
+diff --git a/modules/KIWISchema.rng b/modules/KIWISchema.rng
+index ec0bf58..b85f28f 100644
+--- a/modules/KIWISchema.rng
++++ b/modules/KIWISchema.rng
+@@ -3163,9 +3163,9 @@ configuration options which are used by the
+ virtual machine when running the image.&lt;/db:para&gt;
+         &lt;interleave&gt;
+           &lt;ref name=&quot;k.machine.attlist&quot;/&gt;
+-          &lt;optional&gt;
++          &lt;zeroOrMore&gt;
+             &lt;ref name=&quot;k.vmnic&quot;/&gt;
+-          &lt;/optional&gt;
++          &lt;/zeroOrMore&gt;
+           &lt;optional&gt;
+             &lt;ref name=&quot;k.vmdisk&quot;/&gt;
+           &lt;/optional&gt;
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 0f314ff..de04603 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -2981,12 +2981,14 @@ sub getVMwareConfig {
+ 	# network setup
+ 	#------------------------------------------
+ 	my $nic  = $node -&gt; getElementsByTagName (&quot;vmnic&quot;);
+-	my ($drv,$iface,$mode);
+-	if ($nic) {
+-		my $node = $nic  -&gt; get_node(1);
+-		$drv  = $node -&gt; getAttribute (&quot;driver&quot;);
+-		$iface= $node -&gt; getAttribute (&quot;interface&quot;);
+-		$mode = $node -&gt; getAttribute (&quot;mode&quot;);
++	my %vmnics;
++	for (my $i=1; $i&lt;= $nic-&gt;size(); $i++) {
++		my $node = $nic  -&gt; get_node($i);
++		$vmnics{$node -&gt; getAttribute (&quot;interface&quot;)} =
++		{
++			drv  =&gt; $node -&gt; getAttribute (&quot;driver&quot;),
++			mode =&gt; $node -&gt; getAttribute (&quot;mode&quot;)
++		};
+ 	}
+ 	#==========================================
+ 	# save hash
+@@ -3003,10 +3005,8 @@ sub getVMwareConfig {
+ 		$result{vmware_cdtype} = $cdtype;
+ 		$result{vmware_cdid}   = $cdid;
+ 	}
+-	if ($nic) {
+-		$result{vmware_nicdriver}= $drv;
+-		$result{vmware_niciface} = $iface;
+-		$result{vmware_nicmode}  = $mode;
++	if (%vmnics) {
++		$result{vmware_nic}= \%vmnics;
+ 	}
+ 	return %result;
+ }
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002761.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f4f99bf4b0fc748ed45a22c8f59edf4927f3d270
+</A></li>
+	<LI>Next message: <A HREF="002767.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 817057a3fc6c4ae8c7ab7ff2b7ad3c306e34b7cd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2765">[ date ]</a>
+              <a href="thread.html#2765">[ thread ]</a>
+              <a href="subject.html#2765">[ subject ]</a>
+              <a href="author.html#2765">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

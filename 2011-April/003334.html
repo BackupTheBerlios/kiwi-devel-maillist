@@ -1,0 +1,1543 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. accc80ec49207ef24661091ed57652f35f8324d7
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20accc80ec49207ef24661091ed57652f35f8324d7&In-Reply-To=%3C20110406132049.D8459480EB0%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003304.html">
+   <LINK REL="Next"  HREF="003305.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. accc80ec49207ef24661091ed57652f35f8324d7</H1>
+    <B>mbarringer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20accc80ec49207ef24661091ed57652f35f8324d7&In-Reply-To=%3C20110406132049.D8459480EB0%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. accc80ec49207ef24661091ed57652f35f8324d7">mbarringer at mail.berlios.de
+       </A><BR>
+    <I>Wed Apr  6 15:20:49 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003304.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-480-SuSE-11.4-Devel,	updated. cfde1ccba1bca4e58e363ea4a1b9d2d2d7c1baf4
+</A></li>
+        <LI>Next message: <A HREF="003305.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 77d19ecc37e7b5ef57a81c9fa11be824c61f19bf
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3334">[ date ]</a>
+              <a href="thread.html#3334">[ thread ]</a>
+              <a href="subject.html#3334">[ subject ]</a>
+              <a href="author.html#3334">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  accc80ec49207ef24661091ed57652f35f8324d7 (commit)
+      from  5109267e325b0b54779cbbf29de6fe0724788713 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit accc80ec49207ef24661091ed57652f35f8324d7
+Author: Matt Barringer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarringer at suse.de</A>&gt;
+Date:   Wed Apr 6 15:20:58 2011 +0200
+
+    Fixing bnc#679099 - Imagewriter still requires HAL
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/doc/examples/suse-11.3/suse-euca-cloud/cloud-head-node/root/tmp/euca-setup b/tools/burner/INSTALL
+similarity index 100%
+copy from doc/examples/suse-11.3/suse-euca-cloud/cloud-head-node/root/tmp/euca-setup
+copy to tools/burner/INSTALL
+diff --git a/tools/burner/MainWindow.cpp b/tools/burner/MainWindow.cpp
+index 4baeb5c..4d7f786 100644
+--- a/tools/burner/MainWindow.cpp
++++ b/tools/burner/MainWindow.cpp
+@@ -59,7 +59,7 @@ MainWindow::MainWindow (Platform *platform,
+     useOldUI();
+ #endif
+ 
+-    setWindowTitle(tr(VERSION));
++    setWindowTitle(QString(&quot;SUSE Studio Imagewriter %1&quot;).arg(APP_VERSION));
+     reloadDeviceList(cmddevice);
+ 
+     if (cmdfile != NULL)
+@@ -71,6 +71,7 @@ MainWindow::MainWindow (Platform *platform,
+         }
+     }
+ 
++#ifdef USEHAL
+     // Hook into DBUS insertion and removal notifications
+     dbusConnection.connect(&quot;&quot;,
+                            &quot;/org/freedesktop/Hal/Manager&quot;,
+@@ -85,7 +86,21 @@ MainWindow::MainWindow (Platform *platform,
+                            &quot;DeviceRemoved&quot;,
+                            this,
+                            SLOT(deviceRemoved(QDBusMessage)));
++#else
++    dbusConnection.connect(&quot;&quot;,
++                           &quot;/org/freedesktop/UDisks&quot;,
++                           &quot;org.freedesktop.UDisks&quot;,
++                           &quot;DeviceAdded&quot;,
++                           this,
++                           SLOT(deviceInserted(QDBusMessage)));
+ 
++    dbusConnection.connect(&quot;&quot;,
++                           &quot;/org/freedesktop/UDisks&quot;,
++                           &quot;org.freedesktop.UDisks&quot;,
++                           &quot;DeviceRemoved&quot;,
++                           this,
++                           SLOT(deviceRemoved(QDBusMessage)));
++#endif
+     if (!mMaximized)
+         centerWindow();
+ }
+@@ -203,7 +218,7 @@ MainWindow::useOldUI()
+ 
+     file = new QLabel(tr(&quot;File&quot;));
+     device = new QLabel(tr(&quot;Device&quot;));
+-    version = new QLabel(VERSION);
++    version = new QLabel(QString(&quot;SUSE Studio Imagewriter %1&quot;).arg(APP_VERSION));
+ 
+     buttonLayout = new QHBoxLayout;
+     buttonLayout-&gt;addWidget(exitButton);
+@@ -301,8 +316,15 @@ MainWindow::checkIso(const QString &amp;fileName)
+ void
+ MainWindow::deviceInserted(QDBusMessage message)
+ {
+-    QString devicePath = message.arguments().at(0).toString();
++    QString devicePath;
++#ifdef USEHAL
++    devicePath = message.arguments().at(0).toString();
+     if (devicePath.startsWith(&quot;/org/freedesktop/Hal/devices/storage_serial&quot;))
++#else
++    QDBusObjectPath path = message.arguments().at(0).value&lt;QDBusObjectPath&gt;();
++    devicePath = path.path();
++    if (devicePath.startsWith(&quot;/org/freedesktop/UDisks/devices/&quot;))
++#endif
+     {
+         DeviceItem *device = pPlatform-&gt;getNewDevice(devicePath);
+         if (device != NULL)
+@@ -315,8 +337,15 @@ void
+ MainWindow::deviceRemoved(QDBusMessage message)
+ {
+     int index;
+-    QString devicePath = message.arguments().at(0).toString();
++    QString devicePath;
++#ifdef USEHAL
++    devicePath = message.arguments().at(0).toString();
+     if (devicePath.startsWith(&quot;/org/freedesktop/Hal/devices/storage_serial&quot;))
++#else
++    QDBusObjectPath path = message.arguments().at(0).value&lt;QDBusObjectPath&gt;();
++    devicePath = path.path();
++    if (devicePath.startsWith(&quot;/org/freedesktop/UDisks/devices/&quot;))
++#endif
+     {
+         QLinkedList&lt;DeviceItem *&gt; list = pPlatform-&gt;getDeviceList();
+         QLinkedList&lt;DeviceItem *&gt;::iterator i;
+diff --git a/tools/burner/MainWindow.h b/tools/burner/MainWindow.h
+index 8e01db5..8a8bd68 100644
+--- a/tools/burner/MainWindow.h
++++ b/tools/burner/MainWindow.h
+@@ -30,7 +30,6 @@
+ 
+ #include &quot;Platform.h&quot;
+ #include &quot;DeviceItem.h&quot;
+-#define VERSION &quot;SUSE Studio Image Writer 1.8&quot;
+ #define DROPDOWN_DIRECTIVE &quot;Insert a USB device&quot;
+ 
+ class MainWindow : public QWidget
+diff --git a/tools/burner/Platform.cpp b/tools/burner/Platform.cpp
+index 4075182..413a08c 100644
+--- a/tools/burner/Platform.cpp
++++ b/tools/burner/Platform.cpp
+@@ -1,243 +1,19 @@
+-/*
+- *  Copyright (c) 2009 Novell, Inc.
+- *  All Rights Reserved.
+- *  
+- *  This program is free software; you can redistribute it and/or
+- *  modify it under the terms of version 2 of the GNU General Public License as
+- *  published by the Free Software Foundation.
+- *  
+- *  This program is distributed in the hope that it will be useful,
+- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.   See the
+- *  GNU General Public License for more details.
+- *  
+- *  You should have received a copy of the GNU General Public License
+- *  along with this program; if not, contact Novell, Inc.
+- *  
+- *  To contact Novell about this file by physical or electronic mail,
+- *  you may find current contact information at www.novell.com
+- *  
+- *  Author: Matt Barringer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarringer at suse.de</A>&gt;
+- *
+- */
++#include &quot;Platform.h&quot;
+ 
++#include &lt;QMessageBox&gt;
++#include &lt;QProgressDialog&gt;
+ #include &lt;sys/mount.h&gt;
+ #include &lt;sys/types.h&gt;
+ #include &lt;sys/stat.h&gt;
+ #include &lt;fcntl.h&gt;
+ #include &lt;errno.h&gt;
+ 
+-#include &lt;QtCore&gt;
+-#include &lt;QtGui&gt;
+-#include &lt;QDir&gt;
+-#include &lt;QProgressDialog&gt;
+-
+-#include &quot;DeviceItem.h&quot;
+-#include &quot;Platform.h&quot;
+-
+ #define BLOCKSIZE 1048576
+ #define _GNU_SOURCE
+ 
+-// Figure out which devices we should allow a user to write to.
+-void
+-Platform::findDevices(bool unsafe)
++Platform::Platform(bool kioskMode)
+ {
+-    char **drives;
+-    int drive_count, i;
+-    LibHalContext *context;
+-    DeviceItem *devItem = NULL;
+-
+-    if ((context = initHal()) == NULL)
+-    {
+-        QMessageBox msgBox;
+-        msgBox.setText(QObject::tr(&quot;Could not initialize HAL.&quot;));
+-        msgBox.exec();
+-        return;
+-    }
+-
+-    // We want to only write to USB drives, unless the user specifies
+-    // the unsafe flag on the command line
+-    if (unsafe)
+-        drives = libhal_manager_find_device_string_match(context,
+-                                                        &quot;storage.drive_type&quot;,
+-                                                        &quot;disk&quot;,
+-                                                        &amp;drive_count,
+-                                                        NULL);
+-    else
+-        drives = libhal_manager_find_device_string_match(context,
+-                                                        &quot;storage.bus&quot;,
+-                                                        &quot;usb&quot;,
+-                                                        &amp;drive_count,
+-                                                        NULL);
+-
+-    for(i = 0; i &lt; drive_count; i++)
+-    {
+-        devItem = getNewDevice(drives[i], context);
+-    }
+-
+-    libhal_free_string_array(drives);
+-    libhal_ctx_shutdown(context, NULL);
+-    libhal_ctx_free(context);
+-    return;
+-}
+-
+-
+-DeviceItem *
+-Platform::getNewDevice(QString devicePath, LibHalContext *context)
+-{
+-    char *device, *product, *vendor;
+-    long long size;
+-    bool isRemovable = true;
+-    DeviceItem *devItem = NULL;
+-    LibHalContext *localContext = context;
+-
+-    // context / localContext is NULL when getNewDevice is called from the main window
+-    // when a USB device is inserted
+-    if (localContext == NULL)
+-    {
+-        if ((localContext = initHal()) == NULL)
+-        {
+-            QMessageBox msgBox;
+-            msgBox.setText(QObject::tr(&quot;Could not initialize HAL.&quot;));
+-            msgBox.exec();
+-            return(NULL);
+-        }
+-    }
+-
+-    device = libhal_device_get_property_string(localContext,
+-                                               devicePath.toAscii(),
+-                                               &quot;block.device&quot;,
+-                                               NULL);
+-    if (device != NULL)
+-    {
+-
+-        product = libhal_device_get_property_string(localContext,
+-                                                    devicePath.toAscii(),
+-                                                    &quot;info.product&quot;,
+-                                                    NULL);
+-
+-        vendor = libhal_device_get_property_string(localContext,
+-                                                   devicePath.toAscii(),
+-                                                   &quot;info.vendor&quot;,
+-                                                   NULL);
+-        size = libhal_device_get_property_uint64(localContext,
+-                                                 devicePath.toAscii(),
+-                                                 &quot;storage.removable.media_size&quot;,
+-                                                 NULL);
+-
+-        isRemovable = libhal_device_get_property_bool(localContext,
+-                                                      devicePath.toAscii(),
+-                                                      &quot;storage.removable&quot;,
+-                                                      NULL);
+-
+-        devItem = new DeviceItem;
+-        devItem-&gt;setUDI(devicePath);
+-        devItem-&gt;setPath(device);
+-        devItem-&gt;setIsRemovable(isRemovable);
+-        devItem-&gt;setSize(size);
+-
+-        if (!strcmp(product, &quot;&quot;))
+-            devItem-&gt;setModelString(&quot;&quot;);
+-        else
+-            devItem-&gt;setModelString(product);
+-
+-        if (!strcmp(vendor, &quot;&quot;))
+-        {
+-            if (mKioskMode)
+-                devItem-&gt;setVendorString(&quot;SUSE Studio USB Key&quot;);
+-            else
+-                devItem-&gt;setVendorString(&quot;Unknown Device&quot;);
+-        }
+-        else
+-        {
+-            devItem-&gt;setVendorString(vendor);
+-        }
+-        QString newDisplayString = QString(&quot;%1 %2 - %3 (%4 MB)&quot;).arg(devItem-&gt;getVendorString()).arg(devItem-&gt;getModelString()).arg(devItem-&gt;getPath()).arg(devItem-&gt;getSize() / 1048576);
+-        devItem-&gt;setDisplayString(newDisplayString);
+-
+-        if (mKioskMode)
+-        {
+-            if((devItem-&gt;getSize() / 1048576) &gt; 200000)
+-            {
+-                delete devItem;
+-                libhal_free_string(device);
+-                libhal_free_string(product);
+-                libhal_free_string(vendor);
+-                if (context == NULL)
+-                {
+-                    libhal_ctx_shutdown(localContext, NULL);
+-                    libhal_ctx_free(localContext);
+-                }
+-
+-                return(NULL);
+-            }
+-        }
+-        
+-        // If a device is 0 megs we might as well just not list it
+-        if ((devItem-&gt;getSize() / 1048576) &gt; 0)
+-        {
+-            itemList &lt;&lt; devItem;
+-        }
+-        else
+-        {
+-            delete devItem;
+-            devItem = NULL;
+-        }
+-        
+-        libhal_free_string(device);
+-        libhal_free_string(product);
+-        libhal_free_string(vendor);
+-    }
+-
+-    if (context == NULL)
+-    {
+-        libhal_ctx_shutdown(localContext, NULL);
+-        libhal_ctx_free(localContext);
+-    }
+-
+-    return(devItem);
+-}
+-
+-LibHalContext *
+-Platform::initHal()
+-{
+-    DBusError error;
+-    DBusConnection *dbus_connection;
+-    LibHalContext *context;
+-    char **devices;
+-    int device_count;
+-
+-    if ((context = libhal_ctx_new()) == NULL)
+-        return(NULL);
+-
+-    dbus_error_init(&amp;error);
+-    dbus_connection = dbus_bus_get(DBUS_BUS_SYSTEM, &amp;error);
+-    if(dbus_error_is_set(&amp;error))
+-    {
+-            dbus_error_free(&amp;error);
+-            libhal_ctx_free(context);
+-            return(NULL);
+-    }
+-
+-    libhal_ctx_set_dbus_connection(context, dbus_connection);
+-    if(!libhal_ctx_init(context, &amp;error))
+-    {
+-            dbus_error_free(&amp;error);
+-            libhal_ctx_free(context);
+-            return(NULL);
+-    }
+-
+-    devices = libhal_get_all_devices(context, &amp;device_count, NULL);
+-    if(devices == NULL)
+-    {
+-            libhal_ctx_shutdown(context, NULL);
+-            libhal_ctx_free(context);
+-            context = NULL;
+-            return(NULL);
+-    }
+-
+-    libhal_free_string_array(devices);
+-    return(context);
++     mKioskMode = kioskMode;
+ }
+ 
+ bool
+@@ -274,99 +50,6 @@ Platform::findDeviceInList(const QString &amp;displayName)
+ 
+     return(retItem);
+ }
+-bool
+-Platform::isMounted(QString path)
+-{
+-    LibHalContext *context;
+-    LibHalVolume *halVolume;
+-    bool ret = false;
+-    char **volumes;
+-    int volumeCount, i;
+-    
+-    if ((context = initHal()) == NULL)
+-    {
+-        QMessageBox msgBox;
+-        msgBox.setText(QObject::tr(&quot;Could not initialize HAL.&quot;));
+-        msgBox.exec();
+-        return false;
+-    }
+-    
+-    volumes = libhal_manager_find_device_string_match(context,
+-                                                      &quot;info.parent&quot;,
+-                                                      path.toLatin1().data(),
+-                                                      &amp;volumeCount,
+-                                                      NULL);
+-    for(i = 0; i &lt; volumeCount; i++)
+-    {
+-        halVolume = libhal_volume_from_udi(context, volumes[i]);
+-        // I don't really know if this is better than just looking for the volume.is_mounted property,
+-        // might as well be on the safe side.
+-        if (libhal_volume_is_mounted(halVolume))
+-            ret = true;
+-        
+-        libhal_volume_free(halVolume);
+-    }
+-
+-    libhal_free_string_array(volumes);
+-    libhal_ctx_shutdown(context, NULL);
+-    libhal_ctx_free(context);
+-    return ret;
+-}
+-
+-bool
+-Platform::unmountDevice (QString path)
+-{
+-    LibHalContext *context;
+-    bool ret = true;
+-    char **volumes;
+-    int volumeCount, i;
+-    
+-    if ((context = initHal()) == NULL)
+-    {
+-        QMessageBox msgBox;
+-        msgBox.setText(QObject::tr(&quot;Could not initialize HAL.&quot;));
+-        msgBox.exec();
+-        return false;
+-    }
+-    
+-    volumes = libhal_manager_find_device_string_match(context,
+-                                                      &quot;info.parent&quot;,
+-                                                      path.toLatin1().data(),
+-                                                      &amp;volumeCount,
+-                                                      NULL);
+-    for(i = 0; i &lt; volumeCount; i++)
+-    {
+-        if (!performUnmount(volumes[i]))
+-            ret = false;
+-    }
+-
+-    libhal_free_string_array(volumes);
+-    libhal_ctx_shutdown(context, NULL);
+-    libhal_ctx_free(context);
+-    return ret;
+-}
+-
+-
+-bool
+-Platform::performUnmount(QString udi)
+-{
+-    bool ret = true;
+-    QDBusConnection connection = QDBusConnection::systemBus();
+-    QDBusMessage message, reply;
+-    QList&lt;QVariant&gt; options;
+-
+-    message = QDBusMessage::createMethodCall(&quot;org.freedesktop.Hal&quot;, udi, &quot;org.freedesktop.Hal.Device.Volume&quot;, &quot;Unmount&quot;);
+-    message &lt;&lt; QStringList();
+-    reply = connection.call(message);
+-
+-    if (reply.type() == QDBusMessage::ErrorMessage)
+-    {
+-        qDebug() &lt;&lt; &quot;Failure: &quot; &lt;&lt;  reply;
+-        ret = false;
+-    }
+-
+-    return ret;
+-}
+ 
+ // TODO make this routine not be shit
+ void
+@@ -394,7 +77,7 @@ Platform::writeData(QString path, QString fileName, qint64 deviceSize)
+     int percentWritten, megsWritten, megsTotal;
+     megsTotal = realSize / 1048576;
+ 
+-    // Open the file to read from 
++    // Open the file to read from
+     if ((ifd = ::open(fileName.toLocal8Bit().data(), O_RDONLY|O_LARGEFILE)) == -1)
+     {
+         QMessageBox msgBox;
+@@ -452,3 +135,4 @@ Platform::writeData(QString path, QString fileName, qint64 deviceSize)
+     free(buffer);
+     progress.setValue(100);
+ }
++
+diff --git a/tools/burner/Platform.h b/tools/burner/Platform.h
+index c7e9d42..8905c41 100644
+--- a/tools/burner/Platform.h
++++ b/tools/burner/Platform.h
+@@ -25,8 +25,6 @@
+ #define __PLATFORM_H__
+ 
+ #include &lt;QtCore&gt;
+-#include &lt;hal/libhal.h&gt;
+-#include &lt;hal/libhal-storage.h&gt;
+ #include &lt;QtDBus&gt;
+ 
+ #include &quot;DeviceItem.h&quot;
+@@ -35,27 +33,22 @@ class Platform
+ {
+ 
+ public:
+-    Platform(bool kioskMode = false) { mKioskMode = kioskMode; }
+-    void findDevices(bool unsafe = false);
+-    bool isMounted(QString path);
+-    void writeData(QString path, QString fileName, qint64 deviceSize);
+-    bool unmountDevice(QString path);
++    Platform(bool kioskMode = false);
+     bool removeDeviceFromList(const QString &amp;displayName);
+     DeviceItem *findDeviceInList(const QString &amp;displayName);
+-    DeviceItem *getNewDevice(QString devicePath, LibHalContext *context = NULL);
+-
++    void writeData(QString path, QString fileName, qint64 deviceSize);
+     QLinkedList&lt;DeviceItem *&gt; getDeviceList() { return itemList; }
+ 
+-public slots:
+-    void tick(qint64 lastWritten, qint64 bytesWritten);
++    virtual void findDevices(bool unsafe = false) {}
++    virtual bool isMounted(QString path) { return false; }
++    virtual bool unmountDevice(QString path) { return false; }
++    virtual DeviceItem *getNewDevice(QString devicePath) { return(NULL); }
+ 
+-private:
++protected:
++    bool performUnmount(QString udi);
+     bool mKioskMode;
+     DeviceItem *pDevice;
+     QLinkedList&lt;DeviceItem *&gt; itemList;
+-    LibHalContext *initHal();
+-    bool performUnmount(QString udi);
+-
+ };
+ 
+ #endif
+diff --git a/tools/burner/Platform.cpp b/tools/burner/PlatformHal.cpp
+similarity index 73%
+copy from tools/burner/Platform.cpp
+copy to tools/burner/PlatformHal.cpp
+index 4075182..cd18e6c 100644
+--- a/tools/burner/Platform.cpp
++++ b/tools/burner/PlatformHal.cpp
+@@ -21,11 +21,7 @@
+  *
+  */
+ 
+-#include &lt;sys/mount.h&gt;
+-#include &lt;sys/types.h&gt;
+-#include &lt;sys/stat.h&gt;
+-#include &lt;fcntl.h&gt;
+-#include &lt;errno.h&gt;
++#ifdef USEHAL
+ 
+ #include &lt;QtCore&gt;
+ #include &lt;QtGui&gt;
+@@ -33,18 +29,21 @@
+ #include &lt;QProgressDialog&gt;
+ 
+ #include &quot;DeviceItem.h&quot;
+-#include &quot;Platform.h&quot;
++#include &quot;PlatformHal.h&quot;
+ 
+-#define BLOCKSIZE 1048576
+-#define _GNU_SOURCE
++PlatformHal::PlatformHal(bool kioskMode)
++    : Platform(kioskMode)
++{
++}
+ 
+ // Figure out which devices we should allow a user to write to.
+ void
+-Platform::findDevices(bool unsafe)
++PlatformHal::findDevices(bool unsafe)
+ {
+     char **drives;
+     int drive_count, i;
+     LibHalContext *context;
++
+     DeviceItem *devItem = NULL;
+ 
+     if ((context = initHal()) == NULL)
+@@ -81,9 +80,14 @@ Platform::findDevices(bool unsafe)
+     return;
+ }
+ 
++DeviceItem *
++PlatformHal::getNewDevice(QString devicePath)
++{
++    return getNewDevice(devicePath, NULL);
++}
+ 
+ DeviceItem *
+-Platform::getNewDevice(QString devicePath, LibHalContext *context)
++PlatformHal::getNewDevice(QString devicePath, LibHalContext *context)
+ {
+     char *device, *product, *vendor;
+     long long size;
+@@ -199,7 +203,7 @@ Platform::getNewDevice(QString devicePath, LibHalContext *context)
+ }
+ 
+ LibHalContext *
+-Platform::initHal()
++PlatformHal::initHal()
+ {
+     DBusError error;
+     DBusConnection *dbus_connection;
+@@ -241,41 +245,7 @@ Platform::initHal()
+ }
+ 
+ bool
+-Platform::removeDeviceFromList(const QString &amp;displayName)
+-{
+-    DeviceItem *item = NULL;
+-    QLinkedList&lt;DeviceItem *&gt;::iterator i;
+-    for (i = itemList.begin(); i != itemList.end(); ++i)
+-    {
+-        if ((*i)-&gt;getDisplayString() == displayName)
+-        {
+-            item = (*i);
+-            itemList.erase(i);
+-        }
+-    }
+-
+-    if (item == NULL)
+-        return(false);
+-
+-    delete item;
+-    return(true);
+-}
+-
+-DeviceItem *
+-Platform::findDeviceInList(const QString &amp;displayName)
+-{
+-    DeviceItem *retItem = NULL;
+-    QLinkedList&lt;DeviceItem *&gt;::iterator i;
+-    for (i = itemList.begin(); i != itemList.end(); ++i)
+-    {
+-        if ((*i)-&gt;getDisplayString() == displayName)
+-            retItem = (*i);
+-    }
+-
+-    return(retItem);
+-}
+-bool
+-Platform::isMounted(QString path)
++PlatformHal::isMounted(QString path)
+ {
+     LibHalContext *context;
+     LibHalVolume *halVolume;
+@@ -314,7 +284,7 @@ Platform::isMounted(QString path)
+ }
+ 
+ bool
+-Platform::unmountDevice (QString path)
++PlatformHal::unmountDevice (QString path)
+ {
+     LibHalContext *context;
+     bool ret = true;
+@@ -348,7 +318,7 @@ Platform::unmountDevice (QString path)
+ 
+ 
+ bool
+-Platform::performUnmount(QString udi)
++PlatformHal::performUnmount(QString udi)
+ {
+     bool ret = true;
+     QDBusConnection connection = QDBusConnection::systemBus();
+@@ -367,88 +337,4 @@ Platform::performUnmount(QString udi)
+ 
+     return ret;
+ }
+-
+-// TODO make this routine not be shit
+-void
+-Platform::writeData(QString path, QString fileName, qint64 deviceSize)
+-{
+-    QFileInfo info(fileName);
+-    qint64 realSize = info.size();
+-
+-    if (realSize &gt; deviceSize)
+-    {
+-        QMessageBox msgBox;
+-        msgBox.setText(QObject::tr(&quot;The image you are trying to write is larger than your USB stick.&quot;));
+-        msgBox.exec();
+-        return;
+-    }
+-
+-    qint64 i = 0;
+-    char *buffer = (char *) malloc(BLOCKSIZE);
+-    qint64 read = 0;
+-    qint64 written = 0;
+-
+-    int ofd = -1;
+-    int ifd = -1;
+-
+-    int percentWritten, megsWritten, megsTotal;
+-    megsTotal = realSize / 1048576;
+-
+-    // Open the file to read from 
+-    if ((ifd = ::open(fileName.toLocal8Bit().data(), O_RDONLY|O_LARGEFILE)) == -1)
+-    {
+-        QMessageBox msgBox;
+-        msgBox.setText(QObject::tr(&quot;Couldn't open &quot;) + fileName + &quot;: &quot; + strerror(errno));
+-        msgBox.exec();
+-        return;
+-    }
+-
+-    if ((ofd = ::open(path.toLocal8Bit().data(), O_WRONLY|O_SYNC|O_LARGEFILE)) == -1)
+-    {
+-        QMessageBox msgBox;
+-        msgBox.setText(QObject::tr(&quot;Couldn't open &quot;) + path + &quot;: &quot; + strerror(errno));
+-        msgBox.exec();
+-        ::close(ifd);
+-        return;
+-    }
+-
+-    QProgressDialog progress(&quot; &quot;, &quot;Cancel&quot;, 0, 100);
+-    progress.setMinimumDuration(0);
+-    progress.setWindowModality(Qt::WindowModal);
+-    progress.setValue(100);
+-    progress.setWindowTitle(QObject::tr(&quot;Writing&quot;));
+-
+-    for (i = 0; i &lt;= realSize; i++)
+-    {
+-        if ((read = ::read(ifd, buffer, BLOCKSIZE)) == -1)
+-        {
+-            QMessageBox msgBox;
+-            msgBox.setText(QObject::tr(&quot;Read failure&quot;));
+-            msgBox.exec();
+-            break;
+-        }
+-
+-        written = ::write(ofd, buffer, read);
+-        if (written == -1)
+-        {
+-            QMessageBox msgBox;
+-            msgBox.setText(QObject::tr(&quot;Write failure&quot;));
+-            msgBox.exec();
+-            break;
+-        }
+-
+-        i += written;
+-        percentWritten = (i*100)/realSize;
+-        megsWritten = i / 1048576;
+-        progress.setValue(percentWritten);
+-        progress.setLabelText(QObject::tr(&quot;Written %1MB out of %2MB&quot;).arg(megsWritten).arg(megsTotal));
+-        qApp-&gt;processEvents();
+-
+-        if (progress.wasCanceled())
+-             break;
+-     }
+-    ::close(ofd);
+-    ::close(ifd);
+-    free(buffer);
+-    progress.setValue(100);
+-}
++#endif
+diff --git a/tools/burner/Platform.h b/tools/burner/PlatformHal.h
+similarity index 71%
+copy from tools/burner/Platform.h
+copy to tools/burner/PlatformHal.h
+index c7e9d42..ac54874 100644
+--- a/tools/burner/Platform.h
++++ b/tools/burner/PlatformHal.h
+@@ -21,41 +21,35 @@
+  *  
+  */
+ 
+-#ifndef __PLATFORM_H__
+-#define __PLATFORM_H__
++#ifndef __PLATFORMHAL_H__
++#define __PLATFORMHAL_H__
+ 
++#ifdef USEHAL
+ #include &lt;QtCore&gt;
+ #include &lt;hal/libhal.h&gt;
+ #include &lt;hal/libhal-storage.h&gt;
++
+ #include &lt;QtDBus&gt;
+ 
+ #include &quot;DeviceItem.h&quot;
++#include &quot;Platform.h&quot;
+ 
+-class Platform
++class PlatformHal : public Platform
+ {
+ 
+ public:
+-    Platform(bool kioskMode = false) { mKioskMode = kioskMode; }
++    PlatformHal(bool kioskMode = false);
+     void findDevices(bool unsafe = false);
+     bool isMounted(QString path);
+     void writeData(QString path, QString fileName, qint64 deviceSize);
+     bool unmountDevice(QString path);
+-    bool removeDeviceFromList(const QString &amp;displayName);
+-    DeviceItem *findDeviceInList(const QString &amp;displayName);
+-    DeviceItem *getNewDevice(QString devicePath, LibHalContext *context = NULL);
+-
+-    QLinkedList&lt;DeviceItem *&gt; getDeviceList() { return itemList; }
+-
+-public slots:
+-    void tick(qint64 lastWritten, qint64 bytesWritten);
++    DeviceItem *getNewDevice(QString devicePath);
+ 
+ private:
+-    bool mKioskMode;
+-    DeviceItem *pDevice;
+-    QLinkedList&lt;DeviceItem *&gt; itemList;
++    DeviceItem *getNewDevice(QString devicePath, LibHalContext *context = NULL);
+     LibHalContext *initHal();
+-    bool performUnmount(QString udi);
+ 
+ };
++#endif
+ 
+ #endif
+diff --git a/tools/burner/PlatformUdisks.cpp b/tools/burner/PlatformUdisks.cpp
+new file mode 100644
+index 0000000..1ef1a5b
+--- /dev/null
++++ b/tools/burner/PlatformUdisks.cpp
+@@ -0,0 +1,436 @@
++/*
++ *  Copyright (c) 2009 Novell, Inc.
++ *  All Rights Reserved.
++ *  
++ *  This program is free software; you can redistribute it and/or
++ *  modify it under the terms of version 2 of the GNU General Public License as
++ *  published by the Free Software Foundation.
++ *  
++ *  This program is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.   See the
++ *  GNU General Public License for more details.
++ *  
++ *  You should have received a copy of the GNU General Public License
++ *  along with this program; if not, contact Novell, Inc.
++ *  
++ *  To contact Novell about this file by physical or electronic mail,
++ *  you may find current contact information at www.novell.com
++ *  
++ *  Author: Matt Barringer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarringer at suse.de</A>&gt;
++ *
++ */
++
++#include &lt;sys/mount.h&gt;
++#include &lt;sys/types.h&gt;
++#include &lt;sys/stat.h&gt;
++#include &lt;fcntl.h&gt;
++#include &lt;errno.h&gt;
++
++#include &lt;QtCore&gt;
++#include &lt;QtGui&gt;
++#include &lt;QRegExp&gt;
++#include &lt;QDir&gt;
++#include &lt;QProgressDialog&gt;
++
++#include &quot;DeviceItem.h&quot;
++#include &quot;PlatformUdisks.h&quot;
++
++PlatformUdisks::PlatformUdisks(bool kioskMode)
++    : Platform(kioskMode)
++{
++}
++
++bool
++PlatformUdisks::udiskEnabled()
++{
++    QDBusConnection connection = QDBusConnection::systemBus();
++    QDBusMessage message, reply;
++    QList&lt;QVariant&gt; args;
++    args &lt;&lt; &quot;org.freedesktop.UDisks&quot;;
++    args &lt;&lt; &quot;DaemonVersion&quot;;
++
++    message = QDBusMessage::createMethodCall(&quot;org.freedesktop.UDisks&quot;, &quot;/org/freedesktop/UDisks&quot;, &quot;org.freedesktop.DBus.Properties&quot;, &quot;Get&quot;);
++    message.setArguments(args);
++
++    reply = connection.call(message);
++    if (reply.type() == QDBusMessage::ErrorMessage)
++    {
++        qDebug() &lt;&lt; &quot;Failure: &quot; &lt;&lt;  reply;
++        return false;
++    }
++
++    return true;
++}
++
++// Figure out which devices we should allow a user to write to.
++void
++PlatformUdisks::findDevices(bool unsafe)
++{
++    int i = 0;
++    if (!udiskEnabled())
++    {
++        QMessageBox msgBox;
++        msgBox.setText(QObject::tr(&quot;You don't have UDisks support.&quot;));
++        msgBox.exec();
++        return;
++    }
++    // First get the list of disks
++    QDBusConnection connection = QDBusConnection::systemBus();
++    QDBusMessage message;
++    message = QDBusMessage::createMethodCall(&quot;org.freedesktop.UDisks&quot;, &quot;/org/freedesktop/UDisks&quot;, &quot;org.freedesktop.UDisks&quot;, &quot;EnumerateDevices&quot;);
++
++    QDBusReply&lt;QList&lt;QDBusObjectPath&gt; &gt; reply = connection.call(message);
++    if (!reply.isValid())
++    {
++        qDebug() &lt;&lt; &quot;Failure: &quot; &lt;&lt;  reply.error();
++        return;
++    }
++
++    QList&lt;QDBusObjectPath&gt; list = reply.value();
++    QStringList devList;
++    QRegExp reg(&quot;[0-9]+$&quot;);
++
++    // Ignore partition slices
++    for (i = 0; i &lt; list.size(); ++i)
++        if (!list.at(i).path().contains(reg))
++            devList &lt;&lt; list.at(i).path();
++
++    QStringList diskList;
++    // Safe mode (the default) only handles USB devices
++    if (!unsafe)
++    {
++        for (i = 0; i &lt; devList.size(); ++i)
++            if (isUSB(devList.at(i)))
++                diskList &lt;&lt; devList.at(i);
++    }
++    else
++    {
++        diskList = devList;
++    }
++
++    for (i = 0; i &lt; diskList.size(); ++i)
++    {
++        getNewDevice(diskList.at(i));
++    }
++
++    return;
++}
++
++bool
++PlatformUdisks::isUSB(const QString &amp;udiskPath)
++{
++    QDBusConnection connection = QDBusConnection::systemBus();
++    QDBusMessage message;
++    QList&lt;QVariant&gt; args;
++    args &lt;&lt; &quot;org.freedesktop.UDisks&quot;;
++    args &lt;&lt; &quot;DriveConnectionInterface&quot;;
++
++    message = QDBusMessage::createMethodCall(&quot;org.freedesktop.UDisks&quot;, udiskPath, &quot;org.freedesktop.DBus.Properties&quot;, &quot;Get&quot;);
++    message.setArguments(args);
++
++    QDBusReply&lt;QDBusVariant&gt; reply = connection.call(message);
++    if (!reply.isValid())
++        return false;
++
++    if (reply.value().variant().toString() == &quot;usb&quot;)
++        return true;
++    else
++        return false;
++}
++
++DeviceItem *
++PlatformUdisks::getNewDevice(QString devicePath)
++{
++    QString path, model, vendor;
++
++    DeviceItem *devItem = new DeviceItem;
++    path = getPath(devicePath);
++    if (path == &quot;&quot;)
++        return(NULL);
++
++    if (!getIsDrive(devicePath))
++        return(NULL);
++
++    model = getModel(devicePath);
++    vendor = getVendor(devicePath);
++
++    devItem-&gt;setUDI(devicePath);
++    devItem-&gt;setPath(path);
++    devItem-&gt;setIsRemovable(getIsRemovable(devicePath));
++    devItem-&gt;setSize(getSize(devicePath));
++    devItem-&gt;setModelString(model);
++    if (vendor == &quot;&quot;)
++    {
++        if (mKioskMode)
++            devItem-&gt;setVendorString(&quot;SUSE Studio USB Key&quot;);
++        else
++            devItem-&gt;setVendorString(&quot;Unknown Device&quot;);
++    }
++    else
++    {
++        devItem-&gt;setVendorString(vendor);
++    }
++    QString newDisplayString = QString(&quot;%1 %2 - %3 (%4 MB)&quot;)
++                                      .arg(devItem-&gt;getVendorString())
++                                      .arg(devItem-&gt;getModelString())
++                                      .arg(devItem-&gt;getPath())
++                                      .arg(devItem-&gt;getSize() / 1048576);
++    devItem-&gt;setDisplayString(newDisplayString);
++
++    if (mKioskMode)
++    {
++        if((devItem-&gt;getSize() / 1048576) &gt; 200000)
++        {
++            delete devItem;
++            return(NULL);
++        }
++    }
++
++    // If a device is 0 megs we might as well just not list it
++    if ((devItem-&gt;getSize() / 1048576) &gt; 0)
++    {
++        itemList &lt;&lt; devItem;
++    }
++    else
++    {
++        delete devItem;
++        devItem = NULL;
++    }
++
++    return(devItem);
++}
++
++QString
++PlatformUdisks::getPath(const QString &amp;devicePath)
++{
++    QString ret = &quot;&quot;;
++    QDBusConnection connection = QDBusConnection::systemBus();
++    QDBusMessage message;
++    QList&lt;QVariant&gt; args;
++    args &lt;&lt; &quot;org.freedesktop.UDisks&quot;;
++    args &lt;&lt; &quot;DeviceFile&quot;;
++
++    message = QDBusMessage::createMethodCall(&quot;org.freedesktop.UDisks&quot;, devicePath, &quot;org.freedesktop.DBus.Properties&quot;, &quot;Get&quot;);
++    message.setArguments(args);
++
++    QDBusReply&lt;QDBusVariant&gt; reply = connection.call(message);
++    if (!reply.isValid())
++        return(ret);
++
++    ret = reply.value().variant().toString();
++    return(ret);
++}
++
++QString
++PlatformUdisks::getModel(const QString &amp;devicePath)
++{
++    QString ret = &quot;&quot;;
++    QDBusConnection connection = QDBusConnection::systemBus();
++    QDBusMessage message;
++    QList&lt;QVariant&gt; args;
++    args &lt;&lt; &quot;org.freedesktop.UDisks&quot;;
++    args &lt;&lt; &quot;DriveModel&quot;;
++
++    message = QDBusMessage::createMethodCall(&quot;org.freedesktop.UDisks&quot;, devicePath, &quot;org.freedesktop.DBus.Properties&quot;, &quot;Get&quot;);
++    message.setArguments(args);
++
++    QDBusReply&lt;QDBusVariant&gt; reply = connection.call(message);
++    if (!reply.isValid())
++        return(ret);
++
++    ret = reply.value().variant().toString();
++    return(ret);
++}
++
++QString
++PlatformUdisks::getVendor(const QString &amp;devicePath)
++{
++    QString ret = &quot;&quot;;
++    QDBusConnection connection = QDBusConnection::systemBus();
++    QDBusMessage message;
++    QList&lt;QVariant&gt; args;
++    args &lt;&lt; &quot;org.freedesktop.UDisks&quot;;
++    args &lt;&lt; &quot;DriveVendor&quot;;
++
++    message = QDBusMessage::createMethodCall(&quot;org.freedesktop.UDisks&quot;, devicePath, &quot;org.freedesktop.DBus.Properties&quot;, &quot;Get&quot;);
++    message.setArguments(args);
++
++    QDBusReply&lt;QDBusVariant&gt; reply = connection.call(message);
++    if (!reply.isValid())
++        return(ret);
++
++    ret = reply.value().variant().toString();
++    if (ret == &quot;0000&quot;)
++        ret = &quot;&quot;;
++    return(ret);
++}
++
++bool
++PlatformUdisks::getIsRemovable(const QString &amp;devicePath)
++{
++    bool ret;
++    QDBusConnection connection = QDBusConnection::systemBus();
++    QDBusMessage message;
++    QList&lt;QVariant&gt; args;
++    args &lt;&lt; &quot;org.freedesktop.UDisks&quot;;
++    args &lt;&lt; &quot;DriveCanDetach&quot;;
++
++    message = QDBusMessage::createMethodCall(&quot;org.freedesktop.UDisks&quot;, devicePath, &quot;org.freedesktop.DBus.Properties&quot;, &quot;Get&quot;);
++    message.setArguments(args);
++
++    QDBusReply&lt;QDBusVariant&gt; reply = connection.call(message);
++    if (!reply.isValid())
++        return(false);
++
++    ret = reply.value().variant().toBool();
++    return(ret);
++}
++
++long long
++PlatformUdisks::getSize(const QString &amp;devicePath)
++{
++    long long ret;
++    QDBusConnection connection = QDBusConnection::systemBus();
++    QDBusMessage message;
++    QList&lt;QVariant&gt; args;
++    args &lt;&lt; &quot;org.freedesktop.UDisks&quot;;
++    args &lt;&lt; &quot;DeviceSize&quot;;
++
++    message = QDBusMessage::createMethodCall(&quot;org.freedesktop.UDisks&quot;, devicePath, &quot;org.freedesktop.DBus.Properties&quot;, &quot;Get&quot;);
++    message.setArguments(args);
++
++    QDBusReply&lt;QDBusVariant&gt; reply = connection.call(message);
++    if (!reply.isValid())
++        return(0);
++
++    ret = reply.value().variant().toLongLong();
++    return(ret);
++}
++
++
++bool
++PlatformUdisks::isMounted(QString path)
++{
++    bool ret = false;
++    QStringList partitionList = getPartitionList(path);
++
++    for (int i = 0; i &lt; partitionList.size(); ++i)
++    {
++        ret = isPartitionMounted(partitionList.at(i));
++        if (ret)
++            break;
++    }
++
++    return(ret);
++}
++
++bool
++PlatformUdisks::unmountDevice (QString path)
++{
++    bool ret = true;
++    QStringList partitionList = getPartitionList(path);
++
++    for (int i = 0; i &lt; partitionList.size(); ++i)
++    {
++        if (isPartitionMounted(partitionList.at(i)))
++        {
++            ret = performUnmount(partitionList.at(i));
++            if (!ret)
++                break;
++        }
++    }
++
++    return(ret);
++}
++
++bool
++PlatformUdisks::isPartitionMounted(const QString &amp;partitionPath)
++{
++    bool ret;
++    QDBusConnection connection = QDBusConnection::systemBus();
++    QDBusMessage message;
++    QList&lt;QVariant&gt; args;
++    args &lt;&lt; &quot;org.freedesktop.UDisks&quot;;
++    args &lt;&lt; &quot;DeviceIsMounted&quot;;
++
++    message = QDBusMessage::createMethodCall(&quot;org.freedesktop.UDisks&quot;, partitionPath, &quot;org.freedesktop.DBus.Properties&quot;, &quot;Get&quot;);
++    message.setArguments(args);
++
++    QDBusReply&lt;QDBusVariant&gt; reply = connection.call(message);
++    if (!reply.isValid())
++        return(false);
++
++    ret = reply.value().variant().toBool();
++    qDebug() &lt;&lt; &quot;DeviceIsMounted for &quot; &lt;&lt; partitionPath &lt;&lt; &quot;: &quot; &lt;&lt; ret;
++    return(ret);
++}
++
++QStringList
++PlatformUdisks::getPartitionList(const QString &amp;devicePath)
++{
++    QStringList devList;
++    // First get the list of disks
++    QDBusConnection connection = QDBusConnection::systemBus();
++    QDBusMessage message;
++    message = QDBusMessage::createMethodCall(&quot;org.freedesktop.UDisks&quot;, &quot;/org/freedesktop/UDisks&quot;, &quot;org.freedesktop.UDisks&quot;, &quot;EnumerateDevices&quot;);
++
++    QDBusReply&lt;QList&lt;QDBusObjectPath&gt; &gt; reply = connection.call(message);
++    if (!reply.isValid())
++    {
++        qDebug() &lt;&lt; &quot;Failure: &quot; &lt;&lt;  reply.error();
++        return(devList);
++    }
++
++    QList&lt;QDBusObjectPath&gt; list = reply.value();
++    QRegExp reg(QString(&quot;%1[0-9]+$&quot;).arg(devicePath));
++    for (int i = 0; i &lt; list.size(); ++i)
++        if (list.at(i).path().contains(reg))
++            devList &lt;&lt; list.at(i).path();
++
++    return(devList);
++}
++
++bool
++PlatformUdisks::getIsDrive(const QString &amp;path)
++{
++    bool ret;
++    QDBusConnection connection = QDBusConnection::systemBus();
++    QDBusMessage message;
++    QList&lt;QVariant&gt; args;
++    args &lt;&lt; &quot;org.freedesktop.UDisks&quot;;
++    args &lt;&lt; &quot;DeviceIsDrive&quot;;
++
++    message = QDBusMessage::createMethodCall(&quot;org.freedesktop.UDisks&quot;, path, &quot;org.freedesktop.DBus.Properties&quot;, &quot;Get&quot;);
++    message.setArguments(args);
++
++    QDBusReply&lt;QDBusVariant&gt; reply = connection.call(message);
++    if (!reply.isValid())
++        return(false);
++
++    ret = reply.value().variant().toBool();
++    return(ret);
++}
++
++bool
++PlatformUdisks::performUnmount(QString udi)
++{
++    bool ret = true;
++    QDBusConnection connection = QDBusConnection::systemBus();
++    QDBusMessage message, reply;
++
++    message = QDBusMessage::createMethodCall(&quot;org.freedesktop.UDisks&quot;, udi, &quot;org.freedesktop.UDisks.Device&quot;, &quot;FilesystemUnmount&quot;);
++    message &lt;&lt; QStringList();
++    reply = connection.call(message);
++
++    if (reply.type() == QDBusMessage::ErrorMessage)
++    {
++        QMessageBox msgBox;
++        msgBox.setText(QString(&quot;DBUS error (%1): %2&quot;).arg(udi).arg(reply.errorMessage()));
++        msgBox.exec();
++        ret = false;
++    }
++
++    return ret;
++}
++
+diff --git a/tools/burner/Platform.h b/tools/burner/PlatformUdisks.h
+similarity index 62%
+copy from tools/burner/Platform.h
+copy to tools/burner/PlatformUdisks.h
+index c7e9d42..6619dc2 100644
+--- a/tools/burner/Platform.h
++++ b/tools/burner/PlatformUdisks.h
+@@ -21,40 +21,37 @@
+  *  
+  */
+ 
+-#ifndef __PLATFORM_H__
+-#define __PLATFORM_H__
++#ifndef __PLATFORMUDISKS_H__
++#define __PLATFORMUDISKS_H__
+ 
+ #include &lt;QtCore&gt;
+-#include &lt;hal/libhal.h&gt;
+-#include &lt;hal/libhal-storage.h&gt;
+ #include &lt;QtDBus&gt;
+-
+ #include &quot;DeviceItem.h&quot;
++#include &quot;Platform.h&quot;
+ 
+-class Platform
++class PlatformUdisks : public Platform
+ {
+ 
+ public:
+-    Platform(bool kioskMode = false) { mKioskMode = kioskMode; }
++    PlatformUdisks(bool kioskMode = false);
+     void findDevices(bool unsafe = false);
+     bool isMounted(QString path);
+     void writeData(QString path, QString fileName, qint64 deviceSize);
+     bool unmountDevice(QString path);
+-    bool removeDeviceFromList(const QString &amp;displayName);
+-    DeviceItem *findDeviceInList(const QString &amp;displayName);
+-    DeviceItem *getNewDevice(QString devicePath, LibHalContext *context = NULL);
+-
+-    QLinkedList&lt;DeviceItem *&gt; getDeviceList() { return itemList; }
+-
+-public slots:
+-    void tick(qint64 lastWritten, qint64 bytesWritten);
++    DeviceItem *getNewDevice(QString devicePath);
+ 
+ private:
+-    bool mKioskMode;
+-    DeviceItem *pDevice;
+-    QLinkedList&lt;DeviceItem *&gt; itemList;
+-    LibHalContext *initHal();
++    bool udiskEnabled();
++    bool isUSB(const QString &amp;udiskPath);
++    bool isPartitionMounted(const QString &amp;partitionPath);
++    bool getIsDrive(const QString &amp;path);
++    QStringList getPartitionList(const QString &amp;devicePath);
+     bool performUnmount(QString udi);
++    QString getPath(const QString &amp;devicePath);
++    QString getModel(const QString &amp;devicePath);
++    QString getVendor(const QString &amp;devicePath);
++    bool getIsRemovable(const QString &amp;devicePath);
++    long long getSize(const QString &amp;devicePath);
+ 
+ };
+ 
+diff --git a/tools/burner/imagewriter.pro b/tools/burner/imagewriter.pro
+index 406f3e5..3f10827 100644
+--- a/tools/burner/imagewriter.pro
++++ b/tools/burner/imagewriter.pro
+@@ -1,42 +1,91 @@
+ # #####################################################################
+ # Automatically generated by qmake (2.01a) Thu Oct 23 14:13:58 2008
+ # #####################################################################
+-unix {
+-  isEmpty(PREFIX) {
+-    PREFIX = /usr/local
+-  }
+-}
+-
++unix:isEmpty(PREFIX):PREFIX = /usr/local
+ TEMPLATE = app
+ TARGET = 
+ DEPENDPATH += .
+ INCLUDEPATH += .
++VERSION=1.9
++DEFINES += APP_VERSION=\\\&quot;$$VERSION\\\&quot;
+ 
+ # Input
+ HEADERS += DeviceItem.h \
+     MainWindow.h \
+-    Platform.h 
++    Platform.h \
++    PlatformHal.h \
++    PlatformUdisks.h
+ SOURCES += main.cpp \
+     MainWindow.cpp \
+-    Platform.cpp 
++    PlatformHal.cpp \
++    PlatformUdisks.cpp \
++    Platform.cpp
++
++CONFIG += link_pkgconfig \
++    qdbus
++
++exists(&quot;/usr/include/hal/libhal.h&quot;) { 
++    PKGCONFIG += hal \
++        hal-storage
++    DEFINES += USEHAL
++}
++
++QMAKE_EXTRA_TARGETS += distfile
++DISTFILE_MAKEDIR = .tmp/imagewriter-$$VERSION
++DISTFILE_EXTRAFILES = $$RESOURCES \
++    COPYING \
++    imagewriter.pro \
++    README \
++    INSTALL \
++    *.qm \
++    *.ts \
++    *.png \
++    imagewriter.desktop \
++    imagewriter.spec \
++    icons/ 
+ 
+-CONFIG += link_pkgconfig qdbus
+-PKGCONFIG += hal hal-storage
++distfile.commands = mkdir \
++    -p \
++    $$DISTFILE_MAKEDIR \
++    &amp;&amp; \
++    cp \
++    -r \
++    -f \
++    --parent \
++    $$SOURCES \
++    $$HEADERS \
++    $$FORMS \
++    $$DISTFILE_EXTRAFILES \
++    $$DISTFILE_MAKEDIR \
++    &amp;&amp; \
++    cd \
++    .tmp \
++    &amp;&amp; \
++    tar \
++    cvzf \
++    imagewriter-$$VERSION\.tar.gz \
++    imagewriter-$$VERSION \
++    &amp;&amp; \
++    mv \
++    imagewriter-$$VERSION\.tar.gz \
++    .. \
++    &amp;&amp; \
++    cd \
++    ..
+ 
+ imagewriter.path = $$PREFIX/bin
+ imagewriter.files = imagewriter
+-INSTALLS += imagewriter icon32 icon64 icon128 desktop
+-
++INSTALLS += imagewriter \
++    icon32 \
++    icon64 \
++    icon128 \
++    desktop
+ desktop.path = $$PREFIX/share/applications/
+ desktop.files += imagewriter.desktop
+-
+ icon32.path = $$PREFIX/share/icons/hicolor/32x32/apps
+ icon32.files += icons/32x32/imagewriter.png
+-
+ icon64.path = $$PREFIX/share/icons/hicolor/64x64/apps
+ icon64.files += icons/64x64/imagewriter.png
+-
+ icon128.path = $$PREFIX/share/icons/hicolor/128x128/apps
+ icon128.files += icons/128x128/imagewriter.png
+-
+ RESOURCES += imagewriter.qrc
+diff --git a/tools/burner/main.cpp b/tools/burner/main.cpp
+index e5f689f..943fb09 100644
+--- a/tools/burner/main.cpp
++++ b/tools/burner/main.cpp
+@@ -29,7 +29,8 @@
+ 
+ 
+ #include &quot;MainWindow.h&quot;
+-#include &quot;Platform.h&quot;
++#include &quot;PlatformHal.h&quot;
++#include &quot;PlatformUdisks.h&quot;
+ #include &quot;DeviceItem.h&quot;
+ 
+ 
+@@ -81,7 +82,7 @@ main (int argc, char *argv[])
+                 kioskMode = true;
+                 break;
+             case 'v':
+-                fprintf(stdout, &quot;%s\nWritten by Matt Barringer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarringer at suse.de</A>&gt;\n&quot;, VERSION);
++                fprintf(stdout, &quot;SUSE Studio Imagewriter %s\nWritten by Matt Barringer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarringer at suse.de</A>&gt;\n&quot;, APP_VERSION);
+                 exit(0);
+                 break;
+             case 'm':
+@@ -93,8 +94,13 @@ main (int argc, char *argv[])
+     }
+ 
+     QApplication app(argc, argv);
+-    Platform *platform = new Platform(kioskMode);
++#ifdef USEHAL
++    PlatformHal *platform = new PlatformHal(kioskMode);
++#else
++    PlatformUdisks *platform = new PlatformUdisks(kioskMode);
++#endif
+     platform-&gt;findDevices(unsafe);
++
+     if (listMode)
+     {
+         QLinkedList&lt;DeviceItem *&gt; list = platform-&gt;getDeviceList();
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003304.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-480-SuSE-11.4-Devel,	updated. cfde1ccba1bca4e58e363ea4a1b9d2d2d7c1baf4
+</A></li>
+	<LI>Next message: <A HREF="003305.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 77d19ecc37e7b5ef57a81c9fa11be824c61f19bf
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3334">[ date ]</a>
+              <a href="thread.html#3334">[ thread ]</a>
+              <a href="subject.html#3334">[ subject ]</a>
+              <a href="author.html#3334">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

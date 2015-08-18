@@ -1,0 +1,159 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 61327c382b9f17689cfabbc7f4e7a9c43afa1c2f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2061327c382b9f17689cfabbc7f4e7a9c43afa1c2f&In-Reply-To=%3C201005210741.o4L7fmVr031418%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002209.html">
+   <LINK REL="Next"  HREF="002211.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 61327c382b9f17689cfabbc7f4e7a9c43afa1c2f</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2061327c382b9f17689cfabbc7f4e7a9c43afa1c2f&In-Reply-To=%3C201005210741.o4L7fmVr031418%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 61327c382b9f17689cfabbc7f4e7a9c43afa1c2f">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri May 21 09:41:48 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002209.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c7a8b5dfcc09dfee8fb5959da670634919902777
+</A></li>
+        <LI>Next message: <A HREF="002211.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d5d28b096053c274ebc8ee81bd9cb11ffa319d03
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2210">[ date ]</a>
+              <a href="thread.html#2210">[ thread ]</a>
+              <a href="subject.html#2210">[ subject ]</a>
+              <a href="author.html#2210">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  61327c382b9f17689cfabbc7f4e7a9c43afa1c2f (commit)
+      from  c7a8b5dfcc09dfee8fb5959da670634919902777 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 61327c382b9f17689cfabbc7f4e7a9c43afa1c2f
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri May 21 09:39:07 2010 +0200
+
+    - fixed size check for repart operation
+    - make sure home has a min size of 500 MB if home partition
+      was requested
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/system/boot/ix86/oemboot/suse-repart b/system/boot/ix86/oemboot/suse-repart
+index 0ed5c4f..66018d7 100755
+--- a/system/boot/ix86/oemboot/suse-repart
++++ b/system/boot/ix86/oemboot/suse-repart
+@@ -78,18 +78,25 @@ function OEMRepartStandard {
+ 	#======================================
+ 	# calculate partition sizes
+ 	#--------------------------------------
++	minhome=0
++	if [ -z &quot;$OEM_WITHOUTHOME&quot; ];then
++		minhome=500
++	fi
+ 	diskXMBytes=$(($(partitionSize $imageDiskDevice) / 1024))
+-	diskPMBytes=$(($(partitionSize $(ddn $imageDiskDevice 1)) / 1024))
+-	disk1MBytes=$((
+-		diskXMBytes - swapsize - recoMByte - bootXMBytes
++	diskP1MByte=$(($(partitionSize $(ddn $imageDiskDevice 1)) / 1024))
++	diskRMBytes=$((
++		diskXMBytes - diskP1MByte - swapsize - recoMByte - bootXMBytes - minhome
+ 	))
++	disk1MBytes=$((diskP1MByte + diskRMBytes))
+ 	if [ ! -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+-		disk1MBytes=$OEM_SYSTEMSIZE
++		if [ $OEM_SYSTEMSIZE -le $disk1MBytes ];then
++			disk1MBytes=$OEM_SYSTEMSIZE
++		fi
+ 	fi
+ 	#======================================
+ 	# check repart operation
+ 	#--------------------------------------
+-	if [ $disk1MBytes -lt $diskPMBytes ];then
++	if [ $disk1MBytes -lt $diskP1MByte ];then
+ 		# /.../
+ 		# Requested system partition size is smaller than
+ 		# existing partition, will not re-partition
+@@ -223,12 +230,12 @@ function OEMRepartSplit {
+ 		# calculate partition sizes
+ 		#--------------------------------------
+ 		diskXMBytes=$(($(partitionSize $imageDiskDevice) / 1024))
+-		disk1MBytes=$(($(partitionSize $(ddn $imageDiskDevice 1)) / 1024))
+-		disk2MBytes=$(($(partitionSize $(ddn $imageDiskDevice 2)) / 1024))
++		diskP1MByte=$(($(partitionSize $(ddn $imageDiskDevice 1)) / 1024))
++		diskP2MByte=$(($(partitionSize $(ddn $imageDiskDevice 2)) / 1024))
+ 		diskRMBytes=$((
+-			diskXMBytes - disk1MBytes - disk2MBytes - swapsize - bootXMBytes
++			diskXMBytes - diskP1MByte - diskP2MByte - swapsize - bootXMBytes
+ 		))
+-		disk2MBytes=$((disk2MBytes + diskRMBytes))
++		disk2MBytes=$((diskP2MByte + diskRMBytes))
+ 		if [ ! -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+ 			if [ $OEM_SYSTEMSIZE -le $disk2MBytes ];then
+ 				disk2MBytes=$OEM_SYSTEMSIZE
+@@ -237,11 +244,13 @@ function OEMRepartSplit {
+ 		#======================================
+ 		# check repart operation
+ 		#--------------------------------------
+-		if [ $diskRMBytes -lt 100 ];then
++		if [ $disk2MBytes -lt $diskP2MByte ];then
+ 			# /.../
+-			# Very small disk which we will not re-partition
++			# Requested read/write partition size is smaller than
++			# existing partition, will not re-partition
+ 			# ----
+-			Echo &quot;Disk is too small, will not re-partition it&quot;
++			Echo &quot;Current read/write partition is bigger than requested size&quot;
++			Echo &quot;Disk won't be re-partitioned&quot;
+ 			disableOEMParameters
+ 			disableRepart
+ 		fi
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002209.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c7a8b5dfcc09dfee8fb5959da670634919902777
+</A></li>
+	<LI>Next message: <A HREF="002211.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d5d28b096053c274ebc8ee81bd9cb11ffa319d03
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2210">[ date ]</a>
+              <a href="thread.html#2210">[ thread ]</a>
+              <a href="subject.html#2210">[ subject ]</a>
+              <a href="author.html#2210">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

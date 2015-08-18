@@ -1,0 +1,516 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1518 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1518%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200808191129.m7JBT8iX029756%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000599.html">
+   <LINK REL="Next"  HREF="000601.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1518 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1518%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200808191129.m7JBT8iX029756%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1518 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Aug 19 13:29:08 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000599.html">[Kiwi-devel] r1517 - in kiwi-head: . modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000601.html">[Kiwi-devel] r1519 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#600">[ date ]</a>
+              <a href="thread.html#600">[ thread ]</a>
+              <a href="subject.html#600">[ subject ]</a>
+              <a href="author.html#600">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-08-19 13:29:03 +0200 (Tue, 19 Aug 2008)
+New Revision: 1518
+
+Modified:
+   kiwi-head/modules/KIWILog.pm
+   kiwi-head/modules/KIWIManager.pm
+   kiwi-head/modules/KIWIRoot.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- changed locking process due to cache handling changes. 
+  This is related to (bnc #417457)
+
+
+
+Modified: kiwi-head/modules/KIWILog.pm
+===================================================================
+--- kiwi-head/modules/KIWILog.pm	2008-08-18 15:39:27 UTC (rev 1517)
++++ kiwi-head/modules/KIWILog.pm	2008-08-19 11:29:03 UTC (rev 1518)
+@@ -830,8 +830,7 @@
+ 		our $logServer = new KIWISocket ( $this,$main::LogServerPort );
+ 		our $sharedMem = $this-&gt;{smem};
+ 		if (! defined $logServer) {
+-			$this -&gt; warning (&quot;Can't open log port: $main::LogServerPort&quot;);
+-			$this -&gt; skipped ();
++			$this -&gt; warning (&quot;Can't open log port: $main::LogServerPort\n&quot;);
+ 			$sharedMem -&gt; closeSegment();
+ 			undef $this-&gt; {smem};
+ 			exit 1;
+
+Modified: kiwi-head/modules/KIWIManager.pm
+===================================================================
+--- kiwi-head/modules/KIWIManager.pm	2008-08-18 15:39:27 UTC (rev 1517)
++++ kiwi-head/modules/KIWIManager.pm	2008-08-19 11:29:03 UTC (rev 1518)
+@@ -304,7 +304,6 @@
+ 	my $manager = $this-&gt;{manager};
+ 	my $chroot  = $this-&gt;{chroot};
+ 	my $root    = $this-&gt;{root};
+-	my $lock    = $this-&gt;{lock};
+ 	my $data;
+ 	my $code;
+ 
+@@ -324,11 +323,8 @@
+ 		if (defined $imgCheckSig) {
+ 			my $option = &quot;$optionName=$imgCheckSig&quot;;
+ 			if (! $chroot) {
+-				$this -&gt; checkExclusiveLock();
+ 				$kiwi -&gt; info (&quot;Setting RPM signature check to: $imgCheckSig&quot;);
+-				$this -&gt; setLock();
+ 				$data = qxx (&quot;@smart config --set $option 2&gt;&amp;1&quot;);
+-				$this -&gt; freeLock();
+ 			} else {
+ 				$kiwi -&gt; info (&quot;Setting RPM signature check to: $imgCheckSig&quot;);
+ 				$data=qxx (&quot;chroot \&quot;$root\&quot; @smart config --set $option 2&gt;&amp;1&quot;);
+@@ -370,7 +366,6 @@
+ 	my $chroot = $this-&gt;{chroot};
+ 	my $manager= $this-&gt;{manager};
+ 	my $root   = $this-&gt;{root};
+-	my $lock   = $this-&gt;{lock};
+ 	my @smart  = @{$this-&gt;{smart}};
+ 	my $curCheckSig = $this-&gt;{curCheckSig};
+ 	my $data;
+@@ -383,11 +378,8 @@
+ 			my $optionName  = &quot;rpm-check-signatures&quot;;
+ 			my $option = &quot;$optionName=$curCheckSig&quot;;
+ 			if (! $chroot) {
+-				$this -&gt; checkExclusiveLock();
+ 				$kiwi -&gt; info (&quot;Reset RPM signature check to: $curCheckSig&quot;);
+-				$this -&gt; setLock();
+ 				$data = qxx (&quot;@smart config --set $option 2&gt;&amp;1&quot;);
+-				$this -&gt; freeLock();
+ 			} else {
+ 				$kiwi -&gt; info (&quot;Reset RPM signature check to: $curCheckSig&quot;);
+ 				$data=qxx (&quot;chroot \&quot;$root\&quot; @smart config --set $option 2&gt;&amp;1&quot;);
+@@ -434,7 +426,6 @@
+ 	my @smart  = @{$this-&gt;{smart}};
+ 	my @rootdir= @{$this-&gt;{smartroot}};
+ 	my $dataDir= $this-&gt;{dataDir};
+-	my $lock   = $this-&gt;{lock};
+ 	my $data;
+ 	my $code;
+ 	#==========================================
+@@ -457,12 +448,9 @@
+ 			my @opts = @{$source{$stype}{$chl}};
+ 			@opts = map { if (defined $_) { $_ }  } @opts;
+ 			if (! $chroot) {
+-				$this -&gt; checkExclusiveLock();
+-				$this -&gt; setLock();
+ 				$kiwi -&gt; info (&quot;Adding local smart channel: $chl&quot;);
+ 				$data = qxx (&quot;$cmds $chl @opts 2&gt;&amp;1&quot;);
+ 				$code = $? &gt;&gt; 8;
+-				$this -&gt; freeLock();
+ 			} else {
+ 				$kiwi -&gt; info (&quot;Adding image smart channel: $chl&quot;);
+ 				$data = qxx (&quot;chroot \&quot;$root\&quot; $cmds $chl @opts 2&gt;&amp;1&quot;);
+@@ -519,12 +507,9 @@
+ 			}
+ 			my $sadd = &quot;service-add @zopts $alias&quot;;
+ 			if (! $chroot) {
+-				$this -&gt; checkExclusiveLock();
+-				$this -&gt; setLock();
+ 				$kiwi -&gt; info (&quot;Adding local zypper service: $alias&quot;);
+ 				$data = qxx (&quot;@zypper --root \&quot;$root\&quot; $sadd 2&gt;&amp;1&quot;);
+ 				$code = $? &gt;&gt; 8;
+-				$this -&gt; freeLock();
+ 			} else {
+ 				$kiwi -&gt; info (&quot;Adding image zypper service: $alias&quot;);
+ 				$data = qxx (&quot;chroot \&quot;$root\&quot; @zypper $sadd 2&gt;&amp;1&quot;);
+@@ -565,7 +550,6 @@
+ 	my @zypper = @{$this-&gt;{zypper}};
+ 	my @smart  = @{$this-&gt;{smart}};
+ 	my @rootdir= @{$this-&gt;{smartroot}};
+-	my $lock   = $this-&gt;{lock};
+ 	my @channelList = @{$this-&gt;{channelList}};
+ 	my $data;
+ 	my $code;
+@@ -579,12 +563,9 @@
+ 			$cmds=&quot;@smart @rootdir channel --remove&quot;;
+ 		}
+ 		if (! $chroot) {
+-			$this -&gt; checkExclusiveLock();
+ 			$kiwi -&gt; info (&quot;Removing smart channel(s): @channelList&quot;);
+-			$this -&gt; setLock();
+ 			$data = qxx (&quot;$cmds @list -y 2&gt;&amp;1&quot;);
+ 			$code = $? &gt;&gt; 8;
+-			$this -&gt; freeLock();
+ 		} else {
+ 			$kiwi -&gt; info (&quot;Removing smart channel(s): @channelList&quot;);
+ 			$data = qxx (&quot;chroot \&quot;$root\&quot; $cmds @list -y 2&gt;&amp;1&quot;);
+@@ -607,9 +588,7 @@
+ 			$cmds = &quot;@zypper --root $root service-delete&quot;;
+ 		}
+ 		if (! $chroot) {
+-			$this -&gt; checkExclusiveLock();
+ 			$kiwi -&gt; info (&quot;Removing zypper service(s): @channelList&quot;);
+-			$this -&gt; setLock();
+ 			foreach my $chl (@list) {
+ 				$data = qxx (&quot;bash -c \&quot;$cmds $chl 2&gt;&amp;1\&quot;&quot;);
+ 				$code = $? &gt;&gt; 8;
+@@ -617,7 +596,6 @@
+ 					last;
+ 				}
+ 			}
+-			$this -&gt; freeLock();
+ 		} else {
+ 			$kiwi -&gt; info (&quot;Removing zypper service(s): @channelList&quot;);
+ 			foreach my $chl (@list) {
+@@ -1090,7 +1068,6 @@
+ 	my @smart  = @{$this-&gt;{smart}};
+ 	my @rootdir= @{$this-&gt;{smartroot}};
+ 	my @ensconce = @{$this-&gt;{ensconce}};
+-	my $lock   = $this-&gt;{lock};
+ 	my @channelList = @{$this-&gt;{channelList}};
+ 	my $screenCall  = $this-&gt;{screenCall};
+ 	#==========================================
+@@ -1105,7 +1082,6 @@
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
+ 		if (! $chroot) {
+-			$this -&gt; checkExclusiveLock();
+ 			my @installOpts = (
+ 				&quot;--explain&quot;,
+ 				&quot;--log-level=error&quot;,
+@@ -1122,10 +1098,9 @@
+ 			# Create screen call file
+ 			#------------------------------------------
+ 			print $fd &quot;function clean { kill \$SPID;&quot;;
+-			print $fd &quot;rm -f $root/etc/smart/channels/*;rm -f $lock;&quot;;
++			print $fd &quot;rm -f $root/etc/smart/channels/*&quot;;
+ 			print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+-			print $fd &quot;touch $lock\n&quot;;
+ 			print $fd &quot;@smart @rootdir channel --show &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			print $fd &quot;test \$? = 0 &amp;&amp; @smart @rootdir update &quot;;
+@@ -1136,7 +1111,6 @@
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
+ 			print $fd &quot;rm -f $root/etc/smart/channels/*\n&quot;;
+-			print $fd &quot;rm -f $lock\n&quot;;
+ 		} else {
+ 			my @install = @packs;
+ 			my @installOpts = (
+@@ -1169,7 +1143,6 @@
+ 	#------------------------------------------
+ 	if ($manager eq &quot;zypper&quot;) {
+ 		if (! $chroot) {
+-			$this -&gt; checkExclusiveLock();
+ 			my @installOpts = (
+ 				&quot;--auto-agree-with-licenses&quot;
+ 			);
+@@ -1198,11 +1171,10 @@
+ 			#------------------------------------------
+ 			mkdir &quot;$root/tmp&quot;;
+ 			print $fd &quot;function clean { kill \$SPID;&quot;;
+-			print $fd &quot;echo 1 &gt; $screenCall.exit; rm -f $lock; exit 1; }\n&quot;;
++			print $fd &quot;echo 1 &gt; $screenCall.exit; exit 1; }\n&quot;;
+ 			print $fd &quot;trap clean INT TERM\n&quot;;
+ 			print $fd &quot;export ZYPP_MODALIAS_SYSFS=/tmp\n&quot;;
+ 			print $fd &quot;export YAST_IS_RUNNING=true\n&quot;;
+-			print $fd &quot;touch $lock\n&quot;;
+ 			if (@packs) {
+ 				print $fd &quot;@zypper --root $root install &quot;;
+ 				print $fd &quot;@installOpts @packs &amp;\n&quot;;
+@@ -1217,7 +1189,6 @@
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+ 			print $fd &quot;echo \$? &gt; $screenCall.exit\n&quot;;
+-			print $fd &quot;rm -f $lock\n&quot;;
+ 		} else {
+ 			my @install   = ();
+ 			my @newpatts  = ();
+@@ -1291,14 +1262,8 @@
+ 	my $manager = $this-&gt;{manager};
+ 	my @smart   = @{$this-&gt;{smart}};
+ 	my @zypper  = @{$this-&gt;{zypper}};
+-	my $lock    = $this-&gt;{lock};
+ 	my $dataDir = $this-&gt;{dataDir};
+ 	#==========================================
+-	# check lock
+-	#------------------------------------------
+-	$this -&gt; checkExclusiveLock();
+-	$this -&gt; setLock();
+-	#==========================================
+ 	# smart
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
+@@ -1322,7 +1287,6 @@
+ 	if ($manager eq &quot;ensconce&quot;) {
+ 		# Ignored for ensconce
+ 	}
+-	$this -&gt; freeLock();
+ 	return $this;
+ }
+ 
+@@ -1343,7 +1307,6 @@
+ 	my @zypper = @{$this-&gt;{zypper}};
+ 	my @smart  = @{$this-&gt;{smart}};
+ 	my @rootdir= @{$this-&gt;{smartroot}};
+-	my $lock   = $this-&gt;{lock};
+ 	my $data;
+ 	my $code;
+ 	#==========================================
+@@ -1351,12 +1314,9 @@
+ 	#------------------------------------------
+ 	if ($manager eq &quot;smart&quot;) {
+ 		if (! $chroot) {
+-			$this -&gt; checkExclusiveLock();
+ 			$kiwi -&gt; info (&quot;Checking for package: $pack&quot;);
+-			$this -&gt; setLock();
+ 			$data = qxx (&quot;@smart @rootdir query --installed $pack 2&gt;/dev/null&quot;);
+ 			$code = $? &gt;&gt; 8;
+-			$this -&gt; freeLock();
+ 		} else {
+ 			$kiwi -&gt; info (&quot;Checking for package: $pack&quot;);
+ 			$data = qxx (
+@@ -1384,12 +1344,9 @@
+ 	if ($manager eq &quot;zypper&quot;) {
+ 		my $str = &quot;not installed&quot;;
+ 		if (! $chroot) {
+-			$this -&gt; checkExclusiveLock();
+ 			$kiwi -&gt; info (&quot;Checking for package: $pack&quot;);
+-			$this -&gt; setLock();
+ 			$data = qxx (&quot; rpm -q \&quot;$pack\&quot; 2&gt;&amp;1 &quot;);
+ 			$code = $? &gt;&gt; 8;
+-			$this -&gt; freeLock();
+ 		} else {
+ 			$kiwi -&gt; info (&quot;Checking for package: $pack&quot;);
+ 			$data= qxx (&quot;chroot \&quot;$root\&quot; rpm -q \&quot;$pack\&quot; 2&gt;&amp;1 &quot;);
+
+Modified: kiwi-head/modules/KIWIRoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIRoot.pm	2008-08-18 15:39:27 UTC (rev 1517)
++++ kiwi-head/modules/KIWIRoot.pm	2008-08-19 11:29:03 UTC (rev 1518)
+@@ -246,6 +246,11 @@
+ 		return undef;
+ 	}
+ 	#==========================================
++	# Check and set lock
++	#------------------------------------------
++	$manager -&gt; checkExclusiveLock();
++	$manager -&gt; setLock();
++	#==========================================
+ 	# Setup preperation checks
+ 	#------------------------------------------
+ 	$manager -&gt; switchToLocal();
+@@ -309,29 +314,33 @@
+ 	qxx (&quot; cp /etc/resolv.conf $root/etc 2&gt;&amp;1 &quot;);
+ 	qxx (&quot; cp $main::KConfig $root/.kconfig 2&gt;&amp;1 &quot;);
+ 	$kiwi -&gt; done();
+-
+ 	#==========================================
+ 	# Add source, install and clean source
+ 	#------------------------------------------
+ 	if (! $manager -&gt; setupInstallationSource()) {
++		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+ 	if (! $manager -&gt; setupRootSystem(@initPacs)) {
+ 		$manager -&gt; resetInstallationSource();
++		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+ 	#==========================================
+ 	# reset installation source
+ 	#------------------------------------------
+ 	if (! $manager -&gt; resetInstallationSource()) {
++		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+ 	#==========================================
+ 	# Reset preperation checks
+ 	#------------------------------------------
+ 	if (! $manager -&gt; resetSignatureCheck()) {
++		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
++	$manager -&gt; freeLock();
+ 	#==================================
+ 	# Create default fstab file
+ 	#----------------------------------
+@@ -393,24 +402,34 @@
+ 		$this-&gt;{needResolvConf} = 1;
+ 	}
+ 	#==========================================
++	# Check and set lock
++	#------------------------------------------
++	$manager -&gt; checkExclusiveLock();
++	$manager -&gt; setLock();
++	#==========================================
+ 	# Upgrade system
+ 	#------------------------------------------
+ 	if (! $manager -&gt; setupSignatureCheck()) {
++		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+ 	if (! $manager -&gt; setupInstallationSource()) {
+ 		$this -&gt; cleanupResolvConf();
++		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+ 	if (! $manager -&gt; setupUpgrade ($addPacks)) {
+ 		$this -&gt; cleanupResolvConf();
++		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+ 	if (! $manager -&gt; resetInstallationSource()) {
+ 		$this -&gt; cleanupResolvConf();
++		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+ 	$this -&gt; cleanupResolvConf();
++	$manager -&gt; freeLock();
+ 	return $this;
+ }
+ 
+@@ -440,10 +459,16 @@
+ 		$this-&gt;{needResolvConf} = 1;
+ 	}
+ 	#==========================================
++	# Check and set lock
++	#------------------------------------------
++	$manager -&gt; checkExclusiveLock();
++	$manager -&gt; setLock();
++	#==========================================
+ 	# Setup sources
+ 	#------------------------------------------
+ 	if (! $manager -&gt; setupInstallationSource()) {
+ 		$this -&gt; cleanupResolvConf();
++		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+ 	$this -&gt; cleanupResolvConf();
+@@ -459,9 +484,11 @@
+ 	my $manager = $this-&gt;{manager};
+ 	if (! $manager -&gt; resetInstallationSource()) {
+ 		$this -&gt; cleanupResolvConf();
++		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+ 	$this -&gt; cleanupResolvConf();
++	$manager -&gt; freeLock();
+ 	return $this;
+ }
+ 
+@@ -485,6 +512,7 @@
+ 	my $pack = shift;
+ 	my $manager  = $this-&gt;{manager};
+ 	if (! $manager -&gt; installPackages ($pack)) {
++		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+ 	return $this;
+@@ -498,6 +526,7 @@
+ 	my $pack = shift;
+ 	my $manager  = $this-&gt;{manager};
+ 	if (! $manager -&gt; removePackages ($pack)) {
++		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+ 	return $this;
+@@ -536,27 +565,37 @@
+ 		return undef;
+ 	}
+ 	#==========================================
++	# Check and set lock
++	#------------------------------------------
++	$manager -&gt; checkExclusiveLock();
++	$manager -&gt; setLock();
++	#==========================================
+ 	# Setup signature check
+ 	#------------------------------------------
+ 	$manager -&gt; switchToChroot();
+ 	if (! $manager -&gt; setupSignatureCheck()) {
++		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+ 	#==========================================
+ 	# Add source(s) and install
+ 	#------------------------------------------
+ 	if (! $manager -&gt; setupInstallationSource()) {
++		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+ 	if (! $manager -&gt; setupRootSystem (@packList)) {
++		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
+ 	#==========================================
+ 	# reset installation source
+ 	#------------------------------------------
+ 	if (! $manager -&gt; resetInstallationSource()) {
++		$manager -&gt; freeLock();
+ 		return undef;
+ 	}
++	$manager -&gt; freeLock();
+ 	return $this;
+ }
+ 
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-08-18 15:39:27 UTC (rev 1517)
++++ kiwi-head/rpm/kiwi.changes	2008-08-19 11:29:03 UTC (rev 1518)
+@@ -10,6 +10,8 @@
+   This allows a faster processing within the second stage of
+   the image preparation and also alows re-use of already
+   downloaded remote packages (bnc #417457)
++- changed locking process due to cache handling changes.
++  This is related to (bnc #417457)
+ 
+ -------------------------------------------------------------------
+ Mon Aug 11 09:53:52 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000599.html">[Kiwi-devel] r1517 - in kiwi-head: . modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000601.html">[Kiwi-devel] r1519 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#600">[ date ]</a>
+              <a href="thread.html#600">[ thread ]</a>
+              <a href="subject.html#600">[ subject ]</a>
+              <a href="author.html#600">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

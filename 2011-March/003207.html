@@ -1,0 +1,1448 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3d8962c28abf12ccd15ad715db1c2fe90e2d75a6
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%203d8962c28abf12ccd15ad715db1c2fe90e2d75a6&In-Reply-To=%3C20110316130013.91506481493%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003204.html">
+   <LINK REL="Next"  HREF="003205.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3d8962c28abf12ccd15ad715db1c2fe90e2d75a6</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%203d8962c28abf12ccd15ad715db1c2fe90e2d75a6&In-Reply-To=%3C20110316130013.91506481493%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3d8962c28abf12ccd15ad715db1c2fe90e2d75a6">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Mar 16 14:00:11 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003204.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, ppc,	updated. b5a3effa576a0a65629ff6395dc06836b2370e6b
+</A></li>
+        <LI>Next message: <A HREF="003205.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, ppc,	deleted. b5a3effa576a0a65629ff6395dc06836b2370e6b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3207">[ date ]</a>
+              <a href="thread.html#3207">[ thread ]</a>
+              <a href="subject.html#3207">[ subject ]</a>
+              <a href="author.html#3207">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  3d8962c28abf12ccd15ad715db1c2fe90e2d75a6 (commit)
+      from  e2f8e2ebb35f68598a067d785c31ecc489d9a6e1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 3d8962c28abf12ccd15ad715db1c2fe90e2d75a6
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Feb 1 16:35:11 2011 +0100
+
+    - added support for ppc images:
+      * added oemboot boot code
+      * added vmxboot boot code
+      * adapt kiwi for creation of ppc disk images
+      * adapt kiwi for creation of ppc install iso
+      * added suse-SLE11-JeOS template for ppc
+      * added support for lilo boot loader used for ppc
+      * changed spec file to build ppc packages
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 843a9c7..f186bab 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -603,7 +603,12 @@ sub setupInstallCD {
+ 	my $destdir   = dirname ($initrd);
+ 	my $gotsys    = 1;
+ 	my $volid     = &quot;-V \&quot;KIWI CD/DVD Installation\&quot;&quot;;
+-	my $bootloader= &quot;grub&quot;;
++	my $bootloader;
++	if ($arch =~ /ppc|ppc64/) {
++		$bootloader = &quot;lilo&quot;;
++	} else {
++		$bootloader = &quot;grub&quot;;
++	}
+ 	my $status;
+ 	my $result;
+ 	my $tmpdir;
+@@ -705,9 +710,14 @@ sub setupInstallCD {
+ 		#==========================================
+ 		# find partition to check
+ 		#------------------------------------------
+-		my $sdev = $this-&gt;{bindloop}.&quot;1&quot;;
+-		if (! -e $sdev) {
++		my $sdev;
++		if ($arch =~ /ppc|ppc64/) {
+ 			$sdev = $this-&gt;{bindloop}.&quot;2&quot;;
++		} else {
++			$sdev = $this-&gt;{bindloop}.&quot;1&quot;;
++			if (! -e $sdev) {
++				$sdev = $this-&gt;{bindloop}.&quot;2&quot;;
++			}
+ 		}
+ 		#==========================================
+ 		# check for activated volume group
+@@ -892,6 +902,9 @@ sub setupInstallCD {
+ 		qxx (&quot;mv $tmpdir/boot/syslinux $tmpdir/boot/loader 2&gt;&amp;1&quot;);
+ 		$base = &quot;-R -J -f -b boot/loader/isolinux.bin -no-emul-boot $volid&quot;;
+ 		$opts = &quot;-boot-load-size 4 -boot-info-table -udf -allow-limited-size&quot;;
++	} elsif ($bootloader eq &quot;lilo&quot;) {
++		$base = &quot;-r&quot;;
++		$opts = &quot;-U -chrp-boot&quot;;
+ 	} else {
+ 		# don't know how to use this bootloader together with isolinux
+ 		$kiwi -&gt; failed ();
+@@ -923,9 +936,11 @@ sub setupInstallCD {
+ 		return undef;
+ 	}
+ 	$kiwi -&gt; done ();
+-	if (! $iso -&gt; relocateCatalog ($name)) {
+-		$iso  -&gt; cleanISO ();
+-		return undef;
++	if ($arch !~ /ppc|ppc64/) {
++		if (! $iso -&gt; relocateCatalog ($name)) {
++			$iso  -&gt; cleanISO ();
++			return undef;
++		}
+ 	}
+ 	#==========================================
+ 	# Clean tmp
+@@ -1452,7 +1467,14 @@ sub setupBootDisk {
+ 	my $dmapper   = 0;
+ 	my $haveluks  = 0;
+ 	my $needBootP = 0;
+-	my $bootloader= &quot;grub&quot;;
++	my $prepbootMB= 0;
++	my $bootloader;
++	my $boot;
++	if ($arch =~ /ppc|ppc64/) {
++		$bootloader = &quot;lilo&quot;;
++	} else {
++		$bootloader = &quot;grub&quot;;
++	}
+ 	my $haveDiskDevice;
+ 	my $splitfile;
+ 	my $version;
+@@ -1599,6 +1621,13 @@ sub setupBootDisk {
+ 			}
+ 		}
+ 	}
++	if ($arch =~ /ppc|ppc64/) {
++		if ($lvm) {
++			$prepbootMB = 50;
++		} else {
++			$prepbootMB = 8;
++		}
++	}
+ 	#==========================================
+ 	# build disk name and label from xml data
+ 	#------------------------------------------
+@@ -1758,6 +1787,26 @@ sub setupBootDisk {
+ 		#==========================================
+ 		# create disk partition
+ 		#------------------------------------------
++		if ($arch =~ /ppc|ppc64/) {
++			my $prepsize = $prepbootMB;
++			if (! $lvm) {
++				@commands = (
++					&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$prepsize.&quot;M&quot;,
++					&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;.&quot;,
++					&quot;t&quot;,&quot;1&quot;,&quot;41&quot;,
++					&quot;t&quot;,&quot;2&quot;,&quot;83&quot;,
++					&quot;a&quot;,&quot;1&quot;,&quot;w&quot;,&quot;q&quot;
++				);
++			} else {
++				@commands = (
++					&quot;n&quot;,&quot;p&quot;,&quot;1&quot;,&quot;.&quot;,&quot;+&quot;.$prepbootMB.&quot;M&quot;,
++					&quot;n&quot;,&quot;p&quot;,&quot;2&quot;,&quot;.&quot;,&quot;.&quot;,
++					&quot;t&quot;,&quot;1&quot;,&quot;6&quot;,
++					&quot;t&quot;,&quot;2&quot;,&quot;8e&quot;,
++					&quot;a&quot;,&quot;1&quot;,&quot;w&quot;,&quot;q&quot;
++				);
++			}
++		} else {
+ 		if (! $lvm) {
+ 			if (($syszip) || ($haveSplit) || ($dmapper)) {
+ 				# xda1 ro / xda2 rw
+@@ -1851,6 +1900,7 @@ sub setupBootDisk {
+ 				);
+ 			}
+ 		}
++		}
+ 		if (! $this -&gt; setStoragePartition ($this-&gt;{loop},\@commands)) {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error  (&quot;Couldn't create partition table&quot;);
+@@ -1875,7 +1925,11 @@ sub setupBootDisk {
+ 			#==========================================
+ 			# Create disk device mapping table
+ 			#------------------------------------------
+-			%deviceMap = $this -&gt; setDefaultDeviceMap ($this-&gt;{loop});
++			if ($arch =~ /ppc|ppc64/) {
++				%deviceMap = $this -&gt; setPPCDeviceMap ($this-&gt;{loop});
++			} else {
++				%deviceMap = $this -&gt; setDefaultDeviceMap ($this-&gt;{loop});
++			}
+ 			#==========================================
+ 			# Umount possible mounted stick partitions
+ 			#------------------------------------------
+@@ -1918,7 +1972,11 @@ sub setupBootDisk {
+ 		#==========================================
+ 		# set root device name from deviceMap
+ 		#------------------------------------------
+-		$root = $deviceMap{1};
++		if (($arch =~ /ppc|ppc64/) &amp;&amp; (!$lvm)) {
++			$root = $deviceMap{2};
++		} else {
++			$root = $deviceMap{1};
++		}
+ 		#==========================================
+ 		# check partition sizes
+ 		#------------------------------------------
+@@ -2145,6 +2203,18 @@ sub setupBootDisk {
+ 			return undef;
+ 		}
+ 		$kiwi -&gt; done();
++	} elsif (($arch =~ /ppc|ppc64/) &amp;&amp; ($lvm)) {
++		$boot = $deviceMap{fat};
++		$kiwi -&gt; info (&quot;Creating DOS boot filesystem&quot;);
++		$status = qxx (&quot;/sbin/mkdosfs -F 16 $boot 2&gt;&amp;1&quot;);
++		$result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Couldn't create DOS filesystem: $status&quot;);
++			$kiwi -&gt; failed ();
++			$this -&gt; cleanLoop ();
++			return undef;
++		}
+ 	} elsif (
+ 		($dmapper) || ($haveluks) || ($needBootP) ||
+ 		($lvm) || ($bootloader eq &quot;extlinux&quot;)
+@@ -2191,6 +2261,13 @@ sub setupBootDisk {
+ 		$root = $deviceMap{extlinux};
+ 	} elsif ($dmapper) {
+ 		$root = $deviceMap{dmapper};
++	} elsif ($arch =~ /ppc|ppc64/){
++		if ($lvm) {
++			$boot = $deviceMap{fat};
++			$root = $deviceMap{1};
++		} else {
++			$root = $deviceMap{2};
++		}
+ 	} elsif (($syszip) || ($haveSplit) || ($lvm)) {
+ 		$root = $deviceMap{2};
+ 		if ($haveluks) {
+@@ -2211,11 +2288,48 @@ sub setupBootDisk {
+ 		$this -&gt; cleanLoop ();
+ 		return undef;
+ 	}
++	if (($arch =~/ppc|ppc64/) &amp;&amp; ($lvm)) {
++		$status = qxx (&quot;mkdir -p $loopdir/vfat&quot;);
++		$boot = $deviceMap{fat};
++		if (! main::mount ($boot, $loopdir.&quot;/vfat&quot;)) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Couldn't mount image: $boot&quot;);
++			$kiwi -&gt; failed ();
++			$this -&gt; cleanLoop ();
++			return undef;
++		}
++	}
+ 	#==========================================
+ 	# Copy boot data on system image
+ 	#------------------------------------------
+ 	$status = qxx (&quot;cp -dR $tmpdir/boot $loopdir 2&gt;&amp;1&quot;);
+ 	$result = $? &gt;&gt; 8;
++	if ($arch =~ /ppc|ppc64/) {
++		#==========================================
++		# Copy yaboot.conf
++		#------------------------------------------
++		if (! $lvm) {
++			$status = qxx (&quot;cp $tmpdir/etc/yaboot.conf $loopdir/etc/ 2&gt;&amp;1&quot;);
++			$result = $? &gt;&gt; 8;
++		} else {
++			$status = qxx (
++				&quot;cp $tmpdir/etc/yaboot.conf $loopdir/vfat/yaboot.cnf 2&gt;&amp;1&quot;
++			);
++			$result = $? &gt;&gt; 8;
++			$status = qxx (&quot;cp $loopdir/boot/linux.vmx  $loopdir/vfat&quot;);
++			$status = qxx (&quot;cp $loopdir/boot/initrd.vmx $loopdir/vfat&quot;);
++			$result = $? &gt;&gt; 8;
++			$status = qxx (
++				&quot;cp $loopdir/lib/lilo/chrp/yaboot.chrp $loopdir/vfat/yaboot&quot;
++			);
++			$result = $? &gt;&gt; 8;
++			$status = qxx (&quot;cp -a $tmpdir/ppc $loopdir/vfat/&quot;);
++			$result = $? &gt;&gt; 8;
++			main::umount($boot);
++			$status = qxx (&quot;rm -rf $loopdir/vfat&quot;);
++			$result = $? &gt;&gt; 8;
++		}
++	}
+ 	if ($result != 0) {
+ 		$kiwi -&gt; failed ();
+ 		$kiwi -&gt; error (&quot;Couldn't copy boot data to system image: $status&quot;);
+@@ -3466,6 +3580,105 @@ sub setupBootLoaderConfiguration {
+ 		$kiwi -&gt; done();
+ 	}
+ 	#==========================================
++	# lilo
++	#------------------------------------------
++	if ($loader eq &quot;lilo&quot;) {
++		$cmdline =~ s/\n//g;
++		my $title_standard;
++		$title_standard = $this -&gt; makeLabel (&quot;$label&quot;);
++		#==========================================
++		# Standard boot
++		#------------------------------------------
++		qxx (&quot;mkdir -p $tmpdir/etc&quot;);
++		if (! open (FD,&quot;&gt;$tmpdir/etc/yaboot.conf&quot;)) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Couldn't create yaboot.conf: $!&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		#==========================================
++		# CD NON-LVM BOOT
++		#-------------------------------------------
++		if (($type =~ /^KIWI CD/) &amp;&amp; (!$lvm)) {
++			print FD &quot;default = $title_standard\n&quot;;
++			print FD &quot;image = /boot/linux\n&quot;;
++			print FD &quot;\t&quot;.&quot;label = $title_standard\n&quot;;
++			print FD &quot;\t&quot;.&quot;append = \&quot;$cmdline\&quot;\n&quot;;
++			print FD &quot;\t&quot;.&quot;initrd = /boot/initrd\n&quot;;
++			close FD;
++		} elsif (($type =~ /^KIWI CD/) &amp;&amp; ($lvm)) {
++			#==========================================
++			# CD LVM Boot
++			#-------------------------------------------
++			print FD &quot;default = $title_standard\n&quot;;
++			print FD &quot;image = /boot/linux\n&quot;;
++			print FD &quot;\t&quot;.&quot;label = $title_standard\n&quot;;
++			print FD &quot;\t&quot;.&quot;append = \&quot;$cmdline\&quot;\n&quot;;
++			print FD &quot;\t&quot;.&quot;initrd = /boot/initrd\n&quot;;
++			close FD;
++		} elsif (!($type =~ /^KIWI CD/) &amp;&amp; (!$lvm)) {
++			#==========================================
++			# RAW NON-LVM
++			#------------------------------------------
++			print FD &quot;partition = 2\n&quot;;
++			print FD &quot;timeout = 80\n&quot;;
++			print FD &quot;default = $title_standard\n&quot;;
++			print FD &quot;image = /boot/linux.vmx&quot;.&quot;\n&quot;;
++			print FD &quot;\t&quot;.&quot;label = $title_standard\n&quot;;
++			print FD &quot;\t&quot;.&quot;root = /dev/sda2\n&quot;;
++			print FD &quot;\t&quot;.&quot;append = \&quot;$cmdline\&quot;\n&quot;;
++			print FD &quot;\t&quot;.&quot;initrd = /boot/initrd.vmx\n&quot;;
++			close FD;
++		} elsif (!($type =~ /^KIWI CD/) &amp;&amp; ($lvm)) {
++			#==========================================
++			# RAW LVM
++			#-------------------------------------------
++			print FD &quot;default = $title_standard\n&quot;;
++			print FD &quot;image = linux.vmx&quot;.&quot;\n&quot;;
++			print FD &quot;\t&quot;.&quot;label = $title_standard\n&quot;;
++			print FD &quot;\t&quot;.&quot;append = \&quot;$cmdline\&quot;\n&quot;;
++			print FD &quot;\t&quot;.&quot;initrd = initrd.vmx\n&quot;;
++			close FD;
++		}
++		#==========================================
++		# Create bootinfo.txt (CD and LVM setups)
++		#-------------------------------------------
++		if ($type =~ /^KIWI CD/)  {
++			qxx (&quot;mkdir -p $tmpdir/ppc/&quot;);
++			if (! open (FD,&quot;&gt;$tmpdir/ppc/bootinfo.txt&quot;)) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;Couldn't create bootinfo.txt: $!&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			print FD &quot;&lt;chrp-boot&gt;\n&quot;;
++			print FD &quot;&lt;description&gt;$title_standard&lt;/description&gt;\n&quot;;
++			print FD &quot;&lt;os-name&gt;$title_standard&lt;/os-name&gt;\n&quot;;
++			print FD &quot;&lt;boot-script&gt;boot &device;:1,\\suseboot\\yaboot.ibm&quot;;
++			print FD &quot;&lt;/boot-script&gt;\n&quot;;
++			print FD &quot;&lt;/chrp-boot&gt;\n&quot;;
++			close FD;
++			qxx (&quot;mkdir $tmpdir/suseboot&quot;);
++			qxx (&quot;cp /lib/lilo/chrp/yaboot.chrp $tmpdir/suseboot/yaboot.ibm&quot;);
++			qxx (&quot;cp $tmpdir/etc/yaboot.conf $tmpdir/suseboot/yaboot.cnf&quot;);
++		} elsif (!($type =~ /^KIWI CD/) &amp;&amp; ($lvm)) {
++			qxx (&quot;mkdir -p $tmpdir/ppc/&quot;);
++			if (! open (FD,&quot;&gt;$tmpdir/ppc/bootinfo.txt&quot;)) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;Couldn't create bootinfo.txt: $!&quot;);
++				$kiwi -&gt; failed ();
++				return undef;
++			}
++			print FD &quot;&lt;chrp-boot&gt;\n&quot;;
++			print FD &quot;&lt;description&gt;$title_standard&lt;/description&gt;\n&quot;;
++			print FD &quot;&lt;os-name&gt;$title_standard&lt;/os-name&gt;\n&quot;;
++			print FD &quot;&lt;boot-script&gt;boot &device;:1,yaboot&lt;/boot-script&gt;\n&quot;;
++			print FD &quot;&lt;/chrp-boot&gt;\n&quot;;
++			close FD;
++		}
++		$kiwi -&gt; done ();
++	}
++	#==========================================
+ 	# more boot managers to come...
+ 	#------------------------------------------
+ 	# ...
+@@ -3484,6 +3697,7 @@ sub installBootLoader {
+ 	my $tmpdir   = $this-&gt;{tmpdir};
+ 	my $bootpart = $this-&gt;{bootpart};
+ 	my $chainload= $this-&gt;{chainload};
++	my $lvm	     = $this-&gt;{lvm};
+ 	my $result;
+ 	my $status;
+ 	#==========================================
+@@ -3779,15 +3993,47 @@ sub installBootLoader {
+ 		$kiwi -&gt; done();
+ 	}
+ 	#==========================================
++	# install lilo
++	#------------------------------------------
++	if ($loader eq &quot;lilo&quot;) {
++		#==========================================
++		# Activate devices
++		#------------------------------------------
++		if (! $this -&gt; bindDiskPartitions ($this-&gt;{loop})) {
++			$kiwi -&gt; failed ();
++			$this -&gt; cleanLoop ();
++			return undef;
++		}
++		#==========================================
++		# install yaboot on PReP partition
++		#------------------------------------------
++		if (!$lvm) {
++			my %deviceMap = %{$deviceMap};
++			my $device = $deviceMap{1};
++			$kiwi -&gt; info (&quot;Installing yaboot on device: $device&quot;);
++			$status = qxx (&quot;dd if=/lib/lilo/chrp/yaboot.chrp of=$device 2&gt;&amp;1&quot;);
++			$result = $? &gt;&gt; 8;
++			if ($result != 0) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;Couldn't install yaboot on $device: $status&quot;);
++				$kiwi -&gt; failed ();
++				$this -&gt; cleanLoop ();
++				return undef;
++			}
++		}
++	}
++	#==========================================
+ 	# more boot managers to come...
+ 	#------------------------------------------
+ 	# ...
+ 	#==========================================
+ 	# Write custom disk label ID to MBR
+ 	#------------------------------------------
+-	$kiwi -&gt; info (&quot;Saving disk label in MBR: $this-&gt;{mbrid}...&quot;);
+-	if (! $this -&gt; writeMBRDiskLabel ($diskname)) {
+-		return undef;
++	if ($loader ne &quot;lilo&quot;) {
++		$kiwi -&gt; info (&quot;Saving disk label in MBR: $this-&gt;{mbrid}...&quot;);
++		if (! $this -&gt; writeMBRDiskLabel ($diskname)) {
++			return undef;
++		}
+ 	}
+ 	$kiwi -&gt; done();
+ 	return $this;
+@@ -4243,6 +4489,39 @@ sub getStorageSize {
+ }
+ 
+ #==========================================
++# setPPCDeviceMap
++#------------------------------------------
++sub setPPCDeviceMap {
++	# ...
++	# set default devuce map for PowerSystems
++	# ---
++	my $this   = shift;
++	my $device = shift;
++	my $loader = $this-&gt;{bootloader};
++	my $dmapper= $this-&gt;{dmapper};
++	my $search = &quot;41&quot;;
++	my %result;
++	if (! defined $device) {
++		return undef;
++	}
++	for (my $i=1;$i&lt;=3;$i++) {
++		$result{$i} = $device.$i;
++	}
++	if ($loader eq &quot;lilo&quot;) {
++		for (my $i=1;$i&lt;=2;$i++) {
++			my $type = $this -&gt; getStorageID ($device.$i);
++			if ($type = $search) {
++				$result{prep} = $device.$i;
++			}
++			last;
++		}
++	} elsif ($dmapper) {
++		$result{dmapper} = $device.&quot;3&quot;;
++	}
++	return %result;
++}
++
++#==========================================
+ # setDefaultDeviceMap
+ #------------------------------------------
+ sub setDefaultDeviceMap {
+@@ -4338,6 +4617,7 @@ sub setLVMDeviceMap {
+ 	my $device = shift;
+ 	my $names  = shift;
+ 	my @names  = @{$names};
++	my $arch   = $this-&gt;{arch};
+ 	my $loader = $this-&gt;{bootloader};
+ 	my $dmapper= $this-&gt;{dmapper};
+ 	my %result;
+@@ -4353,10 +4633,10 @@ sub setLVMDeviceMap {
+ 	for (my $i=0;$i&lt;@names;$i++) {
+ 		$result{$i+1} = &quot;/dev/$group/&quot;.$names[$i];
+ 	}
+-	if ($loader =~ /(sys|ext)linux/) {
++	if (($arch =~ /ppc|ppc64/) || ($loader =~ /(sys|ext)linux/)) {
+ 		if ($device =~ /loop/) {
+ 			my $dmap = $device; $dmap =~ s/dev\///;
+-			if ($loader eq &quot;syslinux&quot;) {
++			if (($arch =~ /ppc|ppc64/) || ($loader =~ /syslinux/)) {
+ 				$result{fat} = &quot;/dev/mapper&quot;.$dmap.&quot;p1&quot;;
+ 			} else {
+ 				$result{extlinux} = &quot;/dev/mapper&quot;.$dmap.&quot;p1&quot;;
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 82043ab..b8d6a06 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -67,6 +67,14 @@ fi
+ if dhcpcd -p 2&gt;&amp;1 | grep -q 'Usage';then
+ 	export DHCPCD_HAVE_PERSIST=0
+ fi
++#======================================
++# Exports (arch specific)
++#--------------------------------------
++arch=`uname -m`
++if [ &quot;$arch&quot; = &quot;ppc64&quot; ];then
++	loader=lilo
++	export ELOG_BOOTSHELL=/dev/hvc0
++fi
+ 
+ #======================================
+ # Dialog
+@@ -2004,7 +2012,6 @@ function setupBootLoaderLilo {
+ 	echo &quot;boot=$rdev&quot;                                        &gt;  $conf
+ 	echo &quot;activate&quot;                                          &gt;&gt; $conf
+ 	echo &quot;timeout=`expr $KIWI_BOOT_TIMEOUT \* 10`&quot;           &gt;&gt; $conf
+-	echo &quot;default=kiwi$count&quot;                                &gt;&gt; $conf
+ 	local count=1
+ 	IFS=&quot;,&quot; ; for i in $KERNEL_LIST;do
+ 		if test ! -z &quot;$i&quot;;then
+@@ -2032,27 +2039,34 @@ function setupBootLoaderLilo {
+ 			#======================================
+ 			# create standard entry
+ 			#--------------------------------------
+-			echo &quot;label=\&quot;$title\&quot;&quot;                           &gt;&gt; $conf
+ 			if xenServer $kname $mountPrefix;then
+ 				systemException \
+ 					&quot;*** lilo: Xen dom0 boot not implemented ***&quot; \
+ 				&quot;reboot&quot;
+ 			else
++				echo &quot;default=\&quot;$title\&quot;&quot;		      &gt;&gt; $conf
+ 				echo &quot;image=/boot/$kernel&quot;                    &gt;&gt; $conf
++				echo &quot;label=\&quot;$title\&quot;&quot;                       &gt;&gt; $conf
+ 				echo &quot;initrd=/boot/$initrd&quot;                   &gt;&gt; $conf
+ 				echo -n &quot;append=\&quot;quiet sysrq=1 panic=9&quot;      &gt;&gt; $conf
+ 				echo -n &quot; root=$diskByID&quot;                     &gt;&gt; $conf
+ 				if [ ! -z &quot;$imageDiskDevice&quot; ];then
+ 					echo -n &quot; disk=$(getDiskID $imageDiskDevice)&quot; &gt;&gt; $conf
+ 				fi
++				if [ ! &quot;$arch&quot; = &quot;ppc64&quot; ];then
+ 				echo -n &quot; $console vga=$fbmode splash=silent&quot; &gt;&gt; $conf
++				fi
+ 				if [ ! -z &quot;$swap&quot; ];then                     
+ 					echo -n &quot; resume=$swapByID&quot;               &gt;&gt; $conf
+ 				fi
+ 				if [ -e /dev/xvc0 ];then
+ 					echo -n &quot; console=xvc console=tty&quot;        &gt;&gt; $conf
+ 				elif [ -e /dev/hvc0 ];then
+-					echo -n &quot; console=hvc console=tty&quot;        &gt;&gt; $conf
++					if [ &quot;$arch&quot; = &quot;ppc64&quot; ];then
++					echo -n &quot; console=hvc0&quot;        &gt;&gt; $conf
++					else
++					echo -n &quot; console=hvc0 console=tty&quot;        &gt;&gt; $conf
++					fi
+ 				fi
+ 				echo -n &quot; $KIWI_INITRD_PARAMS&quot;                &gt;&gt; $conf
+ 				echo -n &quot; $KIWI_KERNEL_OPTIONS&quot;               &gt;&gt; $conf
+@@ -2065,27 +2079,33 @@ function setupBootLoaderLilo {
+ 			# create failsafe entry
+ 			#--------------------------------------
+ 			title=$(makeLabel &quot;Failsafe -- $title&quot;)
+-			echo &quot;label=\&quot;$title\&quot;&quot;                           &gt;&gt; $conf
+ 			if xenServer $kname $mountPrefix;then
+ 				systemException \
+ 					&quot;*** lilo: Xen dom0 boot not implemented ***&quot; \
+ 				&quot;reboot&quot;
+ 			else
+ 				echo &quot;image=/boot/$kernel&quot;                    &gt;&gt; $conf
++				echo &quot;label=\&quot;$title\&quot;&quot;                       &gt;&gt; $conf
+ 				echo &quot;initrd=/boot/$initrd&quot;                   &gt;&gt; $conf
+ 				echo -n &quot;append=\&quot;quiet sysrq=1 panic=9&quot;      &gt;&gt; $conf
+ 				echo -n &quot; root=$diskByID&quot;                     &gt;&gt; $conf
+ 				if [ ! -z &quot;$imageDiskDevice&quot; ];then
+ 					echo -n &quot; disk=$(getDiskID $imageDiskDevice)&quot; &gt;&gt; $conf
+ 				fi
++				if [ ! &quot;$arch&quot; = &quot;ppc64&quot; ];then
+ 				echo -n &quot; $console vga=$fbmode splash=silent&quot; &gt;&gt; $conf
++				fi
+ 				if [ ! -z &quot;$swap&quot; ];then
+ 					echo -n &quot; resume=$swapByID&quot;               &gt;&gt; $conf
+ 				fi
+ 				if [ -e /dev/xvc0 ];then
+ 					echo -n &quot; console=xvc console=tty&quot;        &gt;&gt; $conf
+ 				elif [ -e /dev/hvc0 ];then
+-					echo -n &quot; console=hvc console=tty&quot;        &gt;&gt; $conf
++					if [ &quot;$arch&quot; = &quot;ppc64&quot; ];then
++					echo -n &quot; console=hvc0&quot;        &gt;&gt; $conf
++					else
++					echo -n &quot; console=hvc0 console=tty&quot;        &gt;&gt; $conf
++					fi
+ 				fi
+ 				echo -n &quot; $KIWI_INITRD_PARAMS&quot;                &gt;&gt; $conf
+ 				echo -n &quot; $KIWI_KERNEL_OPTIONS&quot;               &gt;&gt; $conf
+@@ -3100,6 +3120,31 @@ function CDEject {
+ 	eject $cddev
+ }
+ #======================================
++# searchOFBootDevice
++#--------------------------------------
++function searchOFBootDevice {
++	# /.../
++	# search for the device with the OF PROM id
++	# this is required for the ppc boot architecture
++	# as we don't have a BIOS and a MBR here
++	# ----
++	IFS=$IFS_ORIG
++	local h=/usr/sbin/hwinfo
++	local c=&quot;Device File:|PROM id&quot;
++	local ddevs=`$h --disk|grep -E &quot;$c&quot;|sed -e&quot;s@(.*)@@&quot;|cut -f2 -d:|tr -d &quot; &quot;`
++	#======================================
++	# Store device with PROM id 
++	#--------------------------------------
++	for curd in $ddevs;do
++		if [ $curd = &quot;/dev/sda&quot; ];then
++			export biosBootDevice=$curd
++			return 0
++		fi
++	done
++	export biosBootDevice=&quot;Can't find OF boot device&quot;
++	return 1
++}
++#======================================
+ # searchBusIDBootDevice
+ #--------------------------------------
+ function searchBusIDBootDevice {
+@@ -4424,8 +4469,10 @@ function mountSystem {
+ 	#======================================
+ 	# setup boot partition
+ 	#--------------------------------------
+-	if [ $retval = 0 ] &amp;&amp; [ -z &quot;$RESTORE&quot; ];then
+-		setupBootPartition
++	if [ ! &quot;$arch&quot; = &quot;ppc64&quot; ];then
++		if [ $retval = 0 ] &amp;&amp; [ -z &quot;$RESTORE&quot; ];then
++			setupBootPartition
++		fi
+ 	fi
+ 	#======================================
+ 	# reset mount counter
+diff --git a/modules/KIWISchema.rnc b/modules/KIWISchema.rnc
+index e5bb43a..7117c64 100644
+--- a/modules/KIWISchema.rnc
++++ b/modules/KIWISchema.rnc
+@@ -1396,7 +1396,7 @@ div {
+ 		## Specifies the bootloader used for booting the image.&quot;
+ 		## At the moment grub, zipl and sys|extlinux are supported
+ 		attribute bootloader {
+-			&quot;extlinux&quot; | &quot;grub&quot; | &quot;syslinux&quot; | &quot;zipl&quot;
++			&quot;extlinux&quot; | &quot;grub&quot; | &quot;syslinux&quot; | &quot;zipl&quot; | &quot;lilo&quot;
+ 		}
+ 	k.type.bootprofile.attribute =
+ 		## Specifies the boot profile defined in the boot image
+diff --git a/modules/KIWISchema.rng b/modules/KIWISchema.rng
+index a886ed6..a039921 100644
+--- a/modules/KIWISchema.rng
++++ b/modules/KIWISchema.rng
+@@ -1874,6 +1874,7 @@ At the moment grub, zipl and sys|extlinux are supported&lt;/a:documentation&gt;
+           &lt;value&gt;grub&lt;/value&gt;
+           &lt;value&gt;syslinux&lt;/value&gt;
+           &lt;value&gt;zipl&lt;/value&gt;
++          &lt;value&gt;lilo&lt;/value&gt;
+         &lt;/choice&gt;
+       &lt;/attribute&gt;
+     &lt;/define&gt;
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index 7258cc2..47d4eb0 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -183,7 +183,7 @@ Authors:
+     Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+ %endif
+ 
+-%ifarch %ix86 x86_64 s390 s390x
++%ifarch %ix86 x86_64 ppc ppc64 s390 s390x
+ 
+ %package -n kiwi-desc-vmxboot
+ License:        GPLv2+
+@@ -273,7 +273,7 @@ Authors:
+     Marcus Schaefer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+ %endif
+ 
+-%ifarch %ix86 x86_64 s390 s390x
++%ifarch %ix86 x86_64 ppc ppc64 s390 s390x
+ 
+ %package -n kiwi-templates
+ License:        GPL v2.0 or later
+@@ -455,7 +455,7 @@ rm -rf $RPM_BUILD_ROOT
+ %{_datadir}/kiwi/image/isoboot/rhel*
+ %endif
+ 
+-%ifarch %ix86 x86_64 s390 s390x
++%ifarch %ix86 x86_64 ppc ppc64 s390 s390x
+ 
+ %files -n kiwi-desc-vmxboot
+ %defattr(-, root, root)
+@@ -482,10 +482,10 @@ rm -rf $RPM_BUILD_ROOT
+ %{_datadir}/kiwi/image/oemboot/suse*
+ %endif
+ 
+-%ifarch %ix86 x86_64
+ 
+ %files -n kiwi-templates
+ %defattr(-, root, root)
++%ifarch %ix86 x86_64
+ %{_datadir}/kiwi/image/suse-11.4-JeOS
+ %{_datadir}/kiwi/image/suse-11.3-JeOS
+ %{_datadir}/kiwi/image/suse-11.2-JeOS
+@@ -497,5 +497,8 @@ rm -rf $RPM_BUILD_ROOT
+ %ifarch s390 s390x
+ %{_datadir}/kiwi/image/suse-SLE11-JeOS
+ %endif
++%ifarch ppc ppc64
++%{_datadir}/kiwi/image/suse-SLE11-JeOS
++%endif
+ 
+ %changelog
+diff --git a/system/boot/ix86/oemboot/README b/system/boot/ppc/oemboot/README
+similarity index 100%
+copy from system/boot/ix86/oemboot/README
+copy to system/boot/ppc/oemboot/README
+diff --git a/system/boot/ix86/isoboot/suse-11.1/config.sh b/system/boot/ppc/oemboot/suse-SLES11/config.sh
+similarity index 100%
+copy from system/boot/ix86/isoboot/suse-11.1/config.sh
+copy to system/boot/ppc/oemboot/suse-SLES11/config.sh
+diff --git a/system/boot/ix86/oemboot/suse-SLES11/config.xml b/system/boot/ppc/oemboot/suse-SLES11/config.xml
+similarity index 95%
+copy from system/boot/ix86/oemboot/suse-SLES11/config.xml
+copy to system/boot/ppc/oemboot/suse-SLES11/config.xml
+index 81af766..96b698a 100644
+--- a/system/boot/ix86/oemboot/suse-SLES11/config.xml
++++ b/system/boot/ppc/oemboot/suse-SLES11/config.xml
+@@ -7,7 +7,7 @@
+ 		&lt;specification&gt;boot/initrd image used on OEM VMX disk&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+-		&lt;type image=&quot;cpio&quot; bootprofile=&quot;default&quot; bootkernel=&quot;std&quot;/&gt;
++		&lt;type image=&quot;cpio&quot; bootprofile=&quot;default&quot; bootkernel=&quot;ppc64&quot;/&gt;
+ 		&lt;version&gt;2.7.1&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+@@ -20,6 +20,7 @@
+ 		&lt;profile name=&quot;pae&quot; description=&quot;KERNEL: pae kernel&quot;/&gt;
+ 		&lt;profile name=&quot;ec2&quot; description=&quot;KERNEL: Ec2 kernel&quot;/&gt;
+ 		&lt;profile name=&quot;rt&quot; description=&quot;KERNEL: RealTime kernel&quot;/&gt;
++		&lt;profile name=&quot;ppc64&quot; description=&quot;KERNEL: ppc64 kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
+ 		&lt;file name=&quot;crypto/*&quot;/&gt;
+@@ -28,7 +29,6 @@
+ 		&lt;file name=&quot;drivers/acpi/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/usb/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/virtio/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/block/cciss.ko&quot;/&gt;
+ 		&lt;file name=&quot;drivers/block/virtio_blk.ko&quot;/&gt;
+ 		&lt;file name=&quot;drivers/char/hw_random/virtio-rng.ko&quot;/&gt;
+ 		&lt;file name=&quot;drivers/net/*&quot;/&gt;
+@@ -95,6 +95,10 @@
+ 		&lt;package name=&quot;kernel-rt&quot;/&gt;
+ 		&lt;package name=&quot;kernel-rt-base&quot;/&gt;
+ 	&lt;/packages&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;ppc64&quot;&gt;
++		&lt;package name=&quot;kernel-ppc64&quot;/&gt;
++		&lt;package name=&quot;kernel-ppc64-base&quot;/&gt;
++	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;curl&quot;/&gt;
+ 		&lt;package name=&quot;atftp&quot;/&gt;
+@@ -116,7 +120,7 @@
+ 		&lt;package name=&quot;sysconfig&quot;/&gt;
+ 		&lt;package name=&quot;sysfsutils&quot;/&gt;
+ 		&lt;package name=&quot;util-linux&quot;/&gt;
+-		&lt;package name=&quot;grub&quot;/&gt;
++		&lt;package name=&quot;lilo&quot;/&gt;
+ 		&lt;package name=&quot;fribidi&quot;/&gt;
+ 		&lt;package name=&quot;make&quot;/&gt;
+ 		&lt;package name=&quot;bootsplash&quot;/&gt;
+@@ -131,8 +135,6 @@
+ 		&lt;package name=&quot;gettext-runtime&quot;/&gt;
+ 		&lt;package name=&quot;kexec-tools&quot;/&gt;
+ 		&lt;package name=&quot;kpartx&quot;/&gt;
+-		&lt;package name=&quot;syslinux&quot;/&gt;
+-		&lt;package name=&quot;dosfstools&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+@@ -143,6 +145,7 @@
+ 		&lt;package name=&quot;openssl-certs&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;delete&quot;&gt;
++		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-small&quot;/&gt;
+ 		&lt;package name=&quot;cracklib-dict-full&quot;/&gt;
+ 		&lt;package name=&quot;PolicyKit&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-SLED10/images.sh b/system/boot/ppc/oemboot/suse-SLES11/images.sh
+similarity index 97%
+copy from system/boot/ix86/oemboot/suse-SLED10/images.sh
+copy to system/boot/ppc/oemboot/suse-SLES11/images.sh
+index e86225a..14867d0 100755
+--- a/system/boot/ix86/oemboot/suse-SLED10/images.sh
++++ b/system/boot/ppc/oemboot/suse-SLES11/images.sh
+@@ -17,7 +17,7 @@ suseStripKernel
+ #==========================================
+ # setup gfxboot
+ #------------------------------------------
+-suseGFXBoot NLD grub
++suseGFXBoot SLES lilo
+ 
+ #==========================================
+ # remove unneeded packages
+diff --git a/system/boot/ix86/oemboot/suse-11.1/root/dump b/system/boot/ppc/oemboot/suse-SLES11/root/dump
+similarity index 100%
+copy from system/boot/ix86/oemboot/suse-11.1/root/dump
+copy to system/boot/ppc/oemboot/suse-SLES11/root/dump
+diff --git a/system/boot/ix86/isoboot/rhel-05.4/root/include b/system/boot/ppc/oemboot/suse-SLES11/root/include
+similarity index 100%
+copy from system/boot/ix86/isoboot/rhel-05.4/root/include
+copy to system/boot/ppc/oemboot/suse-SLES11/root/include
+diff --git a/system/boot/ix86/isoboot/suse-11.1/root/linuxrc b/system/boot/ppc/oemboot/suse-SLES11/root/linuxrc
+similarity index 100%
+copy from system/boot/ix86/isoboot/suse-11.1/root/linuxrc
+copy to system/boot/ppc/oemboot/suse-SLES11/root/linuxrc
+diff --git a/system/boot/ix86/isoboot/suse-11.1/root/preinit b/system/boot/ppc/oemboot/suse-SLES11/root/preinit
+similarity index 100%
+copy from system/boot/ix86/isoboot/suse-11.1/root/preinit
+copy to system/boot/ppc/oemboot/suse-SLES11/root/preinit
+diff --git a/system/boot/ix86/oemboot/suse-11.1/root/repart b/system/boot/ppc/oemboot/suse-SLES11/root/repart
+similarity index 100%
+copy from system/boot/ix86/oemboot/suse-11.1/root/repart
+copy to system/boot/ppc/oemboot/suse-SLES11/root/repart
+diff --git a/system/boot/ix86/oemboot/suse-11.1/root/usr/share/locale b/system/boot/ppc/oemboot/suse-SLES11/root/usr/share/locale
+similarity index 100%
+copy from system/boot/ix86/oemboot/suse-11.1/root/usr/share/locale
+copy to system/boot/ppc/oemboot/suse-SLES11/root/usr/share/locale
+diff --git a/system/boot/s390/oemboot/suse-dump b/system/boot/ppc/oemboot/suse-dump
+similarity index 100%
+copy from system/boot/s390/oemboot/suse-dump
+copy to system/boot/ppc/oemboot/suse-dump
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ppc/oemboot/suse-linuxrc
+similarity index 96%
+copy from system/boot/ix86/oemboot/suse-linuxrc
+copy to system/boot/ppc/oemboot/suse-linuxrc
+index 0577c91..a48f59d 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ppc/oemboot/suse-linuxrc
+@@ -68,8 +68,8 @@ function setupInitialDeviceNames {
+ 	#======================================
+ 	# Set default filesystem device names
+ 	#--------------------------------------
+-	export imageRWDevice=$(ddn $imageDiskDevice 2)
+-	export imageRODevice=$(ddn $imageDiskDevice 1)
++	export imageRWDevice=$(ddn $imageDiskDevice 3)
++	export imageRODevice=$(ddn $imageDiskDevice 2)
+ 	export imageIOWRDevice=$imageRWDevice
+ 	#======================================
+ 	# Check for LVM or standard boot
+@@ -85,12 +85,9 @@ function setupInitialDeviceNames {
+ 			export imageRootDevice=/dev/$VGROUP/LVRoot
+ 		fi
+ 		export imageRWDevice=/dev/$VGROUP/LVRoot
+-		if [ ! -z &quot;$kiwi_ramonly&quot; ];then
+-			export imageRWDevice=/dev/ram1
+-		fi
+ 		export imageRODevice=/dev/$VGROUP/LVComp
+ 		export imageIOWRDevice=$imageRWDevice
+-		export imageBootDevice=$(ddn $imageDiskDevice 1)
++		export imageBootDevice=$(ddn $imageDiskDevice 2)
+ 		if [ ! -z &quot;$KIWI_RECOVERY&quot; ];then
+ 			export imageRecoveryDevice=$(ddn $imageDiskDevice $KIWI_RECOVERY)
+ 		fi
+@@ -103,13 +100,23 @@ function setupInitialDeviceNames {
+ 			export imageRecoveryDevice=$(ddn $imageDiskDevice $KIWI_RECOVERY)
+ 			export imageRootDevice=$(ddn $imageDiskDevice 1)
+ 		else
+-			for i in 1 2;do
++			if [ &quot;$arch&quot; = &quot;ppc64&quot; ];then
++			for i in 2 3;do
+ 				export imageRootDevice=$(ddn $imageDiskDevice $i)
+ 				probeFileSystem $imageRootDevice
+ 				if [ ! &quot;$FSTYPE&quot; = &quot;unknown&quot; ];then
+ 					break
+ 				fi
+ 			done
++			else
++                        for i in 1 2;do
++                                export imageRootDevice=$(ddn $imageDiskDevice $i)
++                                probeFileSystem $imageRootDevice
++                                if [ ! &quot;$FSTYPE&quot; = &quot;unknown&quot; ];then
++                                        break
++                                fi
++                        done
++			fi
+ 		fi
+ 	fi
+ 	#======================================
+@@ -211,7 +218,7 @@ fi
+ if [ -z &quot;$pxe&quot; ];then
+ 	Echo &quot;Searching for boot device...&quot;
+ 	if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+-		if ! searchBIOSBootDevice;then
++		if ! searchOFBootDevice;then
+ 			systemException &quot;$biosBootDevice&quot; &quot;reboot&quot;
+ 		fi
+ 		export imageDiskDevice=$biosBootDevice
+@@ -566,7 +573,9 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	setupDefaultFstab /config
+ 	updateRootDeviceFstab /config $imageRootDevice
+ 	if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
++		if [! &quot;$arch&quot; = &quot;ppc&quot; ];then
+ 		updateLVMBootDeviceFstab /config $imageBootDevice
++		fi
+ 	elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+ 		updateClicBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
+@@ -594,7 +603,7 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 		OEM_RECOVERY=$imageRootDevice
+ 	fi
+ 	setupBootLoader \
+-		/mnt /config $(($bootid - 1)) $imageRootDevice \
++		/mnt /config 1 $imageRootDevice \
+ 		&quot;$OEM_BOOT_TITLE&quot; $imageSwapDevice
+ 	setupKernelModules /config
+ fi
+diff --git a/system/boot/ix86/oemboot/suse-preinit b/system/boot/ppc/oemboot/suse-preinit
+similarity index 100%
+copy from system/boot/ix86/oemboot/suse-preinit
+copy to system/boot/ppc/oemboot/suse-preinit
+diff --git a/system/boot/ix86/oemboot/suse-repart b/system/boot/ppc/oemboot/suse-repart
+similarity index 95%
+copy from system/boot/ix86/oemboot/suse-repart
+copy to system/boot/ppc/oemboot/suse-repart
+index 299d906..f9ce498 100755
+--- a/system/boot/ix86/oemboot/suse-repart
++++ b/system/boot/ppc/oemboot/suse-repart
+@@ -67,13 +67,15 @@ function OEMRepartStandard {
+ 	#======================================
+ 	# check for boot partition
+ 	#--------------------------------------
+-	createBootDeviceData 2
++	createBootDeviceData 1 
+ 	#======================================
+ 	# setup initial boot device ID
+ 	#--------------------------------------
+ 	export bootid=1
+ 	if [ &quot;$haveBootPartition&quot; = &quot;yes&quot; ];then
++		if [ ! &quot;$loader&quot; = &quot;lilo&quot; ];then
+ 		bootid=2
++		fi
+ 	fi
+ 	#======================================
+ 	# calculate partition sizes
+@@ -114,8 +116,8 @@ function OEMRepartStandard {
+ 		# clean/backup boot partition
+ 		#--------------------------------------
+ 		if [ &quot;$haveBootPartition&quot; = &quot;yes&quot; ];then
+-			createPartitionerInput \
+-				d 2
++                        createPartitionerInput \
++                                d 2
+ 		fi
+ 		#======================================
+ 		# count partitions to be created
+@@ -129,15 +131,30 @@ function OEMRepartStandard {
+ 		if [ ! -z &quot;$bootXMBytes&quot; ];then
+ 			newparts=$((newparts + 1))
+ 		fi
++
++		#======================================
++		# repart boot partition
++		#--------------------------------------
++		partsize=+&quot;$diskP1MByte&quot;M
++		if [ -z &quot;$OEM_SYSTEMSIZE&quot; ] &amp;&amp; [ $newparts -eq 0 ];then
++			partsize=.
++		fi
++		createPartitionerInput \
++			d n p $pID . $partsize t 1 41
++		
++		bootParam=$pID
+ 		#======================================
+ 		# repart root partition
+ 		#--------------------------------------
+-		partsize=+&quot;$disk1MBytes&quot;M
++		pID=$((pID + 1))
++		partsize=+&quot;$diskRMBytes&quot;M
+ 		if [ -z &quot;$OEM_SYSTEMSIZE&quot; ] &amp;&amp; [ $newparts -eq 0 ];then
+ 			partsize=.
+ 		fi
+ 		createPartitionerInput \
+-			d n p $pID . $partsize
++			n p $pID . $partsize
++		rootParam=$pID
++
+ 		#======================================
+ 		# add swap partition
+ 		#--------------------------------------
+@@ -148,7 +165,7 @@ function OEMRepartStandard {
+ 				partsize=.
+ 			fi
+ 			createPartitionerInput \
+-				n p $pID . $partsize t 2 82
++				n p $pID . $partsize t 3 82
+ 			newparts=$((newparts - 1))
+ 			swapParam=$pID
+ 		fi
+@@ -164,21 +181,10 @@ function OEMRepartStandard {
+ 			recoParam=$pID
+ 		fi
+ 		#======================================
+-		# add boot partition
+-		#--------------------------------------
+-		if [ ! -z &quot;$bootXMBytes&quot; ];then
+-			pID=$((pID + 1))
+-			partsize=+&quot;$bootXMBytes&quot;M
+-			createPartitionerInput \
+-				n p $pID . $partsize t $pID $bootpartID
+-			newparts=$((newparts - 1))
+-			bootParam=$pID
+-		fi
+-		#======================================
+ 		# setup new device names
+ 		#--------------------------------------
+ 		setupDeviceNames \
+-			1 $swapParam $recoParam $bootParam no
++			$rootParam $swapParam $recoParam $bootParam no
+ 		callPartitioner $input
+ 	fi
+ 	#======================================
+@@ -330,17 +336,13 @@ function OEMRepartLVM {
+ 	# repartition disk if LVM partition plus boot partition
+ 	# is used. Initial partition table layout is:
+ 	# =====================================
+-	# p1: ( boot )
++	# p1: ( boot ) 
+ 	# p2: ( LVM  )  +luks
+ 	# -------------------------------------
+ 	#======================================
+-	# check for boot partition
+-	#--------------------------------------
+-	createBootDeviceData 1
+-	#======================================
+ 	# setup initial boot device ID
+ 	#--------------------------------------
+-	export bootid=1
++	export bootid=2
+ 	#======================================
+ 	# calculate partition sizes
+ 	#--------------------------------------
+@@ -350,7 +352,7 @@ function OEMRepartLVM {
+ 	local disk1MBytes=$(($(partitionSize $(ddn $imageDiskDevice 1)) / 1024))
+ 	local disk2MBytes=$(($(partitionSize $(ddn $imageDiskDevice 2)) / 1024))
+ 	if [ ! -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+-		disk2MBytes=$OEM_SYSTEMSIZE
++		disk1MBytes=$OEM_SYSTEMSIZE
+ 	fi
+ 	local diskRMBytes=$((
+ 		recoMByte + disk1MBytes + disk2MBytes + swapsize + VOverHeadMB
+@@ -368,7 +370,7 @@ function OEMRepartLVM {
+ 	#--------------------------------------
+ 	if [ -z &quot;$DONT_PARTITION&quot; ];then
+ 		pID=2
+-		bootParam=1
++		bootParam=2
+ 		recoParam=no
+ 		swapParam=no
+ 		#======================================
+@@ -391,8 +393,9 @@ function OEMRepartLVM {
+ 		#--------------------------------------
+ 		if [ ! -z &quot;$OEM_RECOVERY&quot; ];then
+ 			createPartitionerInput \
+-				n p $pID . . t $pID $recoID
++				n p $pID . . t $pID $recoID	
+ 			recoParam=$pID
++			pID=$((pID + 1))
+ 		fi
+ 		#======================================
+ 		# setup new device names
+@@ -418,13 +421,13 @@ function OEMRepartLVM {
+ 			swapParam=yes
+ 		fi
+ 		#======================================
+-		# Extend LVRoot...
++		# Extend LVRoot... 
+ 		#--------------------------------------
+ 		if [ -z &quot;$OEM_SYSTEMSIZE&quot; ];then
+ 			lvextend -l +100%FREE /dev/$VGROUP/LVRoot
+ 		else
+ 			lvextend --size $OEM_SYSTEMSIZE&quot;M&quot; /dev/$VGROUP/LVRoot
+-		fi
++ 		fi
+ 		#======================================
+ 		# setup new device names
+ 		#--------------------------------------
+@@ -730,12 +733,22 @@ function createBootDeviceData {
+ 		if [ &quot;$loader&quot; = &quot;syslinux&quot; ];then
+ 			bootpartID=6
+ 		fi
++		if [ &quot;$loader&quot; = &quot;lilo&quot; ];then
++			bootpartID=41
++			#FIXME: Do we need bootXMBytes here?
++			export bootXMBytes=1
++			export prepsize=$(partitionSize $(ddn $imageDiskDevice 1))
++		fi 
+ 		#======================================
+ 		# Store contents in RAM
+ 		#--------------------------------------
++		if [ ! &quot;$loader&quot; = &quot;lilo&quot; ];then
+ 		mount $(ddn $imageDiskDevice $bootPart) /mnt
+ 		tar -czf /boot.tgz -C /mnt .
+ 		umount /mnt
++		else
++		dd if=$(ddn $imageDiskDevice $bootPart) of=/boot.raw
++		fi
+ 	fi
+ 	#====================================== 
+ 	# check for overlay type
+@@ -756,6 +769,8 @@ function createBootDeviceFilesystem {
+ 	fi
+ 	if [ &quot;$loader&quot; = &quot;syslinux&quot; ];then
+ 		mkdosfs $imageBootDevice &gt;/dev/null 2&gt;&amp;1
++	elif [ &quot;$arch&quot; = &quot;ppc64&quot; ];then
++		dd if=/boot.raw of=$imageBootDevice
+ 	else
+ 		mke2fs -q $imageBootDevice &gt;/dev/null 2&gt;&amp;1
+ 	fi
+diff --git a/system/boot/s390/vmxboot/README b/system/boot/ppc/vmxboot/README
+similarity index 100%
+copy from system/boot/s390/vmxboot/README
+copy to system/boot/ppc/vmxboot/README
+diff --git a/system/boot/ix86/isoboot/suse-11.1/config.sh b/system/boot/ppc/vmxboot/suse-SLES11/config.sh
+similarity index 100%
+copy from system/boot/ix86/isoboot/suse-11.1/config.sh
+copy to system/boot/ppc/vmxboot/suse-SLES11/config.sh
+diff --git a/system/boot/s390/vmxboot/suse-SLES11/config.xml b/system/boot/ppc/vmxboot/suse-SLES11/config.xml
+similarity index 92%
+copy from system/boot/s390/vmxboot/suse-SLES11/config.xml
+copy to system/boot/ppc/vmxboot/suse-SLES11/config.xml
+index 7ca72b7..6d8359f 100644
+--- a/system/boot/s390/vmxboot/suse-SLES11/config.xml
++++ b/system/boot/ppc/vmxboot/suse-SLES11/config.xml
+@@ -7,18 +7,17 @@
+ 		&lt;specification&gt;boot/initrd image for virtual machines&lt;/specification&gt;
+ 	&lt;/description&gt;
+ 	&lt;preferences&gt;
+-		&lt;type image=&quot;cpio&quot; bootprofile=&quot;default&quot; bootkernel=&quot;std&quot;/&gt;
++		&lt;type image=&quot;cpio&quot; bootprofile=&quot;default&quot; bootkernel=&quot;ppc64&quot;/&gt;
+ 		&lt;version&gt;2.7.1&lt;/version&gt;
+ 		&lt;packagemanager&gt;zypper&lt;/packagemanager&gt;
+ 		&lt;rpm-check-signatures&gt;false&lt;/rpm-check-signatures&gt;
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+ 		&lt;profile name=&quot;default&quot; description=&quot;Boot with default setup&quot;/&gt;
+-		&lt;profile name=&quot;std&quot; description=&quot;KERNEL: Default&quot;/&gt;
++		&lt;profile name=&quot;ppc64&quot; description=&quot;KERNEL: ppc64 kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
+ 		&lt;file name=&quot;crypto/*&quot;/&gt;
+-		&lt;file name=&quot;drivers/s390/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/virtio/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/char/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/net/*&quot;/&gt;
+@@ -49,10 +48,14 @@
+ 	&lt;repository type=&quot;rpm-dir&quot; status=&quot;fixed&quot;&gt;
+ 		&lt;source path=&quot;/usr/share/kiwi/repo/suse-repo/suse-sle11-repo&quot;/&gt;
+ 	&lt;/repository&gt;
+-	&lt;packages type=&quot;image&quot; profiles=&quot;std&quot;&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;default&quot;&gt;
+ 		&lt;package name=&quot;kernel-default&quot;/&gt;
+ 		&lt;package name=&quot;kernel-default-base&quot;/&gt;
+ 	&lt;/packages&gt;
++	&lt;packages type=&quot;image&quot; profiles=&quot;ppc64&quot;&gt;
++		&lt;package name=&quot;kernel-ppc64&quot;/&gt;
++		&lt;package name=&quot;kernel-ppc64-base&quot;/&gt;
++	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;package name=&quot;psmisc&quot;/&gt;
+ 		&lt;package name=&quot;bind-libs&quot;/&gt;
+@@ -68,7 +71,6 @@
+ 		&lt;package name=&quot;sysconfig&quot;/&gt;
+ 		&lt;package name=&quot;sysfsutils&quot;/&gt;
+ 		&lt;package name=&quot;util-linux&quot;/&gt;
+-		&lt;package name=&quot;s390-tools&quot;/&gt;
+ 		&lt;package name=&quot;fribidi&quot;/&gt;
+ 		&lt;package name=&quot;make&quot;/&gt;
+ 		&lt;package name=&quot;tar&quot;/&gt;
+diff --git a/system/boot/s390/vmxboot/suse-SLES11/images.sh b/system/boot/ppc/vmxboot/suse-SLES11/images.sh
+similarity index 97%
+copy from system/boot/s390/vmxboot/suse-SLES11/images.sh
+copy to system/boot/ppc/vmxboot/suse-SLES11/images.sh
+index e9b9382..8306eff 100755
+--- a/system/boot/s390/vmxboot/suse-SLES11/images.sh
++++ b/system/boot/ppc/vmxboot/suse-SLES11/images.sh
+@@ -12,7 +12,7 @@ suseStripKernel
+ #==========================================
+ # setup gfxboot
+ #------------------------------------------
+-suseGFXBoot SLES grub
++suseGFXBoot SLES lilo 
+ 
+ #==========================================
+ # remove unneeded packages
+diff --git a/system/boot/ix86/isoboot/rhel-05.4/root/include b/system/boot/ppc/vmxboot/suse-SLES11/root/include
+similarity index 100%
+copy from system/boot/ix86/isoboot/rhel-05.4/root/include
+copy to system/boot/ppc/vmxboot/suse-SLES11/root/include
+diff --git a/system/boot/ix86/isoboot/suse-11.1/root/linuxrc b/system/boot/ppc/vmxboot/suse-SLES11/root/linuxrc
+similarity index 100%
+copy from system/boot/ix86/isoboot/suse-11.1/root/linuxrc
+copy to system/boot/ppc/vmxboot/suse-SLES11/root/linuxrc
+diff --git a/system/boot/ix86/isoboot/suse-11.1/root/preinit b/system/boot/ppc/vmxboot/suse-SLES11/root/preinit
+similarity index 100%
+copy from system/boot/ix86/isoboot/suse-11.1/root/preinit
+copy to system/boot/ppc/vmxboot/suse-SLES11/root/preinit
+diff --git a/system/boot/s390/vmxboot/suse-linuxrc b/system/boot/ppc/vmxboot/suse-linuxrc
+similarity index 95%
+copy from system/boot/s390/vmxboot/suse-linuxrc
+copy to system/boot/ppc/vmxboot/suse-linuxrc
+index 5cc1d1d..d08022f 100755
+--- a/system/boot/s390/vmxboot/suse-linuxrc
++++ b/system/boot/ppc/vmxboot/suse-linuxrc
+@@ -127,7 +127,7 @@ selectLanguage
+ #--------------------------------------
+ Echo &quot;Searching for boot device...&quot;
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+-	searchBIOSBootDevice
++	searchOFBootDevice
+ 	if [ ! -e &quot;$biosBootDevice&quot; ];then
+ 		searchBusIDBootDevice
+ 	fi
+@@ -143,9 +143,9 @@ Echo &quot;Found boot device: $imageDiskDevice&quot;
+ #======================================
+ # 9) Setup device names...
+ #--------------------------------------
+-export imageRootDevice=$(ddn $imageDiskDevice 1)
+-export imageRWDevice=$(ddn $imageDiskDevice 2)
+-export imageRODevice=$(ddn $imageDiskDevice 1)
++export imageRootDevice=$(ddn $imageDiskDevice 2)
++export imageRWDevice=$(ddn $imageDiskDevice 3)
++export imageRODevice=$(ddn $imageDiskDevice 2)
+ if [ -z &quot;$imageDiskDevice&quot; ];then
+ 	systemException \
+ 		&quot;Couldn't find any boot device... abort&quot; \
+@@ -160,7 +160,7 @@ if searchVolumeGroup; then
+ 	fi
+ 	export imageRWDevice=/dev/$VGROUP/LVRoot
+ 	export imageRODevice=/dev/$VGROUP/LVComp
+-	export imageBootDevice=$(ddn $imageDiskDevice 1)
++	export imageBootDevice=$(ddn $imageDiskDevice 2)
+ fi
+ 
+ #======================================
+@@ -215,7 +215,7 @@ fi
+ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	setupDefaultFstab /config
+ 	updateRootDeviceFstab /config $imageRootDevice
+-	if [ &quot;$haveLVM&quot; = &quot;yes&quot; ];then
++	if [ ! &quot;$arch&quot; = &quot;ppc64&quot; &amp;&amp; &quot;$haveLVM&quot; = &quot;yes&quot; ];then
+ 		updateLVMBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveClicFS&quot; = &quot;yes&quot; ];then
+ 		updateClicBootDeviceFstab /config $imageBootDevice
+@@ -234,7 +234,7 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 	if [ ! -z &quot;$COMBINED_IMAGE&quot; ]; then
+ 		export KIWI_INITRD_PARAMS=&quot;COMBINED_IMAGE=local&quot;
+ 	fi
+-	setupBootLoader /mnt /config $(($bootid - 1)) $imageRootDevice VMX
++	setupBootLoader /mnt /config 1 $imageRootDevice VMX
+ 	setupKernelModules /config
+ fi
+ 
+diff --git a/system/boot/s390/vmxboot/suse-preinit b/system/boot/ppc/vmxboot/suse-preinit
+similarity index 97%
+copy from system/boot/s390/vmxboot/suse-preinit
+copy to system/boot/ppc/vmxboot/suse-preinit
+index ffbbee3..a089c63 100755
+--- a/system/boot/s390/vmxboot/suse-preinit
++++ b/system/boot/ppc/vmxboot/suse-preinit
+@@ -54,9 +54,6 @@ createFramebufferDevices
+ if isVirtioDevice;then
+ 	runPreinitServices virtio
+ fi
+-if isDASDDevice;then
+-	runPreinitServices dasd
+-fi
+ 
+ #======================================
+ # 7) create /etc/ImagePackages
+diff --git a/template/s390/suse-SLE11-JeOS/README b/template/ppc/suse-SLE11-JeOS/README
+similarity index 73%
+copy from template/s390/suse-SLE11-JeOS/README
+copy to template/ppc/suse-SLE11-JeOS/README
+index d3cad9e..d098ae7 100644
+--- a/template/s390/suse-SLE11-JeOS/README
++++ b/template/ppc/suse-SLE11-JeOS/README
+@@ -10,28 +10,18 @@ Build instructions for local build
+        --add-repo /usr/share/kiwi/repo/suse-repo/suse-sle11-repo/ \
+        --add-repotype rpm-dir
+ 
+-* call kiwi create for DASD device:
++* call kiwi create for physical device:
+   kiwi --create /tmp/kiwi-sle11 --ignore-repos \
+ 	   --add-repo /path/to/SLE11/repo \
+        --add-repotype yast2 \
+        --add-repo /usr/share/kiwi/repo/suse-repo/suse-sle11-repo/ \
+        --add-repotype rpm-dir \
+-	   -d /tmp/myimage --type vmx --targetDevice /dev/dasdX
++	   -d /tmp/myimage --type vmx --targetDevice /dev/sdaX
+ 
+-* call kiwi create for virtio device (KVM):
++* call kiwi create for virtio device (VIO image):
+   kiwi --create /tmp/kiwi-sle11 --ignore-repos \
+        --add-repo /path/to/SLE11/repo \
+        --add-repotype yast2 \
+        --add-repo /usr/share/kiwi/repo/suse-repo/suse-sle11-repo/ \
+        --add-repotype rpm-dir \
+        -d /tmp/myimage --type vmx
+-
+-
+-Kernel paramters to configure the image:
+-========================================
+-busid=0.0.0530
+-qeth_port=VSWL2
+-qeth_read=0.0.0800
+-qeth_write=0.0.0801
+-qeth_ctrl=0.0.0802
+-qeth_up=1
+diff --git a/template/s390/suse-SLE11-JeOS/config.sh b/template/ppc/suse-SLE11-JeOS/config.sh
+similarity index 100%
+copy from template/s390/suse-SLE11-JeOS/config.sh
+copy to template/ppc/suse-SLE11-JeOS/config.sh
+diff --git a/template/s390/suse-SLE11-JeOS/config.xml b/template/ppc/suse-SLE11-JeOS/config.xml
+similarity index 92%
+copy from template/s390/suse-SLE11-JeOS/config.xml
+copy to template/ppc/suse-SLE11-JeOS/config.xml
+index b613665..c430830 100644
+--- a/template/s390/suse-SLE11-JeOS/config.xml
++++ b/template/ppc/suse-SLE11-JeOS/config.xml
+@@ -15,7 +15,7 @@
+ 		&lt;keytable&gt;us.map.gz&lt;/keytable&gt;
+ 		&lt;timezone&gt;Europe/Berlin&lt;/timezone&gt;
+ 		&lt;hwclock&gt;utc&lt;/hwclock&gt;
+-		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-SLES11&quot; bootloader=&quot;zipl&quot; primary=&quot;true&quot;/&gt;
++		&lt;type image=&quot;vmx&quot; filesystem=&quot;ext3&quot; boot=&quot;vmxboot/suse-SLES11&quot; bootloader=&quot;lilo&quot; primary=&quot;true&quot;/&gt;
+ 	&lt;/preferences&gt;
+ 	&lt;users group=&quot;root&quot;&gt;
+ 		&lt;user pwd=&quot;$1$wYJUgpM5$RXMMeASDc035eX.NbYWFl0&quot; home=&quot;/root&quot; name=&quot;root&quot;/&gt;
+@@ -26,11 +26,10 @@
+ 	&lt;packages type=&quot;image&quot;&gt;
+ 		&lt;opensusePattern name=&quot;base&quot;/&gt;
+ 		&lt;opensuseProduct name=&quot;SUSE_SLES&quot;/&gt;
+-		&lt;package name=&quot;kernel-default&quot;/&gt;
++		&lt;package name=&quot;kernel-ppc64&quot;/&gt;
+ 		&lt;package name=&quot;ifplugd&quot;/&gt;
+ 		&lt;package name=&quot;iputils&quot;/&gt;
+ 		&lt;package name=&quot;vim&quot;/&gt;
+-		&lt;package name=&quot;s390-tools&quot;/&gt;
+ 		&lt;package name=&quot;syslog-ng&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+diff --git a/template/ix86/rhel-05.4-JeOS/root/etc/X11/xorg.conf b/template/ppc/suse-SLE11-JeOS/root/etc/X11/xorg.conf
+similarity index 100%
+copy from template/ix86/rhel-05.4-JeOS/root/etc/X11/xorg.conf
+copy to template/ppc/suse-SLE11-JeOS/root/etc/X11/xorg.conf
+diff --git a/template/s390/suse-SLE11-JeOS/root/etc/init.d/kiwi/virtio/01-console.sh b/template/ppc/suse-SLE11-JeOS/root/etc/init.d/kiwi/virtio/01-console.sh
+similarity index 100%
+copy from template/s390/suse-SLE11-JeOS/root/etc/init.d/kiwi/virtio/01-console.sh
+copy to template/ppc/suse-SLE11-JeOS/root/etc/init.d/kiwi/virtio/01-console.sh
+diff --git a/template/s390/suse-SLE11-JeOS/root/etc/init.d/kiwi/virtio/inittab b/template/ppc/suse-SLE11-JeOS/root/etc/init.d/kiwi/virtio/inittab
+similarity index 100%
+copy from template/s390/suse-SLE11-JeOS/root/etc/init.d/kiwi/virtio/inittab
+copy to template/ppc/suse-SLE11-JeOS/root/etc/init.d/kiwi/virtio/inittab
+diff --git a/template/s390/suse-SLE11-JeOS/root/etc/init.d/kiwi/virtio/securetty b/template/ppc/suse-SLE11-JeOS/root/etc/init.d/kiwi/virtio/securetty
+similarity index 100%
+copy from template/s390/suse-SLE11-JeOS/root/etc/init.d/kiwi/virtio/securetty
+copy to template/ppc/suse-SLE11-JeOS/root/etc/init.d/kiwi/virtio/securetty
+diff --git a/template/ix86/suse-SLE11-JeOS/root/etc/motd b/template/ppc/suse-SLE11-JeOS/root/etc/motd
+similarity index 100%
+copy from template/ix86/suse-SLE11-JeOS/root/etc/motd
+copy to template/ppc/suse-SLE11-JeOS/root/etc/motd
+diff --git a/doc/examples/suse-11.2/suse-ec2-guest/root/etc/sysconfig/network/ifcfg-eth0 b/template/ppc/suse-SLE11-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+similarity index 100%
+copy from doc/examples/suse-11.2/suse-ec2-guest/root/etc/sysconfig/network/ifcfg-eth0
+copy to template/ppc/suse-SLE11-JeOS/root/etc/sysconfig/network/ifcfg-eth0
+diff --git a/template/s390/suse-SLE11-JeOS/root/etc/sysconfig/syslog b/template/ppc/suse-SLE11-JeOS/root/etc/sysconfig/syslog
+similarity index 100%
+copy from template/s390/suse-SLE11-JeOS/root/etc/sysconfig/syslog
+copy to template/ppc/suse-SLE11-JeOS/root/etc/sysconfig/syslog
+diff --git a/template/ix86/suse-SLE11-JeOS/suse-SLE11-JeOS.kiwi b/template/ppc/suse-SLE11-JeOS/suse-SLE11-JeOS.kiwi
+similarity index 100%
+copy from template/ix86/suse-SLE11-JeOS/suse-SLE11-JeOS.kiwi
+copy to template/ppc/suse-SLE11-JeOS/suse-SLE11-JeOS.kiwi
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003204.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, ppc,	updated. b5a3effa576a0a65629ff6395dc06836b2370e6b
+</A></li>
+	<LI>Next message: <A HREF="003205.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, ppc,	deleted. b5a3effa576a0a65629ff6395dc06836b2370e6b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3207">[ date ]</a>
+              <a href="thread.html#3207">[ thread ]</a>
+              <a href="subject.html#3207">[ subject ]</a>
+              <a href="author.html#3207">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

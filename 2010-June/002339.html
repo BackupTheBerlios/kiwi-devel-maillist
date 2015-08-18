@@ -1,0 +1,132 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Creating hidden files in / don't reflect in	the	final image.
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Creating%20hidden%20files%20in%20/%20don%27t%20reflect%20in%0A%09the%09final%20image.&In-Reply-To=%3C20100625081109.GA22252%40D7.ddts.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002338.html">
+   <LINK REL="Next"  HREF="002342.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Creating hidden files in / don't reflect in	the	final image.</H1>
+    <B>Marcus Sch&#228;fer</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Creating%20hidden%20files%20in%20/%20don%27t%20reflect%20in%0A%09the%09final%20image.&In-Reply-To=%3C20100625081109.GA22252%40D7.ddts.net%3E"
+       TITLE="[Kiwi-devel] Creating hidden files in / don't reflect in	the	final image.">ms at novell.com
+       </A><BR>
+    <I>Fri Jun 25 10:11:09 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002338.html">[Kiwi-devel] Creating hidden files in / don't reflect in	the final image.
+</A></li>
+        <LI>Next message: <A HREF="002342.html">[Kiwi-devel] Creating hidden files in / don't reflect in	the	final image.
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2339">[ date ]</a>
+              <a href="thread.html#2339">[ thread ]</a>
+              <a href="subject.html#2339">[ subject ]</a>
+              <a href="author.html#2339">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi,
+
+&gt;<i> Interestingly, not all the hidden files are left out. 
+</I>&gt;<i> I can see some hidden files in the final image. But, only the ones
+</I>&gt;<i> in the / directory are some home affected.
+</I>
+yes you are right. The problem is the copy command of the root
+tree into the final image. kiwi calls 
+
+  cp -a -x $source/* $extend
+
+and that means all $source/.* won't be copied. That has never been
+a problem so far because normally there are no dot files in &quot;/&quot;
+
+the attached patch should fix this problem.
+Can you give it a test too ?
+
+Thanks
+
+Regards,
+Marcus
+-- 
+ Public Key available
+ gpg --keyserver gpg-keyserver.de --recv-keys 0xCCE3C6A2
+ -------------------------------------------------------
+ Marcus Sch&#228;fer (Res. &amp; Dev.)   SUSE LINUX Products GmbH
+ Tel: 0911-740 53 0             Maxfeldstrasse 5
+ FAX: 0911-740 53 479           D-90409 N&#252;rnberg
+ GF: Markus Rex                 HRB: 16746 (AG N&#252;rnberg)
+ <A HREF="http://www.suse.de">http://www.suse.de</A>             Germany
+ -------------------------------------------------------
+-------------- next part --------------
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 1977f2d..f617dd9 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -1154,7 +1154,7 @@ sub setupBootStick {
+ 		# Copy root tree to virtual disk
+ 		#------------------------------------------
+ 		$kiwi -&gt; info (&quot;Copying system image tree on stick&quot;);
+-		$status = qxx (&quot;cp -a -x $system/* $loopdir 2&gt;&amp;1&quot;);
++		$status = qxx (&quot;tar -cf - -C $system . | tar -x -C $loopdir 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; failed ();
+@@ -2899,7 +2899,7 @@ sub setupBootDisk {
+ 		# Copy root tree to virtual disk
+ 		#------------------------------------------
+ 		$kiwi -&gt; info (&quot;Copying system image tree on virtual disk&quot;);
+-		$status = qxx (&quot;cp -a -x $system/* $loopdir 2&gt;&amp;1&quot;);
++		$status = qxx (&quot;tar -cf - -C $system . | tar -x -C $loopdir 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; failed ();
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index cbd9d28..32cbb42 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -3472,11 +3472,11 @@ sub installLogicalExtend {
+ 	$kiwi -&gt; info (&quot;Copying physical to logical [$name]...&quot;);
+ 	my $free = qxx (&quot;df -h $extend 2&gt;&amp;1&quot;);
+ 	$kiwi -&gt; loginfo (&quot;getSize: mount: $free\n&quot;);
+-	my $data = qxx (&quot;cp -a -x $source/* $extend 2&gt;&amp;1&quot;);
++	my $data = qxx (&quot;tar -cf - -C $source . | tar -x -C $extend 2&gt;&amp;1&quot;);
+ 	my $code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+ 		$kiwi -&gt; failed ();
+-		$kiwi -&gt; info   (&quot;No space left on device: $!&quot;);
++		$kiwi -&gt; info   (&quot;tar based copy failed: $data&quot;);
+ 		$kiwi -&gt; failed ();
+ 		$this -&gt; cleanMount();
+ 		return undef;
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002338.html">[Kiwi-devel] Creating hidden files in / don't reflect in	the final image.
+</A></li>
+	<LI>Next message: <A HREF="002342.html">[Kiwi-devel] Creating hidden files in / don't reflect in	the	final image.
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2339">[ date ]</a>
+              <a href="thread.html#2339">[ thread ]</a>
+              <a href="subject.html#2339">[ subject ]</a>
+              <a href="author.html#2339">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

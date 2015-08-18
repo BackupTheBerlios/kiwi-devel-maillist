@@ -1,0 +1,153 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 13132d0440c0854a93d3cafef1a6605002e7bef3
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2013132d0440c0854a93d3cafef1a6605002e7bef3&In-Reply-To=%3C20100713112511.35C004808C9%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002401.html">
+   <LINK REL="Next"  HREF="002403.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 13132d0440c0854a93d3cafef1a6605002e7bef3</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2013132d0440c0854a93d3cafef1a6605002e7bef3&In-Reply-To=%3C20100713112511.35C004808C9%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 13132d0440c0854a93d3cafef1a6605002e7bef3">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jul 13 13:25:11 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002401.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 77f501df70a5e26d2996f7a58b93e5f00d39d089
+</A></li>
+        <LI>Next message: <A HREF="002403.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. c3f2d14173af3696c38ff9bcd691c75257fc2341
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2402">[ date ]</a>
+              <a href="thread.html#2402">[ thread ]</a>
+              <a href="subject.html#2402">[ subject ]</a>
+              <a href="author.html#2402">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  13132d0440c0854a93d3cafef1a6605002e7bef3 (commit)
+      from  77f501df70a5e26d2996f7a58b93e5f00d39d089 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 13132d0440c0854a93d3cafef1a6605002e7bef3
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Jul 13 13:25:03 2010 +0200
+
+    - remove unneeded initrd.vmx and linux.vmx files _before_
+      calling mkinitrd. This saves space to not run into a space
+      problem on the boot partition (bnc #621859)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 7ef8c27..a35b81a 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -727,6 +727,7 @@ function setupSUSEInitrd {
+ 	local umountProc=0
+ 	local umountSys=0
+ 	local systemMap=0
++	local haveVMX=0
+ 	local params
+ 	local running
+ 	local rlinux
+@@ -749,6 +750,13 @@ function setupSUSEInitrd {
+ 		if grep -qi param_B /sbin/mkinitrd;then
+ 			params=&quot;-B&quot;
+ 		fi
++		if [ $bootLoaderOK = &quot;1&quot; ];then
++			if [ -f /boot/initrd.vmx ];then
++				rm -f /boot/initrd.vmx
++				rm -f /boot/linux.vmx
++				haveVMX=1
++			fi
++		fi
+ 		if ! mkinitrd $params;then
+ 			Echo &quot;Can't create initrd&quot;
+ 			systemIntegrity=unknown
+@@ -757,16 +765,12 @@ function setupSUSEInitrd {
+ 		if [ -f /etc/init.d/boot.device-mapper ];then
+ 			/etc/init.d/boot.device-mapper stop
+ 		fi
+-		if [ $bootLoaderOK = &quot;1&quot; ];then
+-			if [ -f /boot/initrd.vmx ];then
+-				rm -f /boot/initrd.vmx
+-				rm -f /boot/linux.vmx
+-				running=$(uname -r)
+-				rlinux=vmlinuz-$running
+-				rinitrd=initrd-$running
+-				ln -s $rlinux  /boot/linux.vmx
+-				ln -s $rinitrd /boot/initrd.vmx
+-			fi
++		if [ $bootLoaderOK = &quot;1&quot; ] &amp;&amp; [ $haveVMX = &quot;1&quot; ];then
++			running=$(uname -r)
++			rlinux=vmlinuz-$running
++			rinitrd=initrd-$running
++			ln -s $rlinux  /boot/linux.vmx
++			ln -s $rinitrd /boot/initrd.vmx
+ 		fi
+ 		if [ $umountSys -eq 1 ];then
+ 			umount /sys
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 666bc8b..ef120ba 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,6 +1,9 @@
+ -------------------------------------------------------------------
+ Tue Jul 13 10:08:34 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- remove unneeded initrd.vmx and linux.vmx files _before_
++  calling mkinitrd. This saves space to not run into a space
++  problem on the boot partition (bnc #621859)
+ - usb attribute in vmwareconfig doesn't exist anymore with
+   the new machine section. usb is always present for vmware
+   fixed xslt stylesheet for this case
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002401.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 77f501df70a5e26d2996f7a58b93e5f00d39d089
+</A></li>
+	<LI>Next message: <A HREF="002403.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. c3f2d14173af3696c38ff9bcd691c75257fc2341
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2402">[ date ]</a>
+              <a href="thread.html#2402">[ thread ]</a>
+              <a href="subject.html#2402">[ subject ]</a>
+              <a href="author.html#2402">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

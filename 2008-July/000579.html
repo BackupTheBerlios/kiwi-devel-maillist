@@ -1,0 +1,336 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1493 - in kiwi-head: modules rpm	system/boot/ix86/xenboot/suse-11.0	system/boot/ix86/xenboot/suse-11.1
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1493%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ix86/xenboot/suse-11.0%0A%09system/boot/ix86/xenboot/suse-11.1&In-Reply-To=%3C200807280849.m6S8nH6g027447%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000578.html">
+   <LINK REL="Next"  HREF="000580.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1493 - in kiwi-head: modules rpm	system/boot/ix86/xenboot/suse-11.0	system/boot/ix86/xenboot/suse-11.1</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1493%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ix86/xenboot/suse-11.0%0A%09system/boot/ix86/xenboot/suse-11.1&In-Reply-To=%3C200807280849.m6S8nH6g027447%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1493 - in kiwi-head: modules rpm	system/boot/ix86/xenboot/suse-11.0	system/boot/ix86/xenboot/suse-11.1">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Jul 28 10:49:17 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000578.html">[Kiwi-devel] r1492 - in kiwi-head/doc: . LaTex
+</A></li>
+        <LI>Next message: <A HREF="000580.html">[Kiwi-devel] r1494 - in kiwi-head/doc: . LaTex
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#579">[ date ]</a>
+              <a href="thread.html#579">[ thread ]</a>
+              <a href="subject.html#579">[ subject ]</a>
+              <a href="author.html#579">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-07-28 10:49:09 +0200 (Mon, 28 Jul 2008)
+New Revision: 1493
+
+Modified:
+   kiwi-head/modules/KIWIConfig.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/system/boot/ix86/xenboot/suse-11.0/config.xml
+   kiwi-head/system/boot/ix86/xenboot/suse-11.1/config.xml
+Log:
+
+- removed use of kernel-xenpae for &gt;= 11.0, doesn't exist there
+- fixed suseStripKernel() function to include module dependency
+  checking. Patch by Olaf Hering &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">olh at novell.com</A>&gt;. Thanks Olaf
+
+
+
+Modified: kiwi-head/modules/KIWIConfig.sh
+===================================================================
+--- kiwi-head/modules/KIWIConfig.sh	2008-07-28 07:00:56 UTC (rev 1492)
++++ kiwi-head/modules/KIWIConfig.sh	2008-07-28 08:49:09 UTC (rev 1493)
+@@ -937,10 +937,15 @@
+ 	# for the kernel extraction in case of kiwi boot images
+ 	# ----
+ 	local ifss=$IFS
+-	for i in /lib/modules/*;do
++	local kversion
++	local i
++	local d
++	local mod
++	local stripdir
++	for kversion in /lib/modules/*;do
+ 		IFS=&quot;
+ 		&quot;
+-		for p in `rpm -qf $i`;do
++		for p in `rpm -qf $kversion`;do
+ 			#==========================================
+ 			# get kernel VERSION information
+ 			#------------------------------------------
+@@ -954,124 +959,65 @@
+ 				IFS=$ifss
+ 				continue
+ 			fi
+-			VERSION=$(/usr/bin/basename $i)
++			VERSION=$(/usr/bin/basename $kversion)
+ 			echo &quot;Stripping kernel $p: Image [$kiwi_iname]...&quot;
+ 			#==========================================
+-			# move interesting stuff to /tmp
++			# run depmod, deps should be up to date
+ 			#------------------------------------------
+-			if [ -d lib/modules/$VERSION/updates ];then
+-				mv lib/modules/$VERSION/updates /tmp
+-			fi
+-			if [ -d lib/modules/$VERSION/weak-updates ];then
+-				mv lib/modules/$VERSION/weak-updates /tmp
+-			fi
+-			mv lib/modules/$VERSION/kernel/*  /tmp
+-			mv lib/modules/$VERSION/modules.* /tmp
++			/sbin/depmod -F /boot/System.map-$VERSION $VERSION
+ 			#==========================================
+-			# remove unneeded stuff
++			# strip the modules but take care for deps
+ 			#------------------------------------------
+-			rm -r lib/modules/$VERSION/*
+-			#==========================================
+-			# insert modules.* files
+-			#------------------------------------------
+-			mv /tmp/modules.* /lib/modules/$VERSION/
+-			if [ -d /tmp/updates ];then
+-				mv /tmp/updates /lib/modules/$VERSION/
+-			fi
+-			if [ -d /tmp/weak-updates ];then
+-				mv /tmp/weak-updates /lib/modules/$VERSION/
+-			fi
+-			#==========================================
+-			# create driver-used dirs with .o's to use
+-			#------------------------------------------
+-			mkdir -p /tmp/usb-used
+-			mkdir -p /tmp/scsi-used/drivers/scsi
+-			mkdir -p /tmp/net-used/drivers/net
+-			mkdir -p /tmp/misc-used
+-			IFS=&quot;,&quot;
+-			#==========================================
+-			# handle USB drivers...
+-			#------------------------------------------
+-			test ! -z &quot;$kiwi_usbdrivers&quot;;for i in $kiwi_usbdrivers;do
+-				local path=`dirname $i`
+-				test -f /tmp/drivers/$i &amp;&amp; \
+-				mkdir -p /tmp/usb-used/drivers/$path &amp;&amp; \
+-				mv /tmp/drivers/$i /tmp/usb-used/drivers/$path
+-			done
+-			#==========================================
+-			# handle SCSI drivers...
+-			#------------------------------------------
+-			test ! -z &quot;$kiwi_scsidrivers&quot;;for i in $kiwi_scsidrivers;do
+-				local path=`dirname $i`
+-				if [ $path = &quot;.&quot; ];then
+-					test -f /tmp/drivers/scsi/$i &amp;&amp; \
+-					mv /tmp/drivers/scsi/$i /tmp/scsi-used/drivers/scsi
+-				else
+-					test -f /tmp/drivers/scsi/$i &amp;&amp; \
+-					mkdir -p /tmp/scsi-used/drivers/scsi/$path &amp;&amp; \
+-					mv /tmp/drivers/scsi/$i /tmp/scsi-used/drivers/scsi/$path
+-				fi
+-			done
+-			#==========================================
+-			# handle Network drivers...
+-			#------------------------------------------
+-			test ! -z &quot;$kiwi_netdrivers&quot;;for i in $kiwi_netdrivers;do
+-				local path=`dirname $i`
+-				if [ $path = &quot;.&quot; ];then
+-					test -f /tmp/drivers/net/$i &amp;&amp; \
+-					mv /tmp/drivers/net/$i /tmp/net-used/drivers/net
+-				else
+-					test -f /tmp/drivers/net/$i &amp;&amp; \
+-					mkdir -p /tmp/net-used/drivers/net/$path &amp;&amp; \
+-					mv /tmp/drivers/net/$i /tmp/net-used/drivers/net/$path
+-				fi
+-			done
+-			#==========================================
+-			# handle misc drivers...
+-			#------------------------------------------
+-			test ! -z &quot;$kiwi_drivers&quot;;for i in $kiwi_drivers;do
+-				local path=`/usr/bin/dirname $i`
+-				local base=`/usr/bin/basename $i`
+-				if [ &quot;$base&quot; = &quot;*&quot; ];then
+-					test -d /tmp/$path &amp;&amp; \
+-					mkdir -p /tmp/misc-used/$path &amp;&amp; \
+-					mv /tmp/$path/* /tmp/misc-used/$path
+-				else
+-					test -f /tmp/$i &amp;&amp; \
+-					mkdir -p /tmp/misc-used/$path &amp;&amp; \
+-					mv /tmp/$i /tmp/misc-used/$path
+-				fi
+-			done
+-			#==========================================
+-			# Save all needed drivers...
+-			#------------------------------------------
+-			IFS=$ifss
+-			for root in \
+-				/tmp/scsi-used /tmp/net-used /tmp/usb-used /tmp/misc-used
++			stripdir=/tmp/stripped_modules
++			IFS=,
++			for mod in \
++				$kiwi_usbdrivers $kiwi_scsidrivers \
++				$kiwi_netdrivers $kiwi_drivers
+ 			do
+-				pushd $root
+-				for dir in `find -type d`;do
+-					if [ ! -d /lib/modules/$VERSION/kernel/$dir ];then
+-						mkdir -p /lib/modules/$VERSION/kernel/$dir 2&gt;/dev/null
++				local path=`/usr/bin/dirname $mod`
++				local base=`/usr/bin/basename $mod`
++				for d in kernel updates weak-updates;do
++					if [ &quot;$base&quot; = &quot;*&quot; ];then
++						if test -d $kversion/$d/$path ; then
++							mkdir -pv $stripdir$kversion/$d/$path
++							cp -avl $kversion/$d/$path/* \
++								$stripdir$kversion/$d/$path
++						fi
++					else
++						if test -f $kversion/$d/$mod ; then
++							mkdir -pv $stripdir$kversion/$d/$path
++							cp -avl $kversion/$d/$mod \
++								$stripdir$kversion/$d/$mod
++						fi
+ 					fi
+ 				done
+-				popd
+ 			done
+-			for root in \
+-				/tmp/scsi-used /tmp/net-used /tmp/usb-used /tmp/misc-used
+-			do
+-				pushd $root
+-				for file in `find -type f`;do
+-					local path=`/usr/bin/dirname $file`
+-					mv $file /lib/modules/$VERSION/kernel/$path;
++			IFS=$ifss
++			for mod in `find $stripdir -name &quot;*.ko&quot;`;do
++				d=`/usr/bin/basename $mod`
++				i=`/sbin/modprobe \
++					-C /etc/modprobe.conf \
++					--set-version $VERSION \
++					--ignore-install \
++					--show-depends \
++					${d%.ko} | sed -ne 's:.*insmod /\?::p'`
++				for d in $i; do
++					case &quot;$d&quot; in
++						*=*) ;;
++						*)
++						if ! test -f $stripdir/$d ; then
++							echo &quot;Fixing kernel module Dependency: $d&quot;
++							mkdir -vp `/usr/bin/dirname $stripdir/$d`
++							cp -flav $d $stripdir/$d
++						fi
++						;;
++					esac
+ 				done
+-				popd
+ 			done
++			rm -rf $kversion
++			mv -v $stripdir/$kversion $kversion
++			rm -rf $stripdir
+ 			#==========================================
+-			# Cleanup /tmp...
+-			#------------------------------------------
+-			rm -rf /tmp/*
+-			#==========================================
+ 			# run depmod
+ 			#------------------------------------------
+ 			/sbin/depmod -F /boot/System.map-$VERSION $VERSION
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-07-28 07:00:56 UTC (rev 1492)
++++ kiwi-head/rpm/kiwi.changes	2008-07-28 08:49:09 UTC (rev 1493)
+@@ -3,6 +3,9 @@
+ 
+ - v2.61
+ - added Amazon EC2 chapter in kiwi cookbook
++- removed use of kernel-xenpae for &gt;= 11.0, doesn't exist there
++- fixed suseStripKernel() function to include module dependency
++  checking. Patch by Olaf Hering &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">olh at novell.com</A>&gt;. Thanks Olaf
+ - fixed reading md5 file in isoboot suse-linuxrc (bnc #411673)
+ 
+ -------------------------------------------------------------------
+
+Modified: kiwi-head/system/boot/ix86/xenboot/suse-11.0/config.xml
+===================================================================
+--- kiwi-head/system/boot/ix86/xenboot/suse-11.0/config.xml	2008-07-28 07:00:56 UTC (rev 1492)
++++ kiwi-head/system/boot/ix86/xenboot/suse-11.0/config.xml	2008-07-28 08:49:09 UTC (rev 1493)
+@@ -14,7 +14,7 @@
+ 		&lt;rpm-check-signatures&gt;False&lt;/rpm-check-signatures&gt;
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+-		&lt;profile name=&quot;default&quot; description=&quot;Boot with xen or xenpae kernel&quot;/&gt;
++		&lt;profile name=&quot;default&quot; description=&quot;Boot with xen kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
+ 		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+@@ -54,8 +54,7 @@
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;default&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot; arch=&quot;x86_64&quot;/&gt;
+-		&lt;package name=&quot;kernel-xenpae&quot; arch=&quot;i386&quot;/&gt;
++		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+
+Modified: kiwi-head/system/boot/ix86/xenboot/suse-11.1/config.xml
+===================================================================
+--- kiwi-head/system/boot/ix86/xenboot/suse-11.1/config.xml	2008-07-28 07:00:56 UTC (rev 1492)
++++ kiwi-head/system/boot/ix86/xenboot/suse-11.1/config.xml	2008-07-28 08:49:09 UTC (rev 1493)
+@@ -14,7 +14,7 @@
+ 		&lt;rpm-check-signatures&gt;False&lt;/rpm-check-signatures&gt;
+ 	&lt;/preferences&gt;
+ 	&lt;profiles&gt;
+-		&lt;profile name=&quot;default&quot; description=&quot;Boot with xen or xenpae kernel&quot;/&gt;
++		&lt;profile name=&quot;default&quot; description=&quot;Boot with xen kernel&quot;/&gt;
+ 	&lt;/profiles&gt;
+ 	&lt;drivers type=&quot;drivers&quot;&gt;
+ 		&lt;file name=&quot;drivers/ide/*&quot;/&gt;
+@@ -54,8 +54,7 @@
+ 		&lt;package name=&quot;bootsplash-branding-openSUSE&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot; profiles=&quot;default&quot;&gt;
+-		&lt;package name=&quot;kernel-xen&quot; arch=&quot;x86_64&quot;/&gt;
+-		&lt;package name=&quot;kernel-xenpae&quot; arch=&quot;i386&quot;/&gt;
++		&lt;package name=&quot;kernel-xen&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000578.html">[Kiwi-devel] r1492 - in kiwi-head/doc: . LaTex
+</A></li>
+	<LI>Next message: <A HREF="000580.html">[Kiwi-devel] r1494 - in kiwi-head/doc: . LaTex
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#579">[ date ]</a>
+              <a href="thread.html#579">[ thread ]</a>
+              <a href="subject.html#579">[ subject ]</a>
+              <a href="author.html#579">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

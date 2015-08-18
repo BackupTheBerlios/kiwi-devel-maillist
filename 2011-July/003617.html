@@ -1,0 +1,127 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d0de4ea55c360979d09286bb7edac7c58c6a8ae1
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20d0de4ea55c360979d09286bb7edac7c58c6a8ae1&In-Reply-To=%3C20110714145550.3F912481490%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003615.html">
+   <LINK REL="Next"  HREF="003618.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d0de4ea55c360979d09286bb7edac7c58c6a8ae1</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20d0de4ea55c360979d09286bb7edac7c58c6a8ae1&In-Reply-To=%3C20110714145550.3F912481490%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d0de4ea55c360979d09286bb7edac7c58c6a8ae1">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jul 14 16:55:49 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003615.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5f05c920d6a33dc49c87e2c89fd8610a5403b521
+</A></li>
+        <LI>Next message: <A HREF="003618.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4234060f0755ec498a95c14d51ddab3a8ddb8f82
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3617">[ date ]</a>
+              <a href="thread.html#3617">[ thread ]</a>
+              <a href="subject.html#3617">[ subject ]</a>
+              <a href="author.html#3617">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  d0de4ea55c360979d09286bb7edac7c58c6a8ae1 (commit)
+      from  5f05c920d6a33dc49c87e2c89fd8610a5403b521 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit d0de4ea55c360979d09286bb7edac7c58c6a8ae1
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Jul 14 16:51:43 2011 +0200
+
+    - moved zypper version check outside of the loop. It's enough
+      to check this one time
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIManager.pm b/modules/KIWIManager.pm
+index bdef2eb..cec437b 100644
+--- a/modules/KIWIManager.pm
++++ b/modules/KIWIManager.pm
+@@ -785,6 +785,14 @@ sub setupInstallationSource {
+ 		if (! $chroot) {
+ 			$stype = &quot;public&quot;;
+ 		}
++		if ($chroot) {
++			$data = qxx (&quot;@kchroot zypper --version 2&gt;&amp;1 | cut -c 8&quot;);
++			if ($data &lt; 1) {
++				$kiwi -&gt; info (&quot;image zypper version is too old&quot;);
++				$kiwi -&gt; skipped ();
++				return $this;
++			}
++		}
+ 		foreach my $alias (keys %{$source{$stype}}) {
+ 			my @sopts = @{$source{$stype}{$alias}};
+ 			my @zopts = ();
+@@ -846,16 +854,8 @@ sub setupInstallationSource {
+ 			} else {
+ 				my @zypper= @{$this-&gt;{zypper_chroot}};
+ 				$kiwi -&gt; info (&quot;Adding chroot zypper service: $alias&quot;);
+-				$data = qxx (&quot;@kchroot zypper --version 2&gt;&amp;1 | cut -c 8&quot;);
+-				if ($data &gt;= 1) {
+-					$data = qxx (&quot;@kchroot @zypper $sadd 2&gt;&amp;1&quot;);
+-					$code = $? &gt;&gt; 8;
+-				} else {
+-					$kiwi -&gt; skipped ();
+-					$kiwi -&gt; info (&quot;image zypper version is too old&quot;);
+-					$kiwi -&gt; skipped ();
+-					return $this;
+-				}
++				$data = qxx (&quot;@kchroot @zypper $sadd 2&gt;&amp;1&quot;);
++				$code = $? &gt;&gt; 8;
+ 			}
+ 			if ($code != 0) {
+ 				$kiwi -&gt; failed ();
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003615.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5f05c920d6a33dc49c87e2c89fd8610a5403b521
+</A></li>
+	<LI>Next message: <A HREF="003618.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4234060f0755ec498a95c14d51ddab3a8ddb8f82
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3617">[ date ]</a>
+              <a href="thread.html#3617">[ thread ]</a>
+              <a href="subject.html#3617">[ subject ]</a>
+              <a href="author.html#3617">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

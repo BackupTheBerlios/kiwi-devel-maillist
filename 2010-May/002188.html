@@ -1,0 +1,151 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6abd22cafb97f229a66016eef573cf7bbbb500e9
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%206abd22cafb97f229a66016eef573cf7bbbb500e9&In-Reply-To=%3C201005171005.o4HA5ti7008650%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002187.html">
+   <LINK REL="Next"  HREF="002189.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6abd22cafb97f229a66016eef573cf7bbbb500e9</H1>
+    <B>ugansert at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%206abd22cafb97f229a66016eef573cf7bbbb500e9&In-Reply-To=%3C201005171005.o4HA5ti7008650%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6abd22cafb97f229a66016eef573cf7bbbb500e9">ugansert at mail.berlios.de
+       </A><BR>
+    <I>Mon May 17 12:05:55 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002187.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 7e51020760491cf437ec33a4041785ce9443cc79
+</A></li>
+        <LI>Next message: <A HREF="002189.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 634f360f73096b12b2d6d90ed7201188e0a6d9b3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2188">[ date ]</a>
+              <a href="thread.html#2188">[ thread ]</a>
+              <a href="subject.html#2188">[ subject ]</a>
+              <a href="author.html#2188">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  6abd22cafb97f229a66016eef573cf7bbbb500e9 (commit)
+      from  850514f466cd431fd39e7eab4010855f13d77527 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 6abd22cafb97f229a66016eef573cf7bbbb500e9
+Author: Uwe Gansert &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ug at taylor.suse.de</A>&gt;
+Date:   Mon May 17 12:05:35 2010 +0200
+
+    - check RPM version of autoyast
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIMigrate.pm b/modules/KIWIMigrate.pm
+index ea98092..781cb16 100644
+--- a/modules/KIWIMigrate.pm
++++ b/modules/KIWIMigrate.pm
+@@ -1495,17 +1495,13 @@ sub setInitialSetup {
+ 	qxx (
+ 		&quot;cp $dest/root/etc/X11/xorg.conf $dest/root/etc/X11/xorg.conf.install&quot;
+ 	);
++	$kiwi -&gt; done();
+ 	#==========================================
+ 	# Activate YaST on initial deployment
+ 	#------------------------------------------	
+-	# TODO
+-	# still under development, this code should only run on
+-	# SuSE system &gt;= 11.3
+-	# ---
+-	# if (! $this -&gt; autoyastClone()) {
+-	#	return undef;
+-	# }
+-	$kiwi -&gt; done();
++	if (! $this -&gt; autoyastClone()) {
++		return undef;
++	}
+ 	return $this;
+ }
+ 
+@@ -1588,6 +1584,22 @@ sub autoyastClone {
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my @list = @{$this-&gt;{autoyastCloneList}};
+ 	#==========================================
++	# check autoyast2 version
++	#==========================================
++	my $ayVersion = qxx( 'rpm -q --qf &quot;%{VERSION}&quot; autoyast2 2&gt;&amp;1' );
++	if( $? != 0 ) {
++		$kiwi -&gt; warning(&quot;checking AutoYaST version failed&quot;);
++		$kiwi -&gt; skipped();
++		return undef;
++	}
++	$ayVersion =~ /^(\d+)\.(\d+)/;
++	if( $1 &lt; 3 &amp;&amp; $2 &lt; 19 ) {
++		# version is less than 2.19.x (1.xx.yy with xx &gt;= 19 can be ignored)
++		$kiwi -&gt; warning(&quot;AutoYaST version $ayVersion is too old for cloning&quot;);
++		$kiwi -&gt; skipped();
++		return undef;
++	}
++	#==========================================
+ 	# run yast for cloning
+ 	#------------------------------------------
+ 	my $cloneList = join( ',', @list );
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index cd776cd..778f0f3 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,9 @@
+ -------------------------------------------------------------------
++Mon May 17 12:05:13 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ug at suse.de</A>
++
++- check RPM version of AutoYaST during migration
++
++-------------------------------------------------------------------
+ Fri May 14 16:53:52 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - added support for displayname for vmx type (bnc #605939)
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002187.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 7e51020760491cf437ec33a4041785ce9443cc79
+</A></li>
+	<LI>Next message: <A HREF="002189.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 634f360f73096b12b2d6d90ed7201188e0a6d9b3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2188">[ date ]</a>
+              <a href="thread.html#2188">[ thread ]</a>
+              <a href="subject.html#2188">[ subject ]</a>
+              <a href="author.html#2188">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,202 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] XML processing - patch two
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-December/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20XML%20processing%20-%20patch%20two&In-Reply-To=%3C4CF58F70.5020904%40novell.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="002878.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] XML processing - patch two</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20XML%20processing%20-%20patch%20two&In-Reply-To=%3C4CF58F70.5020904%40novell.com%3E"
+       TITLE="[Kiwi-devel] XML processing - patch two">rschweikert at novell.com
+       </A><BR>
+    <I>Wed Dec  1 00:57:36 CET 2010</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="002878.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2876">[ date ]</a>
+              <a href="thread.html#2876">[ thread ]</a>
+              <a href="subject.html#2876">[ subject ]</a>
+              <a href="author.html#2876">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi Marcus,
+
+&lt;snip&gt;
+
+&gt;<i> I was able to build the suse-11.3/suse-oem-preload example with some
+</I>&gt;<i> parts of the patch you attached. Using all of the patch makes it fail
+</I>&gt;<i> I didn't took a closer look why because I had a few concerns while
+</I>&gt;<i> reading the patch before. Here are the good news first:
+</I>&gt;<i> 
+</I>&gt;<i> * I added the uninitialized value patch in a single commit
+</I>&gt;<i> * I added __checkTypeUnique in a single commit
+</I>
+Thanks,
+
+&gt;<i> 
+</I>&gt;<i> The rest is only added in parts and I also added some additions.
+</I>&gt;<i> I'm still concerned about the setCurrentBuildInfo() change and I
+</I>&gt;<i> also did not understand why it's required to do it that way. 
+</I>
+Well, setCurrentBuildInfo really represents the spirit of the changes I
+would like us to make. The XML object prior to this patch and still now
+holds state information, i.e. the XML object knows what image type is
+currently being built and what profiles apply. However, IMHO this should
+not be. The XML object should only hold and represent the data as it is
+encoded in config.xml. All the data in XML, not selectively load some data.
+
+Following this approach (everything is loaded, not state information in
+XML) will allow us to pull out special casing for the boot image
+creation. Once KIWIXML.pm only holds data as specified in config.xml and
+the state is held by someone else (main at present) then creating the
+boot image is no longer something special as it is at present. This is
+the reason that the data structure in my patch was based of the profiles
+data and all profiles were added to the typeinfo hash.
+
+The patch as applied doesn't really get us closer to the &quot;no state in
+KIWIXML&quot; idea. I suspect I didn't explain that idea properly, sorry. :(
+
+&gt;<i> Don't
+</I>&gt;<i> get me wrong I'm fine having accessor methods and a XML object
+</I>&gt;<i> which doesn't have a method changing the data set.
+</I>&gt;<i> 
+</I>&gt;<i> According to that I added your KIWIXML changes but not the change
+</I>&gt;<i> in kiwi.pl and also modified the KIWIXML change to what I think
+</I>&gt;<i> we want to achieve. Here are the details:
+</I>&gt;<i> 
+</I>&gt;<i> I restructured the XML data processing by adding the following
+</I>&gt;<i> KIWIXML methods:
+</I>&gt;<i> 
+</I>&gt;<i>    __populateTypeInfo() and
+</I>&gt;<i>    __populateImageTypeAndNode()
+</I>&gt;<i> 
+</I>&gt;<i> The first method creates the %typeInfo hash which contains all
+</I>&gt;<i> possible &lt;type&gt; elements according to the selected profiles.
+</I>
+The selected profiles information is state, answering to the question
+&quot;what are we building?&quot;. The XML object is not the object that should
+answer that question. The XML object should only answer questions like
+&quot;what is configured for this type?&quot; Not whether the given type is what
+we are currently building.
+
+State is a higher level concept and the XML object really should not
+care about the state. The XML object only needs to answer questions
+about the configuration.
+
+&gt;<i> 
+</I>&gt;<i> The second method operates on the %typeInfo hash and initializes
+</I>&gt;<i> those part of the hash which represents the requested image type
+</I>&gt;<i> or the primary type or the first type read in.
+</I>&gt;<i> 
+</I>&gt;<i> * Both methodes are called only _once_ inside the object constructor
+</I>&gt;<i> * The existing method getImageTypeAndAttributes() has changed to
+</I>&gt;<i>   simply return the selected part of the %typeInfo hash and does
+</I>&gt;<i>   NOT change any object data as done before.
+</I>
+Yes, I wasn't ready for that in the &quot;no state paradigm&quot;. That's why I
+hadn't proceeded with this step, or even ripping out
+getImageTypeAndAttributes() completely.
+&gt;<i> 
+</I>&gt;<i> Therefore I think the XML object creation is sane now and we
+</I>&gt;<i> can focus on writing the accessor functions which imho also belongs
+</I>&gt;<i> to KIWIXML
+</I>
+Sorry, I disagree, because of the state that is still in the XML object.
+
+Another example of the state in the XML object is that we pass profiles
+into the XML constructor. This argument should not be there. KIWIXML
+simply populates itself from the information in config.xml. Then the
+code that holds state, ideally only a manager/driver object (not main
+preferably in the long run) asks XML to hand out data for what is
+currently being built. Thus XML is completely oblivious to the state.
+
+Taking the next step in what my patch was intended to initiate would be
+to have a method as follows:
+
+my @imagePckgs = $xml -&gt; getPackageList ( @Profiles );
+
+The XML object does not need any knowledge about the state, it just gets
+asked &quot;hand me the packages for the profile(s) I want to use&quot;. It
+doesn't get much simpler than that. There will also be a need for
+
+$xml -&gt; getBootPackageList ( @Profiles )
+
+that delivers all package names that are marked as &quot;bootinclude&quot;.
+
+After we get rid of the state in XML we can probably get rid of all XML
+instantiations in Boot.pm, Image.pm and other places. We can also look
+at creating a KIWIBuildMgr object and unload a lot of responsibility out
+of main, with this we'll be able to get rid of the recursive call of
+kiwi onto itself and rip out all the stuff that goes with it, the
+survive checks etc. The KIWIBuildMgr then holds all the state and every
+other object is completely oblivious to the build state. All objects,
+other than the BuildMgr, just get handed an XML object, profiles, and a
+type; that's it. Each object operates with the information given and
+does not need to derive anything at all. Overall I am convinced this
+will lead to a great simplification of the code, we'll be able to reduce
+code duplication ....
+
+Lset but not least, and object that has no state, such as XML should be
+in my mind is easy to unit test. I can write a simple test driver that
+instantiates the XML object and feeds it one config file after another.
+Then I can probe the object and make sure I get back what I expect.
+Testing objects that have state in such a fashion is much more difficult
+and error prone.
+
+Not sure if I should try and mold the latest tree. It appears easier to
+me to pull this last patch (spare the additional consistency check, and
+the fix for &quot;no type in the first preferences section&quot;). Then go back
+and get the original patch to work and get it in. Or maybe we need some
+more discussion on the concepts behind the patch.
+
+Thoughts?
+
+Thanks,
+Robert
+
+-- 
+Robert Schweikert                           MAY THE SOURCE BE WITH YOU
+Software Engineer Consultant                          LINUX
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>
+781-464-8147
+
+Novell
+Making IT Work As One
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="002878.html">[Kiwi-devel] XML processing - patch two
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2876">[ date ]</a>
+              <a href="thread.html#2876">[ thread ]</a>
+              <a href="subject.html#2876">[ subject ]</a>
+              <a href="author.html#2876">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

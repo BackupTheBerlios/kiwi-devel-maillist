@@ -1,0 +1,130 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Hard Coding
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Hard%20Coding&In-Reply-To=%3C4BFBEB10.1000708%40novell.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002228.html">
+   <LINK REL="Next"  HREF="002229.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Hard Coding</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Hard%20Coding&In-Reply-To=%3C4BFBEB10.1000708%40novell.com%3E"
+       TITLE="[Kiwi-devel] Hard Coding">rschweikert at novell.com
+       </A><BR>
+    <I>Tue May 25 17:21:52 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002228.html">[Kiwi-devel] Hard Coding
+</A></li>
+        <LI>Next message: <A HREF="002229.html">[Kiwi-devel] Hard Coding
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2227">[ date ]</a>
+              <a href="thread.html#2227">[ thread ]</a>
+              <a href="subject.html#2227">[ subject ]</a>
+              <a href="author.html#2227">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>
+
+On 05/25/2010 11:01 AM, Marcus Sch&#228;fer wrote:
+&gt;<i> Hi,
+</I>&gt;<i> 
+</I>&gt;&gt;<i> I noticed that some of the paths to executables are hard coded in kiwi.pl file. For example::
+</I>&gt;&gt;<i>
+</I>&gt;&gt;<i> $KnownFS{ext4}{tool}      = &quot;/sbin/mkfs.ext4&quot;;
+</I>&gt;&gt;<i> $KnownFS{ext3}{tool}      = &quot;/sbin/mkfs.ext3&quot;;
+</I>&gt;&gt;<i> $KnownFS{ext2}{tool}      = &quot;/sbin/mkfs.ext2&quot;;
+</I>&gt;&gt;<i> $KnownFS{squashfs}{tool}  = &quot;/usr/bin/mksquashfs&quot;;
+</I>&gt;&gt;<i> $KnownFS{dmsquash}{tool}  = &quot;/usr/bin/mksquashfs&quot;;
+</I>&gt;&gt;<i> $KnownFS{clicfs}{tool}    = &quot;/usr/bin/mkclicfs&quot;;
+</I>&gt;&gt;<i> $KnownFS{clic}{tool}      = &quot;/usr/bin/mkclicfs&quot;;
+</I>&gt;&gt;<i> $KnownFS{unified}{tool}   = &quot;/usr/bin/mksquashfs&quot;;
+</I>&gt;&gt;<i> $KnownFS{compressed}{tool}= &quot;/usr/bin/mksquashfs&quot;;
+</I>&gt;&gt;<i> $KnownFS{reiserfs}{tool}  = &quot;/sbin/mkreiserfs&quot;;
+</I>&gt;&gt;<i> $KnownFS{cpio}{tool}      = &quot;/usr/bin/cpio&quot;;
+</I>&gt;&gt;<i>
+</I>&gt;&gt;<i> Is there any plan to remove them? May be use `which` command to find the right paths?
+</I>&gt;&gt;<i> This was one of the problems I came across when I tried to run kiwi on CentOS.
+</I>&gt;<i> 
+</I>&gt;<i> We can think of simply removing the absolute paths and let the shell
+</I>&gt;<i> find it at invocation time but I need to be careful with such a change
+</I>&gt;<i> if the shell env is broken such a change will cause kiwi to stop
+</I>&gt;<i> working so I'm not sure if we should do this...
+</I>
+Well, kiwi &quot;doesn't work already&quot; if one of these is missing. For
+example I was trying to build an image with ext4 on an openSUSE 11.1
+system, yes silly me, but it only became obvious once I already had
+completed the prepare step and create failed beacuse mkfs.ext4 was missing.
+
+I think we could take the opportunity and not hard code the paths while
+at the same time provide some earlier error detection mechanism.
+
+I am thinking
+
+sub findExec {
+  my $ execName = shift;
+  my $execPath = `which $execName`;
+  if ($execPath =~ m/^which: no $execName/) {
+	return;
+  }
+  return $execName;
+}
+
+Each line would then turn into something like this:
+
+$KnownFS{ext4}{tool}      = findExec(mkfs.ext4);
+
+In this first iteration the error in my example case will be no worse
+than before, while over time we can add error checking once we know the
+parameters for the image to create. We can check that {tool} is not
+empty before we go off and run operations, such as prepare in my case,
+that are time consuming. Early error messages are always welcome IMHO.
+
+Robert
+&gt;<i> 
+</I>&gt;<i> Regards,
+</I>&gt;<i> Marcus
+</I>
+-- 
+Robert Schweikert                           MAY THE SOURCE BE WITH YOU
+Software Engineer Consultant                          LINUX
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>
+781-464-8147
+
+Novell
+Making IT Work As One
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002228.html">[Kiwi-devel] Hard Coding
+</A></li>
+	<LI>Next message: <A HREF="002229.html">[Kiwi-devel] Hard Coding
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2227">[ date ]</a>
+              <a href="thread.html#2227">[ thread ]</a>
+              <a href="subject.html#2227">[ subject ]</a>
+              <a href="author.html#2227">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

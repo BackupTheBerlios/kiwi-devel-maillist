@@ -1,0 +1,255 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. eaf0d05cb15ff119dbd5f599a2c8d8f359d5c52a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20eaf0d05cb15ff119dbd5f599a2c8d8f359d5c52a&In-Reply-To=%3C201002101550.o1AFoQTU012974%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001890.html">
+   <LINK REL="Next"  HREF="001893.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. eaf0d05cb15ff119dbd5f599a2c8d8f359d5c52a</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20eaf0d05cb15ff119dbd5f599a2c8d8f359d5c52a&In-Reply-To=%3C201002101550.o1AFoQTU012974%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. eaf0d05cb15ff119dbd5f599a2c8d8f359d5c52a">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Feb 10 16:50:26 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001890.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6008c7918ca4fd6e246eb4aca7ffc8cb7ccdaa31
+</A></li>
+        <LI>Next message: <A HREF="001893.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8e0fe843b3a8325f4812f8039ef528aa1ea2e7da
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1892">[ date ]</a>
+              <a href="thread.html#1892">[ thread ]</a>
+              <a href="subject.html#1892">[ subject ]</a>
+              <a href="author.html#1892">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  eaf0d05cb15ff119dbd5f599a2c8d8f359d5c52a (commit)
+      from  6008c7918ca4fd6e246eb4aca7ffc8cb7ccdaa31 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit eaf0d05cb15ff119dbd5f599a2c8d8f359d5c52a
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Feb 10 16:50:02 2010 +0100
+
+    - migration: added zypper repos to config.sh if not local
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 647c1a4..d2e8f29 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -1094,7 +1094,7 @@ sub main {
+ 				$migrate -&gt; cleanMount();
+ 				my $code = kiwiExit (1); return $code;
+ 			}
+-			if (! $migrate -&gt; setServiceList()) {
++			if (! $migrate -&gt; setPrepareConfigSkript()) {
+ 				$migrate -&gt; cleanMount();
+ 				my $code = kiwiExit (1); return $code;
+ 			}
+diff --git a/modules/KIWIMigrate.pm b/modules/KIWIMigrate.pm
+index 994f570..573c89c 100644
+--- a/modules/KIWIMigrate.pm
++++ b/modules/KIWIMigrate.pm
+@@ -104,6 +104,7 @@ sub new {
+ 			return undef;
+ 		}
+ 	}
++	$dest =~ s/\/$//;
+ 	$kiwi -&gt; done ();
+ 	$kiwi -&gt; info (&quot;Results will be written to: $dest&quot;);
+ 	$kiwi -&gt; done ();
+@@ -360,6 +361,7 @@ sub getRepos {
+ 			my $type    = $4;
+ 			my $alias   = $1;
+ 			my $prio    = $3;
++			my $origsrc = $source;
+ 			if ($enabled eq &quot;Yes&quot;) {
+ 				#==========================================
+ 				# handle special source type <A HREF="dvd://">dvd://</A>
+@@ -387,11 +389,12 @@ sub getRepos {
+ 					}
+ 					$source = &quot;<A HREF="dir://">dir://</A>&quot;.$mpoint;
+ 					push @{$mounts},$mpoint;
++					$osc{$product}{$source}{flag} = &quot;local&quot;;
+ 				}
+ 				#==========================================
+ 				# handle special source type <A HREF="iso://">iso://</A>
+ 				#------------------------------------------
+-				if ($source =~ /iso=(.*\.iso)/) {
++				elsif ($source =~ /iso=(.*\.iso)/) {
+ 					my $iso = $1;
+ 					if (! -e $iso) {
+ 						$kiwi -&gt; warning (&quot;ISO repo: $iso does not exist&quot;);
+@@ -415,10 +418,24 @@ sub getRepos {
+ 					}
+ 					$source = &quot;<A HREF="dir://">dir://</A>&quot;.$mpoint;
+ 					push @{$mounts},$mpoint;
++					$osc{$product}{$source}{flag} = &quot;local&quot;;
++				}
++				#==========================================
++				# handle source type http|https|<A HREF="ftp://">ftp://</A>
++				#------------------------------------------
++				elsif ($source =~ /^(http|https|ftp)/) {
++					$osc{$product}{$source}{flag} = &quot;remote&quot;;
++				}
++				#==========================================
++				# handle all other source types
++				#------------------------------------------
++				else {
++					$osc{$product}{$source}{flag} = &quot;unknown&quot;;
+ 				}
+ 				#==========================================
+ 				# store repo information
+ 				#------------------------------------------
++				$osc{$product}{$source}{src}  = $origsrc;
+ 				$osc{$product}{$source}{type} = $type;
+ 				$osc{$product}{$source}{alias}= $alias;
+ 				$osc{$product}{$source}{prio} = $prio;
+@@ -484,6 +501,7 @@ sub setTemplate {
+ 		my $type = $osc{$product}{$source}{type};
+ 		my $alias= $osc{$product}{$source}{alias};
+ 		my $prio = $osc{$product}{$source}{prio};
++		my $url  = $osc{$product}{$source}{src};
+ 		print FD &quot;\t&quot;.'&lt;repository type=&quot;'.$type.'&quot;';
+ 		if (defined $alias) {
+ 			print FD ' alias=&quot;'.$alias.'&quot;';
+@@ -492,7 +510,7 @@ sub setTemplate {
+ 			print FD ' priority=&quot;'.$prio.'&quot;';
+ 		}
+ 		print FD '&gt;'.&quot;\n&quot;;
+-		print FD &quot;\t\t&quot;.'&lt;source path=&quot;'.$source.'&quot;/&gt;'.&quot;\n&quot;;
++		print FD &quot;\t\t&quot;.'&lt;source path=&quot;'.$url.'&quot;/&gt;'.&quot;\n&quot;;
+ 		print FD &quot;\t&quot;.'&lt;/repository&gt;'.&quot;\n&quot;;
+ 	}
+ 	#==========================================
+@@ -550,15 +568,18 @@ sub getOperatingSystemVersion {
+ }
+ 
+ #==========================================
+-# setServiceList
++# setPrepareConfigSkript
+ #------------------------------------------
+-sub setServiceList {
++sub setPrepareConfigSkript {
+ 	# ...
+ 	# Find all services enabled on the system and create
+ 	# an appropriate config.sh file
+ 	# ---
+ 	my $this = shift;
++	my $kiwi = $this-&gt;{kiwi};
+ 	my $dest = $this-&gt;{dest};
++	my %osc  = %{$this-&gt;{source}};
++	my $product = $this-&gt;{product};
+ 	my @serviceBoot = glob (&quot;/etc/init.d/boot.d/S*&quot;);
+ 	my @serviceList = glob (&quot;/etc/init.d/rc5.d/S*&quot;);
+ 	my @service = (@<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">serviceBoot, at serviceList</A>);
+@@ -581,9 +602,28 @@ sub setServiceList {
+ 	print FD 'test -f /.profile &amp;&amp; . /.profile'.&quot;\n&quot;;
+ 	print FD 'echo &quot;Configure image: [$kiwi_iname]...&quot;'.&quot;\n&quot;;
+ 	print FD 'suseSetupProduct'.&quot;\n&quot;;
++	#==========================================
++	# Services...
++	#------------------------------------------
+ 	foreach my $service (@result) {
+ 		print FD 'suseInsertService '.$service.&quot;\n&quot;;
+ 	}
++	#==========================================
++	# Repos...
++	#------------------------------------------
++	foreach my $source (keys %{$osc{$product}} ) {
++		my $alias= $osc{$product}{$source}{alias};
++		my $url  = $osc{$product}{$source}{src};
++		my $flag = $osc{$product}{$source}{flag};
++		if ($flag ne &quot;remote&quot;) {
++			$kiwi -&gt; warning (
++				&quot;Local repo: $alias will not be added to config.sh&quot;
++			);
++			$kiwi -&gt; skipped ();
++			next;
++		}
++		print FD &quot;zypper ar &quot;.$url.&quot; \\\n\t&quot;.$alias.&quot;\n&quot;;
++	}
+ 	print FD 'suseConfig'.&quot;\n&quot;;
+ 	print FD 'baseCleanMount'.&quot;\n&quot;;
+ 	print FD 'exit 0'.&quot;\n&quot;;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 71d3685..b46304a 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,10 +1,5 @@
+ -------------------------------------------------------------------
+-Wed Feb 10 16:24:45 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarriner at suse.de</A>
+-
+-- A minor imagewriter text modification.
+-
+--------------------------------------------------------------------
+-Tue Feb  9 16:42:18 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++Wed Feb 10 16:49:28 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v4.15
+ - moved EC2 options into a new ec2config section (bnc #577883)
+@@ -12,6 +7,11 @@ Tue Feb  9 16:42:18 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ - fixed default split section usage for iso type
+ 
+ -------------------------------------------------------------------
++Wed Feb 10 16:24:45 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">mbarriner at suse.de</A>
++
++- A minor imagewriter text modification.
++
++-------------------------------------------------------------------
+ Tue Feb  9 13:16:19 UTC 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">prusnak at suse.cz</A>
+ 
+ - enable noarch subpackages
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001890.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 6008c7918ca4fd6e246eb4aca7ffc8cb7ccdaa31
+</A></li>
+	<LI>Next message: <A HREF="001893.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8e0fe843b3a8325f4812f8039ef528aa1ea2e7da
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1892">[ date ]</a>
+              <a href="thread.html#1892">[ thread ]</a>
+              <a href="subject.html#1892">[ subject ]</a>
+              <a href="author.html#1892">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

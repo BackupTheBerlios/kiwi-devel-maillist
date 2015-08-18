@@ -1,0 +1,257 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 54e7c1bdd89fb136f0751652f206cbdd101cce89
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-301-SuSE-11-1-Devel%2C%0A%09updated.%2054e7c1bdd89fb136f0751652f206cbdd101cce89&In-Reply-To=%3C200904271533.n3RFXara020203%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001211.html">
+   <LINK REL="Next"  HREF="001213.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 54e7c1bdd89fb136f0751652f206cbdd101cce89</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-301-SuSE-11-1-Devel%2C%0A%09updated.%2054e7c1bdd89fb136f0751652f206cbdd101cce89&In-Reply-To=%3C200904271533.n3RFXara020203%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-301-SuSE-11-1-Devel,	updated. 54e7c1bdd89fb136f0751652f206cbdd101cce89">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Apr 27 17:33:36 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001211.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. adc5041a8c4922cb9cd1bc242faea783ef3ea699
+</A></li>
+        <LI>Next message: <A HREF="001213.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d567cf91b59c0871672b95a8be98d91218236c89
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1212">[ date ]</a>
+              <a href="thread.html#1212">[ thread ]</a>
+              <a href="subject.html#1212">[ subject ]</a>
+              <a href="author.html#1212">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-301-SuSE-11-1-Devel has been updated
+       via  54e7c1bdd89fb136f0751652f206cbdd101cce89 (commit)
+      from  fe209138b030c7cc692055d2e6ad7d5e7d5f047e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 54e7c1bdd89fb136f0751652f206cbdd101cce89
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Apr 27 17:32:46 2009 +0200
+
+    - added kernel parameter nombridcheck (bnc #498371)
+    - remove boot/grub/mbrid file from installed system
+      at first deployment to avoid conflicts on reboot
+    - set boot flag after repartitioning the device
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 68eef46..bf733db 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -1633,14 +1633,15 @@ function searchBIOSBootDevice {
+ 	local ddevs=`$h --disk|grep -E &quot;$c&quot;|sed -e&quot;s@(.*)@@&quot;|cut -f2 -d:|tr -d &quot; &quot;`
+ 	local cmpd=/tmp/mbrids
+ 	local ifix=0
++	local bios
+ 	local file
+ 	local pred
+ 	#======================================
+-	# Check for BIOS id 0x80
++	# Store device with BIOS id 0x80
+ 	#--------------------------------------
+ 	for curd in $ddevs;do
+ 		if [ $curd = &quot;0x80&quot; ];then
+-			echo $pred; return
++			bios=$pred; break
+ 		fi
+ 		pred=$curd
+ 	done
+@@ -1675,12 +1676,19 @@ function searchBIOSBootDevice {
+ 	#======================================
+ 	# Compare ID with MBR entry 
+ 	#--------------------------------------
++	ifix=0
+ 	for curd in $ddevs;do
+ 		mbrM=`dd if=$curd bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
+ 		if [ $mbrM = $mbrI ];then
+-			echo $curd; return
++			ifix=1
++			if [ &quot;$curd&quot; = &quot;$bios&quot; ];then
++				echo $curd; return
++			fi
+ 		fi
+ 	done
++	if [ $ifix -eq 1 ];then
++		echo $curd; return
++	fi
+ 	systemException \
+ 		&quot;No devices matches MBR identifier: $mbrI !&quot; \
+ 	&quot;reboot&quot;
+@@ -3463,7 +3471,10 @@ function activateImage {
+ 	# copy boot log file into system image
+ 	#--------------------------------------
+ 	mkdir -p /mnt/var/log
+-	cp /var/log/boot.kiwi /mnt/var/log/boot.kiwi
++	rm -f /var/log/boot.msg
++	rm -f /mnt/boot/grub/mbrid
++	cp -f /mnt/dev/shm/initrd.msg /mnt/var/log/boot.msg
++	cp -f /var/log/boot.kiwi /mnt/var/log/boot.kiwi
+ 	#======================================
+ 	# run preinit stage
+ 	#--------------------------------------
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 1230fd0..c259085 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,12 @@
+ -------------------------------------------------------------------
++Mon Apr 27 17:31:33 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- added kernel parameter nombridcheck (bnc #498371)
++- remove boot/grub/mbrid file from installed system
++  at first deployment to avoid conflicts on reboot
++- set boot flag after repartitioning the device
++
++-------------------------------------------------------------------
+ Fri Apr 24 16:01:37 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed format image creation for split type (bnc #497882)
+diff --git a/system/boot/ix86/oemboot/suse-dump b/system/boot/ix86/oemboot/suse-dump
+index f518689..5e2a145 100755
+--- a/system/boot/ix86/oemboot/suse-dump
++++ b/system/boot/ix86/oemboot/suse-dump
+@@ -149,17 +149,20 @@ function OEMInstall {
+ 	#======================================
+ 	# Check MBR ID's...
+ 	#--------------------------------------
+-	mbrI=&quot;cat $imageName&quot;
+-	if [ &quot;$imageZipped&quot; = &quot;compressed&quot; ];then
+-		mbrI=&quot;gzip -cd $imageName&quot;
++	if [ -z &quot;$nombridcheck&quot; ];then
++		mbrD=$instDisk
++		mbrI=&quot;cat $imageName&quot;
++		if [ &quot;$imageZipped&quot; = &quot;compressed&quot; ];then
++			mbrI=&quot;gzip -cd $imageName&quot;
++		fi
++		mbrM=`dd if=$mbrD bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
++		mbrI=`$mbrI | dd  bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
++		if [ $mbrM = $mbrI ];then
++			systemException \
++				&quot;Base system already installed&quot; \
++			&quot;reboot&quot;
++		fi	
+ 	fi
+-	mbrM=`dd if=$instDisk  bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
+-	mbrI=`$mbrI | dd bs=1 count=4 skip=$((0x1b8))|hexdump -n4 -e '&quot;0x%x&quot;'`
+-	if [ $mbrM = $mbrI ];then
+-		systemException \
+-			&quot;Base system already installed&quot; \
+-		&quot;reboot&quot;
+-	fi	
+ 	#======================================
+ 	# read MD5 information...
+ 	#--------------------------------------
+diff --git a/system/boot/ix86/oemboot/suse-repart b/system/boot/ix86/oemboot/suse-repart
+index f26f096..0372c7c 100755
+--- a/system/boot/ix86/oemboot/suse-repart
++++ b/system/boot/ix86/oemboot/suse-repart
+@@ -293,6 +293,7 @@ function OEMRepartStandard {
+ 		if test $? != 0; then
+ 			systemException &quot;Failed to create partition table&quot; &quot;reboot&quot;
+ 		fi
++		activateBootPartition
+ 	fi
+ 	#======================================
+ 	# Update new device names
+@@ -394,6 +395,7 @@ function OEMRepartOverlayed {
+ 		if test $? != 0; then
+ 			systemException &quot;Failed to create partition table&quot; &quot;reboot&quot;
+ 		fi
++		activateBootPartition
+ 	fi
+ 	#======================================
+ 	# Update new device names
+@@ -498,6 +500,7 @@ function OEMRepartCombined {
+ 		if test $? != 0; then
+ 			systemException &quot;Failed to create partition table&quot; &quot;reboot&quot;
+ 		fi
++		activateBootPartition
+ 	fi
+ 	#======================================
+ 	# Update new device names
+@@ -548,6 +551,7 @@ function OEMRepartLVM {
+ 	if test $? != 0; then
+ 		systemException &quot;Failed to create partition table&quot; &quot;reboot&quot;
+ 	fi
++	activateBootPartition
+ 	vgchange -a y kiwiVG
+ 	pvcreate $imageDiskDevice&quot;3&quot;
+ 	vgextend kiwiVG $imageDiskDevice&quot;3&quot;
+@@ -685,3 +689,22 @@ function OEMRepart {
+ 		umount /reco-root &amp;&amp; rmdir /reco-root
+ 	fi
+ }
++
++#======================================
++# activateBootPartition
++#--------------------------------------
++function activateBootPartition {
++	# /.../
++	# set boot flag to current value of $bootid
++	# ----
++	local input=/part.input
++	local bid=`expr $bootid + 1`
++	Echo &quot;Set boot flag to partition ID: $bid [ $imageDiskDevice ]&quot;
++	for cmd in a $bid w q; do
++		echo $cmd &gt;&gt; $input
++	done
++	fdisk $imageDiskDevice &lt; $input 1&gt;&amp;2
++	if test $? != 0; then
++		systemException &quot;Failed to set boot flag&quot; &quot;reboot&quot;
++	fi
++}
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001211.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. adc5041a8c4922cb9cd1bc242faea783ef3ea699
+</A></li>
+	<LI>Next message: <A HREF="001213.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d567cf91b59c0871672b95a8be98d91218236c89
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1212">[ date ]</a>
+              <a href="thread.html#1212">[ thread ]</a>
+              <a href="subject.html#1212">[ subject ]</a>
+              <a href="author.html#1212">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

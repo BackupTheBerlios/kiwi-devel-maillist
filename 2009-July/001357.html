@@ -1,0 +1,402 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9d8f6e11702a3a7aa3d69314dab5ef049dcd2cc3
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%209d8f6e11702a3a7aa3d69314dab5ef049dcd2cc3&In-Reply-To=%3C200907241005.n6OA5QAf025039%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001356.html">
+   <LINK REL="Next"  HREF="001358.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9d8f6e11702a3a7aa3d69314dab5ef049dcd2cc3</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%209d8f6e11702a3a7aa3d69314dab5ef049dcd2cc3&In-Reply-To=%3C200907241005.n6OA5QAf025039%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 9d8f6e11702a3a7aa3d69314dab5ef049dcd2cc3">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Jul 24 12:05:26 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001356.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5ec2d3f655ef0ec9e515cea0450e9032adf784b6
+</A></li>
+        <LI>Next message: <A HREF="001358.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8957f05e490b41bdd0b4456fdde9658732d7aae7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1357">[ date ]</a>
+              <a href="thread.html#1357">[ thread ]</a>
+              <a href="subject.html#1357">[ subject ]</a>
+              <a href="author.html#1357">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  9d8f6e11702a3a7aa3d69314dab5ef049dcd2cc3 (commit)
+      from  5ec2d3f655ef0ec9e515cea0450e9032adf784b6 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 9d8f6e11702a3a7aa3d69314dab5ef049dcd2cc3
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Jul 24 12:05:14 2009 +0200
+
+    - v3.65
+    - added waitForUSBDeviceScan() function and wait only
+      if usbcore module could be loaded
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 5f03a73..8f2f32b 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -44,7 +44,7 @@ use KIWITest;
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.64&quot;;
++our $Version       = &quot;3.65&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index e907869..0566379 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -1670,12 +1670,39 @@ function getSystemMD5Status {
+ 	echo $SYSTEM_MD5STATUS | cut -f$1 -d:
+ }
+ #======================================
++# waitForUSBDeviceScan
++#--------------------------------------
++function waitForUSBDeviceScan {
++	local silent=$1
++	local devices=0
++	if [ ! &quot;$HAVE_USB&quot; = &quot;yes&quot; ];then
++		return
++	fi
++	if [ -z &quot;$silent&quot; ];then
++		Echo -n &quot;Waiting for USB device scan to complete...&quot;
++	fi
++	while \
++		[ $(dmesg | grep -c 'usb-storage: device scan complete') -lt 1 ] &amp;&amp; \
++		[ $devices -lt 15 ]
++	do
++		if [ -z &quot;$silent&quot; ];then
++			echo -n .
++		fi
++		sleep 1
++		devices=$(( $devices + 1 ))
++	done
++	if [ -z &quot;$silent&quot; ];then
++		echo
++	fi
++}
++#======================================
+ # probeUSB
+ #--------------------------------------
+ function probeUSB {
+ 	local module=&quot;&quot;
+ 	local stdevs=&quot;&quot;
+ 	local hwicmd=&quot;/usr/sbin/hwinfo&quot;
++	export HAVE_USB=&quot;no&quot;
+ 	if [ $HAVE_MODULES_ORDER = 0 ];then
+ 		#======================================
+ 		# load host controller modules
+@@ -1730,45 +1757,22 @@ function probeUSB {
+ 			modprobe $i &amp;&gt;/dev/null
+ 		done
+ 	fi
+-	#======================================
+-	# wait for storage devices to appear
+-	#--------------------------------------
+-	Echo -n &quot;Waiting for USB devices to settle...&quot;
+-	local storage=/sys/bus/usb/drivers/usb-storage
+-	local devices=0
+-	while [ $devices -lt 5 ];do
+-		for i in $storage/*;do
+-			if [ -L $i ] &amp;&amp; [ ! $i = &quot;$storage/module&quot; ];then
+-				devices=ok
+-				break
+-			fi
+-		done
+-		if [ $devices = &quot;ok&quot; ];then
+-			break
+-		fi
+-		echo -n . ; sleep 1
+-		devices=$(( $devices + 1 ))
+-	done
+-	if [ ! $devices = &quot;ok&quot; ];then
+-		echo ; return
++	if lsmod | grep -q usbcore;then
++		export HAVE_USB=&quot;yes&quot;
+ 	fi
+-	#======================================
+-	# wait for storage scan to complete
+-	#--------------------------------------
+-	devices=0
+-	while \
+-		[ $(dmesg | grep -c 'usb-storage: device scan complete') -lt 1 ] &amp;&amp; \
+-		[ $devices -lt 15 ]
+-	do
+-		echo -n . ; sleep 1
+-		devices=$(( $devices + 1 ))
+-	done
+-	echo
++	waitForUSBDeviceScan
+ }
+ #======================================
+ # probeDevices
+ #--------------------------------------
+ function probeDevices {
++	#======================================
++	# probe USB devices and load modules
++	#--------------------------------------
++	probeUSB
++	#======================================
++	# probe Disk devices and load modules
++	#--------------------------------------
+ 	if [ $HAVE_MODULES_ORDER = 0 ];then
+ 		Echo &quot;Including required kernel modules...&quot;
+ 		IFS=&quot;%&quot;
+@@ -1820,16 +1824,12 @@ function probeDevices {
+ 		# ----
+ 		modprobe ide-disk &amp;&gt;/dev/null
+ 	fi
+-	# /.../
+-	# default loading of modules not loaded on demand
+-	# ----
++	#======================================
++	# Manual loading of modules
++	#--------------------------------------
+ 	for i in rd brd edd dm-mod xennet xenblk;do
+ 		modprobe $i &amp;&gt;/dev/null
+ 	done
+-	# /.../
+-	# probe USB devices and load modules
+-	# ----
+-	probeUSB
+ }
+ #======================================
+ # CDDevice
+@@ -1889,90 +1889,68 @@ function USBStickDevice {
+ 	stickFound=0
+ 	local silent=$1
+ 	#======================================
+-	# check virtual environments
+-	#--------------------------------------
+-	diskmodels=`getDiskModels`
+-	if echo $diskmodels | grep -q &quot;QEMU HARDDISK&quot;;then
+-		if [ -z &quot;$silent&quot; ];then
+-			Echo &quot;QEMU system, skipping USB stick search&quot;
+-		fi
+-		return
+-	fi
+-	#======================================
+ 	# search for USB removable devices
+ 	#--------------------------------------
+-	if [ -z &quot;$silent&quot; ];then
+-		Echo -n &quot;Searching for USB stick device...&quot;
+-	fi
+-	for redo in 1 2 3 4 5;do
+-		for device in /sys/bus/usb/drivers/usb-storage/*;do
+-			if [ ! -L $device ];then
++	waitForUSBDeviceScan $silent
++	for device in /sys/bus/usb/drivers/usb-storage/*;do
++		if [ ! -L $device ];then
++			continue
++		fi
++		descriptions=$device/host*/target*/*/block*
++		for description in $descriptions;do
++			if [ ! -d $description ];then
+ 				continue
+ 			fi
+-			descriptions=$device/host*/target*/*/block*
+-			for description in $descriptions;do
+-				if [ ! -d $description ];then
+-					continue
+-				fi
+-				isremovable=$description/removable
+-				storageID=`echo $description | cut -f1 -d: | xargs basename`
+-				devicebID=`basename $description | cut -f2 -d:`
+-				if [ $devicebID = &quot;block&quot; ];then
+-					devicebID=`ls -1 $description`
+-					isremovable=$description/$devicebID/removable
+-				fi
+-				serial=&quot;/sys/bus/usb/devices/$storageID/serial&quot;
+-				device=&quot;/dev/$devicebID&quot;
+-				if [ ! -b $device ];then
+-					continue;
+-				fi
+-				if [ ! -f $isremovable ];then
+-					continue;
+-				fi
+-				if ! partitionSize $device &gt;/dev/null;then
+-					continue;
+-				fi
+-				if [ ! -f $serial ];then
+-					serial=&quot;USB Stick (unknown type)&quot;
+-				else
+-					serial=`cat $serial`
+-				fi
+-				removable=`cat $isremovable`
+-				if [ $removable -eq 1 ];then
+-					stickRoot=$device
+-					stickDevice=$device&quot;1&quot;
+-					for dev in $stickRoot&quot;1&quot; $stickRoot&quot;2&quot;;do
+-						if ! kiwiMount &quot;$dev&quot; &quot;/mnt&quot;;then
+-							continue
+-						fi
+-						stickFound=1
+-						if \
+-							[ ! -e /mnt/etc/ImageVersion ] &amp;&amp; \
+-							[ ! -e /mnt/config.isoclient ]
+-						then
+-							umountSystem
+-							continue
+-						fi
+-						umountSystem
+-						break
+-					done
+-					if [ &quot;$stickFound&quot; = 0 ];then
++			isremovable=$description/removable
++			storageID=`echo $description | cut -f1 -d: | xargs basename`
++			devicebID=`basename $description | cut -f2 -d:`
++			if [ $devicebID = &quot;block&quot; ];then
++				devicebID=`ls -1 $description`
++				isremovable=$description/$devicebID/removable
++			fi
++			serial=&quot;/sys/bus/usb/devices/$storageID/serial&quot;
++			device=&quot;/dev/$devicebID&quot;
++			if [ ! -b $device ];then
++				continue;
++			fi
++			if [ ! -f $isremovable ];then
++				continue;
++			fi
++			if ! partitionSize $device &gt;/dev/null;then
++				continue;
++			fi
++			if [ ! -f $serial ];then
++				serial=&quot;USB Stick (unknown type)&quot;
++			else
++				serial=`cat $serial`
++			fi
++			removable=`cat $isremovable`
++			if [ $removable -eq 1 ];then
++				stickRoot=$device
++				stickDevice=$device&quot;1&quot;
++				for dev in $stickRoot&quot;1&quot; $stickRoot&quot;2&quot;;do
++					if ! kiwiMount &quot;$dev&quot; &quot;/mnt&quot;;then
+ 						continue
+ 					fi
+-					stickSerial=$serial
+-					if [ -z &quot;$silent&quot; ];then
+-						echo .
++					stickFound=1
++					if \
++						[ ! -e /mnt/etc/ImageVersion ] &amp;&amp; \
++						[ ! -e /mnt/config.isoclient ]
++					then
++						umountSystem
++						continue
+ 					fi
+-					return
++					umountSystem
++					break
++				done
++				if [ &quot;$stickFound&quot; = 0 ];then
++					continue
+ 				fi
+-			done
++				stickSerial=$serial
++				return
++			fi
+ 		done
+-		if [ -z &quot;$silent&quot; ];then
+-			echo -n .
+-		fi
+-		sleep 3
+ 	done
+-	echo .
+ }
+ #======================================
+ # CDMountOption
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 4a7f313..0dd44ee 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Thu Jul 23 16:30:28 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.65
++- added waitForUSBDeviceScan() function and wait only
++  if usbcore module could be loaded
++
++-------------------------------------------------------------------
+ Thu Jul 16 12:52:46 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.64
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index 7514187..6c24e8f 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.64)
++# spec file for package kiwi (Version 3.65)
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -46,7 +46,7 @@ Requires:       satsolver-tools
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.64
++Version:        3.65
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001356.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5ec2d3f655ef0ec9e515cea0450e9032adf784b6
+</A></li>
+	<LI>Next message: <A HREF="001358.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8957f05e490b41bdd0b4456fdde9658732d7aae7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1357">[ date ]</a>
+              <a href="thread.html#1357">[ thread ]</a>
+              <a href="subject.html#1357">[ subject ]</a>
+              <a href="author.html#1357">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

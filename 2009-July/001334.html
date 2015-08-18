@@ -1,0 +1,272 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. df2a5ca58e2629161138bd31169936223ac4be9f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20df2a5ca58e2629161138bd31169936223ac4be9f&In-Reply-To=%3C200907081652.n68GqN7M015537%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001333.html">
+   <LINK REL="Next"  HREF="001335.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. df2a5ca58e2629161138bd31169936223ac4be9f</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20df2a5ca58e2629161138bd31169936223ac4be9f&In-Reply-To=%3C200907081652.n68GqN7M015537%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. df2a5ca58e2629161138bd31169936223ac4be9f">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jul  8 18:52:23 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001333.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7eede8d5a5fb665084b8585e761dd23a5f89d3e1
+</A></li>
+        <LI>Next message: <A HREF="001335.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d1ac25aff607f86dc9515dc1f42e216fbf43ec40
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1334">[ date ]</a>
+              <a href="thread.html#1334">[ thread ]</a>
+              <a href="subject.html#1334">[ subject ]</a>
+              <a href="author.html#1334">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  df2a5ca58e2629161138bd31169936223ac4be9f (commit)
+      from  7eede8d5a5fb665084b8585e761dd23a5f89d3e1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit df2a5ca58e2629161138bd31169936223ac4be9f
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Jul 8 18:52:08 2009 +0200
+
+    - added check for packages really on media when using
+      fallback KIWIPattern resolver (bnc #517506)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIPattern.pm b/modules/KIWIPattern.pm
+index f5e0da5..de4de2e 100644
+--- a/modules/KIWIPattern.pm
++++ b/modules/KIWIPattern.pm
+@@ -247,6 +247,110 @@ sub checkContentData {
+ }
+ 
+ #==========================================
++# downloadMediaPackages
++#------------------------------------------
++sub downloadMediaPackages {
++	my $this    = shift;
++	my $url     = shift;
++	my $kiwi    = $this-&gt;{kiwi};
++	my @pfile   = (
++		&quot;suse/setup/descr/packages.gz&quot;,
++		&quot;suse/setup/descr/packages&quot;
++	);
++	my $file;
++	my $media;
++	my $message;
++	my %content;
++	my $tmpdir;
++	if (defined $this-&gt;{cache}{media}) {
++		return $this-&gt;{cache}{media};
++	}
++	if ($url =~ /^\//) {
++		#==========================================
++		# local media check
++		#------------------------------------------
++		foreach my $name (@pfile) {
++			$media = $url.&quot;/&quot;.$name;
++			last if (-f $media);
++		}
++		if (! defined $media) {
++			$message = &quot;couldn't find any packages file&quot;;
++			return (undef,&quot;local[content]: $message: $!&quot;);
++		}
++	} else {
++		#==========================================
++		# remote media check
++		#------------------------------------------
++		$tmpdir = qxx (&quot;mktemp -q -d /tmp/kiwimedia.XXXXXX &quot;); chomp $tmpdir;
++		my $result = $? &gt;&gt; 8;
++		if ($result != 0) {
++			$message = &quot;couldn't create tmpdir&quot;;
++			return (undef,&quot;remote[tmpdir] $message: $!&quot;);
++		}
++		my $urlHandler  = new KIWIURL ($kiwi,undef);
++		my $publics_url = $url;
++		my $highlvl_url = $urlHandler -&gt; openSUSEpath ($publics_url,&quot;quiet&quot;);
++		if (defined $highlvl_url) {
++			$publics_url = $highlvl_url;
++		}
++		my $browser  = LWP::UserAgent-&gt;new;
++		foreach my $name (@pfile) {
++			my $location = $publics_url.&quot;/&quot;.$name;
++			my $request  = HTTP::Request-&gt;new (GET =&gt; $location);
++			my $response;
++			eval {
++				$response = $browser -&gt; request ( $request );
++			};
++			if ($@) {
++				$message = &quot;http request failed: $@&quot;;
++				next;
++			}
++			my $content = $response -&gt; content ();
++			if ((defined $content) &amp;&amp; ($content ne &quot;&quot;)) {
++				if (! open (FD,&quot;&gt;$tmpdir/media&quot;)) {
++					qxx (&quot;rm -rf $tmpdir&quot;);
++					$message = &quot;couldn't create&quot;;
++					return (undef,&quot;remote[open] $message: $tmpdir/media: $!&quot;);
++				}
++				print FD $content; close FD;
++				undef $message;
++				last;
++			}
++			$message = &quot;http request empty: $name&quot;;
++		}
++		if (defined $message) {
++			qxx (&quot;rm -rf $tmpdir&quot;);
++			return (undef, &quot;remote[request]: $message&quot;);
++		}
++	}
++	#==========================================
++	# finally get the pattern
++	#------------------------------------------
++	if ($media =~ /\.gz$/) {
++		if ((! -e $media) || (! open (FD,&quot;cat $media|$main::Gzip -cd|&quot;))) {
++			defined $tmpdir &amp;&amp; qxx (&quot;rm -rf $tmpdir&quot;);
++			$message = &quot;couldn't uncompress media packages&quot;;
++			return (undef,&quot;local[gzip]: $message: $media: $!&quot;);
++		}
++	} else {
++		if (! open (FD,$media)) {
++			defined $tmpdir &amp;&amp; qxx (&quot;rm -rf $tmpdir&quot;);
++			$message = &quot;couldn't open media packages&quot;;
++			return (undef,&quot;local[open]: $message: $media: $!&quot;);
++		}
++	}
++	my @content = &lt;FD&gt;; close FD;
++	defined $tmpdir &amp;&amp; qxx (&quot;rm -rf $tmpdir&quot;);
++	foreach my $line (grep (/Pkg:/, @content)) {
++		if ($line =~ (/^=Pkg: (.*?) (.*)/)) {
++			$content{$1} = $2;
++		}
++	}
++	$this-&gt;{cache}{media} = \%content;
++	return (\%content,$this);
++}
++
++#==========================================
+ # downloadPattern
+ #------------------------------------------
+ sub downloadPattern {
+@@ -777,13 +881,18 @@ sub getRequiredProducts {
+ #------------------------------------------
+ sub getPackages {
+ 	my $this = shift;
++	my $kiwi = $this-&gt;{kiwi};
+ 	my $pattype = $this-&gt;{patpactype};
+ 	my %result;
+ 	my @packages = @{$this-&gt;{packages}};
+-
++	#==========================================
++	# Package for products
++	#------------------------------------------
+ 	my @prodpkgreqs = $this -&gt; getRequiredProducts ($this-&gt;{products});
+ 	push (@packages, @prodpkgreqs);
+-
++	#==========================================
++	# Packages for patterns
++	#------------------------------------------
+ 	my @reqs = $this -&gt; getRequiredPatterns ($this-&gt;{patterns});
+ 	my @pacs;
+ 	if ($pattype eq &quot;onlyRequired&quot;) {
+@@ -799,8 +908,31 @@ sub getPackages {
+ 			'^\+Pr[qc]:','^\-Pr[qc]:'
+ 		);
+ 	}
+-	push(@packages, @pacs);
+-
++	push (@packages, @pacs);
++	#==========================================
++	# Packages on media
++	#------------------------------------------
++	my %media;
++	foreach my $url (@{$this-&gt;{urllist}}) {
++		my $packages = $this -&gt; downloadMediaPackages($url);
++		foreach my $p (keys %{$packages}) {
++			$media{$p} = $packages-&gt;{$p};
++		}
++	}
++	#==========================================
++	# Sort out packages not on media
++	#------------------------------------------
++	my @result;
++	foreach my $toinst (@packages) {
++		next if (! $toinst);
++		if (! defined $media{$toinst}) {
++			$kiwi -&gt; warning (&quot;--&gt; Package $toinst not on media&quot;);
++			$kiwi -&gt; skipped ();
++		} else {
++			push (@result,$toinst);
++		}
++	}
++	@packages = @result;
+ 	@packages = sort @packages;
+ 	my $prev = '__none__';
+ 	return grep($_ ne $prev &amp;&amp; (($prev) = $_), @packages);
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index e46b041..6225595 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -2,6 +2,8 @@
+ Sun Jul  5 19:59:26 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.62
++- added check for packages really on media when using
++  fallback KIWIPattern resolver (bnc #517506)
+ - fixed combined mount with luks encoded read-write part (bnc #505782)
+ - added support for luks extension for oem image type (bnc #505782)
+ - fixed CD eject in oem CD/DVD install mode (bnc #519654)
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001333.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 7eede8d5a5fb665084b8585e761dd23a5f89d3e1
+</A></li>
+	<LI>Next message: <A HREF="001335.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d1ac25aff607f86dc9515dc1f42e216fbf43ec40
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1334">[ date ]</a>
+              <a href="thread.html#1334">[ thread ]</a>
+              <a href="subject.html#1334">[ subject ]</a>
+              <a href="author.html#1334">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

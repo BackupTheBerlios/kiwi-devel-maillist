@@ -1,0 +1,153 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1766 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1766%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200811181005.mAIA5DuT023570%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000848.html">
+   <LINK REL="Next"  HREF="000852.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1766 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1766%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200811181005.mAIA5DuT023570%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1766 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Nov 18 11:05:13 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000848.html">[Kiwi-devel] r1765 - in kiwi-head: rpm tools/cdtool
+</A></li>
+        <LI>Next message: <A HREF="000852.html">[Kiwi-devel] SLES 10 aufs
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#851">[ date ]</a>
+              <a href="thread.html#851">[ thread ]</a>
+              <a href="subject.html#851">[ subject ]</a>
+              <a href="author.html#851">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-11-18 11:05:09 +0100 (Tue, 18 Nov 2008)
+New Revision: 1766
+
+Modified:
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- fixed parted type setup and storage size function
+
+
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2008-11-17 17:06:11 UTC (rev 1765)
++++ kiwi-head/modules/KIWIBoot.pm	2008-11-18 10:05:09 UTC (rev 1766)
+@@ -3207,7 +3207,7 @@
+ 				if ($cmd eq &quot;t&quot;) {
+ 					my $index= $commands[$count+1];
+ 					my $type = $commands[$count+2];
+-					push (@p_cmd,&quot;set $index type $type&quot;);
++					push (@p_cmd,&quot;set $index type 0x$type&quot;);
+ 				}
+ 				if ($cmd eq &quot;a&quot;) {
+ 					my $index= $commands[$count+1];
+@@ -3221,6 +3221,7 @@
+ 				$status= qxx (&quot;/usr/sbin/parted -s $device unit s $p_cmd 2&gt;&amp;1&quot;);
+ 				$result= $? &gt;&gt; 8;
+ 				$kiwi -&gt; loginfo ($status);
++				sleep (1);
+ 			}
+ 			last SWITCH;
+ 		}
+@@ -3258,19 +3259,29 @@
+ 		# parted
+ 		#------------------------------------------
+ 		/^parted/  &amp;&amp; do {
+-			my $parted = &quot;/usr/sbin/parted -m -s $pdev unit kB print 2&gt;&amp;1&quot;;
+-			$status = qxx (&quot;$parted | grep ^$pdev | cut -f2 -d: | tr -d kB&quot;);
++			my $parted = &quot;/usr/sbin/parted -m &quot;;
++			my $disk   = $pdev;
++			my $step   = 2;
++			if ($pdev =~ /(.*)(\d+)/) {
++				$disk = $1;
++				$step = 4;
++			}
++			$parted .= '-s '.$disk.' unit B print |';
++			$parted .= 'sed -e &quot;s@^\([0-4]\):@'.$disk.'\1:@&quot; |';
++			$parted .= 'grep ^'.$pdev.':|cut -f'.$step.' -d: | tr -d B';
++			$status = qxx ($parted);
+ 			$result = $? &gt;&gt; 8;
+-			$status = int $status;
+ 			if ((! $status) &amp;&amp; ($pdev =~ /loop/)) {
+-				$status= qxx (&quot;/usr/sbin/parted -s $pdev mklabel msdos 2&gt;&amp;1&quot;);
+-				$status= qxx (&quot;$parted | grep ^$pdev | cut -f2 -d: | tr -d kB&quot;);
++				$status = qxx (&quot;/usr/sbin/parted -s $pdev mklabel msdos 2&gt;&amp;1&quot;);
++				$status = qxx ($parted);
+ 				$result = $? &gt;&gt; 8;
+ 			}
+ 			last SWITCH;
+ 		}
+ 	}
+ 	if ($result == 0) {
++		$status /= 1000;
++		$status = int $status;
+ 		return $status;
+ 	}
+ 	return 0;
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-11-17 17:06:11 UTC (rev 1765)
++++ kiwi-head/rpm/kiwi.changes	2008-11-18 10:05:09 UTC (rev 1766)
+@@ -1,10 +1,15 @@
+ -------------------------------------------------------------------
++Tue Nov 18 10:57:30 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- fixed parted type setup and storage size function
++
++-------------------------------------------------------------------
+ Mon Nov 17 18:02:28 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">jcborn at suse.de</A>
+ 
++- added options for EFI boot
+ - create volid string (patch by Olaf Hering &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">olh at novell.com</A>&gt;
+ - fixed quoting in tools/cdtool/suse-isolinux for hfs-volid string
+   (fixes bnc#444304)
+-- added options for EFI boot
+ 
+ -------------------------------------------------------------------
+ Mon Nov 17 10:46:09 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000848.html">[Kiwi-devel] r1765 - in kiwi-head: rpm tools/cdtool
+</A></li>
+	<LI>Next message: <A HREF="000852.html">[Kiwi-devel] SLES 10 aufs
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#851">[ date ]</a>
+              <a href="thread.html#851">[ thread ]</a>
+              <a href="subject.html#851">[ subject ]</a>
+              <a href="author.html#851">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

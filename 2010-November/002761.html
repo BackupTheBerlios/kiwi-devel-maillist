@@ -1,0 +1,703 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f4f99bf4b0fc748ed45a22c8f59edf4927f3d270
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20f4f99bf4b0fc748ed45a22c8f59edf4927f3d270&In-Reply-To=%3C20101101122656.D3EAE481115%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002760.html">
+   <LINK REL="Next"  HREF="002765.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f4f99bf4b0fc748ed45a22c8f59edf4927f3d270</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20f4f99bf4b0fc748ed45a22c8f59edf4927f3d270&In-Reply-To=%3C20101101122656.D3EAE481115%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f4f99bf4b0fc748ed45a22c8f59edf4927f3d270">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Nov  1 13:26:56 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002760.html">[Kiwi-devel] Support XFS
+</A></li>
+        <LI>Next message: <A HREF="002765.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e6c86cfc9b15e845860f3830322d2f4b39bce200
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2761">[ date ]</a>
+              <a href="thread.html#2761">[ thread ]</a>
+              <a href="subject.html#2761">[ subject ]</a>
+              <a href="author.html#2761">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  f4f99bf4b0fc748ed45a22c8f59edf4927f3d270 (commit)
+      from  994ef157cde5176951b3df533024c100b39ae9e0 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit f4f99bf4b0fc748ed45a22c8f59edf4927f3d270
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Nov 1 13:26:26 2010 +0100
+
+    - added support for the XFS filesystem
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 08d4b38..380571c 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -119,6 +119,7 @@ $KnownFS{unified}{tool}   = findExec(&quot;mksquashfs&quot;);
+ $KnownFS{compressed}{tool}= findExec(&quot;mksquashfs&quot;);
+ $KnownFS{reiserfs}{tool}  = findExec(&quot;mkreiserfs&quot;);
+ $KnownFS{btrfs}{tool}     = findExec(&quot;mkfs.btrfs&quot;);
++$KnownFS{xfs}{tool}       = findExec(&quot;mkfs.xfs&quot;);
+ $KnownFS{cpio}{tool}      = findExec(&quot;cpio&quot;);
+ $KnownFS{ext3}{ro}        = 0;
+ $KnownFS{ext4}{ro}        = 0;
+@@ -130,6 +131,7 @@ $KnownFS{unified}{ro}     = 1;
+ $KnownFS{compressed}{ro}  = 1;
+ $KnownFS{reiserfs}{ro}    = 0;
+ $KnownFS{btrfs}{ro}       = 0;
++$KnownFS{xfs}{ro}         = 0;
+ $KnownFS{cpio}{ro}        = 0;
+ 
+ #============================================
+@@ -801,7 +803,7 @@ sub main {
+ 		#------------------------------------------
+ 		if (! defined $BaseRoot) {
+ 			$BaseRoot = getDefaultBaseRoot($kiwi, $xml);
+-        }
++		}
+ 		#==========================================
+ 		# Check tool set
+ 		#------------------------------------------
+@@ -906,6 +908,10 @@ sub main {
+ 				$ok = $image -&gt; createImagePXE ( $para );
+ 				last SWITCH;
+ 			};
++			/^xfs/    &amp;&amp; do {
++				$ok = $image -&gt; createImageXFS ();
++				last SWITCH;
++			};
+ 			$kiwi -&gt; error  (&quot;Unsupported type: $attr{type}&quot;);
+ 			$kiwi -&gt; failed ();
+ 			if (defined $BaseRoot) {
+@@ -1995,7 +2001,7 @@ sub listXMLInfo {
+ 							my $pattern = new XML::LibXML::Element (&quot;pattern&quot;);
+ 							$pattern -&gt; setAttribute (&quot;name&quot;,&quot;$name&quot;);
+ 							$scan -&gt; appendChild ($pattern);
+- 						}
++						}
+ 					}
+ 				}
+ 				last SWITCH;
+@@ -2851,6 +2857,10 @@ sub checkFileSystem {
+ 					$type = &quot;luks&quot;;
+ 					last SWITCH;
+ 				};
++				/XFS/     &amp;&amp; do {
++					$type = &quot;xfs&quot;;
++					last SWITCH;
++				};
+ 				# unknown filesystem type check clicfs...
+ 				$data = qxx (
+ 					&quot;dd if=$fs bs=128k count=1 2&gt;/dev/null | grep -q CLIC&quot;
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 0d46c2b..8b9ea99 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -1653,7 +1653,7 @@ sub setupBootDisk {
+ 	#==========================================
+ 	# check if fs requires a boot partition
+ 	#------------------------------------------
+-	if ($type{filesystem} eq &quot;btrfs&quot;) {
++	if (($type{filesystem} eq &quot;btrfs&quot;) || ($type{filesystem} eq &quot;xfs&quot;)) {
+ 		$needBootP  = 1;
+ 		$luksbootMB = 60;
+ 	}
+@@ -2087,6 +2087,15 @@ sub setupBootDisk {
+ 				);
+ 				$result = $? &gt;&gt; 8;
+ 				last SWITCH;
++			};
++			/^xfs/      &amp;&amp; do {
++				$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
++				my $xfsGrow = main::findExec('xfs_growfs');
++				$status = qxx (&quot;
++					mount $mapper /mnt &amp;&amp; $xfsGrow /mnt; umount /mnt 2&gt;&amp;1&quot;
++				);
++				$result = $? &gt;&gt; 8;
++				last SWITCH;
+ 			}
+ 		};
+ 		if ($result != 0) {
+@@ -2148,7 +2157,16 @@ sub setupBootDisk {
+ 					);
+ 					$result = $? &gt;&gt; 8;
+ 					last SWITCH;
+-				}
++				};
++				/^xfs/      &amp;&amp; do {
++					$kiwi -&gt; info (&quot;Resizing system $fsattr{type} filesystem&quot;);
++					my $xfsGrow = main::findExec('xfs_growfs');
++					$status = qxx (&quot;
++					    mount $mapper /mnt &amp;&amp; $xfsGrow /mnt; umount /mnt 2&gt;&amp;1&quot;
++					);
++					$result = $? &gt;&gt; 8;
++					last SWITCH;
++			}
+ 			};
+ 			if ($result != 0) {
+ 				$kiwi -&gt; failed ();
+@@ -4871,6 +4889,15 @@ sub setupFilesystem {
+ 			$result = $? &gt;&gt; 8;
+ 			last SWITCH;
+ 		};
++		/^xfs/      &amp;&amp; do {
++			$kiwi -&gt; info (&quot;Creating xfs $name filesystem&quot;);
++			my $fsopts = $FSopts{xfs};
++			$status = qxx (
++				&quot;/sbin/mkfs.xfs $fsopts $device 2&gt;&amp;1&quot;
++			);
++			$result = $? &gt;&gt; 8;
++			last SWITCH;
++		};
+ 		$kiwi -&gt; error  (&quot;Unsupported filesystem type: $fstype&quot;);
+ 		$kiwi -&gt; failed ();
+ 		$this-&gt;{inodes} = $iorig;
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 3aa1dec..a9b17fd 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -959,7 +959,7 @@ function suseStripInitrd {
+ 		dmsetup dialog awk gawk clicfs cryptsetup clear blkid fbiterm
+ 		gettext diff bc utimer cmp busybox kexec pam_console_apply
+ 		setterm kpartx vgcfgbackup vgcfgrestore lsdasd dasd_configure
+-		qeth_configure fdasd mkdosfs egrep
++		qeth_configure fdasd mkdosfs egrep mkfs.xfs
+ 	&quot;
+ 	tools=&quot;$tools $@&quot;
+ 	for path in /sbin /usr/sbin /usr/bin /bin;do
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 34bc8c2..e81fa97 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -439,6 +439,36 @@ sub createImageBTRFS {
+ }
+ 
+ #==========================================
++# createImageXFS
++#------------------------------------------
++sub createImageXFS {
++	# ...
++	# create XFS image from source tree
++	# ---
++	my $this = shift;
++	#==========================================
++	# PRE filesystem setup
++	#------------------------------------------
++	my $name = $this -&gt; preImage ();
++	if (! defined $name) {
++		return undef;
++	}
++	#==========================================
++	# Create filesystem on extend
++	#------------------------------------------
++	if (! $this -&gt; setupXFS ( $name )) {
++		return undef;
++	}
++	#==========================================
++	# POST filesystem setup
++	#------------------------------------------
++	if (! $this -&gt; postImage ($name)) {
++		return undef;
++	}
++	return $this;
++}
++
++#==========================================
+ # createImageSquashFS
+ #------------------------------------------
+ sub createImageSquashFS {
+@@ -659,6 +689,10 @@ sub createImageUSB {
+ 			$ok = $this -&gt; createImageBTRFS ();
+ 			last SWITCH;
+ 		};
++		/^xfs/        &amp;&amp; do {
++			$ok = $this -&gt; createImageXFS ();
++			last SWITCH;
++		};
+ 		$kiwi -&gt; error  (&quot;Unsupported $text type: $type&quot;);
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+@@ -2289,6 +2323,10 @@ sub createImageSplit {
+ 				$ok = $this -&gt; setupBTRFS ( $namerw );
+ 				last SWITCH;
+ 			};
++			/xfs/        &amp;&amp; do {
++				$ok = $this -&gt; setupXFS ( $namerw );
++				last SWITCH;
++			};
+ 			$kiwi -&gt; error  (&quot;Unsupported type: $FSTypeRW&quot;);
+ 			$kiwi -&gt; failed ();
+ 			qxx (&quot;rm -rf $imageTreeRW&quot;);
+@@ -2341,6 +2379,10 @@ sub createImageSplit {
+ 			$ok = $this -&gt; setupSquashFS ( $namero,$imageTree );
+ 			last SWITCH;
+ 		};
++		/xfs/      &amp;&amp; do {
++			$ok = $this -&gt; setupXFS ( $namero );
++			last SWITCH;
++		};
+ 		$kiwi -&gt; error  (&quot;Unsupported type: $FSTypeRO&quot;);
+ 		$kiwi -&gt; failed ();
+ 		qxx (&quot;rm -rf $imageTreeRW&quot;);
+@@ -2432,6 +2474,11 @@ sub createImageSplit {
+ 				$kiwi -&gt; done ();
+ 				last SWITCH;
+ 			};
++			/xfs/        &amp;&amp; do {
++				qxx (&quot;/sbin/mkfs.xfs $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
++				$kiwi -&gt; done();
++				last SWITCH;
++			};
+ 			$kiwi -&gt; error  (&quot;Unsupported type: $type&quot;);
+ 			$kiwi -&gt; failed ();
+ 			qxx (&quot;rm -rf $imageTreeRW&quot;);
+@@ -3028,6 +3075,14 @@ sub postImage {
+ 			last SWITCH;
+ 		};
+ 		#==========================================
++		# Check XFS file system
++		#------------------------------------------
++		/xfs/       &amp;&amp; do {
++			qxx (&quot;/sbin/fsck.xfs $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;);
++			$kiwi -&gt; done();
++			last SWITCH;
++		};
++		#==========================================
+ 		# Unknown filesystem type
+ 		#------------------------------------------
+ 		$kiwi -&gt; failed();
+@@ -3432,6 +3487,10 @@ sub extractKernel {
+ 			return $name;
+ 			last SWITCH;
+ 		};
++		/xfs/i    &amp;&amp; do {
++			return $name;
++			last SWITCH;
++		};
+ 	}
+ 	#==========================================
+ 	# this is a boot image, extract kernel
+@@ -3676,6 +3735,32 @@ sub setupSquashFS {
+ }
+ 
+ #==========================================
++# setupXFS
++#------------------------------------------
++sub setupXFS {
++	my $this = shift;
++	my $name = shift;
++	my $kiwi = $this-&gt;{kiwi};
++	my %FSopts = main::checkFSOptions();
++	my $fsopts = $FSopts{xfs};
++	my $data = qxx (
++		&quot;/sbin/mkfs.xfs $fsopts $this-&gt;{imageDest}/$name 2&gt;&amp;1&quot;
++	);
++	my $code = $? &gt;&gt; 8;
++	if ($code != 0) {
++		$kiwi -&gt; error  (&quot;Couldn't create XFS filesystem&quot;);
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  ($data);
++		return undef;
++	}
++	$this -&gt; restoreImageDest();
++	$data = qxx (&quot;cd $this-&gt;{imageDest} &amp;&amp; ln -vs $name $name.xfs 2&gt;&amp;1&quot;);
++	$this -&gt; remapImageDest();
++	$kiwi -&gt; loginfo ($data);
++	return $name;
++}
++
++#==========================================
+ # buildMD5Sum
+ #------------------------------------------
+ sub buildMD5Sum {
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index c6f039d..4362b16 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -2200,6 +2200,12 @@ function updateBtrBootDeviceFstab {
+ 	updateLVMBootDeviceFstab $1 $2 &quot;/btrboot&quot;
+ }
+ #======================================
++# updateXfsBootDeviceFstab
++#--------------------------------------
++function updateXfsBootDeviceFstab {
++	updateLVMBootDeviceFstab $1 $2 &quot;/xfsboot&quot;
++}
++#======================================
+ # updateSyslinuxBootDeviceFstab
+ #--------------------------------------
+ function updateSyslinuxBootDeviceFstab {
+@@ -2446,6 +2452,7 @@ function probeFileSystem {
+ 		crypto_LUKS) FSTYPE=luks ;;
+ 		vfat)        FSTYPE=vfat ;;
+ 		clicfs)      FSTYPE=clicfs ;;
++        xfs)         FSTYPE=xfs ;;
+ 		*)
+ 			FSTYPE=unknown
+ 		;;
+@@ -4198,6 +4205,9 @@ function mountSystemStandard {
+ 	if [ &quot;$FSTYPE&quot; = &quot;btrfs&quot; ];then
+ 		export haveBtrFS=yes
+ 	fi
++	if [ &quot;$FSTYPE&quot; = &quot;xfs&quot; ];then
++		export haveXFS=yes
++	fi
+ 	if [ ! -z $FSTYPE ]          &amp;&amp; 
+ 	   [ ! $FSTYPE = &quot;unknown&quot; ] &amp;&amp; 
+ 	   [ ! $FSTYPE = &quot;auto&quot; ]
+@@ -4917,6 +4927,7 @@ function cleanImage {
+ 	if \
+ 		[ &quot;$haveClicFS&quot; = &quot;yes&quot; ] || \
+ 		[ &quot;$haveBtrFS&quot;  = &quot;yes&quot; ] || \
++		[ &quot;$haveXFS&quot;  = &quot;yes&quot; ] || \
+ 		[ ! -z &quot;$NFSROOT&quot; ]       || \
+ 		[ ! -z &quot;$NBDROOT&quot; ]       || \
+ 		[ ! -z &quot;$AOEROOT&quot; ]       || \
+@@ -6033,6 +6044,11 @@ function resizeFilesystem {
+ 		resize_fs=&quot;mount $deviceResize /mnt &amp;&amp;&quot;
+ 		resize_fs=&quot;$resize_fs btrfsctl -r max /mnt;umount /mnt&quot;
+ 		check=&quot;btrfsck $deviceResize&quot;
++	elif [ &quot;$FSTYPE&quot; = &quot;xfs&quot; ];then
++		Echo &quot;Resize XFS filesystem to full partition space...&quot;
++		resize_fs=&quot;mount $deviceResize /mnt &amp;&amp;&quot;
++		resize_fs=&quot;$resize_fs xfs_growfs /mnt;umount /mnt&quot;
++		check=&quot;xfs_check $deviceResize&quot;
+ 	else
+ 		# don't know how to resize this filesystem
+ 		return
+@@ -6107,6 +6123,8 @@ function createFilesystem {
+ 		else
+ 			mkfs.btrfs $deviceCreate
+ 		fi
++    elif [ &quot;$FSTYPE&quot; = &quot;xfs&quot; ];then
++        mkfs.xfs -f $deviceCreate
+ 	else
+ 		# use ext3 by default
+ 		mkfs.ext3 -F $deviceCreate $blocks 1&gt;&amp;2
+@@ -6268,6 +6286,12 @@ function setupBootPartition {
+ 		#--------------------------------------
+ 		test -z &quot;$bootid&quot; &amp;&amp; export bootid=3
+ 		mpoint=clicboot
++	elif [ &quot;$haveXFS&quot; = &quot;yes&quot; ];then
++		#======================================
++		# btrboot
++		#--------------------------------------
++		test -z &quot;$bootid&quot; &amp;&amp; export bootid=2
++		mpoint=xfsboot
+ 	elif \
+ 		[ &quot;$loader&quot; = &quot;syslinux&quot; ] || \
+ 		[ &quot;$loader&quot; = &quot;extlinux&quot; ] || \
+diff --git a/modules/KIWISchema.rnc b/modules/KIWISchema.rnc
+index d7ca928..7719bbb 100644
+--- a/modules/KIWISchema.rnc
++++ b/modules/KIWISchema.rnc
+@@ -1379,23 +1379,23 @@ div {
+ 		attribute luks { text }
+ 	k.type.filesystem.attribute = 
+ 		## Specifies the filesystem which can be one of:
+-		## clicfs, ext2, ext3, ext4, reiserfs, or squashfs
++		## btrfs, clicfs, ext2, ext3, ext4, reiserfs, squashfs, or xfs
+ 		## clicfs is a fuse based compressed filesystem using a cow
+ 		## file for write operations
+ 		attribute filesystem {
+ 			&quot;btrfs&quot; | &quot;clicfs&quot; | &quot;ext2&quot; | &quot;ext3&quot; | &quot;ext4&quot; |
+-			&quot;reiserfs&quot; | &quot;squashfs&quot;
++			&quot;reiserfs&quot; | &quot;squashfs&quot; | &quot;xfs&quot;
+ 		}
+ 	k.type.fsreadonly.attribute =
+ 		## Specifies the filesystem for the read-only part of a split image
+ 		attribute fsreadonly {
+ 			&quot;btrfs&quot; | &quot;ext2&quot; | &quot;ext3&quot; | &quot;ext4&quot; |
+-			&quot;reiserfs&quot; | &quot;squashfs&quot;
++			&quot;reiserfs&quot; | &quot;squashfs&quot; | &quot;xfs&quot;
+ 		}
+ 	k.type.fsreadwrite.attribute =
+ 		## Specifies the filesystem for the read-write part of a split image
+ 		attribute fsreadwrite {
+-			&quot;btrfs&quot; | &quot;ext2&quot; | &quot;ext3&quot; | &quot;ext4&quot; | &quot;reiserfs&quot;
++			&quot;btrfs&quot; | &quot;ext2&quot; | &quot;ext3&quot; | &quot;ext4&quot; | &quot;reiserfs&quot; | &quot;xfs&quot;
+ 		}
+ 	k.type.format.attribute =
+ 		## Specifies the format of the virtual disk.
+@@ -1416,7 +1416,7 @@ div {
+ 		attribute image {
+ 			&quot;btrfs&quot; | &quot;clicfs&quot; | &quot;cpio&quot; | &quot;ext2&quot; | &quot;ext3&quot; |
+ 			&quot;ext4&quot; | &quot;iso&quot; | &quot;oem&quot; | &quot;product&quot; | &quot;pxe&quot; | &quot;reiserfs&quot; |
+-			&quot;split&quot; | &quot;squashfs&quot; | &quot;usb&quot; | &quot;vmx&quot;
++			&quot;split&quot; | &quot;squashfs&quot; | &quot;usb&quot; | &quot;vmx&quot; | &quot;xfs&quot;
+ 		}
+ 	k.type.kernelcmdline.attribute =
+ 		# The kernelcmdline element specifies additional
+diff --git a/modules/KIWISchema.rng b/modules/KIWISchema.rng
+index 056c18c..ec0bf58 100644
+--- a/modules/KIWISchema.rng
++++ b/modules/KIWISchema.rng
+@@ -1904,7 +1904,7 @@ mount that filesystem while booting&lt;/a:documentation&gt;
+     &lt;define name=&quot;k.type.filesystem.attribute&quot;&gt;
+       &lt;attribute name=&quot;filesystem&quot;&gt;
+         &lt;a:documentation&gt;Specifies the filesystem which can be one of:
+-clicfs, ext2, ext3, ext4, reiserfs, or squashfs
++btrfs, clicfs, ext2, ext3, ext4, reiserfs, squashfs, or xfs
+ clicfs is a fuse based compressed filesystem using a cow
+ file for write operations&lt;/a:documentation&gt;
+         &lt;choice&gt;
+@@ -1915,6 +1915,7 @@ file for write operations&lt;/a:documentation&gt;
+           &lt;value&gt;ext4&lt;/value&gt;
+           &lt;value&gt;reiserfs&lt;/value&gt;
+           &lt;value&gt;squashfs&lt;/value&gt;
++          &lt;value&gt;xfs&lt;/value&gt;
+         &lt;/choice&gt;
+       &lt;/attribute&gt;
+     &lt;/define&gt;
+@@ -1928,6 +1929,7 @@ file for write operations&lt;/a:documentation&gt;
+           &lt;value&gt;ext4&lt;/value&gt;
+           &lt;value&gt;reiserfs&lt;/value&gt;
+           &lt;value&gt;squashfs&lt;/value&gt;
++          &lt;value&gt;xfs&lt;/value&gt;
+         &lt;/choice&gt;
+       &lt;/attribute&gt;
+     &lt;/define&gt;
+@@ -1940,6 +1942,7 @@ file for write operations&lt;/a:documentation&gt;
+           &lt;value&gt;ext3&lt;/value&gt;
+           &lt;value&gt;ext4&lt;/value&gt;
+           &lt;value&gt;reiserfs&lt;/value&gt;
++          &lt;value&gt;xfs&lt;/value&gt;
+         &lt;/choice&gt;
+       &lt;/attribute&gt;
+     &lt;/define&gt;
+@@ -1991,6 +1994,7 @@ file for write operations&lt;/a:documentation&gt;
+           &lt;value&gt;squashfs&lt;/value&gt;
+           &lt;value&gt;usb&lt;/value&gt;
+           &lt;value&gt;vmx&lt;/value&gt;
++          &lt;value&gt;xfs&lt;/value&gt;
+         &lt;/choice&gt;
+       &lt;/attribute&gt;
+     &lt;/define&gt;
+diff --git a/system/boot/ix86/netboot/suse-11.3/config.xml b/system/boot/ix86/netboot/suse-11.3/config.xml
+index a92e966..68b09e6 100644
+--- a/system/boot/ix86/netboot/suse-11.3/config.xml
++++ b/system/boot/ix86/netboot/suse-11.3/config.xml
+@@ -57,6 +57,7 @@
+ 		&lt;file name=&quot;fs/reiserfs/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/nfs/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/fuse/*&quot;/&gt;
++		&lt;file name=&quot;fs/xfs/*&quot;/&gt;
+ 		&lt;file name=&quot;net/sunrpc/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/lockd/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/nfs_common/*&quot;/&gt;
+@@ -189,6 +190,7 @@
+ 		&lt;package name=&quot;tar&quot;/&gt;
+ 		&lt;package name=&quot;kiwi-tools&quot;/&gt;
+ 		&lt;package name=&quot;cyrus-sasl&quot;/&gt;
++		&lt;package name=&quot;xfsprogs&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;image&quot; profiles=&quot;diskless&quot;&gt;
+ 		&lt;package name=&quot;clicfs&quot;/&gt;
+diff --git a/system/boot/ix86/netboot/suse-linuxrc b/system/boot/ix86/netboot/suse-linuxrc
+index dd25137..d5b43e8 100755
+--- a/system/boot/ix86/netboot/suse-linuxrc
++++ b/system/boot/ix86/netboot/suse-linuxrc
+@@ -891,6 +891,8 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 				updateClicBootDeviceFstab /config $imageBootDevice
+ 			elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
+ 				updateBtrBootDeviceFstab /config $imageBootDevice
++			elif [ &quot;$haveXFS&quot; = &quot;yes&quot; ];then
++				updateXfsBootDeviceFstab /config $imageBootDevice
+ 			fi
+ 			setupBootLoader /mnt /config $(($bootid - 1)) \
+ 				$imageRootDevice NET $imageSwapDevice
+diff --git a/system/boot/ix86/oemboot/suse-11.3/config.xml b/system/boot/ix86/oemboot/suse-11.3/config.xml
+index ac210c8..23d1f7c 100644
+--- a/system/boot/ix86/oemboot/suse-11.3/config.xml
++++ b/system/boot/ix86/oemboot/suse-11.3/config.xml
+@@ -63,6 +63,7 @@
+ 		&lt;file name=&quot;fs/nls/nls_iso8859-1.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/fuse/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/udf/*&quot;/&gt;
++		&lt;file name=&quot;fs/xfs/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/ata/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/scsi/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/message/fusion/*&quot;/&gt;
+@@ -143,6 +144,7 @@
+ 		&lt;package name=&quot;kpartx&quot;/&gt;
+ 		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;dosfstools&quot;/&gt;
++		&lt;package name=&quot;xfsprogs&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/system/boot/ix86/oemboot/suse-linuxrc b/system/boot/ix86/oemboot/suse-linuxrc
+index 89128ce..0e0a2ae 100755
+--- a/system/boot/ix86/oemboot/suse-linuxrc
++++ b/system/boot/ix86/oemboot/suse-linuxrc
+@@ -594,6 +594,8 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 		updateClicBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
+ 		updateBtrBootDeviceFstab /config $imageBootDevice
++	elif [ &quot;$haveXFS&quot; = &quot;yes&quot; ];then
++		updateXfsBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
+ 		updateSyslinuxBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
+diff --git a/system/boot/ix86/usbboot/suse-11.3/config.xml b/system/boot/ix86/usbboot/suse-11.3/config.xml
+index ae7d9ee..da468b6 100644
+--- a/system/boot/ix86/usbboot/suse-11.3/config.xml
++++ b/system/boot/ix86/usbboot/suse-11.3/config.xml
+@@ -58,6 +58,7 @@
+ 		&lt;file name=&quot;fs/nls/nls_cp437.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/nls/nls_iso8859-1.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/fuse/*&quot;/&gt;
++		&lt;file name=&quot;fs/xfs/*&quot;/&gt;
+ 		&lt;file name=&quot;net/ipv6/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/cdrom/*&quot;/&gt;
+ 		&lt;file name=&quot;drivers/scsi/*&quot;/&gt;
+@@ -117,6 +118,7 @@
+ 		&lt;package name=&quot;parted&quot;/&gt;
+ 		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;gettext-runtime&quot;/&gt;
++		&lt;package name=&quot;xfsprogs&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/system/boot/ix86/usbboot/suse-linuxrc b/system/boot/ix86/usbboot/suse-linuxrc
+index b77987e..9494537 100755
+--- a/system/boot/ix86/usbboot/suse-linuxrc
++++ b/system/boot/ix86/usbboot/suse-linuxrc
+@@ -244,6 +244,8 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 		updateClicBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
+ 		updateBtrBootDeviceFstab /config $imageBootDevice
++	elif [ &quot;$haveXFS&quot; = &quot;yes&quot; ];then
++		updateXfsBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
+ 		updateSyslinuxBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
+diff --git a/system/boot/ix86/vmxboot/suse-11.3/config.xml b/system/boot/ix86/vmxboot/suse-11.3/config.xml
+index a5d30a8..0ddb5a6 100644
+--- a/system/boot/ix86/vmxboot/suse-11.3/config.xml
++++ b/system/boot/ix86/vmxboot/suse-11.3/config.xml
+@@ -39,6 +39,7 @@
+ 		&lt;file name=&quot;fs/ext2/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/fat/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/vfat/*&quot;/&gt;
++		&lt;file name=&quot;fs/xfs/*&quot;/&gt;
+ 		&lt;file name=&quot;fs/binfmt_aout.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/binfmt_misc.ko&quot;/&gt;
+ 		&lt;file name=&quot;fs/mbcache.ko&quot;/&gt;
+@@ -117,6 +118,7 @@
+ 		&lt;package name=&quot;parted&quot;/&gt;
+ 		&lt;package name=&quot;syslinux&quot;/&gt;
+ 		&lt;package name=&quot;fbiterm&quot;/&gt;
++		&lt;package name=&quot;xfsprogs&quot;/&gt;
+ 	&lt;/packages&gt;
+ 	&lt;packages type=&quot;bootstrap&quot;&gt;
+ 		&lt;package name=&quot;filesystem&quot;/&gt;
+diff --git a/system/boot/ix86/vmxboot/suse-linuxrc b/system/boot/ix86/vmxboot/suse-linuxrc
+index cecda81..0a334f4 100755
+--- a/system/boot/ix86/vmxboot/suse-linuxrc
++++ b/system/boot/ix86/vmxboot/suse-linuxrc
+@@ -244,6 +244,8 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 		updateClicBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
+ 		updateBtrBootDeviceFstab /config $imageBootDevice
++	elif [ &quot;$haveXFS&quot; = &quot;yes&quot; ];then
++		updateXfsBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
+ 		updateSyslinuxBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
+diff --git a/system/boot/ppc/netboot/suse-linuxrc b/system/boot/ppc/netboot/suse-linuxrc
+index bb7db4e..97af146 100755
+--- a/system/boot/ppc/netboot/suse-linuxrc
++++ b/system/boot/ppc/netboot/suse-linuxrc
+@@ -882,6 +882,8 @@ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 				updateClicBootDeviceFstab /config $imageBootDevice
+ 			elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
+ 				updateBtrBootDeviceFstab /config $imageBootDevice
++			elif [ &quot;$haveXFS&quot; = &quot;yes&quot; ];then
++				updateXfsBootDeviceFstab /config $imageBootDevice
+ 			fi
+ 			setupBootLoader /mnt /config $(($bootid - 1)) \
+ 				$imageRootDevice NET $imageSwapDevice
+diff --git a/system/boot/s390/oemboot/suse-linuxrc b/system/boot/s390/oemboot/suse-linuxrc
+index cf73e20..ee2cc52 100755
+--- a/system/boot/s390/oemboot/suse-linuxrc
++++ b/system/boot/s390/oemboot/suse-linuxrc
+@@ -598,6 +598,8 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 		updateClicBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
+ 		updateBtrBootDeviceFstab /config $imageBootDevice
++	elif [ &quot;$haveXFS&quot; = &quot;yes&quot; ];then
++		updateXfsBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
+ 		updateSyslinuxBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
+diff --git a/system/boot/s390/vmxboot/suse-linuxrc b/system/boot/s390/vmxboot/suse-linuxrc
+index 185388a..c781f1e 100755
+--- a/system/boot/s390/vmxboot/suse-linuxrc
++++ b/system/boot/s390/vmxboot/suse-linuxrc
+@@ -244,6 +244,8 @@ if [ &quot;$LOCAL_BOOT&quot; = &quot;no&quot; ];then
+ 		updateClicBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveBtrFS&quot; = &quot;yes&quot; ];then
+ 		updateBtrBootDeviceFstab /config $imageBootDevice
++	elif [ &quot;$haveXFS&quot; = &quot;yes&quot; ];then
++		updateXfsBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$loader&quot; = &quot;syslinux&quot; ] || [ &quot;$loader&quot; = &quot;extlinux&quot; ];then
+ 		updateSyslinuxBootDeviceFstab /config $imageBootDevice
+ 	elif [ &quot;$haveLuks&quot; = &quot;yes&quot; ];then
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002760.html">[Kiwi-devel] Support XFS
+</A></li>
+	<LI>Next message: <A HREF="002765.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e6c86cfc9b15e845860f3830322d2f4b39bce200
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2761">[ date ]</a>
+              <a href="thread.html#2761">[ thread ]</a>
+              <a href="subject.html#2761">[ subject ]</a>
+              <a href="author.html#2761">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

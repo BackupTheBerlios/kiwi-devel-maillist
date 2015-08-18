@@ -1,0 +1,155 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d5367465fa82ed7e3020e411cc4cee87e3e07b9b
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20d5367465fa82ed7e3020e411cc4cee87e3e07b9b&In-Reply-To=%3C201002041414.o14EEM9E025218%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001849.html">
+   <LINK REL="Next"  HREF="001851.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d5367465fa82ed7e3020e411cc4cee87e3e07b9b</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20d5367465fa82ed7e3020e411cc4cee87e3e07b9b&In-Reply-To=%3C201002041414.o14EEM9E025218%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. d5367465fa82ed7e3020e411cc4cee87e3e07b9b">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Feb  4 15:14:22 CET 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001849.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ebc03e30a9c853c0b7bffc0284259f38b53bb1f9
+</A></li>
+        <LI>Next message: <A HREF="001851.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 210de0af6d4a9ebdf94fc33647d0e2d39aca7b66
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1850">[ date ]</a>
+              <a href="thread.html#1850">[ thread ]</a>
+              <a href="subject.html#1850">[ subject ]</a>
+              <a href="author.html#1850">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  d5367465fa82ed7e3020e411cc4cee87e3e07b9b (commit)
+      from  ebc03e30a9c853c0b7bffc0284259f38b53bb1f9 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit d5367465fa82ed7e3020e411cc4cee87e3e07b9b
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Feb 4 15:14:06 2010 +0100
+
+    - fixed migration mount setup and clean code allow
+      zypper types <A HREF="dvd://">dvd://</A> and <A HREF="iso://">iso://</A> to be used
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIMigrate.pm b/modules/KIWIMigrate.pm
+index 689326a..30de5a6 100644
+--- a/modules/KIWIMigrate.pm
++++ b/modules/KIWIMigrate.pm
+@@ -361,6 +361,9 @@ sub getRepos {
+ 			my $alias   = $1;
+ 			my $prio    = $3;
+ 			if ($enabled eq &quot;Yes&quot;) {
++				#==========================================
++				# handle special source type <A HREF="dvd://">dvd://</A>
++				#------------------------------------------
+ 				if ($source =~ /^dvd:/) {
+ 					if (! -e &quot;/dev/dvd&quot;) {
+ 						$kiwi -&gt; warning (&quot;DVD repo: /dev/dvd does not exist&quot;);
+@@ -385,6 +388,37 @@ sub getRepos {
+ 					$source = &quot;<A HREF="dir://">dir://</A>&quot;.$mpoint;
+ 					push @{$mounts},$mpoint;
+ 				}
++				#==========================================
++				# handle special source type <A HREF="iso://">iso://</A>
++				#------------------------------------------
++				if ($source =~ /iso=(.*\.iso)/) {
++					my $iso = $1;
++					if (! -e $iso) {
++						$kiwi -&gt; warning (&quot;ISO repo: $iso does not exist&quot;);
++						$kiwi -&gt; skipped ();
++						next;
++					}
++					my $mpoint = qxx (&quot;mktemp -q -d /tmp/kiwimpoint.XXXXXX&quot;);
++					my $result = $? &gt;&gt; 8;
++					if ($result != 0) {
++						$kiwi -&gt; warning (&quot;ISO tmpdir failed: $mpoint: $!&quot;);
++						$kiwi -&gt; skipped ();
++						next;
++					}
++					chomp $mpoint;
++					my $data = qxx (&quot;mount -o loop $iso $mpoint 2&gt;&amp;1&quot;);
++					my $code = $? &gt;&gt; 8;
++					if ($code != 0) {
++						$kiwi -&gt; warning (&quot;ISO loop mount failed: $data&quot;);
++						$kiwi -&gt; skipped ();
++						next;
++					}
++					$source = &quot;<A HREF="dir://">dir://</A>&quot;.$mpoint;
++					push @{$mounts},$mpoint;
++				}
++				#==========================================
++				# store repo information
++				#------------------------------------------
+ 				$osc{$product}{$source}{type} = $type;
+ 				$osc{$product}{$source}{alias}= $alias;
+ 				$osc{$product}{$source}{prio} = $prio;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index a9b032f..2cbf0fa 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -5,7 +5,8 @@ Wed Feb  3 11:04:09 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ - fixed templates, Xen based OEM image should be a dom0
+ - Xen dom0 images doesn't require a xenconfig file
+ - prevent XML pretty printer from swallowing comments
+-- fixed migration mount setup and clean code
++- fixed migration mount setup and clean code allow
++  zypper types <A HREF="dvd://">dvd://</A> and <A HREF="iso://">iso://</A> to be used
+ 
+ -------------------------------------------------------------------
+ Mon Feb  1 17:57:24 CET 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001849.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ebc03e30a9c853c0b7bffc0284259f38b53bb1f9
+</A></li>
+	<LI>Next message: <A HREF="001851.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 210de0af6d4a9ebdf94fc33647d0e2d39aca7b66
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1850">[ date ]</a>
+              <a href="thread.html#1850">[ thread ]</a>
+              <a href="subject.html#1850">[ subject ]</a>
+              <a href="author.html#1850">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

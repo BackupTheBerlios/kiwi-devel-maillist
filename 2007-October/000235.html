@@ -1,0 +1,140 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [PATCH] symlinked image
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2007-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BPATCH%5D%20symlinked%20image&In-Reply-To=%3C1193749722.16345.31.camel%40sackbut.lan%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000234.html">
+   <LINK REL="Next"  HREF="000236.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [PATCH] symlinked image</H1>
+    <B>James Willcox</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BPATCH%5D%20symlinked%20image&In-Reply-To=%3C1193749722.16345.31.camel%40sackbut.lan%3E"
+       TITLE="[Kiwi-devel] [PATCH] symlinked image">james at ximian.com
+       </A><BR>
+    <I>Tue Oct 30 14:08:42 CET 2007</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000234.html">[Kiwi-devel] [PATCH] symlinked image
+</A></li>
+        <LI>Next message: <A HREF="000236.html">[Kiwi-devel] [PATCH] symlinked image
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#235">[ date ]</a>
+              <a href="thread.html#235">[ thread ]</a>
+              <a href="subject.html#235">[ subject ]</a>
+              <a href="author.html#235">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Marcus,
+
+On Tue, 2007-10-30 at 13:01 +0100, Marcus Sch&#228;fer wrote:
+&gt;<i> Hi James,
+</I>&gt;<i> 
+</I>&gt;<i> &gt; The attached patch is pretty large (sorry), and couple different things.
+</I>&gt;<i> 
+</I>&gt;<i> yeah a really big patch. I think you had to do all these adaptions because
+</I>&gt;<i> of the aufs problem right ? The problem I see is that this is very special
+</I>&gt;<i> to the needs of your team and the patch affects many code parts but doesn't
+</I>&gt;<i> include any documentation which could make it useable by others too.
+</I>
+Well my team certainly has a need for something like this, you are
+right.  I don't think it is specific to us, though.  IMHO, a solution
+like this is a decent substitution for any of KIWI's typical
+unionfs/aufs usage (LiveCD, etc).
+
+&gt;<i> 
+</I>&gt;<i> &gt; Firstly, it adds a new 'symlink' image type.  This is similar in a way
+</I>&gt;<i> &gt; to the 'split' image type, but it is a bit more complicated.  Given a
+</I>&gt;<i> &gt; read-only image, a tarball of directories and symbolic links is created
+</I>&gt;<i> &gt; which mirrors the structure of the read-only image.  The symbolic link
+</I>&gt;<i> &gt; for each file points to the location where the read-only image will be
+</I>&gt;<i> &gt; mounted.  For instance, /usr/lib/libfoo.so will be a link
+</I>&gt;<i> &gt; to /read-only/usr/lib/libfoo.so.  After creating this tarball, it is
+</I>&gt;<i> &gt; placed in the read-only image at /rootfs.tar.bz2.  At mount time, this
+</I>&gt;<i> &gt; tarball is unpacked into a tmpfs and used as the root filesystem.  The
+</I>&gt;<i> &gt; advantage of this approach over a typical 'split' filesystem is that new
+</I>&gt;<i> &gt; files can be created in every directory instead of just a few
+</I>&gt;<i> &gt; pre-defined toplevel trees.
+</I>&gt;<i> 
+</I>&gt;<i> Sounds like a good approach. Do you think it makes sense to have this
+</I>&gt;<i> new kind of split systems as an replacement of what I have included into
+</I>&gt;<i> kiwi ? I think the &quot;split&quot; type is not used at the moment and I think we
+</I>&gt;<i> don't want to maintain two similar systems. What do you think ?
+</I>
+I personally think it should obsolete the other 'split' system, but
+didn't want to do that immediately in case you disliked it for some
+reason. :)
+
+&gt;<i> 
+</I>&gt;<i> &gt; This patch also goes one level further and separates some directories
+</I>&gt;<i> &gt; (/etc, /root, /home, /var/lib/rpm) to be put onto a separate read-write
+</I>&gt;<i> &gt; image.  The advantage of this is that when deployed onto a diskful
+</I>&gt;<i> &gt; machine, any files created in those trees will be stored on the disk
+</I>&gt;<i> &gt; instead of tmpfs.  We may want to have a way for images to specify those
+</I>&gt;<i> &gt; paths directly instead of having a hard-coded list.
+</I>&gt;<i> 
+</I>&gt;<i> I agree
+</I>&gt;<i> 
+</I>&gt;<i> &gt; Secondly, the patch adds a hook mechanism to the netboot script.  With
+</I>&gt;<i> &gt; this, custom images can get their own script code executed at various
+</I>&gt;<i> &gt; points.  This is great if, for instance, you need to conditionally load
+</I>&gt;<i> &gt; kernel modules with specific parameters.  It can be used by simply
+</I>&gt;<i> &gt; creating a file like /hooks/&lt;hook_name&gt;.sh with the custom bits inside.
+</I>&gt;<i> &gt; These scripts are sourced from the init script so they have access to
+</I>&gt;<i> &gt; the same variables/functions.
+</I>&gt;<i> 
+</I>&gt;<i> How do you place the hook scripts into the initrd ? Does that happen
+</I>&gt;<i> manually ?
+</I>
+Yeah, currently you just put those files into the image yourself using
+the normal mechanisms.
+
+&gt;<i> 
+</I>&gt;<i> The patch looks good to me. One question about it: 
+</I>&gt;<i> 
+</I>&gt;<i> &gt; -	my $data = qx (/sbin/mkreiserfs -q -f -b 4096 $imageDest/$name 2&gt;&amp;1);
+</I>&gt;<i> &gt; +	my $data = qx (/sbin/mkreiserfs -q -f -s 513 $imageDest/$name 2&gt;&amp;1);
+</I>&gt;<i> 
+</I>&gt;<i> Is there a reason for this change ?
+</I>
+Ah, I had forgotten about that.  I had to remove the -b parameter
+because for very small filesystems mkreiserfs was failing.  I then added
+the -s param to make the journal as small as possible.  I'm not sure how
+we can expose those kind of settings :/
+
+James
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000234.html">[Kiwi-devel] [PATCH] symlinked image
+</A></li>
+	<LI>Next message: <A HREF="000236.html">[Kiwi-devel] [PATCH] symlinked image
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#235">[ date ]</a>
+              <a href="thread.html#235">[ thread ]</a>
+              <a href="subject.html#235">[ subject ]</a>
+              <a href="author.html#235">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

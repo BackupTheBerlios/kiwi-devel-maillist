@@ -1,0 +1,555 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bbf0ecdef2f3bcf2cf18c1639f6e7d7263013b79
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20bbf0ecdef2f3bcf2cf18c1639f6e7d7263013b79&In-Reply-To=%3C200908031625.n73GPO04025505%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="001376.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bbf0ecdef2f3bcf2cf18c1639f6e7d7263013b79</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20bbf0ecdef2f3bcf2cf18c1639f6e7d7263013b79&In-Reply-To=%3C200908031625.n73GPO04025505%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. bbf0ecdef2f3bcf2cf18c1639f6e7d7263013b79">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Aug  3 18:25:24 CEST 2009</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="001376.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5703020487854bb955b669293eabee7a6e4d3332
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1375">[ date ]</a>
+              <a href="thread.html#1375">[ thread ]</a>
+              <a href="subject.html#1375">[ subject ]</a>
+              <a href="author.html#1375">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  bbf0ecdef2f3bcf2cf18c1639f6e7d7263013b79 (commit)
+      from  91872507c1df0ccf19c044a6621de80c6570c6a0 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit bbf0ecdef2f3bcf2cf18c1639f6e7d7263013b79
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Aug 3 18:25:12 2009 +0200
+
+    - v3.68
+    - added support for hybrid ISO's. This feature exists with
+      openSUSE 11.2 or later. In order to use it add the attribute
+      hybrid=&quot;true&quot; to your iso type line.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index bf5d553..8d47fa4 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -44,7 +44,7 @@ use KIWITest;
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.67&quot;;
++our $Version       = &quot;3.68&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 1c06374..6091d7f 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -991,6 +991,9 @@ function suseGFXBoot {
+ 	if [ ! -z &quot;$kiwi_boottheme&quot; ];then
+ 		theme=$kiwi_boottheme
+ 	fi
++	if [ ! -z &quot;$kiwi_hybrid&quot; ];then
++		loader=&quot;isolinux&quot;
++	fi
+ 	#======================================
+ 	# setup bootloader data
+ 	#--------------------------------------
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index f0774a0..8472fb2 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -110,6 +110,10 @@ sub new {
+ 	$this-&gt;{baseSystem} = $baseSystem;
+ 	$this-&gt;{arch}       = $arch;
+ 	#==========================================
++	# Store a disk label ID for this object
++	#------------------------------------------
++	$this -&gt; getMBRDiskLabel();
++	#==========================================
+ 	# Clean kernel mounts if any
+ 	#------------------------------------------
+ 	$this -&gt; cleanKernelFSMount();
+@@ -1358,6 +1362,7 @@ sub createImageLiveCD {
+ 	my $plinux;
+ 	my $pinitrd;
+ 	my $pxboot;
++	my $hybrid = 0;
+ 	#==========================================
+ 	# Get system image name
+ 	#------------------------------------------
+@@ -1382,6 +1387,12 @@ sub createImageLiveCD {
+ 		return undef;
+ 	}
+ 	#==========================================
++	# Check for hybrid ISO
++	#------------------------------------------
++	if ((defined $type{hybrid}) &amp;&amp; ($type{hybrid} =~ /yes|true/i)) {
++		$hybrid = 1;
++	}
++	#==========================================
+ 	# Get image creation date and name
+ 	#------------------------------------------
+ 	my $namecd = $this -&gt; buildImageName (&quot;;&quot;);
+@@ -1652,6 +1663,9 @@ sub createImageLiveCD {
+ 	if ($type{bootkernel}) {
+ 		push @main::Profiles ,split (/,/,$type{bootkernel});
+ 	}
++	if ($hybrid) {
++		$main::ForeignRepo{&quot;hybrid&quot;}= &quot;true&quot;;
++	}
+ 	$main::ForeignRepo{&quot;xmlnode&quot;} = $xml -&gt; getForeignNodeList();
+ 	$main::ForeignRepo{&quot;xmlpacnode&quot;} = $xml -&gt; getForeignPackageNodeList();
+ 	$main::ForeignRepo{&quot;packagemanager&quot;} = $xml -&gt; getPackageManager();
+@@ -1861,6 +1875,27 @@ sub createImageLiveCD {
+ 	if (-f $xboot) {
+ 		$isxen = 1;
+ 	}
++	if ($hybrid) {
++		#==========================================
++		# Create MBR id file for boot device check
++		#------------------------------------------
++		$kiwi -&gt; info (&quot;Saving hybrid disk label on ISO: $this-&gt;{mbrid}...&quot;);
++		my $destination = &quot;$main::RootTree/CD/boot/grub&quot;;
++		qxx (&quot;mkdir -p $destination&quot;);
++		if (! open (FD,&quot;&gt;$destination/mbrid&quot;)) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Couldn't create mbrid file: $!&quot;);
++			if (! -d $main::RootTree.$baseSystem) {
++				qxx (&quot;rm -rf $main::RootTree&quot;);
++				qxx (&quot;rm -rf $tmpdir&quot;);
++			}
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		print FD &quot;$this-&gt;{mbrid}&quot;;
++		close FD;
++		$kiwi -&gt; done();
++	}
+ 	#==========================================
+ 	# copy boot kernel and initrd
+ 	#------------------------------------------
+@@ -2112,7 +2147,7 @@ sub createImageLiveCD {
+ 	#==========================================
+ 	# relocate boot catalog
+ 	#------------------------------------------
+-	if (! $isolinux -&gt; relocateCatalog ($name)) {
++	if (! $isolinux -&gt; relocateCatalog()) {
+ 		if (! -d $main::RootTree.$baseSystem) {
+ 			qxx (&quot;rm -rf $main::RootTree&quot;);
+ 			qxx (&quot;rm -rf $tmpdir&quot;);
+@@ -2126,7 +2161,24 @@ sub createImageLiveCD {
+ 		$kiwi -&gt; info (&quot;Adding checkmedia tag...&quot;);
+ 		if (! $isolinux -&gt; checkImage()) {
+ 			$kiwi -&gt; failed ();
+-			$kiwi -&gt; error  (&quot;Failed to tag ISO image: $data&quot;);
++			$kiwi -&gt; error  (&quot;Failed to tag ISO image&quot;);
++			$kiwi -&gt; failed ();
++			if (! -d $main::RootTree.$baseSystem) {
++				qxx (&quot;rm -rf $main::RootTree&quot;);
++				qxx (&quot;rm -rf $tmpdir&quot;);
++			}
++			return undef;
++		}
++		$kiwi -&gt; done();
++	}
++	#==========================================
++	# Turn ISO into hybrid if requested
++	#------------------------------------------
++	if ($hybrid) {
++		$kiwi -&gt; info (&quot;Setting up hybrid ISO...&quot;);
++		if (! $isolinux -&gt; createHybrid ($this-&gt;{mbrid})) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;Failed to create hybrid ISO image&quot;);
+ 			$kiwi -&gt; failed ();
+ 			if (! -d $main::RootTree.$baseSystem) {
+ 				qxx (&quot;rm -rf $main::RootTree&quot;);
+@@ -4339,4 +4391,27 @@ sub cleanKernelFSMount {
+ 	}
+ }
+ 
++#==========================================
++# getMBRDiskLabel
++#------------------------------------------
++sub getMBRDiskLabel {
++	# ...
++	# create a random 4byte MBR disk label ID, used
++	# the isohybrid call as parameter
++	# ---
++	my $this  = shift;
++	my $range = 0xfe;
++	my @bytes;
++	undef $this-&gt;{mbrid};
++	for (my $i=0;$i&lt;4;$i++) {
++		$bytes[$i] = 1 + int(rand($range));
++		redo if $bytes[0] &lt;= 0xf;
++	}
++	my $nid = sprintf (&quot;0x%02x%02x%02x%02x&quot;,
++		$bytes[0],$bytes[1],$bytes[2],$bytes[3]
++	);
++	$this-&gt;{mbrid} = $nid;
++	return $this;
++}
++
+ 1;
+diff --git a/modules/KIWIIsoLinux.pm b/modules/KIWIIsoLinux.pm
+index 89e4e9d..2a2b043 100644
+--- a/modules/KIWIIsoLinux.pm
++++ b/modules/KIWIIsoLinux.pm
+@@ -535,6 +535,32 @@ sub checkImage {
+ }
+ 
+ #==========================================
++# createHybrid
++#------------------------------------------
++sub createHybrid {
++	# ...
++	# create hybrid ISO by calling isohybrid
++	# ---
++	my $this = shift;
++	my $mbrid= shift;
++	my $kiwi = $this-&gt;{kiwi};
++	my $iso  = $this-&gt;{dest};
++	if (! -x &quot;/usr/bin/isohybrid&quot;) {
++		$kiwi -&gt; error  (&quot;Can't find isohybrid, check your syslinux version&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	my $data = qxx (&quot;isohybrid -id $mbrid -type 0x83 $iso 2&gt;&amp;1&quot;);
++	my $code = $? &gt;&gt; 8;
++	if ($code != 0) {
++		$kiwi -&gt; error  (&quot;Failed to call isohybrid: $data&quot;);
++		$kiwi -&gt; failed ();
++		return undef;
++	}
++	return $this;
++}
++
++#==========================================
+ # relocateCatalog
+ #------------------------------------------
+ sub relocateCatalog {
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 571542a..41da067 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -1978,45 +1978,69 @@ function CDMount {
+ 	local silent=$1
+ 	local count=0
+ 	local cdopt
+-	mkdir -p /cdrom &amp;&amp; CDDevice $silent
+-	if [ -z &quot;$silent&quot; ];then
+-		Echo -n &quot;Mounting live boot drive...&quot;
++	mkdir -p /cdrom
++	if [ -f /.profile ];then
++		importFile &lt; /.profile
+ 	fi
+-	while true;do
+-		IFS=&quot;:&quot;; for i in $cddev;do
+-			cdopt=$(CDMountOption $i)
+-			if [ -x /usr/bin/driveready ];then
+-				driveready $i &amp;&amp; eval mount $cdopt $i /cdrom &gt;/dev/null
+-			else
+-				eval mount $cdopt $i /cdrom &gt;/dev/null
+-			fi
+-			if [ -f $LIVECD_CONFIG ];then
+-				cddev=$i
+-				if [ -z &quot;$silent&quot; ]; then
+-					echo
++	if [ -z &quot;$kiwi_hybrid&quot; ];then
++		#======================================
++		# search for CD/DVD devices
++		#--------------------------------------
++		CDDevice $silent
++		if [ -z &quot;$silent&quot; ];then
++			Echo -n &quot;Mounting live boot drive...&quot;
++		fi
++		while true;do
++			IFS=&quot;:&quot;; for i in $cddev;do
++				cdopt=$(CDMountOption $i)
++				if [ -x /usr/bin/driveready ];then
++					driveready $i &amp;&amp; eval mount $cdopt $i /cdrom &gt;/dev/null
++				else
++					eval mount $cdopt $i /cdrom &gt;/dev/null
+ 				fi
+-				if [ &quot;$mediacheck&quot; = 1 ] &amp;&amp; [ -z &quot;$silent&quot; ]; then
+-					test -e /proc/splash &amp;&amp; echo verbose &gt; /proc/splash
+-					checkmedia $cddev
+-					Echo -n &quot;Press ENTER for reboot: &quot;; read nope
+-					/sbin/reboot -f -i &gt;/dev/null
++				if [ -f $LIVECD_CONFIG ];then
++					cddev=$i
++					if [ -z &quot;$silent&quot; ]; then
++						echo
++					fi
++					if [ &quot;$mediacheck&quot; = 1 ] &amp;&amp; [ -z &quot;$silent&quot; ]; then
++						test -e /proc/splash &amp;&amp; echo verbose &gt; /proc/splash
++						checkmedia $cddev
++						Echo -n &quot;Press ENTER for reboot: &quot;; read nope
++						/sbin/reboot -f -i &gt;/dev/null
++					fi
++					IFS=$IFS_ORIG
++					return
+ 				fi
+-				IFS=$IFS_ORIG
+-				return
++				umount $i &amp;&gt;/dev/null
++			done
++			IFS=$IFS_ORIG
++			if [ $count -eq 12 ]; then
++				break
++			else
++				if [ -z &quot;$silent&quot; ];then
++					echo -n .
++				fi
++				sleep 1
+ 			fi
+-			umount $i &amp;&gt;/dev/null
++			count=`expr $count + 1`
+ 		done
+-		IFS=$IFS_ORIG
+-		if [ $count -eq 12 ]; then
+-			break
+-		else
+-			if [ -z &quot;$silent&quot; ];then
+-				echo -n .
++	else
++		#======================================
++		# search for hybrid device
++		#--------------------------------------
++		if [ -z &quot;$silent&quot; ];then
++			Echo -n &quot;Mounting hybrid live boot drive...&quot;
++		fi
++		cddev=`searchBIOSBootDevice`
++		kiwiMount $cddev /cdrom
++		if [ -f $LIVECD_CONFIG ];then
++			if [ -z &quot;$silent&quot; ]; then
++				echo
+ 			fi
+-			sleep 1
++			return
+ 		fi
+-		count=`expr $count + 1`
+-	done
++	fi
+ 	echo
+ 	systemException \
+ 		&quot;Couldn't find Live image configuration file&quot; \
+diff --git a/modules/KIWISchema.rnc b/modules/KIWISchema.rnc
+index 362533f..db21a45 100644
+--- a/modules/KIWISchema.rnc
++++ b/modules/KIWISchema.rnc
+@@ -1164,6 +1164,12 @@ div {
+ 		attribute flags {
+ 			&quot;unified&quot; | &quot;compressed&quot; | &quot;dmsquash&quot; | &quot;clic&quot;
+ 		}
++	k.type.hybrid.attribute =
++		## for the iso type only:
++		## Specifies that the iso file should be turned into
++		## a hybrid iso file. It's required to use the vmxboot
++		## boot image to boot that iso though
++		attribute hybrid { xsd:boolean }
+ 	k.type.bootloader.attribute =
+ 		## Specifies the bootloader used for booting the image.&quot;
+ 		## At the moment only grub and syslinux are supported
+@@ -1233,6 +1239,7 @@ div {
+ 		k.type.boot.attribute? &amp;
+ 		k.type.volid.attribute? &amp;
+ 		k.type.flags.attribute? &amp;
++		k.type.hybrid.attribute? &amp;
+ 		k.type.bootloader.attribute? &amp;
+ 		k.type.compressed.attribute? &amp;
+ 		k.type.vga.attribute? &amp;
+diff --git a/modules/KIWISchema.rng b/modules/KIWISchema.rng
+index bc90887..d997dba 100644
+--- a/modules/KIWISchema.rng
++++ b/modules/KIWISchema.rng
+@@ -1587,6 +1587,15 @@ unified or dmsquash and applies to the iso type only&lt;/a:documentation&gt;
+         &lt;/choice&gt;
+       &lt;/attribute&gt;
+     &lt;/define&gt;
++    &lt;define name=&quot;k.type.hybrid.attribute&quot;&gt;
++      &lt;attribute name=&quot;hybrid&quot;&gt;
++        &lt;a:documentation&gt;for the iso type only:
++Specifies that the iso file should be turned into
++a hybrid iso file. It's required to use the vmxboot
++boot image to boot that iso though&lt;/a:documentation&gt;
++        &lt;data type=&quot;boolean&quot;/&gt;
++      &lt;/attribute&gt;
++    &lt;/define&gt;
+     &lt;define name=&quot;k.type.bootloader.attribute&quot;&gt;
+       &lt;attribute name=&quot;bootloader&quot;&gt;
+         &lt;a:documentation&gt;Specifies the bootloader used for booting the image.&quot;
+@@ -1725,6 +1734,9 @@ vmx/oem types only.&lt;/a:documentation&gt;
+           &lt;ref name=&quot;k.type.flags.attribute&quot;/&gt;
+         &lt;/optional&gt;
+         &lt;optional&gt;
++          &lt;ref name=&quot;k.type.hybrid.attribute&quot;/&gt;
++        &lt;/optional&gt;
++        &lt;optional&gt;
+           &lt;ref name=&quot;k.type.bootloader.attribute&quot;/&gt;
+         &lt;/optional&gt;
+         &lt;optional&gt;
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index ee14492..29c984f 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -350,6 +350,12 @@ sub new {
+ 		if (defined $foreignRepo-&gt;{&quot;oem-recovery&quot;}) {
+ 			$this -&gt; setForeignOptionsElement (&quot;oem-recovery&quot;);
+ 		}
++		#==========================================
++		# foreign attributes
++		#------------------------------------------
++		if (defined $foreignRepo-&gt;{&quot;hybrid&quot;}) {
++			$this -&gt; setForeignTypeAttribute (&quot;hybrid&quot;);
++		}
+ 	}
+ 	#==========================================
+ 	# Store object data
+@@ -745,6 +751,7 @@ sub getImageTypeAndAttributes {
+ 		$record{boot}          = $node -&gt; getAttribute(&quot;boot&quot;);
+ 		$record{volid}         = $node -&gt; getAttribute(&quot;volid&quot;);
+ 		$record{flags}         = $node -&gt; getAttribute(&quot;flags&quot;);
++		$record{hybrid}        = $node -&gt; getAttribute(&quot;hybrid&quot;);
+ 		$record{format}        = $node -&gt; getAttribute(&quot;format&quot;);
+ 		$record{vga}           = $node -&gt; getAttribute(&quot;vga&quot;);
+ 		$record{bootloader}    = $node -&gt; getAttribute(&quot;bootloader&quot;);
+@@ -1126,6 +1133,31 @@ sub setForeignOptionsElement {
+ }
+ 
+ #==========================================
++# setForeignTypeAttribute
++#------------------------------------------
++sub setForeignTypeAttribute {
++	# ...
++	# set given attribute to all defined types in the
++	# xml preferences node
++	# ---
++	my $this = shift;
++	my $attr = shift;
++	my $kiwi = $this-&gt;{kiwi};
++	my @node = $this-&gt;{optionsNodeList} -&gt; get_nodelist();
++	foreach my $element (@node) {
++		if (! $this -&gt; requestedProfile ($element)) {
++			next;
++		}
++		$kiwi -&gt; info (&quot;Including foreign type attribute: $attr&quot;);
++		foreach my $tag ($element -&gt; getElementsByTagName (&quot;type&quot;)) {
++			$tag -&gt; setAttribute (&quot;$attr&quot;,&quot;true&quot;);
++		}
++		$kiwi -&gt; done ();
++	}
++	return $this;
++}
++
++#==========================================
+ # setPackageManager
+ #------------------------------------------
+ sub setPackageManager {
+@@ -2097,6 +2129,9 @@ sub getImageConfig {
+ 	if ((%type) &amp;&amp; ($type{luks})) {
+ 		$result{kiwi_luks} = &quot;yes&quot;;
+ 	}
++	if ((%type) &amp;&amp; ($type{hybrid})) {
++		$result{kiwi_hybrid} = &quot;yes&quot;;
++	}
+ 	if ($size) {
+ 		$result{kiwi_size} = $size;
+ 	}
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index b19e47a..b590fb1 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,12 @@
+ -------------------------------------------------------------------
++Mon Aug  3 14:30:02 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.68
++- added support for hybrid ISO's. This feature exists with
++  openSUSE 11.2 or later. In order to use it add the attribute
++  hybrid=&quot;true&quot; to your iso type line.
++
++-------------------------------------------------------------------
+ Fri Jul 31 11:42:59 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.67
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index df4e3ad..895b348 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.67)
++# spec file for package kiwi (Version 3.68)
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -46,7 +46,7 @@ Requires:       satsolver-tools
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.67
++Version:        3.68
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="001376.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5703020487854bb955b669293eabee7a6e4d3332
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1375">[ date ]</a>
+              <a href="thread.html#1375">[ thread ]</a>
+              <a href="subject.html#1375">[ subject ]</a>
+              <a href="author.html#1375">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,211 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 739664840eb8553a7e771338b1831ede2fd39cfd
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20739664840eb8553a7e771338b1831ede2fd39cfd&In-Reply-To=%3C200903261019.n2QAJll8032301%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001140.html">
+   <LINK REL="Next"  HREF="001142.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 739664840eb8553a7e771338b1831ede2fd39cfd</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20739664840eb8553a7e771338b1831ede2fd39cfd&In-Reply-To=%3C200903261019.n2QAJll8032301%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 739664840eb8553a7e771338b1831ede2fd39cfd">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Mar 26 11:19:47 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001140.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 12a6a112d31fe8f4f5b424a54af04b7682d27a7c
+</A></li>
+        <LI>Next message: <A HREF="001142.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2d216c96352946c53c155c386b4b573081a49ad5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1141">[ date ]</a>
+              <a href="thread.html#1141">[ thread ]</a>
+              <a href="subject.html#1141">[ subject ]</a>
+              <a href="author.html#1141">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  739664840eb8553a7e771338b1831ede2fd39cfd (commit)
+      from  12a6a112d31fe8f4f5b424a54af04b7682d27a7c (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 739664840eb8553a7e771338b1831ede2fd39cfd
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Mar 26 11:19:29 2009 +0100
+
+    - v3.37
+    - added squashfs requirement for suse version &gt; 10.1
+    - fixed solvable creation for repos without compressed
+      meta data (packages and .pat file)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 248d4ca..1a5ed39 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -44,7 +44,7 @@ use KIWITest;
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.36&quot;;
++our $Version       = &quot;3.37&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 3104bea..3c8502b 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -3036,6 +3036,7 @@ sub getInstSourceSatSolvable {
+ 	#------------------------------------------
+ 	my %distro;
+ 	$distro{&quot;/suse/setup/descr/packages.gz&quot;} = &quot;packages&quot;;
++	$distro{&quot;/suse/setup/descr/packages&quot;}    = &quot;packages&quot;;
+ 	$distro{&quot;/suse/repodata/primary.xml.gz&quot;} = &quot;distxml&quot;;
+ 	$distro{&quot;/repodata/primary.xml.gz&quot;}      = &quot;distxml&quot;;
+ 	#==========================================
+@@ -3121,7 +3122,11 @@ sub getInstSourceSatSolvable {
+ 		$count++;
+ 		foreach my $dist (keys %distro) {
+ 			my $name = $distro{$dist};
+-			$destfile = $sdir.&quot;/$name-&quot;.$count.&quot;.gz&quot;;
++			if ($name =~ /\.gz$/) {
++				$destfile = $sdir.&quot;/$name-&quot;.$count.&quot;.gz&quot;;
++			} else {
++				$destfile = $sdir.&quot;/$name-&quot;.$count;
++			}
+ 			if (KIWIXML::getInstSourceFile ($kiwi,$repo.$dist,$destfile)) {
+ 				$foundDist = 1; last;
+ 			}
+@@ -3189,11 +3194,30 @@ sub getInstSourceSatSolvable {
+ 	#==========================================
+ 	# create solvable from suse tags data
+ 	#------------------------------------------
+-	if (glob (&quot;$sdir/packages-*.gz&quot;)) {
++	if (glob (&quot;$sdir/packages-*&quot;)) {
++		my $gzicmd = &quot;gzip -cd &quot;;
++		my $stdcmd = &quot;cat &quot;;
++		$scommand = &quot;&quot;;
+ 		$destfile = $sdir.&quot;/primary-&quot;.$count;
+-		$scommand = &quot;gzip -cd $sdir/packages-*.gz&quot;;
+-		if (glob (&quot;$sdir/*.pat.gz&quot;)) {
+-			$scommand .= &quot;;gzip -cd $sdir/*.pat.gz&quot;;
++		foreach my $file (glob (&quot;$sdir/packages-*&quot;)) {
++			if ($file =~ /\.gz$/) {
++				$gzicmd .= $file.&quot; &quot;;
++			} else {
++				$stdcmd .= $file.&quot; &quot;;
++			}
++		}
++		foreach my $file (glob (&quot;$sdir/*.pat&quot;)) {
++			if ($file =~ /\.gz$/) {
++				$gzicmd .= $file.&quot; &quot;;
++			} else {
++				$stdcmd .= $file.&quot; &quot;;
++			}
++		}
++		if ($gzicmd ne &quot;gzip -cd &quot;) {
++			$scommand = $gzicmd.&quot;;&quot;;
++		}
++		if ($stdcmd ne &quot;cat &quot;) {
++			$scommand.= $stdcmd;
+ 		}
+ 		my $data = qxx (&quot;($scommand) | susetags2solv &gt; $destfile 2&gt;/dev/null&quot;);
+ 		my $code = $? &gt;&gt; 8;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 5163303..67f8b23 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,12 @@
+ -------------------------------------------------------------------
++Thu Mar 26 10:19:44 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.37
++- added squashfs requirement for suse version &gt; 10.1
++- fixed solvable creation for repos without compressed
++  meta data (packages and .pat file)
++
++-------------------------------------------------------------------
+ Wed Mar 25 12:36:04 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.36
+diff --git a/rpm/kiwi.spec b/rpm/kiwi.spec
+index a62d717..01638ff 100644
+--- a/rpm/kiwi.spec
++++ b/rpm/kiwi.spec
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.36)
++# spec file for package kiwi (Version 3.37)
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -33,6 +33,9 @@ BuildRequires:  rpm-devel libexpat-devel libsatsolver-devel
+ %if %{suse_version} &lt;= 1010
+ Requires:       qt
+ %endif
++%if %{suse_version} &gt; 1010
++Requires:       squashfs
++%endif
+ Requires:       perl = %{perl_version}
+ Requires:       perl-XML-LibXML perl-libwww-perl screen coreutils
+ Requires:       perl-XML-LibXML-Common perl-XML-SAX perl-Config-IniFiles
+@@ -43,7 +46,7 @@ Requires:       satsolver-tools
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.36
++Version:        3.37
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001140.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 12a6a112d31fe8f4f5b424a54af04b7682d27a7c
+</A></li>
+	<LI>Next message: <A HREF="001142.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2d216c96352946c53c155c386b4b573081a49ad5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1141">[ date ]</a>
+              <a href="thread.html#1141">[ thread ]</a>
+              <a href="subject.html#1141">[ subject ]</a>
+              <a href="author.html#1141">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

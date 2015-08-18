@@ -1,0 +1,353 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1920 - in kiwi-head: . modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1920%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200902231548.n1NFm2dS012605%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001041.html">
+   <LINK REL="Next"  HREF="001043.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1920 - in kiwi-head: . modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1920%20-%20in%20kiwi-head%3A%20.%20modules%20rpm&In-Reply-To=%3C200902231548.n1NFm2dS012605%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1920 - in kiwi-head: . modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Feb 23 16:48:02 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001041.html">[Kiwi-devel] r1917 - in kiwi-head: modules rpm
+</A></li>
+        <LI>Next message: <A HREF="001043.html">[Kiwi-devel] r1921 - in kiwi-head: doc/examples	doc/examples/suse-11.2 doc/examples/suse-11.2/suse-ec2-guest	doc/examples/suse-11.2/suse-live-iso	doc/examples/suse-11.2/suse-live-stick	doc/examples/suse-11.2/suse-oem-preload	doc/examples/suse-11.2/suse-pxe-client	doc/examples/suse-11.2/suse-vm-guest	doc/examples/suse-11.2/suse-xen-guest rpm	system/boot/ix86/isoboot system/boot/ix86/isoboot/suse-11.2	system/boot/ix86/netboot system/boot/ix86/netboot/suse-11.2	system/boot/ix86/oemboot system/boot/ix86/oemboot/suse-11.2	system/boot/ix86/usbboot system/boot/ix86/usbboot/suse-11.2	system/boot/ix86/vmxboot system/boot/ix86/vmxboot/suse-11.2	system/boot/ix86/xenboot system/boot/ix86/xenboot/suse-11.2	system/boot/ppc/netboot system/boot/ppc/netboot/suse-11.2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1042">[ date ]</a>
+              <a href="thread.html#1042">[ thread ]</a>
+              <a href="subject.html#1042">[ subject ]</a>
+              <a href="author.html#1042">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-02-23 16:47:55 +0100 (Mon, 23 Feb 2009)
+New Revision: 1920
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/modules/KIWIConfig.sh
+   kiwi-head/modules/KIWIImage.pm
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/rpm/kiwi.spec
+Log:
+
+- v3.20
+- allow use without any graphics boot data, also fixed text
+  based screen showed when isolinux has no graphics screen
+- allow use of gfxboot-branding package as alternative to
+  the recommended gfxboot and gfxboot-devel packages in the
+  boot image description. If the devel package for gfxboot
+  is installed custom boot screen brandings are possible. If the
+  gfxboot-branding package is installed only the branding
+  provided by this package can be used.
+
+
+
+Modified: kiwi-head/kiwi.pl
+===================================================================
+--- kiwi-head/kiwi.pl	2009-02-20 21:01:36 UTC (rev 1919)
++++ kiwi-head/kiwi.pl	2009-02-23 15:47:55 UTC (rev 1920)
+@@ -44,7 +44,7 @@
+ #============================================
+ # Globals (Version)
+ #--------------------------------------------
+-our $Version       = &quot;3.19&quot;;
++our $Version       = &quot;3.20&quot;;
+ our $Publisher     = &quot;SUSE LINUX Products GmbH&quot;;
+ our $Preparer      = &quot;KIWI - <A HREF="http://kiwi.berlios.de">http://kiwi.berlios.de</A>&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org">http://download.opensuse.org</A>&quot;;
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2009-02-20 21:01:36 UTC (rev 1919)
++++ kiwi-head/modules/KIWIBoot.pm	2009-02-23 15:47:55 UTC (rev 1920)
+@@ -2476,6 +2476,15 @@
+ 		$kiwi -&gt; skipped ();
+ 		$kiwi -&gt; warning ($status);
+ 		$kiwi -&gt; skipped ();
++		$kiwi -&gt; info (&quot;Creating compat splash link...&quot;);
++		$status = $this -&gt; setupSplashLink ($newird);
++		if ($status ne &quot;ok&quot;) {
++			$kiwi -&gt; failed();
++			$kiwi -&gt; error ($status);
++			$kiwi -&gt; failed();
++		} else {
++			$kiwi -&gt; done();
++		}
+ 		return $initrd;
+ 	}
+ 	$kiwi -&gt; done();
+@@ -2483,12 +2492,11 @@
+ }
+ 
+ #==========================================
+-# setupSplashy
++# setupSplashLink
+ #------------------------------------------
+-sub setupSplashy {
++sub setupSplashLink {
+ 	# ...
+-	# when booting with splashy no changes to the initrd are
+-	# required. This function only makes sure the .splash.gz
++	# This function only makes sure the .splash.gz
+ 	# file exists. This is done by creating a link to the
+ 	# original initrd file
+ 	# ---
+@@ -2505,7 +2513,12 @@
+ 		}
+ 		$initrd = $initrd.&quot;.gz&quot;;
+ 	}
+-	$status = qxx (&quot;rm -f $newird &amp;&amp; ln -s $initrd $newird&quot;);
++	my $dirname = dirname  $initrd;
++	my $curfile = basename $initrd;
++	my $newfile = basename $newird;
++	$status = qxx (
++		&quot;cd $dirname &amp;&amp; rm -f $newfile &amp;&amp; ln -s $curfile $newfile&quot;
++	);
+ 	$result = $? &gt;&gt; 8;
+ 	if ($result != 0) {
+ 		return (&quot;Failed to create splash link $!&quot;);
+@@ -2514,6 +2527,22 @@
+ }
+ 
+ #==========================================
++# setupSplashy
++#------------------------------------------
++sub setupSplashy {
++	# ...
++	# when booting with splashy no changes to the initrd are
++	# required. This function only makes sure the .splash.gz
++	# file exists. This is done by creating a link to the
++	# original initrd file
++	# ---
++	my $this   = shift;
++	my $newird = shift;
++	my $status = $this -&gt; setupSplashLink ($newird);
++	return $status;
++}
++
++#==========================================
+ # setupSplashForGrub
+ #------------------------------------------
+ sub setupSplashForGrub {
+
+Modified: kiwi-head/modules/KIWIConfig.sh
+===================================================================
+--- kiwi-head/modules/KIWIConfig.sh	2009-02-20 21:01:36 UTC (rev 1919)
++++ kiwi-head/modules/KIWIConfig.sh	2009-02-23 15:47:55 UTC (rev 1920)
+@@ -980,14 +980,9 @@
+ 	local theme=$1
+ 	local loader=$2
+ 	export PATH=$PATH:/usr/sbin
+-	#======================================
+-	# check for gfxboot package
+-	#--------------------------------------
+-	if [ ! -d /usr/share/gfxboot ];then
+-		echo &quot;gfxboot not installed... skipped&quot;
+-	else
++	if [ -d /usr/share/gfxboot ];then
+ 		#======================================
+-		# create boot theme
++		# create boot theme with gfxboot-devel
+ 		#--------------------------------------
+ 		cd /usr/share/gfxboot
+ 		# check for new source layout
+@@ -1033,16 +1028,48 @@
+ 				echo &quot;livecd=1&quot; &gt;&gt; /image/loader/gfxboot.cfg
+ 			fi
+ 			bin/unpack_bootlogo /image/loader
+-			mv /usr/share/syslinux/isolinux.bin /image/loader
+-			mv /usr/share/syslinux/mboot.c32 /image/loader
+-			mv /boot/memtest.bin /image/loader/memtest
+ 		else
+ 			# boot loader graphics image file...
+ 			mv $bootimage /image/loader
+ 		fi
+ 		make -C themes/$theme clean
++	elif [ -f /etc/bootsplash/themes/$theme/bootloader/message ];then
++		#======================================
++		# use boot theme from gfxboot-branding
++		#--------------------------------------
++		echo &quot;gfxboot devel not installed, custom branding skipped !&quot;
++		echo &quot;using gfxboot branding package&quot;
++		mkdir /image/loader
++		if [ $loader = &quot;isolinux&quot; ];then
++			# isolinux boot data...
++			mv /etc/bootsplash/themes/$theme/cdrom/* /image/loader
++		else
++			# boot loader graphics image file...
++			bootimage=/etc/bootsplash/themes/$theme/bootloader/message
++			mv $bootimage /image/loader
++		fi
++	else
++		#======================================
++		# no graphics boot possible
++		#--------------------------------------
++		echo &quot;gfxboot devel not installed&quot;
++		echo &quot;gfxboot branding not installed&quot;
++		echo &quot;graphics boot skipped !&quot;
++		mkdir /image/loader
+ 	fi
+ 	#======================================
++	# copy bootloader binaries of required
++	#--------------------------------------
++	if [ $loader = &quot;isolinux&quot; ];then
++		# isolinux boot code...
++		mv /usr/share/syslinux/isolinux.bin /image/loader
++		mv /usr/share/syslinux/mboot.c32 /image/loader
++		mv /boot/memtest.bin /image/loader/memtest
++	else
++		# boot loader binary part of MBR
++		:
++	fi
++	#======================================
+ 	# create splash screen
+ 	#--------------------------------------
+ 	if [ ! -f /sbin/splash ];then
+@@ -1056,6 +1083,10 @@
+ 	if [ ! -d /etc/bootsplash/themes/$theme ];then
+ 		theme=&quot;SuSE-$theme&quot;
+ 	fi
++	if [ ! -d /etc/bootsplash/themes/$theme ];then
++		echo &quot;bootsplash branding not installed... skipped&quot;
++		return
++	fi
+ 	mkdir -p /image/loader/branding
+ 	cp /etc/bootsplash/themes/$theme/images/logo.mng  /image/loader/branding
+ 	cp /etc/bootsplash/themes/$theme/images/logov.mng /image/loader/branding
+
+Modified: kiwi-head/modules/KIWIImage.pm
+===================================================================
+--- kiwi-head/modules/KIWIImage.pm	2009-02-20 21:01:36 UTC (rev 1919)
++++ kiwi-head/modules/KIWIImage.pm	2009-02-23 15:47:55 UTC (rev 1920)
+@@ -629,8 +629,9 @@
+ 			&quot;cd $imageTree &amp;&amp; find . | cpio @cpio | $main::Gzip -f &gt; $dest&quot;
+ 		);
+ 	} else {
++		$data = qxx (&quot;rm -f $dest &amp;&amp; rm -f $dest.gz&quot;);
+ 		$data = qxx (
+-			&quot;rm -f $dest &amp;&amp; cd $imageTree &amp;&amp; find . | cpio @cpio &gt; $dest&quot;
++			&quot;cd $imageTree &amp;&amp; find . | cpio @cpio &gt; $dest&quot;
+ 		);
+ 	}
+ 	my $code = $? &gt;&gt; 8;
+@@ -1093,12 +1094,12 @@
+ #------------------------------------------
+ sub makeLabel {
+ 	# ...
+-	# isolinux does not handle spaces, so we replace it
+-	# with this unicode non-breaking space
++	# create label text for isolinux text mode
++	# interface. Special letters needs unicode
++	# code points
+ 	# ----
+-	my $this = shift;
++	my $this  = shift;
+ 	my $label = shift;
+-	$label =~ s/ /\x{00a0}/g;
+ 	return $label;
+ }
+ 
+@@ -1783,11 +1784,11 @@
+ 	print FD &quot;To start the system enter '&quot;.$label.&quot;' and press &lt;return&gt;&quot;.&quot;\n&quot;;
+ 	print FD &quot;\n\n&quot;;
+ 	print FD &quot;Available boot options:\n&quot;;
+-	print FD &quot;$label     - Live System&quot;.&quot;\n&quot;;
+-	print FD &quot;$lsafe     - Live System failsafe mode&quot;.&quot;\n&quot;;
+-	print FD &quot;Hard-Disk  - Local boot from hard disk&quot;.&quot;\n&quot;;
+-	print FD &quot;mediacheck - Media check&quot;.&quot;\n&quot;;
+-	print FD &quot;memtest    - Memory Test&quot;.&quot;\n&quot;;
++	printf (FD &quot;%-20s - %s\n&quot;,$label,&quot;Live System&quot;);
++	printf (FD &quot;%-20s - %s\n&quot;,$lsafe,&quot;Live System failsafe mode&quot;);
++	printf (FD &quot;%-20s - %s\n&quot;,&quot;Hard-Disk&quot;,&quot;Local boot from hard disk&quot;);
++	printf (FD &quot;%-20s - %s\n&quot;,&quot;mediacheck&quot;,&quot;Media check&quot;);
++	printf (FD &quot;%-20s - %s\n&quot;,&quot;memtest&quot;,&quot;Memory Test&quot;);
+ 	print FD &quot;\n&quot;;
+ 	print FD &quot;Have a lot of fun...&quot;.&quot;\n&quot;;
+ 	close FD;
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2009-02-20 21:01:36 UTC (rev 1919)
++++ kiwi-head/rpm/kiwi.changes	2009-02-23 15:47:55 UTC (rev 1920)
+@@ -1,4 +1,17 @@
+ -------------------------------------------------------------------
++Mon Feb 23 10:55:22 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v3.20
++- allow use without any graphics boot data, also fixed text
++  based screen showed when isolinux has no graphics screen
++- allow use of gfxboot-branding package as alternative to
++  the recommended gfxboot and gfxboot-devel packages in the
++  boot image description. If the devel package for gfxboot
++  is installed custom boot screen brandings are possible. If the
++  gfxboot-branding package is installed only the branding
++  provided by this package can be used.
++
++-------------------------------------------------------------------
+ Tue Feb 17 14:42:28 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.19
+
+Modified: kiwi-head/rpm/kiwi.spec
+===================================================================
+--- kiwi-head/rpm/kiwi.spec	2009-02-20 21:01:36 UTC (rev 1919)
++++ kiwi-head/rpm/kiwi.spec	2009-02-23 15:47:55 UTC (rev 1920)
+@@ -1,5 +1,5 @@
+ #
+-# spec file for package kiwi (Version 3.19
++# spec file for package kiwi (Version 3.20
+ #
+ # Copyright (c) 2008 SUSE LINUX Products GmbH, Nuernberg, Germany.
+ # This file and all modifications and additions to the pristine
+@@ -43,7 +43,7 @@
+ Summary:        OpenSuSE - KIWI Image System
+ Provides:       kiwi2 &lt;= 2.14
+ Obsoletes:      kiwi2 &lt;= 2.14
+-Version:        3.19
++Version:        3.20
+ Release:        80
+ Group:          System/Management
+ License:        GPL v2 or later
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001041.html">[Kiwi-devel] r1917 - in kiwi-head: modules rpm
+</A></li>
+	<LI>Next message: <A HREF="001043.html">[Kiwi-devel] r1921 - in kiwi-head: doc/examples	doc/examples/suse-11.2 doc/examples/suse-11.2/suse-ec2-guest	doc/examples/suse-11.2/suse-live-iso	doc/examples/suse-11.2/suse-live-stick	doc/examples/suse-11.2/suse-oem-preload	doc/examples/suse-11.2/suse-pxe-client	doc/examples/suse-11.2/suse-vm-guest	doc/examples/suse-11.2/suse-xen-guest rpm	system/boot/ix86/isoboot system/boot/ix86/isoboot/suse-11.2	system/boot/ix86/netboot system/boot/ix86/netboot/suse-11.2	system/boot/ix86/oemboot system/boot/ix86/oemboot/suse-11.2	system/boot/ix86/usbboot system/boot/ix86/usbboot/suse-11.2	system/boot/ix86/vmxboot system/boot/ix86/vmxboot/suse-11.2	system/boot/ix86/xenboot system/boot/ix86/xenboot/suse-11.2	system/boot/ppc/netboot system/boot/ppc/netboot/suse-11.2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1042">[ date ]</a>
+              <a href="thread.html#1042">[ thread ]</a>
+              <a href="subject.html#1042">[ subject ]</a>
+              <a href="author.html#1042">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

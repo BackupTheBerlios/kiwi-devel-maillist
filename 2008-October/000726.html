@@ -1,0 +1,988 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1633 - in kiwi-head: modules rpm	system/boot/ix86/isoboot system/boot/ix86/netboot	system/boot/ix86/oemboot system/boot/ix86/usbboot	system/boot/ix86/vmxboot system/boot/ix86/xenboot	system/boot/ppc/netboot
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1633%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ix86/isoboot%20system/boot/ix86/netboot%0A%09system/boot/ix86/oemboot%20system/boot/ix86/usbboot%0A%09system/boot/ix86/vmxboot%20system/boot/ix86/xenboot%0A%09system/boot/ppc/netboot&In-Reply-To=%3C200810101012.m9AACLbg013894%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000725.html">
+   <LINK REL="Next"  HREF="000727.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1633 - in kiwi-head: modules rpm	system/boot/ix86/isoboot system/boot/ix86/netboot	system/boot/ix86/oemboot system/boot/ix86/usbboot	system/boot/ix86/vmxboot system/boot/ix86/xenboot	system/boot/ppc/netboot</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1633%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ix86/isoboot%20system/boot/ix86/netboot%0A%09system/boot/ix86/oemboot%20system/boot/ix86/usbboot%0A%09system/boot/ix86/vmxboot%20system/boot/ix86/xenboot%0A%09system/boot/ppc/netboot&In-Reply-To=%3C200810101012.m9AACLbg013894%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1633 - in kiwi-head: modules rpm	system/boot/ix86/isoboot system/boot/ix86/netboot	system/boot/ix86/oemboot system/boot/ix86/usbboot	system/boot/ix86/vmxboot system/boot/ix86/xenboot	system/boot/ppc/netboot">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Oct 10 12:12:21 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000725.html">[Kiwi-devel] r1631 - kiwi-head
+</A></li>
+        <LI>Next message: <A HREF="000727.html">[Kiwi-devel] r1635 - in kiwi-head: . modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#726">[ date ]</a>
+              <a href="thread.html#726">[ thread ]</a>
+              <a href="subject.html#726">[ subject ]</a>
+              <a href="author.html#726">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-10 12:12:11 +0200 (Fri, 10 Oct 2008)
+New Revision: 1633
+
+Modified:
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/system/boot/ix86/isoboot/suse-linuxrc
+   kiwi-head/system/boot/ix86/netboot/suse-linuxrc
+   kiwi-head/system/boot/ix86/oemboot/suse-linuxrc
+   kiwi-head/system/boot/ix86/usbboot/suse-linuxrc
+   kiwi-head/system/boot/ix86/vmxboot/suse-linuxrc
+   kiwi-head/system/boot/ix86/xenboot/suse-linuxrc
+   kiwi-head/system/boot/ppc/netboot/suse-linuxrc
+Log:
+
+- added support for F3 -&gt; textmode at boot time (bnc #391313)
+- moved activate/boot code into common functions
+
+
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-10-09 12:42:18 UTC (rev 1632)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-10-10 10:12:11 UTC (rev 1633)
+@@ -299,13 +299,25 @@
+ 	set -x 1&gt;&amp;2
+ }
+ #======================================
++# udevPending
++#--------------------------------------
++function udevPending {
++	local timeout=30
++	if [ -x /sbin/udevadm ];then
++		/sbin/udevadm trigger
++		/sbin/udevadm settle --timeout=$timeout
++	else
++		/sbin/udevtrigger
++		/sbin/udevsettle --timeout=$timeout
++	fi
++}
++#======================================
+ # udevStart
+ #--------------------------------------
+ function udevStart {
+ 	# /.../
+ 	# start the udev daemon.
+ 	# ----
+-	local timeout=30
+ 	echo &quot;Creating device nodes with udev&quot;
+ 	# disable hotplug helper, udevd listens to netlink
+ 	echo &quot;&quot; &gt; /proc/sys/kernel/hotplug
+@@ -324,13 +336,8 @@
+ 	# start the udev daemon
+ 	udevd --daemon udev_log=&quot;debug&quot;
+ 	# wait for pending triggered udev events.
+-	if [ -x /sbin/udevadm ];then
+-		/sbin/udevadm trigger
+-		/sbin/udevadm settle --timeout=$timeout
+-	else
+-		/sbin/udevtrigger
+-		/sbin/udevsettle --timeout=$timeout
+-	fi
++	udevPending
++	# start splashy if configured
+ 	startSplashy
+ }
+ #======================================
+@@ -3030,7 +3037,6 @@
+ 	done
+ 	echo $device
+ }
+-
+ #======================================
+ # getDiskModel
+ #--------------------------------------
+@@ -3045,3 +3051,126 @@
+ 	fi
+ 	echo &quot;unknown&quot;
+ }
++#======================================
++# setupInittab
++#--------------------------------------
++function setupInittab {
++	# /.../
++	# setup default runlevel according to /proc/cmdline
++	# information. If textmode is set to 1 we will boot into
++	# runlevel 3
++	# ----
++	local prefix=$1
++	if cat /proc/cmdline | grep -qi &quot;textmode=1&quot;;then
++		sed -i -e s&quot;@id:.*:initdefault:@id:3:initdefault:@&quot; $prefix/etc/inittab
++	fi
++}
++#======================================
++# setupConfigFiles
++#--------------------------------------
++function setupConfigFiles {
++	# /.../
++	# all files created below /config inside the initrd are
++	# now copied into the system image
++	# ----
++	cd /config
++	find . -type d | while read d ; do  mkdir -p /mnt/$d ; done
++	find . -type f | while read f ; do  cp $f /mnt/$f ; done
++	cd /
++	rm -rf /config
++}
++#======================================
++# activateImage
++#--------------------------------------
++function activateImage {
++	# /.../
++	# move the udev created nodes from the initrd into
++	# the system root tree call the pre-init phase which
++	# already runs in the new tree and finaly switch the
++	# new tree to be the new root (/) 
++	# ----
++	#======================================
++	# setup image name
++	#--------------------------------------
++	local name
++	if [ ! -z &quot;$stickSerial&quot; ];then
++		name=&quot;$stickSerial on -&gt; $stickDevice&quot;
++	elif [ ! -z &quot;$imageName&quot; ];then
++		name=$imageName
++	elif [ ! -z &quot;$imageRootName&quot; ];then
++		name=$imageRootName
++	elif [ ! -z &quot;$imageRootDevice&quot; ];then
++		name=$imageRootDevice
++	elif [ ! -z &quot;$deviceDisk&quot; ];then
++		name=$deviceDisk
++	else
++		name=&quot;unknown&quot;
++	fi
++	#======================================
++	# move device nodes
++	#--------------------------------------
++	Echo &quot;Activating Image: [$name]&quot;
++	reopenKernelConsole
++	udevPending
++	mount --move /dev /mnt/dev
++	udevKill
++	#======================================
++	# run preinit stage
++	#--------------------------------------
++	Echo &quot;Calling preinit phase...&quot;
++	cd /mnt
++	/mnt/sbin/pivot_root . mnt &gt;/dev/null 2&gt;&amp;1
++	if test $? != 0;then
++		PIVOT=false
++		cleanInitrd &amp;&amp; mount --move . / &amp;&amp; chroot . ./preinit
++		chroot . rm -f  ./preinit
++		chroot . rm -f  ./include
++		chroot . rm -rf ./image
++	else
++		PIVOT=true
++		./preinit
++		rm -f  ./preinit
++		rm -f  ./include
++		rm -rf ./image
++	fi
++}
++#======================================
++# bootImage
++#--------------------------------------
++function bootImage {
++	# /.../
++	# call the system image init process and therefore
++	# boot into the operating system
++	# ----
++	local reboot=no
++	echo &amp;&amp; Echo &quot;Booting System: $@&quot;
++	export IFS=$IFS_ORIG
++	#======================================
++	# check for reboot request
++	#--------------------------------------
++	if [ ! -z &quot;$OEM_REBOOT&quot; ];then
++		reboot=yes
++	fi
++	if [ $LOCAL_BOOT = &quot;no&quot; ] &amp;&amp; [ ! -z &quot;$REBOOT_IMAGE&quot; ];then
++		reboot=yes
++	fi
++	#======================================
++	# reboot if requested
++	#--------------------------------------
++	if [ $reboot = &quot;yes&quot; ];then
++		mount -n -o remount,ro / 2&gt;/dev/null
++		Echo &quot;Reboot requested... rebooting now&quot;
++		/sbin/reboot -f -i &gt;/dev/null 2&gt;&amp;1
++	fi
++	#======================================
++	# directly boot
++	#--------------------------------------
++	mount -n -o remount,rw / &amp;&gt;/dev/null
++	if [ $PIVOT = &quot;true&quot; ];then
++		exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
++		exec umount -n -l /mnt
++	else
++		exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
++		exec chroot . /sbin/init $@
++	fi
++}
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-09 12:42:18 UTC (rev 1632)
++++ kiwi-head/rpm/kiwi.changes	2008-10-10 10:12:11 UTC (rev 1633)
+@@ -2,6 +2,8 @@
+ Thu Oct  9 10:05:47 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.89
++- added support for F3 -&gt; textmode at boot time (bnc #391313)
++- moved activate/boot code into common functions 
+ - fixed typo in cookbook, thanks to <A HREF="nick://descriptor">nick://descriptor</A>
+ - added option to select between fdisk and parted
+ - update scheme documentation according to last change
+
+Modified: kiwi-head/system/boot/ix86/isoboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/isoboot/suse-linuxrc	2008-10-09 12:42:18 UTC (rev 1632)
++++ kiwi-head/system/boot/ix86/isoboot/suse-linuxrc	2008-10-10 10:12:11 UTC (rev 1633)
+@@ -289,76 +289,42 @@
+ #======================================
+ # 14) copy system dependant files
+ #--------------------------------------
+-cd /config
+-find . -type d | while read d ; do  mkdir -p /mnt/$d ; done
+-find . -type f | while read f ; do  cp $f /mnt/$f ; done
+-cd /
+-rm -rf /config
++setupConfigFiles
+ 
+ #======================================
+-# 15) setup real root device
++# 15) update system dependant files
+ #--------------------------------------
++setupInittab /mnt
++
++#======================================
++# 16) setup real root device
++#--------------------------------------
+ echo 256 &gt; /proc/sys/kernel/real-root-dev
+ 
+ #======================================
+-# 16) umount system filesystems
++# 17) umount system filesystems
+ #--------------------------------------
+ umountSystemFilesystems
+ 
+ #======================================
+-# 17) copy initrd files to image
++# 18) copy initrd files to image
+ #--------------------------------------
+ importBranding
+ cp /preinit /mnt
+ cp /include /mnt
+ 
+ #======================================
+-# 18) kill boot shell
++# 19) kill boot shell
+ #--------------------------------------
+ killShell
+ killBlogD
+ 
+ #======================================
+-# 19) Activate new root
++# 20) Activate new root
+ #--------------------------------------
+-Echo &quot;Activating Image: [$imageName]&quot;
+-reopenKernelConsole
+-/sbin/udevsettle --timeout=30
+-mount --move /dev /mnt/dev
+-udevKill
++activateImage
+ 
+ #======================================
+-# 20) call preinit phase
+-#--------------------------------------
+-Echo &quot;Calling preinit phase...&quot;
+-cd /mnt
+-/mnt/sbin/pivot_root . mnt &gt;/dev/null 2&gt;&amp;1
+-if test $? != 0;then
+-	PIVOT=false
+-	cleanInitrd &amp;&amp; mount --move . / &amp;&amp; chroot . ./preinit
+-	chroot . rm -f  ./preinit
+-	chroot . rm -f  ./include
+-	chroot . rm -rf ./image
+-else
+-	PIVOT=true
+-	./preinit
+-	rm -f  ./preinit
+-	rm -f  ./include
+-	rm -rf ./image
+-fi
+-
+-#======================================
+ # 21) Unmount initrd / system init
+ #--------------------------------------
+-echo &quot; &quot;
+-echo &quot;Booting into Live CD System...&quot;
+-echo &quot;------------------------------&quot;
+-export IFS=$IFS_ORIG
+-mount -n -o remount,rw / &amp;&gt;/dev/null
+-if [ $PIVOT = &quot;true&quot; ];then
+-	exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
+-	exec umount -n -l /mnt
+-else
+-	exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
+-	exec chroot . /sbin/init $@
+-fi
++bootImage $@
+
+Modified: kiwi-head/system/boot/ix86/netboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/netboot/suse-linuxrc	2008-10-09 12:42:18 UTC (rev 1632)
++++ kiwi-head/system/boot/ix86/netboot/suse-linuxrc	2008-10-10 10:12:11 UTC (rev 1633)
+@@ -730,89 +730,46 @@
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+-		cd /config
+-		find . -type d | while read d ; do  mkdir -p /mnt/$d ; done
+-		find . -type f | while read f ; do  cp -a $f /mnt/$f ; done
+-		cd /
+-		rm -rf /config
++		setupConfigFiles
+ 	fi
+ fi
+ 
++#======================================
++# 22) update system dependant files
++#--------------------------------------
++setupInittab /mnt
++
+ echo 256 &gt; /proc/sys/kernel/real-root-dev
+ #======================================
+-# 22) umount system filesystems
++# 23) umount system filesystems
+ #--------------------------------------
+ umountSystemFilesystems
+ 
+ #======================================
+-# 23) copy initrd files to image
++# 24) copy initrd files to image
+ #--------------------------------------
+ importBranding
+ cp /preinit /mnt
+ cp /include /mnt
+ 
+ #======================================
+-# 24) check if reboot is required
++# 25) check if reboot is required
+ #--------------------------------------
+ kernelCheck /mnt
+ 
+ #======================================
+-# 25 kill boot shell
++# 26 kill boot shell
+ #--------------------------------------
+ killShell
+ killBlogD
+ 
+ #======================================
+-# 26 Activate new root
++# 27 Activate new root
+ #--------------------------------------
+ runHook preactivate
+-Echo &quot;Activating Image: [$imageRootName]&quot;
+-reopenKernelConsole
+-/sbin/udevsettle --timeout=30
+-mount --move /dev /mnt/dev
+-udevKill
++activateImage
+ 
+ #======================================
+-# 27) call preinit phase
++# 28) Unmount initrd / system init
+ #--------------------------------------
+-Echo &quot;Calling preinit phase...&quot;
+-cd /mnt
+-/mnt/sbin/pivot_root . mnt &gt;/dev/null 2&gt;&amp;1
+-if test $? != 0;then
+-	PIVOT=false
+-	cleanInitrd &amp;&amp; mount --move . / &amp;&amp; chroot . ./preinit
+-	chroot . rm -f  ./preinit
+-	chroot . rm -f  ./include
+-	chroot . rm -rf ./image
+-else
+-	PIVOT=true
+-	./preinit
+-	rm -f  ./preinit
+-	rm -f  ./include
+-	rm -rf ./image
+-fi
+-#======================================
+-# 28) reboot system if specified
+-#--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	if test ! -z $REBOOT_IMAGE;then
+-		Echo &quot;Rebooting System to activate new kernel...&quot;
+-		reboot -f -i &gt;/dev/null 2&gt;&amp;1
+-	fi
+-fi
+-
+-#======================================
+-# 29) Unmount initrd / system init
+-#--------------------------------------
+-echo &quot; &quot;
+-echo &quot;Booting into final System...&quot;
+-echo &quot;----------------------------&quot;
+-export IFS=$IFS_ORIG
+-mount -n -o remount,rw / 2&gt;/dev/null
+-if [ $PIVOT = &quot;true&quot; ];then
+-	exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
+-	exec umount -n -l /mnt
+-else
+-	exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
+-	exec chroot . /sbin/init $@
+-fi
++bootImage $@
+
+Modified: kiwi-head/system/boot/ix86/oemboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/oemboot/suse-linuxrc	2008-10-09 12:42:18 UTC (rev 1632)
++++ kiwi-head/system/boot/ix86/oemboot/suse-linuxrc	2008-10-10 10:12:11 UTC (rev 1633)
+@@ -1012,11 +1012,7 @@
+ # 16) copy system dependant files
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	cd /config
+-	find . -type d | while read d ; do  mkdir -p /mnt/$d ; done
+-	find . -type f | while read f ; do  cp $f /mnt/$f ; done
+-	cd /
+-	rm -rf /config
++	setupConfigFiles
+ fi
+ 
+ #======================================
+@@ -1052,17 +1048,22 @@
+ fi
+ 
+ #======================================
+-# 18) setup real root device
++# 18) update system dependant files
+ #--------------------------------------
++setupInittab /mnt
++
++#======================================
++# 19) setup real root device
++#--------------------------------------
+ echo 256 &gt; /proc/sys/kernel/real-root-dev
+ 
+ #======================================
+-# 19) umount system filesystems
++# 20) umount system filesystems
+ #--------------------------------------
+ umountSystemFilesystems
+ 
+ #======================================
+-# 20) copy initrd files to image
++# 21) copy initrd files to image
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	importBranding
+@@ -1071,58 +1072,17 @@
+ cp /include /mnt
+ 
+ #======================================
+-# 21) kill boot shell
++# 22) kill boot shell
+ #--------------------------------------
+ killShell
+ killBlogD
+ 
+ #======================================
+-# 22) Activate new root
++# 23) Activate new root
+ #--------------------------------------
+-Echo &quot;Activating Image: [$deviceDisk]&quot;
+-reopenKernelConsole
+-/sbin/udevsettle --timeout=30
+-mount --move /dev /mnt/dev
+-udevKill
++activateImage
+ 
+ #======================================
+-# 23) call preinit phase
+-#--------------------------------------
+-Echo &quot;Calling preinit phase...&quot;
+-cd /mnt
+-/mnt/sbin/pivot_root . mnt &gt;/dev/null 2&gt;&amp;1
+-if test $? != 0;then
+-	PIVOT=false
+-	cleanInitrd &amp;&amp; mount --move . / &amp;&amp; chroot . ./preinit
+-	chroot . rm -f  ./preinit
+-	chroot . rm -f  ./include
+-	chroot . rm -rf ./image
+-else
+-	PIVOT=true
+-	./preinit
+-	rm -f  ./preinit
+-	rm -f  ./include
+-	rm -rf ./image
+-fi
+-
+-#======================================
+ # 24 Unmount initrd / system init
+ #--------------------------------------
+-echo &quot; &quot;
+-echo &quot;Booting into final System...&quot;
+-echo &quot;----------------------------&quot;
+-export IFS=$IFS_ORIG
+-if [ ! -z &quot;$OEM_REBOOT&quot; ];then
+-	mount -n -o remount,ro / 2&gt;/dev/null
+-	Echo &quot;Reboot requested... rebooting now&quot;
+-	/sbin/reboot -f -i &gt;/dev/null 2&gt;&amp;1
+-fi
+-mount -n -o remount,rw / 2&gt;/dev/null
+-if [ $PIVOT = &quot;true&quot; ];then
+-	exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
+-	exec umount -n -l /mnt
+-else
+-	exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
+-	exec chroot . /sbin/init $@
+-fi
+-
++bootImage $@
+
+Modified: kiwi-head/system/boot/ix86/usbboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/usbboot/suse-linuxrc	2008-10-09 12:42:18 UTC (rev 1632)
++++ kiwi-head/system/boot/ix86/usbboot/suse-linuxrc	2008-10-10 10:12:11 UTC (rev 1633)
+@@ -130,26 +130,27 @@
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+-		cd /config
+-		find . -type d | while read d ; do  mkdir -p /mnt/$d ; done
+-		find . -type f | while read f ; do  cp $f /mnt/$f ; done
+-		cd /
+-		rm -rf /config
++		setupConfigFiles
+ 	fi
+ fi
+ 
+ #======================================
+-# 13) setup real root device
++# 13) update system dependant files
+ #--------------------------------------
++setupInittab /mnt
++
++#======================================
++# 14) setup real root device
++#--------------------------------------
+ echo 256 &gt; /proc/sys/kernel/real-root-dev
+ 
+ #======================================
+-# 14) umount system filesystems
++# 15) umount system filesystems
+ #--------------------------------------
+ umountSystemFilesystems
+ 
+ #======================================
+-# 15) copy initrd files to image
++# 16) copy initrd files to image
+ #--------------------------------------
+ if [ ! -f /mnt/boot/deployed ];then
+ 	touch /mnt/boot/deployed
+@@ -159,52 +160,17 @@
+ cp /include /mnt
+ 
+ #======================================
+-# 16) kill boot shell
++# 17) kill boot shell
+ #--------------------------------------
+ killShell
+ killBlogD
+ 
+ #======================================
+-# 17) Activate new root
++# 18) Activate new root
+ #--------------------------------------
+-Echo &quot;Activating Image: [$stickSerial on -&gt; $stickDevice]&quot;
+-reopenKernelConsole
+-/sbin/udevsettle --timeout=30
+-mount --move /dev /mnt/dev
+-udevKill
++activateImage
+ 
+ #======================================
+-# 18) call preinit phase
+-#--------------------------------------
+-Echo &quot;Calling preinit phase...&quot;
+-cd /mnt
+-/mnt/sbin/pivot_root . mnt &gt;/dev/null 2&gt;&amp;1
+-if test $? != 0;then
+-	PIVOT=false
+-	cleanInitrd &amp;&amp; mount --move . / &amp;&amp; chroot . ./preinit
+-	chroot . rm -f  ./preinit
+-	chroot . rm -f  ./include
+-	chroot . rm -rf ./image
+-else
+-	PIVOT=true
+-	./preinit
+-	rm -f  ./preinit
+-	rm -f  ./include
+-	rm -rf ./image
+-fi
+-
+-#======================================
+ # 19) Unmount initrd / system init
+ #--------------------------------------
+-echo &quot; &quot;
+-echo &quot;Booting into USB-Stick System...&quot;
+-echo &quot;--------------------------------&quot;
+-export IFS=$IFS_ORIG
+-mount -n -o remount,rw / &amp;&gt;/dev/null
+-if [ $PIVOT = &quot;true&quot; ];then
+-	exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
+-	exec umount -n -l /mnt
+-else
+-	exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
+-	exec chroot . /sbin/init $@
+-fi
++bootImage $@
+
+Modified: kiwi-head/system/boot/ix86/vmxboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/vmxboot/suse-linuxrc	2008-10-09 12:42:18 UTC (rev 1632)
++++ kiwi-head/system/boot/ix86/vmxboot/suse-linuxrc	2008-10-10 10:12:11 UTC (rev 1633)
+@@ -200,25 +200,26 @@
+ # 12) copy system dependant files
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	cd /config
+-	find . -type d | while read d ; do  mkdir -p /mnt/$d ; done
+-	find . -type f | while read f ; do  cp $f /mnt/$f ; done
+-	cd /
+-	rm -rf /config
++	setupConfigFiles
+ fi
+ 
+ #======================================
+-# 13) setup real root device
++# 13) update system dependant files
+ #--------------------------------------
++setupInittab /mnt
++
++#======================================
++# 14) setup real root device
++#--------------------------------------
+ echo 256 &gt; /proc/sys/kernel/real-root-dev
+ 
+ #======================================
+-# 14) umount system filesystems
++# 15) umount system filesystems
+ #--------------------------------------
+ umountSystemFilesystems
+ 
+ #======================================
+-# 15) copy initrd files to image
++# 16) copy initrd files to image
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	importBranding
+@@ -227,52 +228,17 @@
+ cp /include /mnt
+ 
+ #======================================
+-# 16) kill boot shell
++# 17) kill boot shell
+ #--------------------------------------
+ killShell
+ killBlogD
+ 
+ #======================================
+-# 17) Activate new root
++# 18) Activate new root
+ #--------------------------------------
+-Echo &quot;Activating Image: [$imageRootDevice]&quot;
+-reopenKernelConsole
+-/sbin/udevsettle --timeout=30
+-mount --move /dev /mnt/dev
+-udevKill
++activateImage
+ 
+ #======================================
+-# 18) call preinit phase
+-#--------------------------------------
+-Echo &quot;Calling preinit phase...&quot;
+-cd /mnt
+-/mnt/sbin/pivot_root . mnt &gt;/dev/null 2&gt;&amp;1
+-if test $? != 0;then
+-	PIVOT=false
+-	cleanInitrd &amp;&amp; mount --move . / &amp;&amp; chroot . ./preinit
+-	chroot . rm -f  ./preinit
+-	chroot . rm -f  ./include
+-	chroot . rm -rf ./image
+-else
+-	PIVOT=true
+-	./preinit
+-	rm -f  ./preinit
+-	rm -f  ./include
+-	rm -rf ./image
+-fi
+-
+-#======================================
+ # 19) Unmount initrd / system init
+ #--------------------------------------
+-echo &quot; &quot;
+-echo &quot;Booting into final System...&quot;
+-echo &quot;----------------------------&quot;
+-export IFS=$IFS_ORIG
+-mount -n -o remount,rw / 2&gt;/dev/null
+-if [ $PIVOT = &quot;true&quot; ];then
+-	exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
+-	exec umount -n -l /mnt
+-else
+-	exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
+-	exec chroot . /sbin/init $@
+-fi
++bootImage $@
+
+Modified: kiwi-head/system/boot/ix86/xenboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ix86/xenboot/suse-linuxrc	2008-10-09 12:42:18 UTC (rev 1632)
++++ kiwi-head/system/boot/ix86/xenboot/suse-linuxrc	2008-10-10 10:12:11 UTC (rev 1633)
+@@ -132,76 +132,42 @@
+ #======================================
+ # 10) copy system dependant files
+ #--------------------------------------
+-cd /config
+-find . -type d | while read d ; do  mkdir -p /mnt/$d ; done
+-find . -type f | while read f ; do  cp $f /mnt/$f ; done
+-cd /
+-rm -rf /config
++setupConfigFiles
+ 
+ #======================================
+-# 11) setup real root device
++# 11) update system dependant files
+ #--------------------------------------
++setupInittab /mnt
++
++#======================================
++# 12) setup real root device
++#--------------------------------------
+ echo 256 &gt; /proc/sys/kernel/real-root-dev
+ 
+ #======================================
+-# 12) umount system filesystems
++# 13) umount system filesystems
+ #--------------------------------------
+ umountSystemFilesystems
+ 
+ #======================================
+-# 13) copy initrd files to image
++# 14) copy initrd files to image
+ #--------------------------------------
+ importBranding
+ cp /preinit /mnt
+ cp /include /mnt
+ 
+ #======================================
+-# 14) kill boot shell
++# 15) kill boot shell
+ #--------------------------------------
+ killShell
+ killBlogD
+ 
+ #======================================
+-# 15) Activate new root
++# 16) Activate new root
+ #--------------------------------------
+-Echo &quot;Activating Image: [$imageRootDevice]&quot;
+-reopenKernelConsole
+-/sbin/udevsettle --timeout=30
+-mount --move /dev /mnt/dev
+-udevKill
++activateImage
+ 
+ #======================================
+-# 16) call preinit phase
+-#--------------------------------------
+-Echo &quot;Calling preinit phase...&quot;
+-cd /mnt
+-/mnt/sbin/pivot_root . mnt &gt;/dev/null 2&gt;&amp;1
+-if test $? != 0;then
+-	PIVOT=false
+-	cleanInitrd &amp;&amp; mount --move . / &amp;&amp; chroot . ./preinit
+-	chroot . rm -f  ./preinit
+-	chroot . rm -f  ./include
+-	chroot . rm -rf ./image
+-else
+-	PIVOT=true
+-	./preinit
+-	rm -f  ./preinit
+-	rm -f  ./include
+-	rm -rf ./image
+-fi
+-
+-#======================================
+ # 17) Unmount initrd / system init
+ #--------------------------------------
+-echo &quot; &quot;
+-echo &quot;Booting into Xen System...&quot;
+-echo &quot;--------------------------&quot;
+-export IFS=$IFS_ORIG
+-mount -n -o remount,rw / &amp;&gt;/dev/null
+-if [ $PIVOT = &quot;true&quot; ];then
+-	exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
+-	exec umount -n -l /mnt
+-else
+-	exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
+-	exec chroot . /sbin/init $@
+-fi
++bootImage $@
+
+Modified: kiwi-head/system/boot/ppc/netboot/suse-linuxrc
+===================================================================
+--- kiwi-head/system/boot/ppc/netboot/suse-linuxrc	2008-10-09 12:42:18 UTC (rev 1632)
++++ kiwi-head/system/boot/ppc/netboot/suse-linuxrc	2008-10-10 10:12:11 UTC (rev 1633)
+@@ -730,89 +730,46 @@
+ #--------------------------------------
+ if [ $LOCAL_BOOT = &quot;no&quot; ];then
+ 	if test $systemIntegrity = &quot;clean&quot;;then
+-		cd /config
+-		find . -type d | while read d ; do  mkdir -p /mnt/$d ; done
+-		find . -type f | while read f ; do  cp -a $f /mnt/$f ; done
+-		cd /
+-		rm -rf /config
++		setupConfigFiles
+ 	fi
+ fi
+ 
++#======================================
++# 22) update system dependant files
++#--------------------------------------
++setupInittab /mnt
++
+ echo 256 &gt; /proc/sys/kernel/real-root-dev
+ #======================================
+-# 22) umount system filesystems
++# 23) umount system filesystems
+ #--------------------------------------
+ umountSystemFilesystems
+ 
+ #======================================
+-# 23) copy initrd files to image
++# 24) copy initrd files to image
+ #--------------------------------------
+ importBranding
+ cp /preinit /mnt
+ cp /include /mnt
+ 
+ #======================================
+-# 24) check if reboot is required
++# 25) check if reboot is required
+ #--------------------------------------
+ kernelCheck /mnt
+ 
+ #======================================
+-# 25 kill boot shell
++# 26 kill boot shell
+ #--------------------------------------
+ killShell
+ killBlogD
+ 
+ #======================================
+-# 26 Activate new root
++# 27 Activate new root
+ #--------------------------------------
+ runHook preactivate
+-Echo &quot;Activating Image: [$imageRootName]&quot;
+-reopenKernelConsole
+-/sbin/udevsettle --timeout=30
+-mount --move /dev /mnt/dev
+-udevKill
++activateImage
+ 
+ #======================================
+-# 27) call preinit phase
+-#--------------------------------------
+-Echo &quot;Calling preinit phase...&quot;
+-cd /mnt
+-/mnt/sbin/pivot_root . mnt &gt;/dev/null 2&gt;&amp;1
+-if test $? != 0;then
+-	PIVOT=false
+-	cleanInitrd &amp;&amp; mount --move . / &amp;&amp; chroot . ./preinit
+-	chroot . rm -f  ./preinit
+-	chroot . rm -f  ./include
+-	chroot . rm -rf ./image
+-else
+-	PIVOT=true
+-	./preinit
+-	rm -f  ./preinit
+-	rm -f  ./include
+-	rm -rf ./image
+-fi
+-#======================================
+-# 28) reboot system if specified
+-#--------------------------------------
+-if [ $LOCAL_BOOT = &quot;no&quot; ];then
+-	if test ! -z $REBOOT_IMAGE;then
+-		Echo &quot;Rebooting System to activate new kernel...&quot;
+-		reboot -f -i &gt;/dev/null 2&gt;&amp;1
+-	fi
+-fi
+-
+-#======================================
+ # 29) Unmount initrd / system init
+ #--------------------------------------
+-echo &quot; &quot;
+-echo &quot;Booting into final System...&quot;
+-echo &quot;----------------------------&quot;
+-export IFS=$IFS_ORIG
+-mount -n -o remount,rw / 2&gt;/dev/null
+-if [ $PIVOT = &quot;true&quot; ];then
+-	exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
+-	exec umount -n -l /mnt
+-else
+-	exec &lt; dev/console &gt;dev/console 2&gt;&amp;1
+-	exec chroot . /sbin/init $@
+-fi
++bootImage $@
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000725.html">[Kiwi-devel] r1631 - kiwi-head
+</A></li>
+	<LI>Next message: <A HREF="000727.html">[Kiwi-devel] r1635 - in kiwi-head: . modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#726">[ date ]</a>
+              <a href="thread.html#726">[ thread ]</a>
+              <a href="subject.html#726">[ subject ]</a>
+              <a href="author.html#726">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

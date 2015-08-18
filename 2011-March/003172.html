@@ -1,0 +1,156 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [PATCH] find and mount the active partition on /livecd
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BPATCH%5D%20find%20and%20mount%20the%20active%20partition%20on%0A%20/livecd&In-Reply-To=%3C20110309131423.133f1a0d%40pre-sense.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003170.html">
+   <LINK REL="Next"  HREF="003173.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [PATCH] find and mount the active partition on /livecd</H1>
+    <B>Justus Winter</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BPATCH%5D%20find%20and%20mount%20the%20active%20partition%20on%0A%20/livecd&In-Reply-To=%3C20110309131423.133f1a0d%40pre-sense.de%3E"
+       TITLE="[Kiwi-devel] [PATCH] find and mount the active partition on /livecd">winter at pre-sense.de
+       </A><BR>
+    <I>Wed Mar  9 13:14:23 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003170.html">[Kiwi-devel] [PATCH] find and mount the active partition on /livecd
+</A></li>
+        <LI>Next message: <A HREF="003173.html">[Kiwi-devel] [PATCH] find and mount the active partition on /livecd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3172">[ date ]</a>
+              <a href="thread.html#3172">[ thread ]</a>
+              <a href="subject.html#3172">[ subject ]</a>
+              <a href="author.html#3172">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hey Marcus,
+
+On Wed, 9 Mar 2011 12:15:10 +0100
+Marcus Sch&#228;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>&gt; wrote:
+
+&gt;<i> Hi Justus,
+</I>&gt;<i> 
+</I>&gt;<i> &gt; When mounting the hybrid boot drive, select the partition marked as
+</I>&gt;<i> &gt; bootable instead of blindly mounting the first one. This change
+</I>&gt;<i> &gt; makes it possible to update the system if the image has been
+</I>&gt;<i> &gt; written to a writable medium.
+</I>&gt;<i> 
+</I>&gt;<i> Thanks for the patch I added it and will give it some tests now.
+</I>Great!
+
+&gt;<i> It looks like you have a use case which required this change. Would
+</I>&gt;<i> you mind to say some words about the background. Would be great
+</I>Gladly. We use kiwi to produce appliances and desperately wanted a way
+to update them without having to replace the boot medium. We switched
+to isohybrid images because they are much easier to deploy (cat to
+medium without having to worry about kiwi being installed).
+
+The image has to be postprocessed (similar to the things that isohybrid
+from isolinux does):
+
+ - replacing the boot code (with a patched version of isolinux
+   first stage bootloader, see below)
+ - embedding the offset of the bootloader into the mbr
+ - setting the disk identifier
+ - creating two partitions, making them a bit larger to allow future
+   upgrades to grow
+ - (optional) creating an additional data partition
+ - marking the first partition bootable
+
+The bootloader looks for the first partition marked as active and loads
+isolinux.bin from there. The patch against isolinux is attached (it is
+rather small and verbosely documented).
+
+Once the image is written to an writable medium, it can be updated like
+this (while the system is up and running):
+
+dd if=update.iso of=$DEVICE bs=512 seek=1 skip=1
+set_bootable $DEVICE
+reboot
+
+with $DEVICE pointing to the partition *not* marked as active. The old
+system can be booted by toggling the bootable flags.
+
+Limitations of this approach:
+ - the bootloader offset must match
+ - the disk identifier must match
+
+One could overcome these limitations by also updating the first 446
+bytes of the bootsector (dd if=update.iso of=$WHOLEDISK bs=446 count=1)
+at the cost of losing the ability to restore the old system by simply
+toggling the bootable flags.
+
+I've reimplemented the functionality isohybrid(,.pl) provides and
+extended it to create updatable isohybrid images. If you're interested
+in this I'd talk to my employer about releasing it.
+
+I do have a feature request: There is one thing stopping us from
+creating updatable isohybrid images with kiwi without remastering them
+(or maybe it is already possible?), we need to be able to set the disk
+id (called mbrid in KIWIIsoLinux.pm) to a fixed value, preferably in
+the image configuration file.
+
+I would send a patch myself but I have little experience with perl and
+relaxng and haven't looked too deeply into kiwis code and since the
+required change should be rather small once you know where to look I
+thought I might just ask ;)
+
+Cheers,
+Justus
+-- 
+Justus Winter                               <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">winter at pre-sense.de</A>
+
+PRESENSE Technologies GmbH            Sachsenstr. 5, D-20097 HH
+                                         USt-IdNr.: DE263765024
+Gesch&#228;ftsf&#252;hrer/Managing Directors       AG Hamburg, HRB 107844
+Till D&#246;rges           J&#252;rgen Sander              Axel Theilmann
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: syslinux.patch
+Type: text/x-patch
+Size: 1741 bytes
+Desc: not available
+URL: &lt;<A HREF="https://lists.berlios.de/pipermail/kiwi-devel/attachments/20110309/47ae91f8/attachment.bin">https://lists.berlios.de/pipermail/kiwi-devel/attachments/20110309/47ae91f8/attachment.bin</A>&gt;
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: signature.asc
+Type: application/pgp-signature
+Size: 198 bytes
+Desc: not available
+URL: &lt;<A HREF="https://lists.berlios.de/pipermail/kiwi-devel/attachments/20110309/47ae91f8/attachment.pgp">https://lists.berlios.de/pipermail/kiwi-devel/attachments/20110309/47ae91f8/attachment.pgp</A>&gt;
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003170.html">[Kiwi-devel] [PATCH] find and mount the active partition on /livecd
+</A></li>
+	<LI>Next message: <A HREF="003173.html">[Kiwi-devel] [PATCH] find and mount the active partition on /livecd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3172">[ date ]</a>
+              <a href="thread.html#3172">[ thread ]</a>
+              <a href="subject.html#3172">[ subject ]</a>
+              <a href="author.html#3172">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

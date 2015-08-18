@@ -1,0 +1,256 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1847 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1847%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200901151127.n0FBRsXM019621%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000962.html">
+   <LINK REL="Next"  HREF="000964.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1847 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1847%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200901151127.n0FBRsXM019621%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1847 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Jan 15 12:27:54 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000962.html">[Kiwi-devel] r1846 - in kiwi-head: . modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000964.html">[Kiwi-devel] r1848 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#963">[ date ]</a>
+              <a href="thread.html#963">[ thread ]</a>
+              <a href="subject.html#963">[ subject ]</a>
+              <a href="author.html#963">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-01-15 12:27:50 +0100 (Thu, 15 Jan 2009)
+New Revision: 1847
+
+Modified:
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/modules/KIWIConfig.sh
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- fixed md5 output naming if .raw is part of the dir (bnc #459415)
+- fixed bootloader setup to use the grub binary from the initrd
+
+
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2009-01-15 08:59:56 UTC (rev 1846)
++++ kiwi-head/modules/KIWIBoot.pm	2009-01-15 11:27:50 UTC (rev 1847)
+@@ -291,8 +291,7 @@
+ 			#------------------------------------------
+ 			my %type   = %{$xml-&gt;getImageTypeAndAttributes()};
+ 			my %FSopts = main::checkFSOptions();
+-			my $size   = $systemSize * 1.2;
+-			my $size   = int ($size / 1024);
++			my $size   = int (($systemSize * 1.2) / 1024);
+ 			my $fstype = $type{filesystem};
+ 			if ($fstype =~ /(.*),(.*)/) {
+ 				$fstype = $1;
+@@ -2395,7 +2394,7 @@
+ 	#-------------------------------------------
+ 	if (defined $system) {
+ 		my $imd5 = $system;
+-		$imd5 =~ s/\.raw/\.md5/;
++		$imd5 =~ s/\.raw$/\.md5/;
+ 		my $status = qxx (&quot;cp $imd5 $irddir/etc/image.md5 2&gt;&amp;1&quot;);
+ 		my $result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+@@ -2894,6 +2893,7 @@
+ 	if ($loader eq &quot;grub&quot;) {
+ 		my $stages = &quot;'usr/lib/grub/*'&quot;;
+ 		my $message= &quot;'image/loader/message'&quot;;
++		my $gbinary= &quot;'usr/sbin/grub'&quot;;
+ 		my $unzip  = &quot;$main::Gzip -cd $initrd 2&gt;&amp;1&quot;;
+ 		$status = qxx ( &quot;mkdir -p $tmpdir/boot/grub 2&gt;&amp;1&quot; );
+ 		$result = $? &gt;&gt; 8;
+@@ -2903,42 +2903,63 @@
+ 			$kiwi -&gt; failed ();
+ 			return undef;
+ 		}
+-		$kiwi -&gt; info (&quot;Importing grub stages and graphics boot message&quot;);
++		#==========================================
++		# Get Grub binary from initrd
++		#------------------------------------------
++		$kiwi -&gt; info (&quot;Importing grub binary&quot;);
+ 		if ($zipped) {
++			$status= qxx (&quot;$unzip | (cd $tmpdir &amp;&amp; cpio -di $gbinary 2&gt;&amp;1)&quot;);
++		} else {
++			$status= qxx (&quot;cat $initrd|(cd $tmpdir &amp;&amp; cpio -di $gbinary 2&gt;&amp;1)&quot;);
++		}
++		if (! -e $tmpdir.&quot;/usr/sbin/grub&quot; ) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error  (&quot;No grub bootloader found in initrd: $status&quot;);
++			$kiwi -&gt; failed ();
++			return undef;
++		}
++		$kiwi -&gt; done ();
++		#==========================================
++		# Get Grub graphics boot message
++		#------------------------------------------
++		$kiwi -&gt; info (&quot;Importing graphics boot message&quot;);
++		if ($zipped) {
+ 			$status= qxx (&quot;$unzip | (cd $tmpdir &amp;&amp; cpio -di $message 2&gt;&amp;1)&quot;);
+ 		} else {
+ 			$status= qxx (&quot;cat $initrd|(cd $tmpdir &amp;&amp; cpio -di $message 2&gt;&amp;1)&quot;);
+ 		}
+-		$result = $? &gt;&gt; 8;
+-		if ($result == 0) {
++		if (-e $tmpdir.&quot;/image/loader/message&quot;) {
+ 			$status = qxx (&quot;mv $tmpdir/$message $tmpdir/boot/message 2&gt;&amp;1&quot;);
+ 			$result = $? &gt;&gt; 8;
++			$kiwi -&gt; done();
++		} else {
++			$kiwi -&gt; skipped();
+ 		}
+-		if ($result == 0) {
+-			if ($zipped) {
+-				$status = qxx (
+-					&quot;$unzip | (cd $tmpdir &amp;&amp; cpio -di $stages 2&gt;&amp;1)&quot;
+-				);
+-			} else {
+-				$status = qxx (
+-					&quot;cat $initrd | (cd $tmpdir &amp;&amp; cpio -di $stages 2&gt;&amp;1)&quot;
+-				);
+-			}
++		#==========================================
++		# Get Grub stage files from initrd
++		#------------------------------------------
++		$kiwi -&gt; info (&quot;Importing grub stages&quot;);
++		if ($zipped) {
++			$status = qxx (
++				&quot;$unzip | (cd $tmpdir &amp;&amp; cpio -di $stages 2&gt;&amp;1)&quot;
++			);
++		} else {
++			$status = qxx (
++				&quot;cat $initrd | (cd $tmpdir &amp;&amp; cpio -di $stages 2&gt;&amp;1)&quot;
++			);
++		}
++		if (glob($tmpdir.&quot;/usr/lib/grub/*&quot;)) {
++			$status = qxx (
++				&quot;mv $tmpdir/usr/lib/grub/* $tmpdir/boot/grub 2&gt;&amp;1&quot;
++			);
+ 			$result = $? &gt;&gt; 8;
+-			if ($result == 0) {
+-				$status = qxx (
+-					&quot;mv $tmpdir/usr/lib/grub/* $tmpdir/boot/grub 2&gt;&amp;1&quot;
+-				);
++			if (($result == 0) &amp;&amp; (defined $type) &amp;&amp; ($type eq &quot;iso&quot;)) {
++				my $src = &quot;$tmpdir/boot/grub/stage2_eltorito&quot;;
++				my $dst = &quot;$tmpdir/boot/grub/stage2&quot;;
++				$status = qxx (&quot;mv $src $dst 2&gt;&amp;1&quot;);
+ 				$result = $? &gt;&gt; 8;
+-				if (($result == 0) &amp;&amp; (defined $type) &amp;&amp; ($type eq &quot;iso&quot;)) {
+-					my $src = &quot;$tmpdir/boot/grub/stage2_eltorito&quot;;
+-					my $dst = &quot;$tmpdir/boot/grub/stage2&quot;;
+-					$status = qxx (&quot;mv $src $dst 2&gt;&amp;1&quot;);
+-					$result = $? &gt;&gt; 8;
+-				}
+ 			}
+-		}
+-		if ($result != 0) {
++		} else {
+ 			$kiwi -&gt; skipped (); chomp $status;
+ 			$kiwi -&gt; error   (&quot;Failed importing grub stages: $status&quot;);
+ 			$kiwi -&gt; skipped ();
+@@ -3198,8 +3219,10 @@
+ 		#==========================================
+ 		# Install grub in batch mode
+ 		#------------------------------------------
++		my $grub = $tmpdir.&quot;/usr/sbin/grub&quot;;
+ 		my $grubOptions = &quot;--device-map $dmfile --no-floppy --batch&quot;;
+-		if (! open (FD,&quot;|/usr/sbin/grub $grubOptions &amp;&gt; $tmpdir/grub.log&quot;)) {
++		$kiwi -&gt; loginfo (&quot;GRUB: $grub $grubOptions\n&quot;);
++		if (! open (FD,&quot;|$grub $grubOptions &amp;&gt; $tmpdir/grub.log&quot;)) {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error  (&quot;Couldn't call grub: $!&quot;);
+ 			$kiwi -&gt; failed ();
+@@ -3215,9 +3238,16 @@
+ 			my @glog = &lt;FD&gt;; close FD;
+ 			$glog = join (&quot;\n&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">, at glog</A>);
+ 			$kiwi -&gt; loginfo (&quot;GRUB: $glog&quot;);
++			if ($glog =~ /Error/) {
++				$result = 1;
++			}
+ 		}
+-		$status = qxx (&quot;head -n 10 $diskname | file - | grep -q 'boot sector'&quot;);
+-		$result = $? &gt;&gt; 8;
++		if ($result != 1) {
++			$status= qxx (
++				&quot;head -n 10 $diskname | file - | grep -q 'boot sector'&quot;
++			);
++			$result= $? &gt;&gt; 8;
++		}
+ 		if ($result != 0) {
+ 			$kiwi -&gt; failed ();
+ 			$kiwi -&gt; error  (&quot;Couldn't install grub on $diskname: $glog&quot;);
+
+Modified: kiwi-head/modules/KIWIConfig.sh
+===================================================================
+--- kiwi-head/modules/KIWIConfig.sh	2009-01-15 08:59:56 UTC (rev 1846)
++++ kiwi-head/modules/KIWIConfig.sh	2009-01-15 11:27:50 UTC (rev 1847)
+@@ -933,7 +933,7 @@
+ 		fuser udevadm blogd showconsole killproc curl tar cromfs-driver
+ 		cvcromfs ldd driveready checkmedia splashy bzip2 hexdump
+ 		pvchange pvresize pvscan vgscan vgchange vgextend vgdisplay
+-		lvchange lvresize lvextend lvcreate
++		lvchange lvresize lvextend lvcreate grub
+ 	&quot;
+ 	tools=&quot;$tools $@&quot;
+ 	for path in /sbin /usr/sbin /usr/bin /bin;do
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2009-01-15 08:59:56 UTC (rev 1846)
++++ kiwi-head/rpm/kiwi.changes	2009-01-15 11:27:50 UTC (rev 1847)
+@@ -2,6 +2,8 @@
+ Thu Jan 15 09:58:23 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.04
++- fixed md5 output naming if .raw is part of the dir (bnc #459415)
++- fixed bootloader setup to use the grub binary from the initrd
+ - fixed size calculation for data plus filesystem overhead
+   if only the root tree is present.
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000962.html">[Kiwi-devel] r1846 - in kiwi-head: . modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000964.html">[Kiwi-devel] r1848 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#963">[ date ]</a>
+              <a href="thread.html#963">[ thread ]</a>
+              <a href="subject.html#963">[ subject ]</a>
+              <a href="author.html#963">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

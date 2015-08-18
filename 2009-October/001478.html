@@ -1,0 +1,267 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ecc163e280251ca73935334b6eb1429120ae0c22
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ecc163e280251ca73935334b6eb1429120ae0c22&In-Reply-To=%3C200910050729.n957Ta35021882%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001477.html">
+   <LINK REL="Next"  HREF="001479.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ecc163e280251ca73935334b6eb1429120ae0c22</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20ecc163e280251ca73935334b6eb1429120ae0c22&In-Reply-To=%3C200910050729.n957Ta35021882%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ecc163e280251ca73935334b6eb1429120ae0c22">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Oct  5 09:29:36 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001477.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f0aff2e56eac639dd1f113370a1b2d0178477e46
+</A></li>
+        <LI>Next message: <A HREF="001479.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4f45d9538a2bc377fc68e8ffc4e06d9d257e1b65
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1478">[ date ]</a>
+              <a href="thread.html#1478">[ thread ]</a>
+              <a href="subject.html#1478">[ subject ]</a>
+              <a href="author.html#1478">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  ecc163e280251ca73935334b6eb1429120ae0c22 (commit)
+      from  f0aff2e56eac639dd1f113370a1b2d0178477e46 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ecc163e280251ca73935334b6eb1429120ae0c22
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Oct 5 09:29:03 2009 +0200
+
+    - added import attribute in &lt;profile&gt; section to allow
+      default imports if not profile was set on the commandline
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index e120347..6d486c7 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -990,7 +990,9 @@ sub main {
+ 	#------------------------------------------
+ 	if (defined $Upgrade) {
+ 		$kiwi -&gt; info (&quot;Reading image description [Upgrade]...\n&quot;);
+-		my $xml = new KIWIXML ( $kiwi,&quot;$Upgrade/image&quot; );
++		my $xml = new KIWIXML (
++			$kiwi,&quot;$Upgrade/image&quot;,undef,undef,\@ProfilesOrig
++		);
+ 		if (! defined $xml) {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index f903897..e68d423 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -593,7 +593,7 @@ sub setupBootStick {
+ 		if (-f &quot;$tmpdir/rootfs.tar&quot;) {
+ 			$imgtype = &quot;split&quot;;
+ 		}
+-		$xml = new KIWIXML ( $kiwi,$tmpdir.&quot;/image&quot;,undef,$imgtype );
++		$xml = new KIWIXML ( $kiwi,$tmpdir.&quot;/image&quot;,undef,$imgtype,$profile );
+ 		main::umount();
+ 		if (! defined $xml) {
+ 			$this -&gt; cleanTmp ();
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index 58818d6..477b5a2 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -1246,6 +1246,10 @@ function suseStripKernel {
+ 	for kversion in /lib/modules/*;do
+ 		IFS=&quot;
+ 		&quot;
++		if [ ! -d &quot;$kversion&quot; ];then
++			IFS=$ifss
++			continue
++		fi
+ 		if [ -x /bin/rpm ];then
+ 			kdata=$(rpm -qf $kversion)
+ 		else
+diff --git a/modules/KIWISchema.rnc b/modules/KIWISchema.rnc
+index 3687312..e3d85f6 100644
+--- a/modules/KIWISchema.rnc
++++ b/modules/KIWISchema.rnc
+@@ -715,9 +715,14 @@ div {
+ 	k.profile.description.attribute =
+ 		## Description of how this profiles influences the image
+ 		attribute description { text }
++	k.profile.import.attribute =
++		## Import profile by default if no profile was set on
++		## the commandline
++		attribute import { xsd:boolean }
+ 	k.profile.attlist =
+ 		k.profile.name.attribute &amp;
+-		k.profile.description.attribute
++		k.profile.description.attribute &amp;
++		k.profile.import.attribute?
+ 	k.profile =
+ 		## Creates Profiles
+ 		[
+diff --git a/modules/KIWISchema.rng b/modules/KIWISchema.rng
+index 26549c5..f9ef5e2 100644
+--- a/modules/KIWISchema.rng
++++ b/modules/KIWISchema.rng
+@@ -1054,10 +1054,20 @@ specifies filenames which are in the read-write disk area&lt;/db:para&gt;
+         &lt;a:documentation&gt;Description of how this profiles influences the image&lt;/a:documentation&gt;
+       &lt;/attribute&gt;
+     &lt;/define&gt;
++    &lt;define name=&quot;k.profile.import.attribute&quot;&gt;
++      &lt;attribute name=&quot;import&quot;&gt;
++        &lt;a:documentation&gt;Import profile by default if no profile was set on
++the commandline&lt;/a:documentation&gt;
++        &lt;data type=&quot;boolean&quot;/&gt;
++      &lt;/attribute&gt;
++    &lt;/define&gt;
+     &lt;define name=&quot;k.profile.attlist&quot;&gt;
+       &lt;interleave&gt;
+         &lt;ref name=&quot;k.profile.name.attribute&quot;/&gt;
+         &lt;ref name=&quot;k.profile.description.attribute&quot;/&gt;
++        &lt;optional&gt;
++          &lt;ref name=&quot;k.profile.import.attribute&quot;/&gt;
++        &lt;/optional&gt;
+       &lt;/interleave&gt;
+     &lt;/define&gt;
+     &lt;define name=&quot;k.profile&quot;&gt;
+diff --git a/modules/KIWIXML.pm b/modules/KIWIXML.pm
+index 45df6da..4f41431 100644
+--- a/modules/KIWIXML.pm
++++ b/modules/KIWIXML.pm
+@@ -391,6 +391,10 @@ sub new {
+ 	$this-&gt;{controlFile}        = $controlFile;
+ 
+ 	#==========================================
++	# Apply default profiles from XML if set
++	#------------------------------------------
++	$this -&gt; setDefaultProfiles();
++	#==========================================
+ 	# Check profile names
+ 	#------------------------------------------
+ 	if (! $this -&gt; checkProfiles()) {
+@@ -1549,7 +1553,8 @@ sub getProfiles {
+ 	# ...
+ 	# Receive a list of profiles available for this image
+ 	# ---
+-	my $this = shift;
++	my $this   = shift;
++	my $import = shift;
+ 	my @result;
+ 	if (! defined $this-&gt;{profilesNodeList}) {
+ 		return @result;
+@@ -1562,7 +1567,10 @@ sub getProfiles {
+ 	foreach my $element (@node) {
+ 		my $name = $element -&gt; getAttribute (&quot;name&quot;);
+ 		my $desc = $element -&gt; getAttribute (&quot;description&quot;);
+-		
++		my $incl = $element -&gt; getAttribute (&quot;import&quot;);
++		if ((defined $import) &amp;&amp; (&quot;$incl&quot; ne &quot;true&quot;)) {
++			next;
++		}
+ 		my %profile = ();
+ 		$profile{name} = $name;
+ 		$profile{description} = $desc;
+@@ -1572,6 +1580,29 @@ sub getProfiles {
+ }
+ 
+ #==========================================
++# setDefaultProfiles
++#------------------------------------------
++sub setDefaultProfiles {
++	# ...
++	# import default profiles if no other profiles
++	# were set on the commandline
++	# ---
++	my $this = shift;
++	my @list = ();
++	if ((defined $this-&gt;{reqProfiles}) &amp;&amp; (@{$this-&gt;{reqProfiles}})) {
++		return $this;
++	}
++	my @profiles = $this -&gt; getProfiles (&quot;default&quot;);
++	foreach my $profile (@profiles) {
++		push (@list,$profile-&gt;{name});
++	}
++	if (@list) {
++		$this-&gt;{reqProfiles} = \@list;
++	}
++	return $this;
++}
++
++#==========================================
+ # checkProfiles
+ #------------------------------------------
+ sub checkProfiles {
+@@ -1600,9 +1631,6 @@ sub checkProfiles {
+ 				}
+ 			}
+ 			if (! $ok) {
+-				if (! defined $pref) {
+-					$kiwi -&gt; failed ();
+-				}
+ 				$kiwi -&gt; error  (&quot;Profile $requested: not found&quot;);
+ 				$kiwi -&gt; failed ();
+ 				return undef;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 3bd3035..33cda29 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,6 +1,8 @@
+ -------------------------------------------------------------------
+ Fri Oct  2 14:06:23 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- added import attribute in &lt;profile&gt; section to allow
++  default imports if not profile was set on the commandline
+ - fixed handling of profiled preferences sections
+ - fixed bool value evaluation in KIWIXML.pm::get*()
+ - added suseImportBuildKey() helper function used in JeOS
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001477.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f0aff2e56eac639dd1f113370a1b2d0178477e46
+</A></li>
+	<LI>Next message: <A HREF="001479.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4f45d9538a2bc377fc68e8ffc4e06d9d257e1b65
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1478">[ date ]</a>
+              <a href="thread.html#1478">[ thread ]</a>
+              <a href="subject.html#1478">[ subject ]</a>
+              <a href="author.html#1478">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

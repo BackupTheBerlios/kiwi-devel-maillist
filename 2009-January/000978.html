@@ -1,0 +1,251 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1862 - in kiwi-head: modules rpm	system/suse-repo/suse-sle11-repo
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1862%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/suse-repo/suse-sle11-repo&In-Reply-To=%3C200901210943.n0L9hKsE008226%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000977.html">
+   <LINK REL="Next"  HREF="000979.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1862 - in kiwi-head: modules rpm	system/suse-repo/suse-sle11-repo</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1862%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/suse-repo/suse-sle11-repo&In-Reply-To=%3C200901210943.n0L9hKsE008226%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1862 - in kiwi-head: modules rpm	system/suse-repo/suse-sle11-repo">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jan 21 10:43:20 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000977.html">[Kiwi-devel] r1861 - in kiwi-head: rpm	system/suse-repo/suse-sle11-repo
+</A></li>
+        <LI>Next message: <A HREF="000979.html">[Kiwi-devel] r1863 - kiwi-head/tools/cdtool
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#978">[ date ]</a>
+              <a href="thread.html#978">[ thread ]</a>
+              <a href="subject.html#978">[ subject ]</a>
+              <a href="author.html#978">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2009-01-21 10:43:09 +0100 (Wed, 21 Jan 2009)
+New Revision: 1862
+
+Added:
+   kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-4.1.20-1.4.i586.rpm
+   kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-4.1.20-1.4.x86_64.rpm
+   kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-devel-4.1.20-1.4.i586.rpm
+   kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-devel-4.1.20-1.4.x86_64.rpm
+Removed:
+   kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-4.1.19-2.1.i586.rpm
+   kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-4.1.19-2.1.x86_64.rpm
+   kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-devel-4.1.19-2.1.i586.rpm
+   kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-devel-4.1.19-2.1.x86_64.rpm
+Modified:
+   kiwi-head/modules/KIWIBoot.pm
+   kiwi-head/modules/KIWIManager.pm
+   kiwi-head/modules/KIWIScheme.rnc
+   kiwi-head/modules/KIWIScheme.rng
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- fixed missing oem-reboot reference in KIWIScheme.rnc
+- added non interactive option when calling zypper dist-upgrade
+- fixed setup of splash cpio, use compression level 1 to
+  avoid problems when Xen uncompresses the initrd
+
+
+
+Modified: kiwi-head/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-head/modules/KIWIBoot.pm	2009-01-21 08:22:03 UTC (rev 1861)
++++ kiwi-head/modules/KIWIBoot.pm	2009-01-21 09:43:09 UTC (rev 1862)
+@@ -2606,13 +2606,19 @@
+ 			return (&quot;No bootsplash file found in $splfile cpio&quot;);
+ 		}
+ 	}
++	# /.../
++	# pack splash files with standard gzip level 1. Xen for
++	# example doesn't like better compression. The value
++	# for the gzip-cmd option is ignored here
++	# ----
++	my $gzip = &quot;gzip -1&quot;;
+ 	qxx (
+ 		&quot;(cd $newspl &amp;&amp; \
+-		find|cpio --quiet -oH newc | $main::Gzip) &gt; $spldir/all.spl&quot;
++		find|cpio --quiet -oH newc | $gzip) &gt; $spldir/all.spl&quot;
+ 	);
+ 	qxx (
+ 		&quot;rm -f $newird &amp;&amp; \
+-		(cd $irddir &amp;&amp; find | cpio --quiet -oH newc | $main::Gzip) &gt; $newird&quot;
++		(cd $irddir &amp;&amp; find | cpio --quiet -oH newc | $gzip) &gt; $newird&quot;
+ 	);
+ 	#==========================================
+ 	# create splash initrd
+
+Modified: kiwi-head/modules/KIWIManager.pm
+===================================================================
+--- kiwi-head/modules/KIWIManager.pm	2009-01-21 08:22:03 UTC (rev 1861)
++++ kiwi-head/modules/KIWIManager.pm	2009-01-21 09:43:09 UTC (rev 1862)
+@@ -1215,7 +1215,7 @@
+ 				}
+ 			}
+ 			@addonPackages = @newpacks;
+-			print $fd &quot;@kchroot @zypper dist-upgrade &amp;\n&quot;;
++			print $fd &quot;@kchroot @zypper dist-upgrade @installOpts &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			if (@newprods) {
+ 				print $fd &quot;test \$? = 0 &amp;&amp; @kchroot @zypper install &quot;;
+@@ -1233,7 +1233,7 @@
+ 				print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 			}
+ 		} else {
+-			print $fd &quot;@kchroot @zypper dist-upgrade &amp;\n&quot;;
++			print $fd &quot;@kchroot @zypper dist-upgrade @installOpts &amp;\n&quot;;
+ 			print $fd &quot;SPID=\$!;wait \$SPID\n&quot;;
+ 		}
+ 		print $fd &quot;ECODE=\$?\n&quot;;
+
+Modified: kiwi-head/modules/KIWIScheme.rnc
+===================================================================
+--- kiwi-head/modules/KIWIScheme.rnc	2009-01-21 08:22:03 UTC (rev 1861)
++++ kiwi-head/modules/KIWIScheme.rnc	2009-01-21 09:43:09 UTC (rev 1862)
+@@ -1754,6 +1754,7 @@
+ 			k.oem-swapsize? &amp;
+ 			k.oem-systemsize? &amp;
+ 			k.oem-recovery? &amp;
++			k.oem-reboot? &amp;
+ 			k.packagemanager? &amp;
+ 			k.rpm-check-signatures? &amp;
+ 			k.rpm-excludedocs? &amp;
+
+Modified: kiwi-head/modules/KIWIScheme.rng
+===================================================================
+--- kiwi-head/modules/KIWIScheme.rng	2009-01-21 08:22:03 UTC (rev 1861)
++++ kiwi-head/modules/KIWIScheme.rng	2009-01-21 09:43:09 UTC (rev 1862)
+@@ -20,7 +20,7 @@
+   STATUS        : Development
+   ****************
+ --&gt;
+-&lt;grammar xmlns:db=&quot;<A HREF="http://docbook.org/ns/docbook">http://docbook.org/ns/docbook</A>&quot; xmlns:a=&quot;<A HREF="http://relaxng.org/ns/compatibility/annotations/1.0">http://relaxng.org/ns/compatibility/annotations/1.0</A>&quot; xmlns:rng=&quot;<A HREF="http://relaxng.org/ns/structure/1.0">http://relaxng.org/ns/structure/1.0</A>&quot; xmlns:xsi=&quot;<A HREF="http://www.w3.org/2001/XMLSchema-instance">http://www.w3.org/2001/XMLSchema-instance</A>&quot; xmlns=&quot;<A HREF="http://relaxng.org/ns/structure/1.0">http://relaxng.org/ns/structure/1.0</A>&quot; datatypeLibrary=&quot;<A HREF="http://www.w3.org/2001/XMLSchema-datatypes">http://www.w3.org/2001/XMLSchema-datatypes</A>&quot;&gt;
++&lt;grammar xmlns:xsi=&quot;<A HREF="http://www.w3.org/2001/XMLSchema-instance">http://www.w3.org/2001/XMLSchema-instance</A>&quot; xmlns:a=&quot;<A HREF="http://relaxng.org/ns/compatibility/annotations/1.0">http://relaxng.org/ns/compatibility/annotations/1.0</A>&quot; xmlns:db=&quot;<A HREF="http://docbook.org/ns/docbook">http://docbook.org/ns/docbook</A>&quot; xmlns:rng=&quot;<A HREF="http://relaxng.org/ns/structure/1.0">http://relaxng.org/ns/structure/1.0</A>&quot; xmlns=&quot;<A HREF="http://relaxng.org/ns/structure/1.0">http://relaxng.org/ns/structure/1.0</A>&quot; datatypeLibrary=&quot;<A HREF="http://www.w3.org/2001/XMLSchema-datatypes">http://www.w3.org/2001/XMLSchema-datatypes</A>&quot;&gt;
+   &lt;db:info&gt;
+     &lt;db:releaseinfo&gt;$Id: kiwi.rnc 2957 2008-01-11 12:53:39Z thomas-schraitle $&lt;/db:releaseinfo&gt;
+     &lt;db:releaseinfo&gt;RNC Schema Version 2.4&lt;/db:releaseinfo&gt;
+@@ -2532,6 +2532,9 @@
+             &lt;ref name=&quot;k.oem-recovery&quot;/&gt;
+           &lt;/optional&gt;
+           &lt;optional&gt;
++            &lt;ref name=&quot;k.oem-reboot&quot;/&gt;
++          &lt;/optional&gt;
++          &lt;optional&gt;
+             &lt;ref name=&quot;k.packagemanager&quot;/&gt;
+           &lt;/optional&gt;
+           &lt;optional&gt;
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2009-01-21 08:22:03 UTC (rev 1861)
++++ kiwi-head/rpm/kiwi.changes	2009-01-21 09:43:09 UTC (rev 1862)
+@@ -2,7 +2,11 @@
+ Tue Jan 20 17:51:57 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v3.09
+-- added gfxboot and kiwi-tools  required for SLE11 images
++- added gfxboot and kiwi-tools required for SLE11 images
++- fixed missing oem-reboot reference in KIWIScheme.rnc
++- added non interactive option when calling zypper dist-upgrade
++- fixed setup of splash cpio, use compression level 1 to
++  avoid problems when Xen uncompresses the initrd
+ 
+ -------------------------------------------------------------------
+ Mon Jan 19 17:03:24 CET 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+Deleted: kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-4.1.19-2.1.i586.rpm
+===================================================================
+(Binary files differ)
+
+Deleted: kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-4.1.19-2.1.x86_64.rpm
+===================================================================
+(Binary files differ)
+
+Added: kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-4.1.20-1.4.i586.rpm
+===================================================================
+(Binary files differ)
+
+
+Property changes on: kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-4.1.20-1.4.i586.rpm
+___________________________________________________________________
+Name: svn:mime-type
+   + application/octet-stream
+
+Added: kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-4.1.20-1.4.x86_64.rpm
+===================================================================
+(Binary files differ)
+
+
+Property changes on: kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-4.1.20-1.4.x86_64.rpm
+___________________________________________________________________
+Name: svn:mime-type
+   + application/octet-stream
+
+Deleted: kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-devel-4.1.19-2.1.i586.rpm
+===================================================================
+(Binary files differ)
+
+Deleted: kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-devel-4.1.19-2.1.x86_64.rpm
+===================================================================
+(Binary files differ)
+
+Added: kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-devel-4.1.20-1.4.i586.rpm
+===================================================================
+(Binary files differ)
+
+
+Property changes on: kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-devel-4.1.20-1.4.i586.rpm
+___________________________________________________________________
+Name: svn:mime-type
+   + application/octet-stream
+
+Added: kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-devel-4.1.20-1.4.x86_64.rpm
+===================================================================
+(Binary files differ)
+
+
+Property changes on: kiwi-head/system/suse-repo/suse-sle11-repo/gfxboot-devel-4.1.20-1.4.x86_64.rpm
+___________________________________________________________________
+Name: svn:mime-type
+   + application/octet-stream
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000977.html">[Kiwi-devel] r1861 - in kiwi-head: rpm	system/suse-repo/suse-sle11-repo
+</A></li>
+	<LI>Next message: <A HREF="000979.html">[Kiwi-devel] r1863 - kiwi-head/tools/cdtool
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#978">[ date ]</a>
+              <a href="thread.html#978">[ thread ]</a>
+              <a href="subject.html#978">[ subject ]</a>
+              <a href="author.html#978">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

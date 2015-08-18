@@ -1,0 +1,666 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e58fdd8191dba1816ad0978254c100269383b92e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-May/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20e58fdd8191dba1816ad0978254c100269383b92e&In-Reply-To=%3C20110524151952.1C92F481490%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003459.html">
+   <LINK REL="Next"  HREF="003461.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e58fdd8191dba1816ad0978254c100269383b92e</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20e58fdd8191dba1816ad0978254c100269383b92e&In-Reply-To=%3C20110524151952.1C92F481490%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e58fdd8191dba1816ad0978254c100269383b92e">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue May 24 17:19:51 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003459.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 96ca08b1b03e3ed30c71e59d60f0d160f823910d
+</A></li>
+        <LI>Next message: <A HREF="003461.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2765261927cf8a26f6e5ac9a32604eeb7e2cbb29
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3460">[ date ]</a>
+              <a href="thread.html#3460">[ thread ]</a>
+              <a href="subject.html#3460">[ subject ]</a>
+              <a href="author.html#3460">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  e58fdd8191dba1816ad0978254c100269383b92e (commit)
+      from  96ca08b1b03e3ed30c71e59d60f0d160f823910d (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit e58fdd8191dba1816ad0978254c100269383b92e
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue May 24 16:42:47 2011 +0200
+
+    - eliminate global variable: Destination
+    - fixed backtrace() output in debug mode, show only latest trace level
+      the other trace levels are kept for further debugging
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index c060c75..b4b257a 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -54,7 +54,7 @@ use KIWIGlobals;
+ #--------------------------------------------
+ our $TT            = &quot;Trace Level &quot;;
+ our $TL            = 1;
+-our $BT;
++our @BT;
+ 
+ #============================================
+ # Globals
+@@ -74,7 +74,6 @@ my $cmdL;       # Command line data container
+ #============================================
+ # Globals
+ #--------------------------------------------
+-our $Destination;           # destination directory for logical extends
+ our $LogFile;               # optional file name for logging
+ our $RootTree;              # optional root tree destination
+ our $BootVMSystem;          # system image to be copied on a VM disk
+@@ -142,8 +141,9 @@ sub main {
+ 		#==========================================
+ 		# Create destdir if needed
+ 		#------------------------------------------
++		$cmdL -&gt; setDefaultAnswer (&quot;yes&quot;);
+ 		my $dirCreated = $global -&gt; createDirInteractive(
+-			$Destination, $cmdL-&gt;getDefaultAnswer()
++			$cmdL-&gt;getImageTargetDir().&quot;/build&quot;, $cmdL-&gt;getDefaultAnswer()
+ 		);
+ 		if (! defined $dirCreated) {
+ 			kiwiExit (1);
+@@ -152,7 +152,7 @@ sub main {
+ 		# Setup prepare 
+ 		#------------------------------------------
+ 		my $imageTarget = $cmdL -&gt; getImageTargetDir();
+-		my $rootTarget  = $imageTarget.'/image-root';
++		my $rootTarget  = $imageTarget.'/build/image-root';
+ 		$cmdL -&gt; setRootTargetDir ($rootTarget);
+ 		$cmdL -&gt; setForceNewRoot (1);
+ 		mkdir $imageTarget;
+@@ -163,7 +163,6 @@ sub main {
+ 		#==========================================
+ 		# Setup create 
+ 		#------------------------------------------
+-		$cmdL -&gt; setImagetargetDir ($Destination);
+ 		$cmdL -&gt; setConfigDir ($rootTarget);
+ 		$cmdL -&gt; setForceNewRoot (0);
+ 		$kic  -&gt; initialize();
+@@ -264,16 +263,16 @@ sub main {
+ 	#------------------------------------------
+ 	if ($cmdL-&gt;getOperationMode(&quot;migrate&quot;)) {
+ 		$kiwi -&gt; info (&quot;Starting system to image migration&quot;);
+-		$Destination = $cmdL-&gt;getOperationMode(&quot;migrate&quot;);
+-		$Destination = &quot;/tmp/&quot;.$Destination;
+-		my $addlRepos = $cmdL -&gt; getAdditionalRepos();
+-		my $migopts   = $cmdL -&gt; getMigrationOptions();
+-		my $exclude   = $migopts-&gt;[0];
+-		my $skip      = $migopts-&gt;[1];
+-		my $nofiles   = $migopts-&gt;[2];
+-		my $notempl   = $migopts-&gt;[3];
++		my $destination = $cmdL-&gt;getOperationMode(&quot;migrate&quot;);
++		my $addlRepos   = $cmdL -&gt; getAdditionalRepos();
++		my $migopts     = $cmdL -&gt; getMigrationOptions();
++		my $exclude     = $migopts-&gt;[0];
++		my $skip        = $migopts-&gt;[1];
++		my $nofiles     = $migopts-&gt;[2];
++		my $notempl     = $migopts-&gt;[3];
++		$destination    = &quot;/tmp/&quot;.$destination;
+ 		$migrate = new KIWIMigrate (
+-			$kiwi,$Destination,
++			$kiwi,$destination,
+ 			$cmdL-&gt;getOperationMode(&quot;migrate&quot;),$exclude,$skip,
+ 			$addlRepos-&gt;{repositories},
+ 			$addlRepos-&gt;{repositoryTypes},
+@@ -640,6 +639,7 @@ sub init {
+ 	my $targetDevice;          # alternative device instead of a loop device
+ 	my $ImageCache;            # build an image cache for later re-use
+ 	my $RecycleRoot;           # use existing root directory incl. contents
++	my $Destination;           # destination directory for logical extends
+ 	my $PackageManager;        # package manager to use
+ 	my $Version;               # version information
+ 	#==========================================
+@@ -1175,8 +1175,6 @@ sub init {
+ 		$kiwi -&gt; error  (&quot;No destination directory specified&quot;);
+ 		$kiwi -&gt; failed ();
+ 		kiwiExit (1);
+-	} elsif (defined $Build) {
+-		$cmdL -&gt; setTargetDirsForBuild();
+ 	}
+ 	if (defined $ListXMLInfo) {
+ 		$cmdL -&gt; setAdditionalRepos(
+@@ -1531,16 +1529,17 @@ sub cloneImage {
+ 	my $gdata      = $global -&gt; getGlobals();
+ 	my $configName = $gdata-&gt;{ConfigName};
+ 	my $system     = $gdata-&gt;{System};
++	my $destination= $cmdL-&gt;getImageTargetDir();
+ 	#==========================================
+ 	# Check destination definition
+ 	#------------------------------------------
+ 	my $kiwi = new KIWILog(&quot;tiny&quot;);
+-	if (! defined $Destination) {
++	if (! defined $destination) {
+ 		$kiwi -&gt; error  (&quot;No destination directory specified&quot;);
+ 		$kiwi -&gt; failed ();
+ 		kiwiExit (1);
+ 	} else {
+-		$kiwi -&gt; info (&quot;Cloning image $clone -&gt; $Destination...&quot;);
++		$kiwi -&gt; info (&quot;Cloning image $clone -&gt; $destination...&quot;);
+ 	}
+ 	#==========================================
+ 	# Evaluate image path or name 
+@@ -1549,7 +1548,7 @@ sub cloneImage {
+ 		$clone = $system.&quot;/&quot;.$clone;
+ 	}
+ 	my $cfg = $clone.&quot;/&quot;.$configName;
+-	my $md5 = $Destination.&quot;/.checksum.md5&quot;;
++	my $md5 = $destination.&quot;/.checksum.md5&quot;;
+ 	if (! -f $cfg) {
+ 		my @globsearch = glob ($clone.&quot;/*.kiwi&quot;);
+ 		my $globitems  = @globsearch;
+@@ -1570,17 +1569,17 @@ sub cloneImage {
+ 	#==========================================
+ 	# Check if destdir exists or not 
+ 	#------------------------------------------
+-	if (! -d $Destination) {
++	if (! -d $destination) {
+ 		my $prefix = $kiwi -&gt; getPrefix (1);
+ 		$kiwi -&gt; note (&quot;\n&quot;);
+-		$kiwi -&gt; info (&quot;Destination: $Destination doesn't exist\n&quot;);
++		$kiwi -&gt; info (&quot;Destination: $destination doesn't exist\n&quot;);
+ 		while ($answer !~ /^yes$|^no$/) {
+ 			print STDERR $prefix,
+ 				&quot;Would you like kiwi to create it [yes/no] ? &quot;;
+ 			chomp ($answer = &lt;&gt;);
+ 		}
+ 		if ($answer eq &quot;yes&quot;) {
+-			qxx (&quot;mkdir -p $Destination&quot;);
++			qxx (&quot;mkdir -p $destination&quot;);
+ 		} else {
+ 			kiwiExit (1);
+ 		}
+@@ -1588,7 +1587,7 @@ sub cloneImage {
+ 	#==========================================
+ 	# Copy path to destination 
+ 	#------------------------------------------
+-	my $data = qxx (&quot;cp -a $clone/* $Destination 2&gt;&amp;1&quot;);
++	my $data = qxx (&quot;cp -a $clone/* $destination 2&gt;&amp;1&quot;);
+ 	my $code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+ 		$kiwi -&gt; failed ();
+@@ -1672,10 +1671,7 @@ sub quit {
+ 		$kiwi -&gt; reopenRootChannel();
+ 	}
+ 	$kiwi -&gt; note (&quot;\n*** $$: Received signal $_[0] ***\n&quot;);
+-	$kiwi -&gt; setLogHumanReadable();
+-	$kiwi -&gt; cleanSweep();
+-	cleanup();
+-	exit 1;
++	kiwiExit (1);
+ }
+ 
+ #==========================================
+diff --git a/modules/KIWICommandLine.pm b/modules/KIWICommandLine.pm
+index e8fd4fe..9e259bc 100644
+--- a/modules/KIWICommandLine.pm
++++ b/modules/KIWICommandLine.pm
+@@ -832,19 +832,6 @@ sub setRootTargetDir {
+ }
+ 
+ #==========================================
+-# setTargetDirsForBuild
+-#------------------------------------------
+-sub setTargetDirsForBuild {
+-	# ...
+-	# Setup the target dirs for a combined (prepare &amp; create) image build.
+-	# ---
+-	my $this = shift;
+-	$this-&gt;{prepTgtDir} = $this-&gt;{imageTgtDir};
+-	$this-&gt;{imageTgtDir} = $this-&gt;{prepTgtDir} . '/build';
+-	return 1;
+-}
+-
+-#==========================================
+ # setInitrdFile
+ #------------------------------------------
+ sub setInitrdFile {
+diff --git a/modules/KIWIGlobals.pm b/modules/KIWIGlobals.pm
+index 12d80e1..08ba2d2 100644
+--- a/modules/KIWIGlobals.pm
++++ b/modules/KIWIGlobals.pm
+@@ -545,7 +545,7 @@ sub checkFileSystem {
+ 			my $type;
+ 			if ($code != 0) {
+ 				if ($main::kiwi -&gt; trace()) {
+-					$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
++					$main::BT[$main::TL] = eval { Carp::longmess ($main::TT.$main::TL++) };
+ 				}
+ 				return undef;
+ 			}
+@@ -604,7 +604,7 @@ sub checkFileSystem {
+ 			}
+ 		} else {
+ 			if ($main::kiwi -&gt; trace()) {
+-				$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
++				$main::BT[$main::TL] = eval { Carp::longmess ($main::TT.$main::TL++) };
+ 			}
+ 			return ();
+ 		}
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 31dae31..60d1f61 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -286,6 +286,7 @@ sub checkAndSetupPrebuiltBootImage {
+ 	my $ixml = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $cmdL = $this-&gt;{cmdL};
++	my $idest= $cmdL-&gt;getImageTargetDir();
+ 	my %type = %{$ixml-&gt;getImageTypeAndAttributes()};
+ 	my $pblt = $type{checkprebuilt};
+ 	my $boot = $type{boot};
+@@ -351,7 +352,7 @@ sub checkAndSetupPrebuiltBootImage {
+ 		$kiwi -&gt; done();
+ 		$kiwi -&gt; info (&quot;Copying pre-built boot image to destination&quot;);
+ 		my $lookup = basename $pinitrd;
+-		if (-f &quot;$main::Destination/$lookup&quot;) {
++		if (-f &quot;$idest/$lookup&quot;) {
+ 			#==========================================
+ 			# Already exists in destination dir
+ 			#------------------------------------------
+@@ -362,9 +363,9 @@ sub checkAndSetupPrebuiltBootImage {
+ 			# Needs to be copied...
+ 			#------------------------------------------
+ 			if ($psplash) {
+-				qxx (&quot;cp -a $psplash $main::Destination 2&gt;&amp;1&quot;);
++				qxx (&quot;cp -a $psplash $idest 2&gt;&amp;1&quot;);
+ 			}
+-			my $data = qxx (&quot;cp -a $pinitrd $main::Destination 2&gt;&amp;1&quot;);
++			my $data = qxx (&quot;cp -a $pinitrd $idest 2&gt;&amp;1&quot;);
+ 			my $code = $? &gt;&gt; 8;
+ 			if ($code != 0) {
+ 				$kiwi -&gt; failed();
+@@ -372,7 +373,7 @@ sub checkAndSetupPrebuiltBootImage {
+ 				$kiwi -&gt; failed();
+ 				$ok = 0;
+ 			} else {
+-				$data = qxx (&quot;cp -a $plinux* $main::Destination 2&gt;&amp;1&quot;);
++				$data = qxx (&quot;cp -a $plinux* $idest 2&gt;&amp;1&quot;);
+ 				$code = $? &gt;&gt; 8;
+ 				if ($code != 0) {
+ 					$kiwi -&gt; failed();
+@@ -896,6 +897,7 @@ sub createImageRootAndBoot {
+ 	my $kiwi       = $this-&gt;{kiwi};
+ 	my $sxml       = $this-&gt;{xml};
+ 	my $cmdL       = $this-&gt;{cmdL};
++	my $idest      = $cmdL-&gt;getImageTargetDir();
+ 	my %stype      = %{$sxml-&gt;getImageTypeAndAttributes()};
+ 	my $imageTree  = $this-&gt;{imageTree};
+ 	my $baseSystem = $this-&gt;{baseSystem};
+@@ -1002,7 +1004,7 @@ sub createImageRootAndBoot {
+ 		#==========================================
+ 		# Create tmp dir for boot image creation
+ 		#------------------------------------------
+-		my $tmpdir = qxx (&quot;mktemp -q -d $main::Destination/boot-$text.XXXXXX&quot;);
++		my $tmpdir = qxx (&quot;mktemp -q -d $idest/boot-$text.XXXXXX&quot;);
+ 		my $result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; error  (&quot;Couldn't create tmp dir: $tmpdir: $!&quot;);
+@@ -1052,9 +1054,9 @@ sub createImageRootAndBoot {
+ 	#==========================================
+ 	# setup initrd name
+ 	#------------------------------------------
+-	my $initrd = $main::Destination.&quot;/&quot;.$bootdata[0].&quot;.gz&quot;;
++	my $initrd = $idest.&quot;/&quot;.$bootdata[0].&quot;.gz&quot;;
+ 	if (! -f $initrd) {
+-		$initrd = $main::Destination.&quot;/&quot;.$bootdata[0];
++		$initrd = $idest.&quot;/&quot;.$bootdata[0];
+ 	}
+ 	#==========================================
+ 	# Check boot and system image kernel
+@@ -1126,6 +1128,7 @@ sub createImageVMX {
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $xml  = $this-&gt;{xml};
+ 	my $cmdL = $this-&gt;{cmdL};
++	my $idest= $cmdL-&gt;getImageTargetDir();
+ 	my %xenc = $xml  -&gt; getXenConfig();
+ 	my $name = $this -&gt; createImageRootAndBoot ($para,&quot;VMX&quot;);
+ 	my $xendomain;
+@@ -1141,7 +1144,7 @@ sub createImageVMX {
+ 	# Create virtual disk image(s)
+ 	#------------------------------------------
+ 	$cmdL -&gt; setInitrdFile (
+-		$main::Destination.&quot;/&quot;.$name-&gt;{bootImage}.&quot;.splash.gz&quot;
++		$idest.&quot;/&quot;.$name-&gt;{bootImage}.&quot;.splash.gz&quot;
+ 	);
+ 	if (defined $name-&gt;{imageTree}) {
+ 		$cmdL -&gt; setSystemLocation (
+@@ -1149,7 +1152,7 @@ sub createImageVMX {
+ 		);
+ 	} else {
+ 		$cmdL -&gt; setSystemLocation (
+-			$main::Destination.&quot;/&quot;.$name-&gt;{systemImage}
++			$idest.&quot;/&quot;.$name-&gt;{systemImage}
+ 		);
+ 	}
+ 	my $kic = new KIWIImageCreator ($kiwi, $cmdL);
+@@ -1162,7 +1165,7 @@ sub createImageVMX {
+ 	#------------------------------------------
+ 	if ((defined $name-&gt;{format}) || ($xendomain eq &quot;domU&quot;)) {
+ 		$cmdL -&gt; setSystemLocation (
+-			$main::Destination.&quot;/&quot;.$name-&gt;{systemImage}.&quot;.raw&quot;
++			$idest.&quot;/&quot;.$name-&gt;{systemImage}.&quot;.raw&quot;
+ 		);
+ 		$cmdL -&gt; setImageFormat ($name-&gt;{format});
+ 		my $kic = new KIWIImageCreator ($kiwi, $cmdL);
+@@ -1198,6 +1201,7 @@ sub createImageLiveCD {
+ 	my $arch = $this-&gt;{arch};
+ 	my $sxml = $this-&gt;{xml};
+ 	my $cmdL = $this-&gt;{cmdL};
++	my $idest= $cmdL-&gt;getImageTargetDir();
+ 	my $imageTree = $this-&gt;{imageTree};
+ 	my $baseSystem= $this-&gt;{baseSystem};
+ 	my @bootdata;
+@@ -1487,7 +1491,7 @@ sub createImageLiveCD {
+ 		#==========================================
+ 		# Create tmp dir for boot image creation
+ 		#------------------------------------------
+-		my $tmpdir = qxx (&quot;mktemp -q -d $main::Destination/boot-iso.XXXXXX&quot;);
++		my $tmpdir = qxx (&quot;mktemp -q -d $idest/boot-iso.XXXXXX&quot;);
+ 		my $result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; error  (&quot;Couldn't create tmp dir: $tmpdir: $!&quot;);
+@@ -1537,9 +1541,9 @@ sub createImageLiveCD {
+ 	#==========================================
+ 	# setup initrd/kernel names
+ 	#------------------------------------------
+-	my $pinitrd = $main::Destination.&quot;/&quot;.$bootdata[0].&quot;.gz&quot;;
+-	my $plinux  = $main::Destination.&quot;/&quot;.$bootdata[0].&quot;.kernel&quot;;
+-	my $pxboot  = glob ($main::Destination.&quot;/&quot;.$bootdata[0].&quot;*xen.gz&quot;);
++	my $pinitrd = $idest.&quot;/&quot;.$bootdata[0].&quot;.gz&quot;;
++	my $plinux  = $idest.&quot;/&quot;.$bootdata[0].&quot;.kernel&quot;;
++	my $pxboot  = glob ($idest.&quot;/&quot;.$bootdata[0].&quot;*xen.gz&quot;);
+ 	if (-f $pxboot) {
+ 		$isxen = 1;
+ 	}
+@@ -1554,7 +1558,7 @@ sub createImageLiveCD {
+ 	#==========================================
+ 	# Prepare for CD ISO image
+ 	#------------------------------------------
+-	my $CD = $main::Destination.&quot;/CD&quot;;
++	my $CD = $idest.&quot;/CD&quot;;
+ 	$kiwi -&gt; info (&quot;Creating CD filesystem structure&quot;);
+ 	qxx (&quot;mkdir -p $CD/boot&quot;);
+ 	push @{$this-&gt;{tmpdirs}},$CD;
+@@ -1678,7 +1682,7 @@ sub createImageLiveCD {
+ 	# check for graphics boot files
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Extracting initrd for boot graphics data lookup&quot;);
+-	my $tmpdir = qxx (&quot;mktemp -q -d $main::Destination/boot-iso.XXXXXX&quot;);
++	my $tmpdir = qxx (&quot;mktemp -q -d $idest/boot-iso.XXXXXX&quot;);
+ 	$code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+ 		$kiwi -&gt; failed();
+@@ -1956,6 +1960,7 @@ sub createImageSplit {
+ 	my $baseSystem= $this-&gt;{baseSystem};
+ 	my $sxml = $this-&gt;{xml};
+ 	my $cmdL = $this-&gt;{cmdL};
++	my $idest= $cmdL-&gt;getImageTargetDir();
+ 	my %xenc = $sxml-&gt;getXenConfig();
+ 	my $FSTypeRW;
+ 	my $FSTypeRO;
+@@ -2528,7 +2533,7 @@ sub createImageSplit {
+ 		#==========================================
+ 		# Create tmp dir for boot image creation
+ 		#------------------------------------------
+-		my $tmpdir = qxx (&quot;mktemp -q -d $main::Destination/boot-split.XXXXXX&quot;);
++		my $tmpdir = qxx (&quot;mktemp -q -d $idest/boot-split.XXXXXX&quot;);
+ 		my $result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+ 			$kiwi -&gt; error  (&quot;Couldn't create tmp dir: $tmpdir: $!&quot;);
+@@ -2578,9 +2583,9 @@ sub createImageSplit {
+ 	#==========================================
+ 	# setup initrd name
+ 	#------------------------------------------
+-	my $initrd = $main::Destination.&quot;/&quot;.$bootdata[0].&quot;.gz&quot;;
++	my $initrd = $idest.&quot;/&quot;.$bootdata[0].&quot;.gz&quot;;
+ 	if (! -f $initrd) {
+-		$initrd = $main::Destination.&quot;/&quot;.$bootdata[0];
++		$initrd = $idest.&quot;/&quot;.$bootdata[0];
+ 	}
+ 	#==========================================
+ 	# Check boot and system image kernel
+@@ -2609,10 +2614,10 @@ sub createImageSplit {
+ 		# Create virtual disk images if requested
+ 		#------------------------------------------
+ 		$cmdL -&gt; setInitrdFile (
+-			$main::Destination.&quot;/&quot;.$name-&gt;{bootImage}.&quot;.splash.gz&quot;
++			$idest.&quot;/&quot;.$name-&gt;{bootImage}.&quot;.splash.gz&quot;
+ 		);
+ 		$cmdL -&gt; setSystemLocation (
+-			$main::Destination.&quot;/&quot;.$name-&gt;{systemImage}
++			$idest.&quot;/&quot;.$name-&gt;{systemImage}
+ 		);
+ 		my $kic = new KIWIImageCreator ($kiwi, $cmdL);
+ 		if ((! $kic) || (! $kic-&gt;createImageDisk())) {
+@@ -2624,7 +2629,7 @@ sub createImageSplit {
+ 		#------------------------------------------
+ 		if ((defined $name-&gt;{format}) || ($xendomain eq &quot;domU&quot;)) {
+ 			$cmdL -&gt; setSystemLocation (
+-				$main::Destination.&quot;/&quot;.$name-&gt;{systemImage}.&quot;.raw&quot;
++				$idest.&quot;/&quot;.$name-&gt;{systemImage}.&quot;.raw&quot;
+ 			);
+ 			$cmdL -&gt; setImageFormat ($name-&gt;{format});
+ 			my $kic = new KIWIImageCreator ($kiwi, $cmdL);
+diff --git a/modules/KIWIImageFormat.pm b/modules/KIWIImageFormat.pm
+index 0a50bab..f406eef 100644
+--- a/modules/KIWIImageFormat.pm
++++ b/modules/KIWIImageFormat.pm
+@@ -110,6 +110,7 @@ sub new {
+ 	#==========================================
+ 	# Store object data
+ 	#------------------------------------------
++	$this-&gt;{cmdL}    = $cmdL;
+ 	$this-&gt;{xenref}  = \%xenref;
+ 	$this-&gt;{vmwref}  = \%vmwref;
+ 	$this-&gt;{kiwi}    = $kiwi;
+@@ -220,7 +221,8 @@ sub createOVF {
+ 	my $this   = shift;
+ 	my $kiwi   = $this-&gt;{kiwi};
+ 	my $format = $this-&gt;{format};
+-	my $ovftool = &quot;/usr/bin/ovftool&quot;;
++	my $cmdL   = $this-&gt;{cmdL};
++	my $ovftool= &quot;/usr/bin/ovftool&quot;;
+ 	my $vmdk;
+ 	my $vmxf;
+ 	my $source;
+@@ -267,9 +269,10 @@ sub createOVF {
+ 			&quot;$ovftool -o -q $source $target/$output 2&gt;&amp;1&quot;
+ 		);
+ 		$result = $? &gt;&gt; 8;
++		my $destination = $cmdL -&gt; getImageTargetDir();
+ 		# --- beg ----
+ 		qxx (&quot;sed -i -e 's;disk;scsi-hardDisk;' $source&quot;);
+-		qxx (&quot;rm -rf $main::Destination/*.lck 2&gt;&amp;1&quot;);
++		qxx (&quot;rm -rf $destination/*.lck 2&gt;&amp;1&quot;);
+ 		# --- end ----
+ 		if ($result != 0) {
+ 			$kiwi -&gt; failed ();
+diff --git a/modules/KIWILocator.pm b/modules/KIWILocator.pm
+index 6fe1921..fb0e0fd 100644
+--- a/modules/KIWILocator.pm
++++ b/modules/KIWILocator.pm
+@@ -108,7 +108,7 @@ sub createTmpDirectory {
+ 	}
+ 	if ( $rootError ) {
+ 		if ($kiwi -&gt; trace()) {
+-			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
++			$main::BT[$main::TL] = eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		}
+ 		return undef;
+ 	}
+diff --git a/modules/KIWILog.pm b/modules/KIWILog.pm
+index 26e6bd5..2744309 100644
+--- a/modules/KIWILog.pm
++++ b/modules/KIWILog.pm
+@@ -99,7 +99,7 @@ sub sendLogServerMessage {
+ 	my $date    = $this-&gt;{date};
+ 	if (! defined $smem) {
+ 		if (($this-&gt;trace()) &amp;&amp; ($main::TT)) {
+-			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
++			$main::BT[$main::TL] = eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		}
+ 		return undef;
+ 	}
+@@ -138,7 +138,7 @@ sub getLogServerMessage {
+ 	my $smem = $this-&gt;{smem};
+ 	if (! defined $smem) {
+ 		if ($this-&gt;trace()) {
+-			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
++			$main::BT[$main::TL] = eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		}
+ 		return undef;
+ 	}
+@@ -374,7 +374,7 @@ sub reopenRootChannel {
+ 	}
+ 	if (! (open EFD,&quot;&gt;&gt;$file&quot;)) {
+ 		if ($this-&gt;trace()) {
+-			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
++			$main::BT[$main::TL] = eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		}
+ 		return undef;
+ 	}
+@@ -466,7 +466,7 @@ sub printLog {
+ 		} elsif ($lglevel == 3) {
+ 			$result = $needcr.$date.$logdata;
+ 			if ($this-&gt;trace()) {
+-				$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
++				$main::BT[$main::TL] = eval { Carp::longmess ($main::TT.$main::TL++) };
+ 			}
+ 		} else {
+ 			$result = Carp::longmess($needcr.$logdata);
+@@ -520,17 +520,18 @@ sub printBackTrace {
+ 	if (! $used) {
+ 		return $this;
+ 	}
+-	if (! $main::BT) {
++	if (! @main::BT) {
+ 		return $this;
+ 	}
++	my $trace = pop @main::BT;
+ 	if (! defined $this-&gt;{nocolor}) {
+ 		print STDERR &quot;\033[1;31m[*** back trace follows ***]\n&quot;;
+-		print STDERR &quot;\033[1;31m$main::BT&quot;;
++		print STDERR &quot;\033[1;31m$trace&quot;;
+ 		print STDERR &quot;\033[1;31m[*** end ***]\n&quot;;
+ 		$this -&gt; doNorm();
+ 	} else {
+ 		print STDERR (&quot;[*** back trace follows ***]\n&quot;);
+-		print STDERR $main::BT;
++		print STDERR $trace;
+ 		print STDERR &quot;[*** end ***]\n&quot;;
+ 	}
+ 	return $this;
+@@ -672,7 +673,7 @@ sub setLogFile {
+ 	if (! (open FD,&quot;&gt;$file&quot;)) {
+ 		$this -&gt; warning (&quot;Couldn't open log channel: $!\n&quot;);
+ 		if ($this-&gt;trace()) {
+-			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
++			$main::BT[$main::TL] = eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		}
+ 		return undef;
+ 	}
+@@ -764,7 +765,7 @@ sub setLogHumanReadable {
+ 	my $cr   = 0;
+ 	if (! open (FD, &quot;&gt;$rootLog&quot;)) {
+ 		if ($this-&gt;trace()) {
+-			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
++			$main::BT[$main::TL] = eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		}
+ 		return undef;
+ 	}
+@@ -858,7 +859,7 @@ sub setLogServer {
+ 		$this -&gt; {smem} -&gt; closeSegment();
+ 		undef $this -&gt; {smem};
+ 		if ($this-&gt;trace()) {
+-			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
++			$main::BT[$main::TL] = eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		}
+ 		return undef;
+ 	}
+diff --git a/modules/KIWIManager.pm b/modules/KIWIManager.pm
+index 13a5a31..2d114f8 100644
+--- a/modules/KIWIManager.pm
++++ b/modules/KIWIManager.pm
+@@ -390,7 +390,7 @@ sub setupScreenCall {
+ 		}
+ 		$this -&gt; resetInstallationSource();
+ 		if ($kiwi -&gt; trace()) {
+-			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
++			$main::BT[$main::TL] = eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		}
+ 		return undef;
+ 	}
+diff --git a/modules/KIWIQX.pm b/modules/KIWIQX.pm
+index 4ebefe6..9a6f6c7 100644
+--- a/modules/KIWIQX.pm
++++ b/modules/KIWIQX.pm
+@@ -100,7 +100,7 @@ sub qxx ($) {
+ 			$main::kiwi-&gt;loginfo (&quot;EXEC [Failed: $prog]\n&quot;);
+ 		}
+ 		if ((defined $main::kiwi) &amp;&amp; ($main::kiwi -&gt; trace())) {
+-			$main::BT.=eval { Carp::longmess ($main::TT.$main::TL++) };
++			$main::BT[$main::TL] = eval { Carp::longmess ($main::TT.$main::TL++) };
+ 		}
+ 		$? = 0xffff;
+ 		return &quot;$prog: command not found&quot;;
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003459.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 96ca08b1b03e3ed30c71e59d60f0d160f823910d
+</A></li>
+	<LI>Next message: <A HREF="003461.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 2765261927cf8a26f6e5ac9a32604eeb7e2cbb29
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3460">[ date ]</a>
+              <a href="thread.html#3460">[ thread ]</a>
+              <a href="subject.html#3460">[ subject ]</a>
+              <a href="author.html#3460">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

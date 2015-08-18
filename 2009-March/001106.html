@@ -1,0 +1,255 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 47501e030dbc9c40245c181d5d5b67a8b97ec966
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-March/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2047501e030dbc9c40245c181d5d5b67a8b97ec966&In-Reply-To=%3C200903190915.n2J9Ffkh010976%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001105.html">
+   <LINK REL="Next"  HREF="001107.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 47501e030dbc9c40245c181d5d5b67a8b97ec966</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%2047501e030dbc9c40245c181d5d5b67a8b97ec966&In-Reply-To=%3C200903190915.n2J9Ffkh010976%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 47501e030dbc9c40245c181d5d5b67a8b97ec966">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Mar 19 10:15:41 CET 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001105.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-164-SuSE-10-3-Devel,	updated. 34635057e28845084d11bec8625567a98eaff1e7
+</A></li>
+        <LI>Next message: <A HREF="001107.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-238-SuSE-10-1-Devel,	updated. c39cbab16cf61c52e967896739b6b9b1dee55462
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1106">[ date ]</a>
+              <a href="thread.html#1106">[ thread ]</a>
+              <a href="subject.html#1106">[ subject ]</a>
+              <a href="author.html#1106">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  47501e030dbc9c40245c181d5d5b67a8b97ec966 (commit)
+      from  6d8a03e081d086a0bd688320a8cd0e8883a3e082 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 47501e030dbc9c40245c181d5d5b67a8b97ec966
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Thu Mar 19 10:15:30 2009 +0100
+
+    - fixed build tools
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/.doit b/.doit
+index 6013f89..e796393 100755
+--- a/.doit
++++ b/.doit
+@@ -11,6 +11,8 @@
+ # ---
+ #
+ use strict;
++use Time::localtime;
++use Time::Local;
+ use Getopt::Long;
+ use Env;
+ 
+@@ -48,18 +50,13 @@ sub main {
+ 	#==============================================
+ 	# Add %changelog
+ 	#----------------------------------------------
+-	my $bin = &quot;/suse/ms/bin/convert_changes_to_rpm_changelog&quot;;
+ 	if (open (FD,&quot;&gt;&gt;$pacdir/kiwi.spec&quot;)) {
++		my $log = convert_changes_to_rpm_changelog (&quot;$pacdir/kiwi.changes&quot;,*FD);
+ 		print FD &quot;\n&quot;;
+ 		print FD '%changelog -n kiwi';
+ 		print FD &quot;\n&quot;;
+-		if (open (LG,&quot;$bin $pacdir/kiwi.changes|&quot;)) {
+-			while (&lt;LG&gt;) {
+-				print FD $_;
+-			}
+-		}
++		print FD $log;
+ 		close FD;
+-		close LG;
+ 	}
+ 	#==============================================
+ 	# convert spec to utf8
+@@ -134,4 +131,132 @@ sub usage {
+ 	exit (0);
+ }
+ 
++#----[ convert_changes_to_rpm_changelog ]------------#
++sub convert_changes_to_rpm_changelog {
++#----------------------------------------
++# convert changes to rpm changelog
++#
++	my $file = shift;
++	local *FD = shift;
++	my @entries = ();
++	my %entries = ();
++	my @datarray= ();
++	my @hourarray=();
++	my $outstr;
++	my $rpm_birth = 852159600;
++	my $rpm_birth_str = &quot;Thu Jan 02 1997&quot;;
++	my $actual = 999999999999;
++	my %month_to_num = (Jan=&gt;0,Feb=&gt;1,Mar=&gt;2,Apr=&gt;3,May=&gt;4,Jun=&gt;5,Jul=&gt;6,Aug=&gt;7,Sep=&gt;8,Oct=&gt;9,Nov=&gt;10,Dec=&gt;11);
++	# handle first line in entry specially
++	my $firstline = 0;
++	open (LG,$file);
++	while (&lt;LG&gt;) {
++		chomp ($_);
++		next if (/^--------------/);
++		next if (/^========================/);
++		if (
++			/^[A-Za-z]*\s*[A-Za-z]*\s*[0-9]*\s*[0-9][0-9]:[0-9][0-9].*-.*\@.*/ 
++			|| /^[A-Za-z]*\s*[A-Za-z]*\s*[0-9]*\s*[0-9][0-9][0-9][0-9]\s*-.*\@.*/
++		) {
++			#warn (&quot;found changes style dateline $_\n&quot;);
++			if (
++				/^Mon / || /^Tue / || /^Wed / || /^Thu / || /^Fri /
++				|| /^Sat / || /^Sun /
++			) {
++				my @xline = split ( '-', $_);
++				my $datestr = shift ( @xline );
++				my $address = join ('-', @xline);
++				#my ($datestr,$address) = split ( '-', $_);
++				$datestr =~ s/CEST/MEST/;
++				@datarray = split ( ' ',$datestr);
++				if ($datarray[3] =~ /:/) {
++					@hourarray = split ( ':',$datarray[3]);
++				} else {
++					@hourarray = (&quot;00&quot;,&quot;00&quot;,&quot;00&quot;);
++				}
++				$actual = timelocal ($hourarray[2],$hourarray[1],$hourarray[0],
++				$datarray[2],$month_to_num{$datarray[1]},
++				$datarray[$#datarray]-1900);
++				$address =~ s/^\s*(.*)/\1/;
++				$address =~ s/\s+/ /g;
++				my $datestr;
++				if ( ! $actual ) {
++					print &quot;INVALID DATESTR=\&quot;$datestr\&quot; !!!&quot;;
++					print &quot;$actual Skipping rest...&quot;;
++					exit 1;
++				}
++				if ( $actual &lt; $rpm_birth ) {
++					$datestr = $rpm_birth_str;
++				} else {
++					my $ltime = localtime $actual;
++					$datestr = sprintf(&quot;%s %s %02d %4d&quot;,
++					(qw(Sun Mon Tue Wed Thu Fri Sat Sun))[$ltime-&gt;wday],
++					(qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec))[$ltime-&gt;mon],
++					$ltime-&gt;mday,1900+$ltime-&gt;year);
++				}
++				chomp ($datestr);
++				$outstr = &quot;$datestr - $address&quot;;
++				if ( $entries{$actual} =~ /$outstr/ ) {
++					# nope
++				} else {
++					$entries{$actual} .= &quot;* $outstr\n&quot;;
++				}
++				$firstline = 1;
++				next;
++			} else {
++				warn (&quot;$_ is not in english locale\n&quot;);
++				$actual = timelocal ( 0,0,0,1,0,100); # Jan 1st 2000
++				$entries{$actual} .= &quot;* Tue Jan 01 2000 - nobody\@suse.de\n&quot; unless ( $entries{$actual} =~ /$outstr/ );
++			}
++		}
++		if (
++			/^\* Mon / || /^\* Tue / || /^\* Wed / || /^\* Thu / ||
++			/^\* Fri / || /^\* Sat / || /^\* Sun /
++		) {
++			my ($datestr,$address) = split ( '-', $_);
++			@datarray = split ( ' ',$datestr);
++			$actual = timelocal(0,0,0,$datarray[3],$month_to_num{$datarray[2]},
++			$datarray[$#datarray]-1900);
++			$address =~ s/^\s*(.*)/\1/;
++			$address =~ s/\s+/ /g;
++			if ( ! $actual ) {
++				print &quot;INVALID DATESTR=\&quot;$datestr\&quot; !!!&quot;;
++				print &quot;$actual Skipping rest...&quot;;
++				exit 1;
++			}
++			$entries{$actual} .= &quot;$_\n&quot;;
++			$firstline = 1;
++			next;
++		}
++		$_ =~ s/([^%])%([^%])/\1%%\2/g;
++		if (/^-/ || /^\s*-/) {
++			$_ =~ s/^\s*(\S*)/\1/ if($firstline);
++			$_ =~ s/(\S*)\s*$/\1/;
++			$entries{$actual} .= &quot;$_\n&quot;;
++			$firstline = 0;
++			next;
++		}
++		if (/^\s*\#/) {
++			# hash is comment, try to escape
++			s/^(\s*)(\#\d*)/$1\[$2\]/;
++		}
++		if (/\S/) {
++			$_ =~ s/^\s*(\S*)/\1/;
++			$_ =~ s/(\S*)\s*$/\1/;
++			$entries{$actual} .= &quot;  $_\n&quot;;
++			$firstline = 0;
++		}
++	}
++	my $first = &quot;1&quot;;
++	foreach my $key (sort {0+$b &lt;=&gt; 0+$a} (keys %entries)) {
++		if ( $first eq &quot;1&quot; &amp;&amp; $entries{$key} !~ /^\*/ ) {
++			my $dst = `date`;
++			chomp ($dst);
++			print &quot;* $dst - broken\@suse.de\n&quot;;
++		}
++		$first = &quot;0&quot;;
++		print FD &quot;$entries{$key}&quot;;
++	}
++}
++
+ main();
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001105.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-164-SuSE-10-3-Devel,	updated. 34635057e28845084d11bec8625567a98eaff1e7
+</A></li>
+	<LI>Next message: <A HREF="001107.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-238-SuSE-10-1-Devel,	updated. c39cbab16cf61c52e967896739b6b9b1dee55462
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1106">[ date ]</a>
+              <a href="thread.html#1106">[ thread ]</a>
+              <a href="subject.html#1106">[ subject ]</a>
+              <a href="author.html#1106">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

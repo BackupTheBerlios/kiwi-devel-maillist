@@ -1,0 +1,475 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1416 - in kiwi-head: . rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1416%20-%20in%20kiwi-head%3A%20.%20rpm&In-Reply-To=%3C200806270957.m5R9vfED022073%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000505.html">
+   <LINK REL="Next"  HREF="000507.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1416 - in kiwi-head: . rpm</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1416%20-%20in%20kiwi-head%3A%20.%20rpm&In-Reply-To=%3C200806270957.m5R9vfED022073%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1416 - in kiwi-head: . rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Jun 27 11:57:41 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000505.html">[Kiwi-devel] [SVN:KIWI-Team] r1415 - in kiwi-head: . rpm
+</A></li>
+        <LI>Next message: <A HREF="000507.html">[Kiwi-devel] [SVN:KIWI-Team] r1417 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#506">[ date ]</a>
+              <a href="thread.html#506">[ thread ]</a>
+              <a href="subject.html#506">[ subject ]</a>
+              <a href="author.html#506">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: Fri Jun 27 11:57:33 2008
+New Revision: 1416
+
+Modified:
+   kiwi-head/kiwi.pl
+   kiwi-head/modules/KIWICollect.pm
+   kiwi-head/modules/KIWIConfig.sh
+   kiwi-head/modules/KIWIImage.pm
+   kiwi-head/modules/KIWIMigrate.pm
+   kiwi-head/modules/KIWIRoot.pm
+   kiwi-head/modules/KIWIXML.pm
+   kiwi-head/rpm/kiwi.changes
+
+Log:
+
+- fixed kiwi processing if *.kiwi file is used as xml description
+
+
+
+Modified: kiwi-head/kiwi.pl
+==============================================================================
+--- kiwi-head/kiwi.pl	(original)
++++ kiwi-head/kiwi.pl	Fri Jun 27 11:57:33 2008
+@@ -46,6 +46,7 @@
+ our $Version       = &quot;2.46&quot;;
+ our $openSUSE      = &quot;<A HREF="http://download.opensuse.org/repositories/">http://download.opensuse.org/repositories/</A>&quot;;
+ our $ConfigFile    = &quot;$ENV{'HOME'}/.kiwirc&quot;;
++our $ConfigName    = &quot;config.xml&quot;;
+ our $ConfigStatus  = 0;
+ #============================================
+ # Read $HOME/.kiwirc
+@@ -309,7 +310,7 @@
+ 			$kiwi -&gt; skipped ();
+ 		}
+ 		#==========================================
+-		# Check for bootprofile in config.xml
++		# Check for bootprofile in xml descr.
+ 		#------------------------------------------
+ 		if (! @Profiles) {
+ 			my %type = %{$xml-&gt;getImageTypeAndAttributes()};
+@@ -475,7 +476,7 @@
+ 			}
+ 		}
+ 		#==========================================
+-		# Check for bootprofile in config.xml
++		# Check for bootprofile in xml descr
+ 		#------------------------------------------
+ 		my $xml;
+ 		if (! @Profiles) {
+@@ -1364,7 +1365,7 @@
+ 	print &quot;Options:\n&quot;;
+ 	print &quot;--\n&quot;;
+ 	print &quot;  [ --createpassword ]\n&quot;;
+-	print &quot;    Create a crypted password hash for use in config.xml\n&quot;;
++	print &quot;    Create a crypted password hash\n&quot;;
+ 	print &quot;\n&quot;;
+ 	print &quot;  [ --createhash &lt;image-path&gt; ]\n&quot;;
+ 	print &quot;    Sign your image description with a md5sum\n&quot;;
+@@ -1389,7 +1390,7 @@
+ 	print &quot;\n&quot;;
+ 	print &quot;  [ -t | --type &lt;image-type&gt; ]\n&quot;;
+ 	print &quot;    Specify the output image type to use for this image\n&quot;;
+-	print &quot;    The type must exist in the config.xml description\n&quot;;
++	print &quot;    The type must exist in the xml description\n&quot;;
+ 	print &quot;    By the default the primary type will be used. If there is\n&quot;;
+ 	print &quot;    no primary attribute set the first type entry of the\n&quot;;
+ 	print &quot;    preferences section is the primary type\n&quot;; 
+@@ -1398,8 +1399,8 @@
+ 	print &quot;  [ -r | --root &lt;root-path&gt; ]\n&quot;;
+ 	print &quot;    Setup the physical extend, chroot system below the\n&quot;;
+ 	print &quot;    given root-path path. If no --root option is given kiwi\n&quot;;
+-	print &quot;    will search for the attribute defaultroot in config.xml\n&quot;;
+-	print &quot;    If no root directory is known a mktmp directory\n&quot;;
++	print &quot;    will search for the attribute defaultroot in the xml\n&quot;;
++	print &quot;    description. If no root directory is known a mktmp directory\n&quot;;
+ 	print &quot;    will be created and used as root directory\n&quot;;
+ 	print &quot;\n&quot;;
+ 	print &quot;  [ --base-root &lt;base-path&gt; ]\n&quot;;
+@@ -1415,7 +1416,7 @@
+ 	print &quot;    Add the given repository and type for this run of an\n&quot;;
+ 	print &quot;    image prepare or upgrade process.\n&quot;;
+ 	print &quot;    Multiple --add-repo/--add-repotype options are possible\n&quot;;
+-	print &quot;    The change will not be written to the config.xml file\n&quot;;
++	print &quot;    The change will not be written to the xml description\n&quot;;
+ 	print &quot;\n&quot;;
+ 	print &quot;  [ --ignore-repos ]\n&quot;;
+ 	print &quot;    Ignore all repositories specified so-far, in XML or\n&quot;;
+@@ -1426,14 +1427,14 @@
+ 	print &quot;\n&quot;;
+ 	print &quot;  [ --set-repo &lt;repo-path&gt; [ --set-repotype &lt;type&gt; ]]\n&quot;;
+ 	print &quot;    set the given repository and optional type for the first\n&quot;;
+-	print &quot;    repository entry within the config.xml. The change will not\n&quot;;
++	print &quot;    repository entry within the xml description. The change will not\n&quot;;
+ 	print &quot;    be written to the xml file and is valid for this run of\n&quot;;
+ 	print &quot;    image prepare or upgrade process.\n&quot;;
+ 	print &quot;\n&quot;;
+ 	print &quot;  [ --add-package &lt;package&gt; ]\n&quot;;
+ 	print &quot;    Add the given package name to the list of image packages\n&quot;;
+ 	print &quot;    multiple --add-package options are possible. The change\n&quot;;
+-	print &quot;    will not be written to the config.xml file\n&quot;;
++	print &quot;    will not be written to the xml description\n&quot;;
+ 	print &quot;\n&quot;;
+ 	print &quot;  [ --logfile &lt;filename&gt; | terminal ]\n&quot;;
+ 	print &quot;    Write to the log file \`&lt;filename&gt;' instead of\n&quot;;
+@@ -1468,7 +1469,8 @@
+ 	print &quot;\n&quot;;
+ 	print &quot;  [ --package-manager &lt;smart|zypper&gt;\n&quot;;
+ 	print &quot;    set the package manager to use for this image. If set it\n&quot;;
+-	print &quot;    will temporarly overwrite the value set in config.xml\n&quot;;
++	print &quot;    will temporarly overwrite the value set in the xml\n&quot;;
++	print &quot;    description\n&quot;;
+ 	print &quot;--\n&quot;;
+ 	version();
+ }
+@@ -1490,9 +1492,9 @@
+ 		if (-l &quot;$System/$image&quot;) {
+ 			next;
+ 		}
+-		if (-f &quot;$System/$image/config.xml&quot;) {
+-			$kiwi -&gt; info (&quot;$image&quot;);
+-			my $xml = new KIWIXML ( $kiwi,&quot;$System/$image&quot; );
++		if (getControlFile ($System.&quot;/&quot;.$image)) {
++			$kiwi -&gt; info ($image);
++			my $xml = new KIWIXML ( $kiwi,$System.&quot;/&quot;.$image);
+ 			if (! $xml) {
+ 				next;
+ 			}
+@@ -1666,7 +1668,7 @@
+ #------------------------------------------
+ sub createPassword {
+ 	# ...
+-	# Create a crypted password which can be used in config.xml
++	# Create a crypted password which can be used in the xml descr.
+ 	# users sections. The crypt() call requires root rights because
+ 	# dm-crypt is used to access the crypto pool
+ 	# ----
+@@ -1717,9 +1719,9 @@
+ 		$kiwi -&gt; failed ();
+ 		my $code = kiwiExit (1); return $code;
+ 	}
+-	if (! -f &quot;$CreateHash/config.xml&quot;) {
++	if (! getControlFile ($CreateHash)) {
+ 		$kiwi -&gt; failed ();
+-		$kiwi -&gt; error  (&quot;Not a kiwi description: no config.xml found&quot;);
++		$kiwi -&gt; error  (&quot;Not a kiwi description: no xml description found&quot;);
+ 		$kiwi -&gt; failed ();
+ 		my $code = kiwiExit (1); return $code;
+ 	}
+@@ -1885,5 +1887,32 @@
+ 	return %result;
+ }
+ 
++#==========================================
++# getControlFile
++#------------------------------------------
++sub getControlFile {
++	# /.../
++	# This function receives a directory as parameter
++	# and searches for a kiwi xml description in it.
++	# ----
++	my $dir    = shift;
++	my $config = &quot;$dir/$ConfigName&quot;;
++	if (! -d $dir) {
++		return undef;
++	}
++	if (-f $config) {
++		return $config;
++	}
++	my @globsearch = glob ($dir.&quot;/*.kiwi&quot;);
++	my $globitems  = @globsearch;
++	if ($globitems == 0) {
++		return undef;
++	} elsif ($globitems &gt; 1) {
++		return undef;
++	} else {
++		$config = pop @globsearch;
++	}
++	return $config;
++}
+ 
+ main();
+
+Modified: kiwi-head/modules/KIWICollect.pm
+==============================================================================
+--- kiwi-head/modules/KIWICollect.pm	(original)
++++ kiwi-head/modules/KIWICollect.pm	Fri Jun 27 11:57:33 2008
+@@ -47,7 +47,7 @@
+ #   Instance of KIWILog for feedback
+ # m_xml:
+ #   Instance of KIWIXML for retrieving the data contained
+-#   in the config.xml file
++#   in the xml description file
+ # m_util:
+ #   Instance of KIWIUtil which provides several methods to
+ #   analyse directories locally and via http(s)
+@@ -1363,9 +1363,9 @@
+   return undef if !$pack;
+   
+   my @ret = ();
+-  # the required architectures as specified in config.xml:
++  # the required architectures as specified in the xml description:
+   # mapped to 0 means &quot;removed&quot;	(removearch)
+-  #	      1 means &quot;original from config.xml&quot;
++  #	      1 means &quot;original from xml&quot;
+   #	      2 means &quot;added&quot; (addarch)
+   #	      3 means &quot;force&quot; (forcearch)
+   # for ADDED (=2) archs no fallback expansion is done!
+
+Modified: kiwi-head/modules/KIWIConfig.sh
+==============================================================================
+--- kiwi-head/modules/KIWIConfig.sh	(original)
++++ kiwi-head/modules/KIWIConfig.sh	Fri Jun 27 11:57:33 2008
+@@ -908,7 +908,7 @@
+ function suseStripKernel {
+ 	# /.../
+ 	# this function will strip the kernel according to the
+-	# drivers information in config.xml. It also will create
++	# drivers information in the xml descr. It also will create
+ 	# the vmlinux.gz and vmlinuz files which are required
+ 	# for the kernel extraction in case of kiwi boot images
+ 	# ----
+
+Modified: kiwi-head/modules/KIWIImage.pm
+==============================================================================
+--- kiwi-head/modules/KIWIImage.pm	(original)
++++ kiwi-head/modules/KIWIImage.pm	Fri Jun 27 11:57:33 2008
+@@ -54,6 +54,7 @@
+ 	my $imageStrip = shift;
+ 	my $baseSystem = shift;
+ 	my $imageOrig  = shift;
++	my $configFile = $xml -&gt; getConfigName();
+ 	#==========================================
+ 	# Constructor setup
+ 	#------------------------------------------
+@@ -75,7 +76,7 @@
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+ 	}
+-	if (! -f &quot;$imageTree/image/config.xml&quot;) {
++	if (! -f &quot;$imageTree/image/$configFile&quot;) {
+ 		$kiwi -&gt; error  (&quot;Validation of $imageTree failed&quot;);
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+
+Modified: kiwi-head/modules/KIWIMigrate.pm
+==============================================================================
+--- kiwi-head/modules/KIWIMigrate.pm	(original)
++++ kiwi-head/modules/KIWIMigrate.pm	Fri Jun 27 11:57:33 2008
+@@ -195,9 +195,9 @@
+ 	#------------------------------------------
+ 	mkdir &quot;$dest/root&quot;;
+ 	#==========================================
+-	# create config.xml
++	# create xml description
+ 	#------------------------------------------
+-	if (! open (FD,&quot;&gt;$dest/config.xml&quot;)) {
++	if (! open (FD,&quot;&gt;$dest/$main::ConfigName&quot;)) {
+ 		return undef;
+ 	}
+ 	#==========================================
+@@ -259,8 +259,8 @@
+ sub getOperatingSystemVersion {
+ 	# ...
+ 	# Find the version information of this system an create
+-	# a config.xml comment in order to allow to choose the correct
+-	# installation source
++	# a xml description comment in order to allow to choose the
++	# correct installation source
+ 	# ---
+ 	my $this = shift;
+ 	if (! open (FD,&quot;/etc/SuSE-release&quot;)) {
+@@ -301,7 +301,7 @@
+ 		}
+ 	}
+ 	#==========================================
+-	# create config.xml
++	# create config script
+ 	#------------------------------------------
+ 	if (! open (FD,&quot;&gt;$dest/config.sh&quot;)) {
+ 		return undef;
+
+Modified: kiwi-head/modules/KIWIRoot.pm
+==============================================================================
+--- kiwi-head/modules/KIWIRoot.pm	(original)
++++ kiwi-head/modules/KIWIRoot.pm	Fri Jun 27 11:57:33 2008
+@@ -577,6 +577,7 @@
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	my $root = $this-&gt;{root};
+ 	my $xml  = $this-&gt;{xml};
++	my $configFile= $xml -&gt; getConfigName();
+ 	my $imageDesc = $this-&gt;{imageDesc};
+ 	my $manager   = $this-&gt;{manager};
+ 	#======================================== 
+@@ -685,7 +686,7 @@
+ 	# copy image description to image tree
+ 	#----------------------------------------
+ 	qxx (&quot; mkdir -p $root/image &quot;);
+-	qxx (&quot; cp $imageDesc/config.xml $root/image 2&gt;&amp;1 &quot;);
++	qxx (&quot; cp $imageDesc/$configFile $root/image 2&gt;&amp;1 &quot;);
+ 	qxx (&quot; cp $imageDesc/images.sh $root/image 2&gt;&amp;1 &quot;);
+ 	qxx (&quot; cp $imageDesc/config-cdroot.tgz $root/image 2&gt;&amp;1 &quot;);
+ 	qxx (&quot; cp $imageDesc/config-cdroot.sh  $root/image 2&gt;&amp;1 &quot;);
+
+Modified: kiwi-head/modules/KIWIXML.pm
+==============================================================================
+--- kiwi-head/modules/KIWIXML.pm	(original)
++++ kiwi-head/modules/KIWIXML.pm	Fri Jun 27 11:57:33 2008
+@@ -26,6 +26,7 @@
+ use KIWISatSolver;
+ use KIWIManager qw (%packageManager);
+ use File::Glob ':glob';
++use File::Basename;
+ use KIWIQX;
+ 
+ #==========================================
+@@ -39,7 +40,7 @@
+ sub new { 
+ 	# ...
+ 	# Create a new KIWIXML object which is used to access the
+-	# configuration XML data saved as config.xml or *.kiwi.
++	# configuration XML data stored as description file.
+ 	# The xml data is splitted into four major tags: preferences,
+ 	# drivers, repository and packages. While constructing an
+ 	# object of this type there will be a node list created for
+@@ -69,12 +70,12 @@
+ 		$imageDesc = $main::System.&quot;/&quot;.$imageDesc;
+ 	}
+ 	my $arch = qxx (&quot;uname -m&quot;); chomp $arch;
+-	my $controlFile = $imageDesc.&quot;/config.xml&quot;;
++	my $controlFile = $imageDesc.&quot;/&quot;.$main::ConfigName;
+ 	my $checkmdFile = $imageDesc.&quot;/.checksum.md5&quot;;
+ 	my $havemd5File = 1;
+ 	my $systemTree;
+ 	#==========================================
+-	# Check if config.xml exist
++	# Check all xml alternatives
+ 	#------------------------------------------
+ 	if (! -f $controlFile) {
+ 		my @globsearch = glob ($imageDesc.&quot;/*.kiwi&quot;);
+@@ -304,7 +305,7 @@
+ 	}
+ 	if (! $this -&gt; getImageTypeAndAttributes()) {
+ 		$kiwi -&gt; failed ();
+-		$kiwi -&gt; error  (&quot;Boot type: $imageWhat not specified in config.xml&quot;);
++		$kiwi -&gt; error  (&quot;Boot type: $imageWhat not specified in xml&quot;);
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+ 	}
+@@ -318,6 +319,15 @@
+ }
+ 
+ #==========================================
++# getConfigName
++#------------------------------------------
++sub getConfigName {
++	my $this = shift;
++	my $name = $this-&gt;{controlFile};
++	return basename ($name);
++}
++
++#==========================================
+ # haveMD5File
+ #------------------------------------------
+ sub haveMD5File {
+@@ -507,7 +517,7 @@
+ 	# ...
+ 	# Get the default destination to store the images below
+ 	# normally this is given by the --destination option but if
+-	# not and defaultdestination is specified in config.xml we
++	# not and defaultdestination is specified in xml descr. we
+ 	# will use this path as destination
+ 	# ---
+ 	my $this = shift;
+@@ -533,7 +543,7 @@
+ 	# ...
+ 	# Get the default root directory name to build up a new image
+ 	# normally this is given by the --root option but if
+-	# not and defaultroot is specified in config.xml we
++	# not and defaultroot is specified in xml descr. we
+ 	# will use this path as root path.
+ 	# ---
+ 	my $this = shift;
+@@ -1655,7 +1665,7 @@
+ sub addRepository {
+ 	# ...
+ 	# Add a repository node to the current list of repos
+-	# this is done by reading the config.xml file again and
++	# this is done by reading the xml description file again and
+ 	# overwriting the first repository node with the new data
+ 	# A new object XML::LibXML::NodeList is created which
+ 	# contains the changed element. The element is then appended
+@@ -1694,7 +1704,7 @@
+ sub addImagePackages {
+ 	# ...
+ 	# Add the given package list to the type=bootstrap packages
+-	# section of the config.xml parse tree.
++	# section of the xml description parse tree.
+ 	# ----
+ 	my $this  = shift;
+ 	my @packs = @_;
+
+Modified: kiwi-head/rpm/kiwi.changes
+==============================================================================
+--- kiwi-head/rpm/kiwi.changes	(original)
++++ kiwi-head/rpm/kiwi.changes	Fri Jun 27 11:57:33 2008
+@@ -3,6 +3,7 @@
+ 
+ - v2.46
+ - skip USB stick detection in QEMU environment (bnc #402851)
++- fixed kiwi processing if *.kiwi file is used as xml description
+ 
+ -------------------------------------------------------------------
+ Wed Jun 25 10:41:39 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000505.html">[Kiwi-devel] [SVN:KIWI-Team] r1415 - in kiwi-head: . rpm
+</A></li>
+	<LI>Next message: <A HREF="000507.html">[Kiwi-devel] [SVN:KIWI-Team] r1417 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#506">[ date ]</a>
+              <a href="thread.html#506">[ thread ]</a>
+              <a href="subject.html#506">[ subject ]</a>
+              <a href="author.html#506">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

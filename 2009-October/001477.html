@@ -1,0 +1,225 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f0aff2e56eac639dd1f113370a1b2d0178477e46
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20f0aff2e56eac639dd1f113370a1b2d0178477e46&In-Reply-To=%3C200910021455.n92EtmBk027890%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001476.html">
+   <LINK REL="Next"  HREF="001478.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f0aff2e56eac639dd1f113370a1b2d0178477e46</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20f0aff2e56eac639dd1f113370a1b2d0178477e46&In-Reply-To=%3C200910021455.n92EtmBk027890%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f0aff2e56eac639dd1f113370a1b2d0178477e46">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Oct  2 16:55:48 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001476.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3d53f76a6f8ef09d0b75d71ad9111156f6ac443f
+</A></li>
+        <LI>Next message: <A HREF="001478.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ecc163e280251ca73935334b6eb1429120ae0c22
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1477">[ date ]</a>
+              <a href="thread.html#1477">[ thread ]</a>
+              <a href="subject.html#1477">[ subject ]</a>
+              <a href="author.html#1477">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  f0aff2e56eac639dd1f113370a1b2d0178477e46 (commit)
+      from  3d53f76a6f8ef09d0b75d71ad9111156f6ac443f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit f0aff2e56eac639dd1f113370a1b2d0178477e46
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Oct 2 16:55:09 2009 +0200
+
+    - fixed handling of profiled preferences sections
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 8daa3dd..e120347 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -179,6 +179,7 @@ our @Exclude;               # exclude directories in migrate search
+ our $Report;                # create report on root/ tree migration only
+ our $ReportPacklist;        # just report the package/pattern list on migration
+ our @Profiles;              # list of profiles to include in image
++our @ProfilesOrig;          # copy of original Profiles option value 
+ our $ForceNewRoot;          # force creation of new root directory
+ our $BaseRoot;              # use given path as base system
+ our $BaseRootMode;          # specify base-root mode copy | union
+@@ -1216,7 +1217,7 @@ sub main {
+ 		}
+ 		$boot = new KIWIBoot (
+ 			$kiwi,$BootVMDisk,$BootVMSystem,
+-			$BootVMSize,undef,$BootVMFormat,$LVM
++			$BootVMSize,undef,$BootVMFormat,$LVM,\@ProfilesOrig
+ 		);
+ 		if (! defined $boot) {
+ 			my $code = kiwiExit (1); return $code;
+@@ -1329,8 +1330,12 @@ sub init {
+ 		&quot;&lt;&gt;&quot;                    =&gt; \&amp;usage
+ 	);
+ 	#========================================
+-	# set default inode ratio for ext2/3
++	# store original value of Profiles
++	#----------------------------------------
++	@ProfilesOrig = @Profiles;
+ 	#========================================
++	# set default inode ratio for ext2/3
++	#----------------------------------------
+ 	if (! defined $FSInodeRatio) {
+ 		$FSInodeRatio = 16384;
+ 	}
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 063342f..f903897 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -59,6 +59,7 @@ sub new {
+ 	my $device = shift;
+ 	my $format = shift;
+ 	my $lvm    = shift;
++	my $profile= shift;
+ 	#==========================================
+ 	# Constructor setup
+ 	#------------------------------------------
+@@ -179,7 +180,7 @@ sub new {
+ 	if (defined $system) {
+ 		if (-d $system) {
+ 			$xml = new KIWIXML (
+-				$kiwi,$system.&quot;/image&quot;,undef,$main::SetImageType
++				$kiwi,$system.&quot;/image&quot;,undef,$main::SetImageType,$profile
+ 			);
+ 		} else {
+ 			my %fsattr = main::checkFileSystem ($system);
+@@ -223,7 +224,7 @@ sub new {
+ 				# read disk image XML description
+ 				#------------------------------------------
+ 				$xml = new KIWIXML (
+-					$kiwi,$tmpdir.&quot;/image&quot;,undef,$main::SetImageType
++					$kiwi,$tmpdir.&quot;/image&quot;,undef,$main::SetImageType,$profile
+ 				);
+ 				#==========================================
+ 				# clean up
+@@ -243,7 +244,7 @@ sub new {
+ 				# read disk image XML description
+ 				#------------------------------------------
+ 				$xml = new KIWIXML (
+-					$kiwi,$tmpdir.&quot;/image&quot;,undef,$main::SetImageType
++					$kiwi,$tmpdir.&quot;/image&quot;,undef,$main::SetImageType,$profile
+ 				);
+ 				#==========================================
+ 				# clean up
+@@ -382,6 +383,7 @@ sub new {
+ 	$this-&gt;{vga}       = $vga;
+ 	$this-&gt;{xml}       = $xml;
+ 	$this-&gt;{xendomain} = $xendomain;
++	$this-&gt;{profile}   = $profile;
+ 	return $this;
+ }
+ 
+@@ -529,6 +531,7 @@ sub setupBootStick {
+ 	my $zipped    = $this-&gt;{zipped};
+ 	my $isxen     = $this-&gt;{isxen};
+ 	my $lvm       = $this-&gt;{lvm};
++	my $profile   = $this-&gt;{profile};
+ 	my %deviceMap = ();
+ 	my @commands  = ();
+ 	my $imgtype   = &quot;usb&quot;;
+@@ -576,7 +579,7 @@ sub setupBootStick {
+ 			$kiwi -&gt; failed ();
+ 			return undef;
+ 		}
+-		$xml = new KIWIXML ( $kiwi,$system.&quot;/image&quot;,undef,$imgtype );
++		$xml = new KIWIXML ( $kiwi,$system.&quot;/image&quot;,undef,$imgtype,$profile );
+ 		if (! defined $xml) {
+ 			$this -&gt; cleanTmp ();
+ 			return undef;
+@@ -2056,6 +2059,7 @@ sub setupBootDisk {
+ 	my $zipped    = $this-&gt;{zipped};
+ 	my $isxen     = $this-&gt;{isxen};
+ 	my $lvm       = $this-&gt;{lvm};
++	my $profile   = $this-&gt;{profile};
+ 	my $diskname  = $system.&quot;.raw&quot;;
+ 	my %deviceMap = ();
+ 	my @commands  = ();
+@@ -2105,7 +2109,7 @@ sub setupBootDisk {
+ 			$kiwi -&gt; failed ();
+ 			return undef;
+ 		}
+-		$xml = new KIWIXML ( $kiwi,$system.&quot;/image&quot;,undef,$imgtype );
++		$xml = new KIWIXML ( $kiwi,$system.&quot;/image&quot;,undef,$imgtype,$profile );
+ 		if (! defined $xml) {
+ 			$this -&gt; cleanTmp ();
+ 			return undef;
+@@ -2125,7 +2129,7 @@ sub setupBootDisk {
+ 		if (-f &quot;$tmpdir/rootfs.tar&quot;) {
+ 			$imgtype = &quot;split&quot;;
+ 		}
+-		$xml = new KIWIXML ( $kiwi,$tmpdir.&quot;/image&quot;,undef,$imgtype );
++		$xml = new KIWIXML ( $kiwi,$tmpdir.&quot;/image&quot;,undef,$imgtype,$profile );
+ 		main::umount();
+ 		if (! defined $xml) {
+ 			$this -&gt; cleanTmp ();
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 7a42099..3bd3035 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,6 +1,7 @@
+ -------------------------------------------------------------------
+ Fri Oct  2 14:06:23 CEST 2009 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
++- fixed handling of profiled preferences sections
+ - fixed bool value evaluation in KIWIXML.pm::get*()
+ - added suseImportBuildKey() helper function used in JeOS
+   templates (bnc #521970)
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001476.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 3d53f76a6f8ef09d0b75d71ad9111156f6ac443f
+</A></li>
+	<LI>Next message: <A HREF="001478.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. ecc163e280251ca73935334b6eb1429120ae0c22
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1477">[ date ]</a>
+              <a href="thread.html#1477">[ thread ]</a>
+              <a href="subject.html#1477">[ subject ]</a>
+              <a href="author.html#1477">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

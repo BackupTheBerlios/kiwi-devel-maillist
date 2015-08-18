@@ -1,0 +1,128 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1693 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1693%20-%20kiwi-head/modules&In-Reply-To=%3C200810301032.m9UAWJUt026935%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000781.html">
+   <LINK REL="Next"  HREF="000783.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1693 - kiwi-head/modules</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1693%20-%20kiwi-head/modules&In-Reply-To=%3C200810301032.m9UAWJUt026935%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1693 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Thu Oct 30 11:32:19 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000781.html">[Kiwi-devel] r1689 - in kiwi-head/doc: . LaTex
+</A></li>
+        <LI>Next message: <A HREF="000783.html">[Kiwi-devel] r1694 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#782">[ date ]</a>
+              <a href="thread.html#782">[ thread ]</a>
+              <a href="subject.html#782">[ subject ]</a>
+              <a href="author.html#782">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2008-10-30 11:32:17 +0100 (Thu, 30 Oct 2008)
+New Revision: 1693
+
+Modified:
+   kiwi-head/modules/KIWICollect.pm
+Log:
+- fixed syntax
+- fixed repeated iteration in getMediaList
+
+
+Modified: kiwi-head/modules/KIWICollect.pm
+===================================================================
+--- kiwi-head/modules/KIWICollect.pm	2008-10-30 09:16:49 UTC (rev 1692)
++++ kiwi-head/modules/KIWICollect.pm	2008-10-30 10:32:17 UTC (rev 1693)
+@@ -783,11 +783,18 @@
+ 	    ## if the user wants all sources onto a certain medium: specify &quot;SOURCEMEDIUM&quot; in config
+ 	    my $srcmedium = $this-&gt;{m_proddata}-&gt;getOpt(&quot;SOURCEMEDIUM&quot;);
+ 	    $medium = $srcmedium if($srcmedium);
+-	  }else{
++	  }
++	  else {
+ 	    # we deal with regular rpm file...
+ 	    $ad = $flags{'ARCH'}-&gt;[0];
+-	    $medium = $debugmedium if ( defined($debugmedium) &amp;&amp; $debugmedium &gt; 0
+-                                        &amp;&amp; ($flags{'NAME'}[0]  =~ /-debuginfo$/ || $flags{'NAME'}[0]  =~ /-debugsource$/) );
++	    if(defined($debugmedium)
++		&amp;&amp; $debugmedium &gt; 0
++		&amp;&amp; ($flags{'NAME'}[0]  =~ /-debuginfo$/
++		    || $flags{'NAME'}[0]  =~ /-debugsource$/
++		    )
++	      ) {
++	      $medium = $debugmedium;
++	    }
+ 	  }
+ 
+ 	  my $dstfile = &quot;$this-&gt;{'m_basesubdir'}-&gt;{$medium}/$base_on_cd/$ad/$tmp-&gt;{$fa}-&gt;{'targetfile'}&quot;;
+@@ -2072,22 +2079,18 @@
+     $this-&gt;{m_kiwi}-&gt;error(&quot;[E] getMediaNumbers: SOURCEMEDIUM is undefined!&quot;);
+     return undef;
+   }
++  push @media, $srcmedium;
+ 
+-  push @media, $srcmedium;
++  my $debugmedium = $this-&gt;{m_proddata}-&gt;getOpt(&quot;DEBUGMEDIUM&quot;);
++  if(defined($debugmedium)) {
++    push @media, $debugmedium;
++  }
++
+   foreach my $p(values(%{$this-&gt;{m_packages}}), values(%{$this-&gt;{m_metapackages}})) {
+     if(defined($p-&gt;{'medium'}) and $p-&gt;{'medium'} != 0) {
+       push @media, $p-&gt;{medium};
+     }
+   }
+-  my $debugmedium = $this-&gt;{m_proddata}-&gt;getOpt(&quot;DEBUGMEDIUM&quot;);
+-  if( defined($debugmedium)) {
+-    push @media, $debugmedium;
+-    foreach my $p(values(%{$this-&gt;{m_packages}}), values(%{$this-&gt;{m_metapackages}})) {
+-      if(defined($p-&gt;{'medium'}) and $p-&gt;{'medium'} != 0) {
+-        push @media, $p-&gt;{medium};
+-      }
+-    }
+-  }
+   return sort(KIWIUtil::unify(@media));
+ }
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000781.html">[Kiwi-devel] r1689 - in kiwi-head/doc: . LaTex
+</A></li>
+	<LI>Next message: <A HREF="000783.html">[Kiwi-devel] r1694 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#782">[ date ]</a>
+              <a href="thread.html#782">[ thread ]</a>
+              <a href="subject.html#782">[ subject ]</a>
+              <a href="author.html#782">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

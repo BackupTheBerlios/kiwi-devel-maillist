@@ -1,0 +1,146 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. b913103dbc67d8063302f8b206d8a99a2812b41a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-February/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20b913103dbc67d8063302f8b206d8a99a2812b41a&In-Reply-To=%3C20110216155841.CF86D4813E4%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003071.html">
+   <LINK REL="Next"  HREF="003073.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. b913103dbc67d8063302f8b206d8a99a2812b41a</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20b913103dbc67d8063302f8b206d8a99a2812b41a&In-Reply-To=%3C20110216155841.CF86D4813E4%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. b913103dbc67d8063302f8b206d8a99a2812b41a">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Feb 16 16:58:41 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003071.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f733e30c4f3395a84bd6445a65469678a0fa1c13
+</A></li>
+        <LI>Next message: <A HREF="003073.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. f331cbc664643bb882231fed4f31082c89ac83e2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3072">[ date ]</a>
+              <a href="thread.html#3072">[ thread ]</a>
+              <a href="subject.html#3072">[ subject ]</a>
+              <a href="author.html#3072">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-374-SuSE-11-1-SLE-SP-Devel has been updated
+       via  b913103dbc67d8063302f8b206d8a99a2812b41a (commit)
+      from  62673f82b734be1c117e9f0973162d4dbed0724b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b913103dbc67d8063302f8b206d8a99a2812b41a
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Wed Feb 16 16:57:52 2011 +0100
+
+    - added missing cleanPartitionTable function
+    - fixed raid partition setup. The wrong id was set. If there
+      is only one raid partition on the disk fdisk doesn't require
+      a number for the 't' command
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 43928ab..d7a4f64 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -5668,6 +5668,19 @@ function createPartedInput {
+ 	done
+ }
+ #======================================
++# cleanPartitionTable
++#--------------------------------------
++function cleanPartitionTable {
++	# /.../
++	# remove partition table and create a new msdos
++	# table label if parted is in use
++	# ----
++	dd if=/dev/zero of=$imageDiskDevice bs=512 count=1 &gt;/dev/null
++	if [ $PARTITIONER = &quot;parted&quot; ];then
++		parted -s $imageDiskDevice mklabel msdos
++	fi
++}
++#======================================
+ # initialize
+ #--------------------------------------
+ function initialize {
+diff --git a/system/boot/ix86/netboot/suse-linuxrc b/system/boot/ix86/netboot/suse-linuxrc
+index dbb5dbf..c5cfbde 100755
+--- a/system/boot/ix86/netboot/suse-linuxrc
++++ b/system/boot/ix86/netboot/suse-linuxrc
+@@ -465,12 +465,24 @@ then
+ 			fi
+ 			rm -f $input
+ 			imageDiskDevice=$raidDiskFirst
+-			createPartitionerInput n p $raidIDFirst . . t $raidIDFirst fd w q
++			if [ $raidIDFirst -gt 1 ];then
++				createPartitionerInput \
++					n p $raidIDFirst . . t $raidIDFirst fd w q
++			else
++				createPartitionerInput \
++					n p $raidIDFirst . . t fd w q
++			fi
+ 			callPartitioner $input
+ 			rm -f $input
+ 			imageDiskDevice=$raidDiskSecond
+ 			cleanPartitionTable
+-			createPartitionerInput n p $raidIDSecond . . t $raidIDSecond fd w q
++			if [ $raidIDSecond -gt 1 ];then
++				createPartitionerInput \
++					n p $raidIDSecond . . t $raidIDSecond fd w q
++			else
++				createPartitionerInput \
++					n p $raidIDSecond . . t fd w q
++			fi
+ 			callPartitioner $input
+ 			rm -f $input
+ 			#======================================
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003071.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f733e30c4f3395a84bd6445a65469678a0fa1c13
+</A></li>
+	<LI>Next message: <A HREF="003073.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. f331cbc664643bb882231fed4f31082c89ac83e2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3072">[ date ]</a>
+              <a href="thread.html#3072">[ thread ]</a>
+              <a href="subject.html#3072">[ subject ]</a>
+              <a href="author.html#3072">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

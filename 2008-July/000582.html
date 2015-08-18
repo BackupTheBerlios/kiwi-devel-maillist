@@ -1,0 +1,280 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1496 - in kiwi-head: modules tools/satplugin
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1496%20-%20in%20kiwi-head%3A%20modules%20tools/satplugin&In-Reply-To=%3C200807291017.m6TAH6p1032394%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000581.html">
+   <LINK REL="Next"  HREF="000583.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1496 - in kiwi-head: modules tools/satplugin</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1496%20-%20in%20kiwi-head%3A%20modules%20tools/satplugin&In-Reply-To=%3C200807291017.m6TAH6p1032394%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1496 - in kiwi-head: modules tools/satplugin">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jul 29 12:17:06 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000581.html">[Kiwi-devel] r1495 - in kiwi-head: . modules rpm	system/boot/ix86/netboot
+</A></li>
+        <LI>Next message: <A HREF="000583.html">[Kiwi-devel] r1497 - in kiwi-head: . modules rpm tools/satplugin
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#582">[ date ]</a>
+              <a href="thread.html#582">[ thread ]</a>
+              <a href="subject.html#582">[ subject ]</a>
+              <a href="author.html#582">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-07-29 12:16:56 +0200 (Tue, 29 Jul 2008)
+New Revision: 1496
+
+Modified:
+   kiwi-head/modules/KIWISatSolver.pm
+   kiwi-head/modules/KIWIXML.pm
+   kiwi-head/tools/satplugin/example.pl
+   kiwi-head/tools/satplugin/sat.c
+Log:
+
+- fixed satsolver internal test example
+- allow getInstSourceSatSolvable to be called without a
+  xml object reference
+
+
+
+Modified: kiwi-head/modules/KIWISatSolver.pm
+===================================================================
+--- kiwi-head/modules/KIWISatSolver.pm	2008-07-28 15:34:28 UTC (rev 1495)
++++ kiwi-head/modules/KIWISatSolver.pm	2008-07-29 10:16:56 UTC (rev 1496)
+@@ -65,7 +65,6 @@
+ 	# Module Parameters
+ 	#------------------------------------------
+ 	my $kiwi    = shift;
+-	my $xml     = shift;
+ 	my $pref    = shift;
+ 	my $urlref  = shift;
+ 	#==========================================
+@@ -81,11 +80,6 @@
+ 		$kiwi = new KIWILog(&quot;tiny&quot;);
+ 	}
+ 	$kiwi -&gt; info (&quot;Setting up SaT solver...\n&quot;);
+-	if (! defined $xml) {
+-		$kiwi -&gt; error (&quot;--&gt; No XML reference specified&quot;);
+-		$kiwi -&gt; failed ();
+-		return undef;
+-	}
+ 	if (! $KIWISatSolver::haveSaT) {
+ 		$kiwi -&gt; error (&quot;--&gt; No SaT plugin installed&quot;);
+ 		$kiwi -&gt; failed ();
+@@ -104,7 +98,7 @@
+ 	#==========================================
+ 	# Create and cache sat solvable
+ 	#------------------------------------------
+-	$solvable = $xml -&gt; getInstSourceSatSolvable ($urlref);
++	$solvable = KIWIXML::getInstSourceSatSolvable ($kiwi,$urlref);
+ 	if (! defined $solvable) {
+ 		return undef;
+ 	}
+@@ -149,7 +143,6 @@
+ 	# Store object data
+ 	#------------------------------------------
+ 	$this-&gt;{kiwi}    = $kiwi;
+-	$this-&gt;{xml}     = $xml;
+ 	$this-&gt;{urllist} = $urlref;
+ 	$this-&gt;{plist}   = $pref;
+ 	$this-&gt;{job}     = $job;
+
+Modified: kiwi-head/modules/KIWIXML.pm
+===================================================================
+--- kiwi-head/modules/KIWIXML.pm	2008-07-28 15:34:28 UTC (rev 1495)
++++ kiwi-head/modules/KIWIXML.pm	2008-07-29 10:16:56 UTC (rev 1496)
+@@ -17,6 +17,7 @@
+ #==========================================
+ # Modules
+ #------------------------------------------
++require Exporter;
+ use strict;
+ use XML::LibXML;
+ use LWP;
+@@ -30,6 +31,12 @@
+ use KIWIQX;
+ 
+ #==========================================
++# Exports
++#------------------------------------------
++our @ISA    = qw (Exporter);
++our @EXPORT = qw (getInstSourceFile getInstSourceSatSolvable);
++
++#==========================================
+ # Globals
+ #------------------------------------------
+ our %inheritanceHash;
+@@ -2241,7 +2248,7 @@
+ 					#------------------------------------------
+ 					# 1) try to use libsatsolver...
+ 					my $psolve = new KIWISatSolver (
+-						$kiwi,$this,\@pattlist,$this-&gt;{urllist}
++						$kiwi,\@pattlist,$this-&gt;{urllist}
+ 					);
+ 					if (! defined $psolve) {
+ 						# 2) use generic pattern module
+@@ -2711,9 +2718,8 @@
+ 	# the satsolver toolkit is used and therefore required in
+ 	# order to allow this function to work correctly
+ 	# ----
+-	my $this     = shift;
++	my $kiwi     = shift;
+ 	my $repos    = shift;
+-	my $kiwi     = $this-&gt;{kiwi};
+ 	my $patternd = &quot;/suse/setup/descr/&quot;;
+ 	my $patterns = &quot;/suse/setup/descr/patterns&quot;;
+ 	my $packages = &quot;/suse/setup/descr/packages.gz&quot;;
+@@ -2751,7 +2757,7 @@
+ 		# create directory listing for each repo
+ 		#------------------------------------------
+ 		my $destfile = $sdir.&quot;/listing&quot;;
+-		if (! $this -&gt; getInstSourceFile ($repo.$patternd,$destfile)) {
++		if (! KIWIXML::getInstSourceFile ($kiwi,$repo.$patternd,$destfile)) {
+ 			next;
+ 		}
+ 		#==========================================
+@@ -2801,14 +2807,14 @@
+ 		# check for pre-created solvable first
+ 		#------------------------------------------
+ 		$destfile = $sdir.&quot;/primary-&quot;.$count.&quot;.gz&quot;;
+-		if ($this -&gt; getInstSourceFile ($repo.$solvable,$destfile)) {
++		if (KIWIXML::getInstSourceFile ($kiwi,$repo.$solvable,$destfile)) {
+ 			next;
+ 		}
+ 		#==========================================
+ 		# get patterns file next
+ 		#------------------------------------------
+ 		$destfile = $sdir.&quot;/patterns-&quot;.$count;
+-		if (! $this -&gt; getInstSourceFile ($repo.$patterns,$destfile)) {
++		if (! KIWIXML::getInstSourceFile ($kiwi,$repo.$patterns,$destfile)) {
+ 			$kiwi -&gt; warning (&quot;--&gt; No patterns file on repo: $repo&quot;);
+ 			$kiwi -&gt; skipped ();
+ 			next;
+@@ -2829,7 +2835,7 @@
+ 				next;
+ 			}
+ 			my $file = $repo.$patternd.$line;
+-			if (! $this -&gt; getInstSourceFile($file,$destfile)) {
++			if (! KIWIXML::getInstSourceFile($kiwi,$file,$destfile)) {
+ 				$kiwi -&gt; warning (&quot;--&gt; Pattern file $line not found&quot;);
+ 				$kiwi -&gt; skipped ();
+ 				next;
+@@ -2841,7 +2847,7 @@
+ 		# get packages.gz file next
+ 		#------------------------------------------
+ 		$destfile = $sdir.&quot;/packages-&quot;.$count.&quot;.gz&quot;;
+-		if (! $this -&gt; getInstSourceFile ($repo.$packages,$destfile)) {
++		if (! KIWIXML::getInstSourceFile ($kiwi,$repo.$packages,$destfile)) {
+ 			$kiwi -&gt; warning (&quot;--&gt; No packages.gz file on repo: $repo&quot;);
+ 			$kiwi -&gt; skipped ();
+ 			next;
+
+Modified: kiwi-head/tools/satplugin/example.pl
+===================================================================
+--- kiwi-head/tools/satplugin/example.pl	2008-07-28 15:34:28 UTC (rev 1495)
++++ kiwi-head/tools/satplugin/example.pl	2008-07-29 10:16:56 UTC (rev 1496)
+@@ -6,7 +6,7 @@
+ use SaT;
+ 
+ # Open Solvable file
+-open(F, &quot;gzip -cd tmp/primary-x86_64.gz |&quot;) || die;
++open(F, &quot;cat /var/cache/kiwi/satsolver/b3f8141972e5f21eed2392c2ee8f581b |&quot;) || die;
+ 
+ # Create Pool and Repository 
+ my $pool = new SaT::_Pool;
+@@ -27,8 +27,15 @@
+ 
+ # Push jobs on Queue
+ $job -&gt; queuePush ( $SaT::SOLVER_INSTALL_SOLVABLE );
+-if (! $pool -&gt; selectSolvable ($repo,$job,&quot;pattern:default&quot;)) {
+-	die &quot;failed to push job&quot;;
++
++my @pats = qw(default);
++
++#my @pats = qw(apparmor apparmor_opt base devel_C_C++ devel_qt4 devel_tcl enhanced_base file_server fonts games games_opt gateway_server gnome_basis_opt imaging imaging_opt kde kde3_games kde3_internet kde3_laptop kde3_multimedia kde3_office kde3_office_opt kde3_utilities kde3_utilities_opt kde3_yast kde4 kde4_basis kde4_games kde4_imaging kde4_imaging_opt kde4_internet kde4_laptop kde4_multimedia kde4_office kde4_office_opt kde4_utilities kde4_utilities_opt kde4_yast lamp_server misc_server multimedia non_oss non_oss_java office print_server remote_desktop sw_management sw_management_kde3 sw_management_kde4 voip x11 x11_opt xgl yast2_basis yast2_install_wf);
++
++foreach my $p (@pats) {
++	if (! $pool -&gt; selectSolvable ($repo,$job,&quot;pattern:$p&quot;)) {
++		die &quot;failed to push job&quot;;
++	}
+ }
+ 
+ # Solve the jobs
+
+Modified: kiwi-head/tools/satplugin/sat.c
+===================================================================
+--- kiwi-head/tools/satplugin/sat.c	2008-07-28 15:34:28 UTC (rev 1495)
++++ kiwi-head/tools/satplugin/sat.c	2008-07-29 10:16:56 UTC (rev 1496)
+@@ -14,7 +14,7 @@
+ 	FILE   *fp     = 0;
+ 	int b;
+ 	Queue  queue;
+-	int fd = open (&quot;tmp/primary&quot;, O_RDONLY);
++	int fd = open (&quot;/var/cache/kiwi/satsolver/b3f8141972e5f21eed2392c2ee8f581b&quot;, O_RDONLY);
+ 	if (fd == -1) {
+ 		return 1;
+ 	}
+@@ -33,9 +33,12 @@
+ 
+ 	queue_init (&amp;queue);
+ 	queue_push (&amp;queue, SOLVER_INSTALL_SOLVABLE);
+-	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:default&quot;));
++	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:apparmor&quot;));
++	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:apparmor_opt&quot;));
++	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:base&quot;));
++	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:devel_C_C++&quot;));
++	queue_push (&amp;queue, select_solvable(new_repo,pool,&quot;pattern:devel_qt4&quot;));
+ 
+-
+ 	solver = solver_create (pool,empty_installed);
+ 
+ 	solver_solve (solver, &amp;queue);
+@@ -77,7 +80,7 @@
+ 			queue_push(&amp;plist, i);
+ 		}
+ 	}
+-	prune_best_version_arch(pool, &amp;plist);
++	prune_to_best_arch (pool, &amp;plist);
+ 	if (plist.count == 0) {
+ 		printf(&quot;unknown package '%s'\n&quot;, name);
+ 		exit(1);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000581.html">[Kiwi-devel] r1495 - in kiwi-head: . modules rpm	system/boot/ix86/netboot
+</A></li>
+	<LI>Next message: <A HREF="000583.html">[Kiwi-devel] r1497 - in kiwi-head: . modules rpm tools/satplugin
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#582">[ date ]</a>
+              <a href="thread.html#582">[ thread ]</a>
+              <a href="subject.html#582">[ subject ]</a>
+              <a href="author.html#582">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

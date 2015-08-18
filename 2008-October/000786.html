@@ -1,0 +1,208 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1697 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1697%20-%0A%09kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules&In-Reply-To=%3C200810301103.m9UB3bZw031185%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000785.html">
+   <LINK REL="Next"  HREF="000787.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1697 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules</H1>
+    <B>jcborn at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1697%20-%0A%09kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules&In-Reply-To=%3C200810301103.m9UB3bZw031185%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1697 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Thu Oct 30 12:03:37 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000785.html">[Kiwi-devel] r1696 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+        <LI>Next message: <A HREF="000787.html">[Kiwi-devel] r1698 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#786">[ date ]</a>
+              <a href="thread.html#786">[ thread ]</a>
+              <a href="subject.html#786">[ subject ]</a>
+              <a href="author.html#786">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: 2008-10-30 12:03:35 +0100 (Thu, 30 Oct 2008)
+New Revision: 1697
+
+Modified:
+   kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect.pm
+Log:
+- applied Adrians patch with some modifications
+
+
+Modified: kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect.pm
+===================================================================
+--- kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect.pm	2008-10-30 10:46:47 UTC (rev 1696)
++++ kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules/KIWICollect.pm	2008-10-30 11:03:35 UTC (rev 1697)
+@@ -724,6 +724,7 @@
+   }
+ 
+   my $srcmedium = $this-&gt;{m_proddata}-&gt;getOpt(&quot;SOURCEMEDIUM&quot;);
++  my $debugmedium = $this-&gt;{m_proddata}-&gt;getOpt(&quot;DEBUGMEDIUM&quot;);
+   PACK:foreach my $pack(sort(keys(%{$this-&gt;{m_packages}}))) {
+     my $tmp = $this-&gt;{m_packages}-&gt;{$pack}; #optimisation
+     my $nofallback = 0;
+@@ -763,13 +764,6 @@
+ 	else {
+ 	  $fb_available = 1;
+ 	}
+-	my $medium;
+-	if($tmp &amp;&amp; $tmp-&gt;{'medium'}) {
+-	  $medium = $tmp-&gt;{'medium'};
+-	}
+-	else {
+-	  $medium = 1;
+-	}
+ 
+ 	my $uri = &quot;$tmp-&gt;{$fa}-&gt;{'targetpath'}/$tmp-&gt;{$fa}-&gt;{'targetfile'}&quot;;
+ 	if(defined($uri)) {
+@@ -785,21 +779,28 @@
+ 	  }
+ 
+ 	  my $ad;
++ 	  my $medium = 1;
++	  $medium = $tmp-&gt;{'medium'} if($tmp &amp;&amp; $tmp-&gt;{'medium'});
+ 	  if( !$flags{'SOURCERPM'} ) {
+ 	    # we deal with a source rpm...
+ 	    $ad = &quot;src&quot;;
+ 	    ## if the user wants all sources onto a certain medium: specify &quot;SOURCEMEDIUM&quot; in config
+ 	    my $srcmedium = $this-&gt;{m_proddata}-&gt;getOpt(&quot;SOURCEMEDIUM&quot;);
+-	    if($srcmedium) {
+-	      $medium = $srcmedium;
+-	    }
+-	  }else
+-	   {
++	    $medium = $srcmedium if($srcmedium);
++	  }
++	  else {
+ 	    # we deal with regular rpm file...
+ 	    $ad = $flags{'ARCH'}-&gt;[0];
++	    if(defined($debugmedium)
++		&amp;&amp; $debugmedium &gt; 0
++		&amp;&amp; ($flags{'NAME'}[0]  =~ /-debuginfo$/
++		    || $flags{'NAME'}[0]  =~ /-debugsource$/
++		    )
++	      ) {
++	      $medium = $debugmedium;
++	    }
+ 	  }
+ 
+-
+ 	  my $dstfile = &quot;$this-&gt;{'m_basesubdir'}-&gt;{$medium}/$base_on_cd/$ad/$tmp-&gt;{$fa}-&gt;{'targetfile'}&quot;;
+ 	  $dstfile =~ m{(.*/)(.*?/)(.*?/)(.*)[.]([rs]pm)$};
+ 	  if(not(defined($1) and defined($2) and defined($3) and defined($4) and defined($5))) {
+@@ -1153,7 +1154,7 @@
+ 
+       if($nokeep == 1) {
+ 	foreach my $d(keys(%{$this-&gt;{m_packages}-&gt;{$metapack}})) {
+-	  next if($d =~ m{(addarch|removearch|onlyarch|source|script|medium)});
++	  next if($d =~ m{(arch|addarch|removearch|onlyarch|source|script|medium)});
+ 	  if(defined($this-&gt;{m_packages}-&gt;{$metapack}-&gt;{$d}-&gt;{'newpath'}) and defined($this-&gt;{m_packages}-&gt;{$metapack}-&gt;{$d}-&gt;{'newfile'})) {
+ 	    unlink(&quot;$this-&gt;{m_packages}-&gt;{$metapack}-&gt;{$d}-&gt;{'newpath'}/$this-&gt;{m_packages}-&gt;{$metapack}-&gt;{$d}-&gt;{'newfile'}&quot;);
+ 	  }
+@@ -1566,7 +1567,7 @@
+ {
+   my $this = shift;
+   my $pack = shift;
+-  my $nofallback = shift;
++  my $nofallbackref = shift;
+ 
+   my @archs = ();
+   my $ret = 0;
+@@ -1576,6 +1577,23 @@
+   else {
+     my $tmp = $this-&gt;{m_packages}-&gt;{$pack}; #optimisation
+     my @omits = ();
++    if(defined($tmp-&gt;{'arch'})) {
++      # Check if this is a rule for this platform
++      $tmp-&gt;{'arch'} =~ s{,\s*,}{,}g;
++      $tmp-&gt;{'arch'} =~ s{,\s*}{,}g;
++      $tmp-&gt;{'arch'} =~ s{,\s*$}{};
++      $tmp-&gt;{'arch'} =~ s{^\s*,}{};
++      my $found = 0;
++      foreach my $plattform (split(/,\s*/, $tmp-&gt;{'arch'})) {
++        foreach my $reqArch ($this-&gt;{m_archlist}-&gt;headList()) {
++          $found = 1 if ( $reqArch eq $plattform );
++        };
++      };
++      if ( &quot;$found&quot; eq &quot;0&quot; ) {
++        # not our plattform
++        return $ret;
++      }
++    }
+     if(defined($tmp-&gt;{'onlyarch'})) {
+       # allow 'onlyarch=&quot;x86_64,i586&quot;'
+       $tmp-&gt;{'onlyarch'} =~ s{,\s*,}{,}g;
+@@ -1583,7 +1601,7 @@
+       $tmp-&gt;{'onlyarch'} =~ s{,\s*$}{};
+       $tmp-&gt;{'onlyarch'} =~ s{^\s*,}{};
+       push @archs, split(/,\s*/, $tmp-&gt;{'onlyarch'});
+-      $nofallback = 1;
++      $$nofallbackref = 1;
+     }
+     else {
+       if(defined($tmp-&gt;{'addarch'})) {
+@@ -1986,7 +2004,7 @@
+ 
+   my %src;
+   foreach my $a(keys(%{$this-&gt;{m_packages}-&gt;{$p}})) {
+-    next if($a =~ m{(addarch|removearch|onlyarch|source|script|medium)});
++    next if($a =~ m{(arch|addarch|removearch|onlyarch|source|script|medium)});
+     if(!$this-&gt;{m_packages}-&gt;{$p}-&gt;{$a}-&gt;{'source'}) {
+       # pack without source is b&#228;h!
+       goto error;
+@@ -2062,8 +2080,13 @@
+     $this-&gt;{m_kiwi}-&gt;error(&quot;[E] getMediaNumbers: SOURCEMEDIUM is undefined!&quot;);
+     return undef;
+   }
++  push @media, $srcmedium;
+ 
+-  push @media, $srcmedium;
++  my $debugmedium = $this-&gt;{m_proddata}-&gt;getOpt(&quot;DEBUGMEDIUM&quot;);
++  if(defined($debugmedium)) {
++    push @media, $debugmedium;
++  }
++
+   foreach my $p(values(%{$this-&gt;{m_packages}}), values(%{$this-&gt;{m_metapackages}})) {
+     if(defined($p-&gt;{'medium'}) and $p-&gt;{'medium'} != 0) {
+       push @media, $p-&gt;{medium};
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000785.html">[Kiwi-devel] r1696 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+	<LI>Next message: <A HREF="000787.html">[Kiwi-devel] r1698 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#786">[ date ]</a>
+              <a href="thread.html#786">[ thread ]</a>
+              <a href="subject.html#786">[ subject ]</a>
+              <a href="author.html#786">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

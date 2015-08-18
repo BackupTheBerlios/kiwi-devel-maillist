@@ -1,0 +1,166 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] Restructuring: initial implementation of ImageCreator
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Restructuring%3A%20initial%20implementation%20of%20ImageCreator&In-Reply-To=%3C4DB5AD97.8000005%40novell.com%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003359.html">
+   <LINK REL="Next"  HREF="003361.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] Restructuring: initial implementation of ImageCreator</H1>
+    <B>Robert Schweikert</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20Restructuring%3A%20initial%20implementation%20of%20ImageCreator&In-Reply-To=%3C4DB5AD97.8000005%40novell.com%3E"
+       TITLE="[Kiwi-devel] Restructuring: initial implementation of ImageCreator">rschweikert at novell.com
+       </A><BR>
+    <I>Mon Apr 25 19:21:27 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003359.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. dec521fd69f73299badd58ccf92098e59cfb1f71
+</A></li>
+        <LI>Next message: <A HREF="003361.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b16798f9353ec0b9e2730cf77cba5e856f2b75c2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3360">[ date ]</a>
+              <a href="thread.html#3360">[ thread ]</a>
+              <a href="subject.html#3360">[ subject ]</a>
+              <a href="author.html#3360">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi,
+
+The attached patch contains the initial implementation of a new 
+ImageCreator object. The object will eventually be responsible for 
+driving the image creation process. This initial implementation provides 
+prepareImage and prepareBootImage methods.
+
+The current implementation should be sufficient to allow me to continue 
+my work on the CacheManager object that I had started a while back. I 
+got stuck with the CacheManager when I realized &quot;prepare&quot; was needed. 
+The ImageCreator-&gt;prepareImage() should fill this gap.
+
+The patch removes code for image preparation from kiwi.pl and eliminates 
+recursiveness for the prepare steps. At this point I was unable to 
+eliminate some of the global variable associated with Prepare as other 
+changes are necessary to accomplish this, one step at a time ;)
+
+My next step will be to get back to the CacheManager and get cache 
+management out of kiwi.pl.
+
+The patch also contains unit tests for the new ImageCreator object and 
+contains the patch submitted last week that moves the createTmpDir 
+method from the XML to the Locator object. Still lots of work to be 
+done, but this appeared to be a good breaking point to submit the patch. 
+The patch is rather large, sorry about that.
+
+Some more gory details:
+KIWIImageCreator.pm
+   - new class
+   - move __checkImageIntegrity from kiwi.pl
+   - implement prepareImage
+   - implement prepareBootImage
+
+kiwi.pl
+   - remove checkImageIntegrity
+   - move prepare to KIWIImageCreator
+   - move RootTree tree checking and potential modification into
+     CommandLine obj
+   - remove undocumented command line argument prechroot-call
+   - remove global InitCDir, value now available from Locator object
+   - change build, create, and prepare to use new
+     ImageCreator-&gt;prepareImage
+
+KIWICommandline.pm
+   - implement the rootTargetDir storage, modify location if not
+     absolute path
+   - implement storage and accessors for add-package, add-pattern,
+     del-package command line arguments
+   - implement storage for cache directory
+   - implement storage for architecture
+
+kiwiCommandLine.pm
+   - implement unit tests for {get,set}rootTargetDir
+   - implement unit tests for new accessors in CommandLine object
+   - implement unit tests for cache directory accessors
+   - implement unit tests for architecure accessors
+
+KIWILocator.pm
+   - add location of default cache dir and accessor
+   - new createTmpDir method (from previous submitted patch)
+
+kiwiXMLInfo.pm
+   - adjust tests to account for new shared repo location
+
+ktLog.pm
+   - add log methods required by code for prepare testing
+   - add destructor to clean up test log file
+
+ktTestCase.pm
+   - implement file exist test method
+
+test data:
+   - move the test repo to a common place, i.e.
+     tests/unit/data/kiwiTestRepo
+     to facilitate re-use
+
+KIWISchema.rnc
+   - fix typo in explanation for size attribute on volume element
+
+KIWIImage.pm
+   - use new ImageCreator to prepare the boot image
+
+KIWIXML.pm
+   - remove validation of XML file; the XML file is validated in the
+     ImageCreator during prepare, this is the only place we have to
+     interact with a potentially invalid file, all other instantiations
+     of XML use known valid config files
+   - remove createTmpDir method (from previously submitted patch)
+
+Later,
+Robert
+
+-- 
+Robert Schweikert                           MAY THE SOURCE BE WITH YOU
+SUSE-IBM Software Integration Center                   LINUX
+Tech Lead
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at novell.com</A>
+<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">rschweikert at ca.ibm.com</A>
+781-464-8147
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: 0001-create-ImageCreator-obj-prepare-methods-unit-tests-a.patch.gz
+Type: application/x-gzip
+Size: 22854 bytes
+Desc: not available
+URL: &lt;<A HREF="https://lists.berlios.de/pipermail/kiwi-devel/attachments/20110425/bf45e047/attachment.bin">https://lists.berlios.de/pipermail/kiwi-devel/attachments/20110425/bf45e047/attachment.bin</A>&gt;
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003359.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. dec521fd69f73299badd58ccf92098e59cfb1f71
+</A></li>
+	<LI>Next message: <A HREF="003361.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b16798f9353ec0b9e2730cf77cba5e856f2b75c2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3360">[ date ]</a>
+              <a href="thread.html#3360">[ thread ]</a>
+              <a href="subject.html#3360">[ subject ]</a>
+              <a href="author.html#3360">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

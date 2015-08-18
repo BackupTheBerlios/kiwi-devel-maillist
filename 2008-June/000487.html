@@ -1,0 +1,201 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1397 - kiwi-head/modules/.test
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1397%20-%20kiwi-head/modules/.test&In-Reply-To=%3C200806201252.m5KCq2dQ013328%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000486.html">
+   <LINK REL="Next"  HREF="000488.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1397 - kiwi-head/modules/.test</H1>
+    <B>jcborn at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1397%20-%20kiwi-head/modules/.test&In-Reply-To=%3C200806201252.m5KCq2dQ013328%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1397 - kiwi-head/modules/.test">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Fri Jun 20 14:52:02 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000486.html">[Kiwi-devel] [SVN:KIWI-Team] r1396 -	kiwi-branches/KIWI-238-SuSE-10-1-Devel/rpm
+</A></li>
+        <LI>Next message: <A HREF="000488.html">[Kiwi-devel] [SVN:KIWI-Team] r1398 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#487">[ date ]</a>
+              <a href="thread.html#487">[ thread ]</a>
+              <a href="subject.html#487">[ subject ]</a>
+              <a href="author.html#487">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: Fri Jun 20 14:52:01 2008
+New Revision: 1397
+
+Modified:
+   kiwi-head/modules/.test/KIWIProductData-unittest.pl
+
+Log:
+- included correct path to module
+- improved testcase
+
+
+Modified: kiwi-head/modules/.test/KIWIProductData-unittest.pl
+==============================================================================
+--- kiwi-head/modules/.test/KIWIProductData-unittest.pl	(original)
++++ kiwi-head/modules/.test/KIWIProductData-unittest.pl	Fri Jun 20 14:52:01 2008
+@@ -1,5 +1,8 @@
+ #!/usr/bin/perl -wd
+ 
++BEGIN {
++  unshift @INC, '..';
++}
+ 
+ use KIWICollect;
+ use KIWIProductData;
+@@ -20,10 +23,12 @@
+ my $collect = new KIWICollect($log, $xml, $bd, 1);
+ if(not defined($collect)) {
+   print &quot;Failed to create KIWICollect object\n&quot;;
+-  exit 1;
++  exit 12;
+ }
+ 
+ my $testresult = performTest($collect);
++print &quot;\n\nResults\n=======\n\n$testresult tests failed\n\n&quot;;
++exit $testresult;
+ 
+ 
+ #===========================================
+@@ -31,50 +36,83 @@
+ # - KIWICollect object
+ sub performTest
+ {
+-  my $testresult = 0;
++  # run eleven stage test; the number of unsuccessful tests is returned
++  my $testresult = 11;
+   my $collect = shift;
+ 
+-  # constructor sanity check (expect: undef):
++  # TEST 1: constructor sanity check (expect: undef):
+   my $module = new KIWIProductData();
+   if(not defined($module)) {
+     print &quot;Constructor sane\n&quot;;
++    $testresult--;
+   }
+   else {
+     print &quot;Construct 1 should have failed but didn't\n&quot;;
+-    return undef;
++    return $testresult;
+   }
+ 
++  # TEST 2: constructor sanity part two: expect success
+   $module = new KIWIProductData($collect);
+   if(defined($module)) {
+     print &quot;Creation 2: module is a &quot;.ref($module).&quot;...\n&quot;;
++    $testresult--;
+   }
+   else {
+     print &quot;Creation with parameter $collect failed. [&quot;.ref($collect).&quot;]\n&quot;;
+-    return undef;
++    return $testresult;
+   }
+ 
+   print &quot;Setting prodvars content: A-&gt;Bla, B-&gt;Blubb, C-&gt;A--B\n&quot;;
++  print &quot;expect expanded C: Bla--Blubb\n&quot;;
+   $module-&gt;addSet(&quot;Some crappy variables&quot;, { 'A' =&gt; 'Bla', 'B' =&gt; 'Blubb', 'C' =&gt; '$A--$B' }, &quot;prodvars&quot;);
+   $module-&gt;_expand();
+-  print $module-&gt;getVar(&quot;A&quot;).&quot;\n&quot;;
+-  print $module-&gt;getVar(&quot;B&quot;).&quot;\n&quot;;
+-  print &quot;expect expanded C: Bla--Blubb\n&quot;;
+-  print $module-&gt;getVar(&quot;C&quot;).&quot;\n&quot;;
+ 
+-  print &quot;Setting prodinfo content: D-&gt;Gobble, E-&gt;Wobble, F-&gt;D--A\n&quot;;
++  # TEST 3..5: retrieve some data:
++  my $reply;
++  for my $i('A', 'B', 'C') {
++    $reply = $module-&gt;getVar($i);
++    if(defined($reply)) {
++      $testresult--;
++      print &quot;Fetch value of $i: $reply\n&quot;;
++    }
++    else {
++      print &quot;reply is undef\n&quot;;
++    }
++  }
++
++  print &quot;Setting prodinfo content: D-&gt;Gobble, E-&gt;Wobble, F-&gt;D--HUBBLE (which isn't set yet)\n&quot;;
++  print &quot;expect expanded F: Gobble--[undef-case]\n&quot;;
+   $module-&gt;addSet(&quot;Some slutty variables&quot;, { '1' =&gt; ['D','Gobble'], '2' =&gt; ['E', 'Wobble'], '3' =&gt; ['F', '$D--$HUBBLE'] }, &quot;prodinfo&quot;);
+   $module-&gt;_expand();
+-  print $module-&gt;getInfo(&quot;D&quot;).&quot;\n&quot;;
+-  print $module-&gt;getInfo(&quot;E&quot;).&quot;\n&quot;;
+-  print &quot;expect expanded F: Gobble--Bla\n&quot;;
+-  print $module-&gt;getInfo(&quot;F&quot;).&quot;\n&quot;;
++
++  # TEST 6..8: retrieve some data:
++  for my $i('D', 'E', 'F') {
++    $reply = $module-&gt;getInfo($i);
++    if(defined($reply)) {
++      $testresult--;
++      print &quot;Fetch value of $i: $reply\n&quot;;
++    }
++    else {
++      print &quot;reply is undef\n&quot;;
++    }
++  }
+ 
+   print &quot;Setting prodopts content: GLOB-&gt;Gobble, HUBBLE-&gt;Wobble, INDY-&gt;D--A\n&quot;;
++  print &quot;expect expanded INDY: Bla--Blubb Gobble--Bla Hallelujah!-bagga\n&quot;;
+   $module-&gt;addSet(&quot;Some stupid options&quot;, { 'GLOB' =&gt; 'Hallelujah!', 'HUBBLE' =&gt; 'Telescope', 'INDY' =&gt; '$C $F $GLOB-bagga' }, &quot;prodopts&quot;);
+   $module-&gt;_expand();
+-  print $module-&gt;getOpt(&quot;GLOB&quot;).&quot;\n&quot;;
+-  print $module-&gt;getOpt(&quot;HUBBLE&quot;).&quot;\n&quot;;
+-  print &quot;expect expanded INDY: Bla--Blubb Gobble--Bla Hallelujah!-bagga\n&quot;;
+-  print $module-&gt;getOpt(&quot;INDY&quot;).&quot;\n&quot;;
+ 
++  # TEST 9..11: retrieve some data:
++  for my $i('GLOB', 'HUBBLE', 'INDY') {
++    $reply = $module-&gt;getOpt($i);
++    if(defined($reply)) {
++      $testresult--;
++      print &quot;Fetch value of $i: $reply\n&quot;;
++    }
++    else {
++      print &quot;reply is undef\n&quot;;
++    }
++  }
++
++  return $testresult;
+ }
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000486.html">[Kiwi-devel] [SVN:KIWI-Team] r1396 -	kiwi-branches/KIWI-238-SuSE-10-1-Devel/rpm
+</A></li>
+	<LI>Next message: <A HREF="000488.html">[Kiwi-devel] [SVN:KIWI-Team] r1398 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#487">[ date ]</a>
+              <a href="thread.html#487">[ thread ]</a>
+              <a href="subject.html#487">[ subject ]</a>
+              <a href="author.html#487">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

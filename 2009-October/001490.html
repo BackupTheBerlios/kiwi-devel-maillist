@@ -1,0 +1,138 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] unit of size attribute for partition element
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2009-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20unit%20of%20size%20attribute%20for%20partition%20element&In-Reply-To=%3C20091007091734.GA24576%40D7.ddts.net%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001486.html">
+   <LINK REL="Next"  HREF="001487.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] unit of size attribute for partition element</H1>
+    <B>Marcus Sch&#228;fer</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20unit%20of%20size%20attribute%20for%20partition%20element&In-Reply-To=%3C20091007091734.GA24576%40D7.ddts.net%3E"
+       TITLE="[Kiwi-devel] unit of size attribute for partition element">ms at novell.com
+       </A><BR>
+    <I>Wed Oct  7 11:17:34 CEST 2009</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001486.html">[Kiwi-devel] unit of size attribute for partition element
+</A></li>
+        <LI>Next message: <A HREF="001487.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 508a5614d3bff6bd2dd53654f92eb60bdabac309
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1490">[ date ]</a>
+              <a href="thread.html#1490">[ thread ]</a>
+              <a href="subject.html#1490">[ subject ]</a>
+              <a href="author.html#1490">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Hi,
+
+&gt;<i> What is the expected unit of measure for partitions specified with the 
+</I>&gt;<i> &lt;partition&gt; element. The partition element has a &quot;size&quot; attribute but no 
+</I>&gt;<i> &quot;unit&quot; attribute. The &lt;partitions&gt; element also doe not allow 
+</I>&gt;<i> specification of the unit. A &quot;unit&quot; attribute could be added to the 
+</I>&gt;<i> &lt;partitions&gt; element to specify the unit of measure for all partitions 
+</I>&gt;<i> specified. Or for more flexibility the &quot;unit&quot; attribute could be added 
+</I>&gt;<i> to the &lt;partition&gt; element, the later is probably the preferable solution.
+</I>
+The deploy section is used for only one purpose: The creation of
+the config.&lt;MAC&gt; file for PXE based thin client images. The information
+from the &lt;partitions&gt; section is used to form the PART=... line
+of this config.&lt;MAC&gt; file. The explanation of the PART variable in
+the kiwi doc is as follows:
+
+        PART
+        Specifies the partitioning data. The comma-separated list
+        must contain the size (size), the type number (id), and the
+        mount point (Mount). The size is measured in MB by default.
+        Additionally all size specifications supported by the sfdisk
+        program are allowed as well. The type number specifies the ID
+        of the partition. Valid ID's are listed via the
+        sfdisk --list-types command. The mount specifies the
+        directory the partition is mounted to.
+
+        * The first element of the list must define the swap
+          partition.
+
+        * The second element of the list must define the
+          root partition.
+
+        * The swap partition must not contain a mount point.
+          A lowercase letter \textbf{x} must be set instead.
+
+        * If a partition should take all the space left on
+          a disk one can set a lower &quot;x&quot; letter as
+          size specification.
+
+according to this the size attribute specifies the value in &quot;MB&quot;
+
+&gt;<i> Also I noticed that the &quot;size&quot; attribute for the &lt;partition&gt; element is 
+</I>&gt;<i> optional. However, if I specify three partitions and no size how can 
+</I>&gt;<i> Kiwi figure out what size the partitions should be. It appears to me 
+</I>&gt;<i> that the size must be specified for all partitions given except for one. 
+</I>&gt;<i> The unspecified sized partition can be expanded to use all remaining 
+</I>&gt;<i> space. Is there logic in the code to enforce this condition?
+</I>
+The reason for this is that the function which eavaluates the
+deploy section information will use the maximum size indicator if
+no size is set. You might also have noticed that it's possible
+to have a deploy section without any partition information. The
+reason for this is that the kiwi PXE boot code also support root
+over NFS, NBD and AoE
+
+The big problem with that deploy section is that it is really meant
+for deploying a PXE client. I would say the better solution is to
+rename the deploy section into something that it's clear that this
+applies to the pxe type only for example &lt;pxedeploy&gt; or something
+
+Additionally you can create your own new section defining all
+the rules which applies to the disk you want to create. It should
+also be clear that this will only work with the usb type so
+the name should be something like &lt;usbpartitions&gt;
+
+Regards,
+Marcus
+-- 
+ Public Key available
+ gpg --keyserver gpg-keyserver.de --recv-keys 0xCCE3C6A2
+ -------------------------------------------------------
+ Marcus Sch&#228;fer (Res. &amp; Dev.)   SUSE LINUX Products GmbH
+ Tel: 0911-740 53 0             Maxfeldstrasse 5
+ FAX: 0911-740 53 479           D-90409 N&#252;rnberg
+ GF: Markus Rex                 HRB: 16746 (AG N&#252;rnberg)
+ <A HREF="http://www.suse.de">http://www.suse.de</A>             Germany
+ -------------------------------------------------------
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001486.html">[Kiwi-devel] unit of size attribute for partition element
+</A></li>
+	<LI>Next message: <A HREF="001487.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 508a5614d3bff6bd2dd53654f92eb60bdabac309
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1490">[ date ]</a>
+              <a href="thread.html#1490">[ thread ]</a>
+              <a href="subject.html#1490">[ subject ]</a>
+              <a href="author.html#1490">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

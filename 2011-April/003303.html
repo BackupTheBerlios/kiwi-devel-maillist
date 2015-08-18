@@ -1,0 +1,294 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5109267e325b0b54779cbbf29de6fe0724788713
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%205109267e325b0b54779cbbf29de6fe0724788713&In-Reply-To=%3C20110406102345.66DFA480EB0%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003302.html">
+   <LINK REL="Next"  HREF="003304.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5109267e325b0b54779cbbf29de6fe0724788713</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%205109267e325b0b54779cbbf29de6fe0724788713&In-Reply-To=%3C20110406102345.66DFA480EB0%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 5109267e325b0b54779cbbf29de6fe0724788713">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Apr  6 12:23:45 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003302.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 08ae07ae91b04f2236424a3d4509b7524867a0db
+</A></li>
+        <LI>Next message: <A HREF="003304.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-480-SuSE-11.4-Devel,	updated. cfde1ccba1bca4e58e363ea4a1b9d2d2d7c1baf4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3303">[ date ]</a>
+              <a href="thread.html#3303">[ thread ]</a>
+              <a href="subject.html#3303">[ subject ]</a>
+              <a href="author.html#3303">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  5109267e325b0b54779cbbf29de6fe0724788713 (commit)
+      from  08ae07ae91b04f2236424a3d4509b7524867a0db (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 5109267e325b0b54779cbbf29de6fe0724788713
+Author: root &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">root at s390a06.suse.de</A>&gt;
+Date:   Wed Apr 6 12:23:33 2011 +0200
+
+    - added support for ZFCP devices
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index 8461a74..6b4d5e3 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -3443,18 +3443,16 @@ sub setupBootLoaderConfiguration {
+ 		print FD &quot;$this-&gt;{mbrid}&quot;;
+ 		close FD;
+ 		$kiwi -&gt; done();
+-		my $busid;
++		my %ccwid;
+ 		#==========================================
+ 		# Create disk Bus-ID for online call
+ 		#------------------------------------------
+ 		if ($main::targetDevice) {
+ 			$kiwi -&gt; info (&quot;Saving disk Bus-ID...&quot;);
+-			my $device = $main::targetDevice; $device =~ s/\/dev\///;
+-			$busid  = qxx (&quot;lsdasd | grep $device | cut -f1 -d ' '&quot;);
+-			chomp $busid;
+-			if (! $busid) {
++			%ccwid = $this -&gt; __getCCWID ($main::targetDevice);
++			if ((! $ccwid{busid}) &amp;&amp; (! $ccwid{ccwid})) {
+ 				$kiwi -&gt; failed ();
+-				$kiwi -&gt; error  (&quot;Can't find Bus-ID for $device&quot;);
++				$kiwi -&gt; error  (&quot;Can't find Bus-ID for $main::targetDevice&quot;);
+ 				$kiwi -&gt; failed ();
+ 				return undef;
+ 			}
+@@ -3532,8 +3530,11 @@ sub setupBootLoaderConfiguration {
+ 			print FD &quot;\t&quot;.&quot;ramdisk = boot/initrd,0x2000000&quot;.&quot;\n&quot;;
+ 		}
+ 		print FD &quot;\t&quot;.&quot;parameters = \&quot;loader=$bloader&quot;;
+-		if ($busid) {
+-			print FD &quot; busid=$busid $cmdline\&quot;&quot;.&quot;\n&quot;;
++		if ($ccwid{busid}) {
++			print FD &quot; busid=$ccwid{busid} $cmdline\&quot;&quot;.&quot;\n&quot;;
++		} elsif ($ccwid{ccwid}) {
++			print FD &quot; ccwid=$ccwid{ccwid} wwpn=$ccwid{wwpn} lun=$ccwid{lun}&quot;;
++			print FD &quot; $cmdline\&quot;&quot;.&quot;\n&quot;;
+ 		} else {
+ 			print FD &quot; $cmdline\&quot;&quot;.&quot;\n&quot;;
+ 		}
+@@ -3556,8 +3557,11 @@ sub setupBootLoaderConfiguration {
+ 			print FD &quot;\t&quot;.&quot;ramdisk = boot/initrd,0x2000000&quot;.&quot;\n&quot;;
+ 		}
+ 		print FD &quot;\t&quot;.&quot;parameters = \&quot;x11failsafe loader=$bloader&quot;;
+-		if ($busid) {
+-			print FD &quot; busid=$busid $cmdline\&quot;&quot;.&quot;\n&quot;;
++		if ($ccwid{busid}) {
++			print FD &quot; busid=$ccwid{busid} $cmdline\&quot;&quot;.&quot;\n&quot;;
++		} elsif ($ccwid{ccwid}) {
++			print FD &quot; ccwid=$ccwid{ccwid} wwpn=$ccwid{wwpn} lun=$ccwid{lun}&quot;;
++			print FD &quot; $cmdline\&quot;&quot;.&quot;\n&quot;;
+ 		} else {
+ 			print FD &quot; $cmdline\&quot;&quot;.&quot;\n&quot;;
+ 		}
+@@ -5213,4 +5217,57 @@ sub __expandFS {
+ 	return $this;
+ }
+ 
++#==========================================
++# __getCCWID
++#------------------------------------------
++sub __getCCWID {
++	# ...
++	# find the ccwid and wwpn + lun if a zfcp device
++	# is specified. The function will turn the device node
++	# name into a by-path name if necessary and matches
++	# the values from the by-path device naming convention
++	# for s390 DASD and ZFCP devices. The function will
++	# return an empty hash if no such device exists
++	# ----
++	my $this   = shift;
++	my $kiwi   = $this-&gt;{kiwi};
++	my $device = shift;
++	my $bypath = '\/dev\/disk\/by-path';
++	my %result = ();
++	#==========================================
++	# check if device exists
++	#------------------------------------------
++	if (! -e $device) {
++		$kiwi -&gt; loginfo (&quot;getCCWID: Device $device doesn't exist\n&quot;);
++		return %result;
++	}
++	#==========================================
++	# turn device name into by-path name
++	#------------------------------------------
++	if ($device !~ /$bypath\/.*/) {
++		my @paths = glob (&quot;/dev/disk/by-path/*&quot;);
++		foreach my $path (@paths) {
++			my $ndev = readlink ($path);
++			$ndev = &quot;/dev/&quot;.basename $ndev;
++			if ($ndev eq $device) {
++				$device = $path; last;
++			}
++		}
++	}
++	#==========================================
++	# match values
++	#------------------------------------------
++	if ($device =~ /$bypath\/ccw-([^-]+)$/) {
++		$result{busid}=$1;
++	} elsif ($device =~ /$bypath\/ccw-(.*)-zfcp-(.*):([^-]+)$/) {
++		$result{ccwid} = $1;
++		$result{wwpn}  = $2;
++		$result{lun}   = $3;
++	} else {
++		$kiwi -&gt; loginfo (&quot;Invalid disk device specified: $device\n&quot;);
++		return %result;
++	}
++	return %result;
++}
++
+ 1;
+diff --git a/modules/KIWIConfig.sh b/modules/KIWIConfig.sh
+index d534799..8464544 100644
+--- a/modules/KIWIConfig.sh
++++ b/modules/KIWIConfig.sh
+@@ -984,7 +984,7 @@ function suseStripInitrd {
+ 		gettext diff bc utimer cmp busybox kexec pam_console_apply
+ 		setterm kpartx vgcfgbackup vgcfgrestore lsdasd dasd_configure
+ 		qeth_configure fdasd mkdosfs egrep mkfs.xfs mdadm yes fdisk
+-		startproc
++		startproc zfcp_host_configure zfcp_disk_configure
+ 	&quot;
+ 	tools=&quot;$tools $@&quot;
+ 	for path in /sbin /usr/sbin /usr/bin /bin;do
+diff --git a/modules/KIWILinuxRC.sh b/modules/KIWILinuxRC.sh
+index 55cbbdb..1333758 100644
+--- a/modules/KIWILinuxRC.sh
++++ b/modules/KIWILinuxRC.sh
+@@ -3180,32 +3180,57 @@ function searchOFBootDevice {
+ #--------------------------------------
+ function searchBusIDBootDevice {
+ 	# /.../
+-	# on s390 we store the Bus-ID for the disk inside
+-	# the initrd. This id is used to set the device online
++	# if searchBIOSBootDevice did not return a result this
++	# function is called to check for a DASD or ZFCP device
++	# like they exist on the s390 architecture. If found the
++	# device is set online and the biosBootDevice variable
++	# is set to this device for further processing
+ 	# ----
+-	local dlink=/sys/bus/ccw/devices/$busid
+-	local id
+-	local status
+-	local device
+-	local rest
+-	if [ ! -e $dlink ];then
++	local haveDASD=0
++	local haveZFCP=0
++	local deviceID=0
++	local dpath=/dev/disk/by-path
++	#======================================
++	# distinguish between dasd and zfcp
++	#--------------------------------------
++	if [ ! -z &quot;$ccwid&quot; ] ;then
++		deviceID=$ccwid
++		haveZFCP=1
++	elif [ ! -z &quot;$busid&quot; ];then
++		deviceID=$busid
++		haveDASD=1
++	fi
++	#======================================
++	# check if we can find the device
++	#--------------------------------------
++	if [ ! -e /sys/bus/ccw/devices/$deviceID ];then
+ 		systemException \
+-			&quot;Can't find disk with ID: $busid&quot; \
++			&quot;Can't find disk with ID: $deviceID&quot; \
+ 		&quot;reboot&quot;
+ 	fi
+-	dasd_configure $busid 1 0
+-	lsdasd $busid | tail -n 1 | while read id status device rest;do
+-		echo &quot;/dev/$device&quot; &gt; /tmp/biosBootDevice
+-	done
+-	if [ ! -e /tmp/biosBootDevice ];then
+-		export biosBootDevice=&quot;Failed to set disk $busid online&quot;
+-		return 1
++	#======================================
++	# DASD
++	#--------------------------------------
++	if [ $haveDASD -eq 1 ];then
++		dasd_configure $deviceID 1 0
++		biosBootDevice=&quot;$dpath/ccw-$deviceID&quot;
+ 	fi
+-	export biosBootDevice=$(cat /tmp/biosBootDevice)
++	#======================================
++	# ZFCP
++	#--------------------------------------
++	if [ $haveZFCP -eq 1 ];then
++		zfcp_host_configure $deviceID 1
++		zfcp_disk_configure $deviceID $wwpn $lun 1
++		biosBootDevice=&quot;$dpath/ccw-$deviceID-zfcp-$wwpn:$lun&quot;
++	fi
++	#======================================
++	# setup boot device variable
++	#--------------------------------------
+ 	if [ ! -e $biosBootDevice ];then
+-		export biosBootDevice=&quot;Failed to set disk $busid online&quot;
++		export biosBootDevice=&quot;Failed to set disk $deviceID online&quot;
+ 		return 1
+ 	fi
++	export biosBootDevice=$(getDiskDevice $biosBootDevice)
+ 	return 0
+ }
+ #======================================
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003302.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 08ae07ae91b04f2236424a3d4509b7524867a0db
+</A></li>
+	<LI>Next message: <A HREF="003304.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-480-SuSE-11.4-Devel,	updated. cfde1ccba1bca4e58e363ea4a1b9d2d2d7c1baf4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3303">[ date ]</a>
+              <a href="thread.html#3303">[ thread ]</a>
+              <a href="subject.html#3303">[ subject ]</a>
+              <a href="author.html#3303">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

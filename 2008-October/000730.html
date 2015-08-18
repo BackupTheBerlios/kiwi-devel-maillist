@@ -1,0 +1,186 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1638 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1638%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200810131611.m9DGB5DV018098%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000729.html">
+   <LINK REL="Next"  HREF="000731.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1638 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1638%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200810131611.m9DGB5DV018098%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1638 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Oct 13 18:11:05 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000729.html">[Kiwi-devel] r1637 - kiwi-head/rpm
+</A></li>
+        <LI>Next message: <A HREF="000731.html">[Kiwi-devel] r1639 - in kiwi-head: modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ix86/usbboot system/boot/ix86/vmxboot	system/boot/ppc/netboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#730">[ date ]</a>
+              <a href="thread.html#730">[ thread ]</a>
+              <a href="subject.html#730">[ subject ]</a>
+              <a href="author.html#730">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-13 18:10:58 +0200 (Mon, 13 Oct 2008)
+New Revision: 1638
+
+Modified:
+   kiwi-head/modules/KIWILinuxRC.sh
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- changed grub and fstab setup to use disk ID labels (bnc #434806)
+
+
+
+Modified: kiwi-head/modules/KIWILinuxRC.sh
+===================================================================
+--- kiwi-head/modules/KIWILinuxRC.sh	2008-10-13 15:40:18 UTC (rev 1637)
++++ kiwi-head/modules/KIWILinuxRC.sh	2008-10-13 16:10:58 UTC (rev 1638)
+@@ -688,11 +688,12 @@
+ 				echo &quot;title Recovery [ $gfix ]&quot;               &gt;&gt; $menu
+ 				gdev_recovery=&quot;(hd0,3)&quot;
+ 				rdev_recovery=$OEM_RECOVERY
++				diskByID=`getDiskID $rdev_recovery`
+ 				if [ $kernel = &quot;vmlinuz-xen&quot; ];then
+ 					echo &quot; root $gdev_recovery&quot;                   &gt;&gt; $menu
+ 					echo &quot; kernel /boot/xen.gz&quot;                   &gt;&gt; $menu
+ 					echo -n &quot; module /boot/$kernel&quot;               &gt;&gt; $menu
+-					echo -n &quot; root=$rdev_recovery $console&quot;       &gt;&gt; $menu
++					echo -n &quot; root=$diskByID $console&quot;            &gt;&gt; $menu
+ 					echo -n &quot; vga=0x314 splash=silent&quot;            &gt;&gt; $menu
+ 					echo -n &quot; $KIWI_INITRD_PARAMS&quot;                &gt;&gt; $menu
+ 					echo -n &quot; $KIWI_KERNEL_OPTIONS&quot;               &gt;&gt; $menu
+@@ -700,7 +701,7 @@
+ 					echo &quot; module /boot/$initrd&quot;                  &gt;&gt; $menu
+ 				else
+ 					echo -n &quot; kernel $gdev_recovery/boot/$kernel&quot; &gt;&gt; $menu
+-					echo -n &quot; root=$rdev_recovery $console&quot;       &gt;&gt; $menu
++					echo -n &quot; root=$diskByID $console&quot;            &gt;&gt; $menu
+ 					echo -n &quot; vga=0x314 splash=silent&quot;            &gt;&gt; $menu
+ 					echo -n &quot; $KIWI_INITRD_PARAMS&quot;                &gt;&gt; $menu
+ 					echo -n &quot; $KIWI_KERNEL_OPTIONS&quot;               &gt;&gt; $menu
+@@ -735,6 +736,10 @@
+ 	local kernel=&quot;&quot;
+ 	local initrd=&quot;&quot;
+ 	#======================================
++	# check for device by ID
++	#--------------------------------------
++	local diskByID=`getDiskID $rdev`
++	#======================================
+ 	# check for system image .profile
+ 	#--------------------------------------
+ 	if [ -f $mountPrefix/image/.profile ];then
+@@ -801,7 +806,7 @@
+ 				echo &quot; root $gdev&quot;                                &gt;&gt; $menu
+ 				echo &quot; kernel /boot/xen.gz&quot;                       &gt;&gt; $menu
+ 				echo -n &quot; module /boot/$kernel&quot;                   &gt;&gt; $menu
+-				echo -n &quot; root=$rdev $console&quot;                    &gt;&gt; $menu
++				echo -n &quot; root=$diskByID $console&quot;                &gt;&gt; $menu
+ 				echo -n &quot; vga=0x314 splash=silent&quot;                &gt;&gt; $menu
+ 				if [ ! -z &quot;$swap&quot; ];then
+ 					echo -n &quot; resume=$swap&quot;                       &gt;&gt; $menu
+@@ -811,7 +816,7 @@
+ 				echo &quot; module /boot/$initrd&quot;                      &gt;&gt; $menu
+ 			else
+ 				echo -n &quot; kernel $gdev/boot/$kernel&quot;              &gt;&gt; $menu
+-				echo -n &quot; root=$rdev $console&quot;                    &gt;&gt; $menu
++				echo -n &quot; root=$diskByID $console&quot;                &gt;&gt; $menu
+ 				echo -n &quot; vga=0x314 splash=silent&quot;                &gt;&gt; $menu
+ 				if [ ! -z &quot;$swap&quot; ];then
+ 					echo -n &quot; resume=$swap&quot;                       &gt;&gt; $menu
+@@ -832,7 +837,7 @@
+ 				echo &quot; root $gdev&quot;                                &gt;&gt; $menu
+ 				echo &quot; kernel /boot/xen.gz&quot;                       &gt;&gt; $menu
+ 				echo -n &quot; module /boot/$kernel&quot;                   &gt;&gt; $menu
+-				echo -n &quot; root=$rdev $console&quot;                    &gt;&gt; $menu
++				echo -n &quot; root=$diskByID $console&quot;                &gt;&gt; $menu
+ 				echo -n &quot; vga=0x314 splash=silent&quot;                &gt;&gt; $menu
+ 				echo -n &quot; $KIWI_INITRD_PARAMS&quot;                    &gt;&gt; $menu
+ 				echo -n &quot; $KIWI_KERNEL_OPTIONS showopts&quot;          &gt;&gt; $menu
+@@ -842,7 +847,7 @@
+ 				echo &quot; module /boot/$initrd&quot;                      &gt;&gt; $menu
+ 			else
+ 				echo -n &quot; kernel $gdev/boot/$kernel&quot;              &gt;&gt; $menu
+-				echo -n &quot; root=$rdev $console&quot;                    &gt;&gt; $menu
++				echo -n &quot; root=$diskByID $console&quot;                &gt;&gt; $menu
+ 				echo -n &quot; vga=0x314 splash=silent&quot;                &gt;&gt; $menu
+ 				echo -n &quot; $KIWI_INITRD_PARAMS&quot;                    &gt;&gt; $menu
+ 				echo -n &quot; $KIWI_KERNEL_OPTIONS showopts&quot;          &gt;&gt; $menu
+@@ -1005,14 +1010,18 @@
+ 	local prefix=$1
+ 	local rdev=$2
+ 	local nfstab=$prefix/etc/fstab
++	local diskByID=`getDiskID $rdev`
+ 	if [ ! -z &quot;$NFSROOT&quot; ];then
+ 		local server=`echo $rdev | cut -f3 -d&quot; &quot;`
+ 		local option=`echo $rdev | cut -f2 -d&quot; &quot;`
+ 		echo &quot;$server / nfs $option 0 0&quot; &gt;&gt; $nfstab
+ 		return
+ 	fi
++	#======================================
++	# check for device by ID
++	#--------------------------------------
+ 	if [ -z &quot;$UNIONFS_CONFIG&quot; ]; then
+-		echo &quot;$rdev / $FSTYPE defaults 0 0&quot; &gt;&gt; $nfstab
++		echo &quot;$diskByID / $FSTYPE defaults 0 0&quot; &gt;&gt; $nfstab
+ 	fi
+ }
+ #======================================
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-13 15:40:18 UTC (rev 1637)
++++ kiwi-head/rpm/kiwi.changes	2008-10-13 16:10:58 UTC (rev 1638)
+@@ -1,4 +1,11 @@
+ -------------------------------------------------------------------
++Mon Oct 13 17:32:09 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- v2.90
++- changed grub and fstab setup to use disk ID labels (bnc #434806)
++- added check media label via genisoimage -A (bnc #434104)
++
++-------------------------------------------------------------------
+ Thu Oct  9 10:05:47 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.89
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000729.html">[Kiwi-devel] r1637 - kiwi-head/rpm
+</A></li>
+	<LI>Next message: <A HREF="000731.html">[Kiwi-devel] r1639 - in kiwi-head: modules rpm	system/boot/ix86/netboot system/boot/ix86/oemboot	system/boot/ix86/usbboot system/boot/ix86/vmxboot	system/boot/ppc/netboot
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#730">[ date ]</a>
+              <a href="thread.html#730">[ thread ]</a>
+              <a href="subject.html#730">[ subject ]</a>
+              <a href="author.html#730">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

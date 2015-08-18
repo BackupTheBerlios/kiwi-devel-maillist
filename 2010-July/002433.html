@@ -1,0 +1,272 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. d5ff176baf20b92d278aed8b2d56ac9a1ce98ee2
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20d5ff176baf20b92d278aed8b2d56ac9a1ce98ee2&In-Reply-To=%3C20100720153841.A124B480CE7%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002432.html">
+   <LINK REL="Next"  HREF="002434.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. d5ff176baf20b92d278aed8b2d56ac9a1ce98ee2</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20d5ff176baf20b92d278aed8b2d56ac9a1ce98ee2&In-Reply-To=%3C20100720153841.A124B480CE7%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. d5ff176baf20b92d278aed8b2d56ac9a1ce98ee2">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Tue Jul 20 17:38:41 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002432.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f5b3c98ee0245f2d3fa89715a29c512a7d6a4e2d
+</A></li>
+        <LI>Next message: <A HREF="002434.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 79b73d712a84b9c5739c22ca70d8dcc66e618a39
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2433">[ date ]</a>
+              <a href="thread.html#2433">[ thread ]</a>
+              <a href="subject.html#2433">[ subject ]</a>
+              <a href="author.html#2433">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-374-SuSE-11-1-SLE-SP-Devel has been updated
+       via  d5ff176baf20b92d278aed8b2d56ac9a1ce98ee2 (commit)
+      from  5ae72cef41479f6e989f60991890c9d3e3471894 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit d5ff176baf20b92d278aed8b2d56ac9a1ce98ee2
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Tue Jul 20 17:38:33 2010 +0200
+
+    - added main::isize function to replace the use of
+      the -s operator. This is done because of SUSE Studio
+      which maps a file to a block special under certain
+      circumstances which causes -s to not work anymore
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 2f6266b..a876e9b 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -2637,6 +2637,28 @@ sub umount {
+ }
+ 
+ #==========================================
++# isize
++#------------------------------------------
++sub isize {
++	# /.../
++	# implements a size function like the -s operator
++	# but also works for block specials using blockdev
++	# ---
++	my $target = shift;
++	if (-b $target) {
++		my $size = qxx (&quot;blockdev --getsize64 $target 2&gt;&amp;1&quot;);
++		my $code = $? &gt;&gt; 8;
++		if ($code == 0) {
++			chomp  $size;
++			return $size;
++		}
++	} elsif (-f $target) {
++		return -s $target;
++	}
++	return 0;
++}
++
++#==========================================
+ # checkFileSystem
+ #------------------------------------------
+ sub checkFileSystem {
+diff --git a/modules/KIWIBoot.pm b/modules/KIWIBoot.pm
+index acbb15c..a2f7496 100644
+--- a/modules/KIWIBoot.pm
++++ b/modules/KIWIBoot.pm
+@@ -100,7 +100,7 @@ sub new {
+ 		if (-f $system) {
+ 			my %fsattr = main::checkFileSystem ($system);
+ 			if ($fsattr{readonly}) {
+-				$syszip = -s $system;
++				$syszip = main::isize ($system);
+ 			} else {
+ 				$syszip = 0;
+ 			}
+@@ -304,7 +304,7 @@ sub new {
+ 			$sizeBytes+= $journal;
+ 		} else {
+ 			# system is specified as a file...
+-			$sizeBytes = -s $system;
++			$sizeBytes = main::isize ($system);
+ 		}
+ 		#==========================================
+ 		# Decide for a size prefer 1)cmdline 2)XML
+@@ -337,8 +337,8 @@ sub new {
+ 		# if system is a split system the vmsize will be
+ 		# adapted within the image creation function accordingly
+ 		# ----
+-		my $kernelSize = -s $kernel;
+-		my $initrdSize = -s $initrd;
++		my $kernelSize = main::isize ($kernel);
++		my $initrdSize = main::isize ($initrd);
+ 		$vmsize = $kernelSize + ($initrdSize * 1.5) + $sizeBytes;
+ 		#==========================================
+ 		# Calculate required inode count for root
+@@ -851,9 +851,9 @@ sub setupBootStick {
+ 	# Check if system fits on storage device
+ 	#------------------------------------------
+ 	my $hardSize = $this -&gt; getStorageSize ($stick);
+-	my $softSize = -s $system;
++	my $softSize = main::isize ($system);
+ 	if (-f $splitfile) {
+-		$softSize += -s $splitfile;
++		$softSize += main::isize ($splitfile);
+ 	}
+ 	$softSize /= 1024;
+ 	$softSize += $lvmbootMB + $luksbootMB + $syslbootMB + $dmbootMB;
+@@ -1054,7 +1054,7 @@ sub setupBootStick {
+ 		if ((defined $system) &amp;&amp; (($syszip) || ($haveSplit))) {
+ 			my $sizeOK = 1;
+ 			my $systemPSize = $this -&gt; getStorageSize ($deviceMap{1});
+-			my $systemISize = -s $system; $systemISize /= 1024;
++			my $systemISize = main::isize ($system); $systemISize /= 1024;
+ 			chomp $systemPSize;
+ 			#print &quot;_______A $systemPSize : $systemISize\n&quot;;
+ 			if ($systemPSize &lt; $systemISize) {
+@@ -1725,7 +1725,7 @@ sub setupInstallStick {
+ 	my $zipped    = $this-&gt;{zipped};
+ 	my $isxen     = $this-&gt;{isxen};
+ 	my $xml       = $this-&gt;{xml};
+-	my $irdsize   = -s $initrd;
++	my $irdsize   = main::isize ($initrd);
+ 	my $diskname  = $system.&quot;.install.raw&quot;;
+ 	my $md5name   = $system;
+ 	my %deviceMap = ();
+@@ -1855,7 +1855,7 @@ sub setupInstallStick {
+ 	#------------------------------------------
+ 	$irdsize= ($irdsize / 1e6) + 20;
+ 	$irdsize= sprintf (&quot;%.0f&quot;, $irdsize);
+-	$vmsize = -s $system;
++	$vmsize = main::isize ($system);
+ 	$vmsize = ($vmsize / 1e6) * 1.3 + $irdsize;
+ 	$vmsize = sprintf (&quot;%.0f&quot;, $vmsize);
+ 	$vmsize = $vmsize.&quot;M&quot;;
+@@ -2349,7 +2349,7 @@ sub setupBootDisk {
+ 	# increase vmsize if image split portion
+ 	#------------------------------------------
+ 	if (($imgtype eq &quot;split&quot;) &amp;&amp; (-f $splitfile)) {
+-		my $splitsize = -s $splitfile; $splitsize /= 1048576;
++		my $splitsize = main::isize ($splitfile); $splitsize /= 1048576;
+ 		$vmsize = $this-&gt;{vmmbyte} + ($splitsize * 1.5) + $lvmbootMB;
+ 		$vmsize = sprintf (&quot;%.0f&quot;, $vmsize);
+ 		$this-&gt;{vmmbyte} = $vmsize;
+@@ -2587,7 +2587,7 @@ sub setupBootDisk {
+ 		if ($syszip &gt; 0) {
+ 			my $sizeOK = 1;
+ 			my $systemPSize = $this-&gt;getStorageSize ($deviceMap{1});
+-			my $systemISize = -s $system; $systemISize /= 1024;
++			my $systemISize = main::isize ($system); $systemISize /= 1024;
+ 			chomp $systemPSize;
+ 			#print &quot;_______A $systemPSize : $systemISize\n&quot;;
+ 			if ($systemPSize &lt; $systemISize) {
+@@ -3424,7 +3424,7 @@ sub buildMD5Sum {
+ 	my $file = shift;
+ 	my $kiwi = $this-&gt;{kiwi};
+ 	$kiwi -&gt; info (&quot;Creating image MD5 sum...&quot;);
+-	my $size = -s $file;
++	my $size = main::isize ($file);
+ 	my $primes = qxx (&quot;factor $size&quot;); $primes =~ s/^.*: //;
+ 	my $blocksize = 1;
+ 	for my $factor (split /\s/,$primes) {
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 53f097a..7523e20 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -3106,7 +3106,8 @@ sub writeImageConfig {
+ 					$targetPartitionNext = $targetPartition + 1;
+ 				}
+ 				if ($href -&gt; {size} eq &quot;image&quot;) {
+-					print FD int(((-s &quot;$this-&gt;{imageDest}/$name&quot;)/1024/1024)+1);
++					my $size = main::isize (&quot;$this-&gt;{imageDest}/$name&quot;);
++					print FD int (($size/1024/1024)+1);
+ 				} else {
+ 					print FD $href -&gt; {size};
+ 				}
+@@ -4084,7 +4085,7 @@ sub buildMD5Sum {
+ 	# Create image md5sum
+ 	#------------------------------------------
+ 	$kiwi -&gt; info (&quot;Creating image MD5 sum...&quot;);
+-	my $size = -s &quot;$this-&gt;{imageDest}/$name&quot;;
++	my $size = main::isize (&quot;$this-&gt;{imageDest}/$name&quot;);
+ 	my $primes = qxx (&quot;factor $size&quot;); $primes =~ s/^.*: //;
+ 	my $blocksize = 1;
+ 	for my $factor (split /\s/,$primes) {
+@@ -4182,7 +4183,7 @@ sub compressImage {
+ 			return undef;
+ 		}
+ 		my $line = &lt;FD&gt;; close FD; chomp $line;
+-		my $size = -s &quot;$this-&gt;{imageDest}/$name.gz&quot;;
++		my $size = main::isize (&quot;$this-&gt;{imageDest}/$name.gz&quot;);
+ 		my $primes = qxx (&quot;factor $size&quot;); $primes =~ s/^.*: //;
+ 		my $blocksize = 1;
+ 		for my $factor (split /\s/,$primes) {
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index 0770702..3b259f8 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,12 @@
+ -------------------------------------------------------------------
++Tue Jul 20 17:37:38 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- added main::isize function to replace the use of
++  the -s operator. This is done because of SUSE Studio
++  which maps a file to a block special under certain
++  circumstances which causes -s to not work anymore
++
++-------------------------------------------------------------------
+ Thu Jul 15 11:25:24 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - fixed race condition resulting at times in message of not
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002432.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. f5b3c98ee0245f2d3fa89715a29c512a7d6a4e2d
+</A></li>
+	<LI>Next message: <A HREF="002434.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 79b73d712a84b9c5739c22ca70d8dcc66e618a39
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2433">[ date ]</a>
+              <a href="thread.html#2433">[ thread ]</a>
+              <a href="subject.html#2433">[ subject ]</a>
+              <a href="author.html#2433">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

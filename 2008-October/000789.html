@@ -1,0 +1,148 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1701 - in kiwi-head: modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-October/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1701%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200810301642.m9UGgaH7020382%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000788.html">
+   <LINK REL="Next"  HREF="000790.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1701 - in kiwi-head: modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1701%20-%20in%20kiwi-head%3A%20modules%20rpm&In-Reply-To=%3C200810301642.m9UGgaH7020382%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1701 - in kiwi-head: modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Thu Oct 30 17:42:36 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000788.html">[Kiwi-devel] r1700 - in kiwi-head: . modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000790.html">[Kiwi-devel] r1702 - kiwi-head/rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#789">[ date ]</a>
+              <a href="thread.html#789">[ thread ]</a>
+              <a href="subject.html#789">[ subject ]</a>
+              <a href="author.html#789">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-10-30 17:42:21 +0100 (Thu, 30 Oct 2008)
+New Revision: 1701
+
+Modified:
+   kiwi-head/modules/KIWIIsoLinux.pm
+   kiwi-head/rpm/kiwi.changes
+Log:
+
+- use option -A in mkisofs instead of genisoimage -A
+
+
+
+Modified: kiwi-head/modules/KIWIIsoLinux.pm
+===================================================================
+--- kiwi-head/modules/KIWIIsoLinux.pm	2008-10-30 15:24:38 UTC (rev 1700)
++++ kiwi-head/modules/KIWIIsoLinux.pm	2008-10-30 16:42:21 UTC (rev 1701)
+@@ -55,6 +55,7 @@
+ 	my $publisher    = shift;  # publisher string
+ 	my $preparer     = shift;  # preparer string
+ 	my $params       = shift;  # mkisofs parameters
++	my $appid        = shift;  # application_id
+ 	#==========================================
+ 	# Constructor setup
+ 	#------------------------------------------
+@@ -87,7 +88,14 @@
+ 	if (! defined $params) {
+ 		$params = '-R -J -pad -joliet-long';
+ 	}
++	if (! defined $appid) {
++		$appid = &quot;undefined&quot;;
++	}
+ 	#=======================================
++	# set application ID
++	#---------------------------------------
++	$params .= &quot; -A $appid&quot;;
++	#=======================================
+ 	# check /boot/&lt;arch&gt;/loader layout
+ 	#---------------------------------------
+ 	if (-d &quot;$source/$bootbase/s390x&quot;) {
+@@ -280,31 +288,15 @@
+ #------------------------------------------
+ sub checkImage {
+ 	my $this = shift;
+-	my $appid= shift;
+ 	my $kiwi = $this -&gt; {kiwi};
+ 	my $dest = $this -&gt; {dest};
+-	if (! defined $appid) {
+-		$appid=&quot;undefined&quot;;
+-	}
+-	my $data = qxx (&quot;tagmedia --md5 $dest 2&gt;&amp;1&quot;);
+-        if ( defined($this-&gt;{m_proddata}-&gt;getOpt(&quot;RUN_MEDIA_CHECK&quot;)) &amp;&amp; $this-&gt;{m_proddata}-&gt;getOpt(&quot;RUN_MEDIA_CHECK&quot;) eq &quot;true&quot; ){
+-	  $data = qxx (&quot;tagmedia --pad 150 --md5 --check $dest 2&gt;&amp;1&quot;);
+-        };
++	my $data = qxx (&quot;tagmedia --pad 150 --md5 --check $dest 2&gt;&amp;1&quot;);
+ 	my $code = $? &gt;&gt; 8;
+ 	if ($code != 0) {
+ 		$kiwi -&gt; error  (&quot;Failed to call tagmedia: $data&quot;);
+ 		$kiwi -&gt; failed ();
+ 		return undef;
+ 	}
+-	if (-x &quot;/usr/bin/genisoimage&quot;) {
+-		$data = qxx (&quot;genisoimage -A $appid 2&gt;&amp;1&quot;);
+-		$code = $? &gt;&gt; 8;
+-		if ($code != 0) {
+-			$kiwi -&gt; error  (&quot;Failed to setup application ID: $data&quot;);
+-			$kiwi -&gt; failed ();
+-			return undef;
+-		}
+-	}
+ 	return $this;
+ }
+ 
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-10-30 15:24:38 UTC (rev 1700)
++++ kiwi-head/rpm/kiwi.changes	2008-10-30 16:42:21 UTC (rev 1701)
+@@ -2,6 +2,7 @@
+ Thu Oct 30 12:18:23 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - v2.98
++- use option -A in mkisofs instead of genisoimage -A
+ - added support for zypper's target architecture. kiwi allows
+   to set the option --target-arch to one of the following
+   values: i586, x86_64, armv5tel or ppc. This option should be
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000788.html">[Kiwi-devel] r1700 - in kiwi-head: . modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000790.html">[Kiwi-devel] r1702 - kiwi-head/rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#789">[ date ]</a>
+              <a href="thread.html#789">[ thread ]</a>
+              <a href="subject.html#789">[ subject ]</a>
+              <a href="author.html#789">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

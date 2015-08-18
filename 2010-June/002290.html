@@ -1,0 +1,167 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. ab6bf33f5363ac29d7774d134af2d200801c17c2
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20ab6bf33f5363ac29d7774d134af2d200801c17c2&In-Reply-To=%3C201006110752.o5B7qFPF011802%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002289.html">
+   <LINK REL="Next"  HREF="002291.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. ab6bf33f5363ac29d7774d134af2d200801c17c2</H1>
+    <B>ugansert at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%0A%09KIWI-374-SuSE-11-1-SLE-SP-Devel%2C%0A%09updated.%20ab6bf33f5363ac29d7774d134af2d200801c17c2&In-Reply-To=%3C201006110752.o5B7qFPF011802%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. ab6bf33f5363ac29d7774d134af2d200801c17c2">ugansert at mail.berlios.de
+       </A><BR>
+    <I>Fri Jun 11 09:52:15 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002289.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4cba1368727e66858b3fd9a4f108ebdd13a96759
+</A></li>
+        <LI>Next message: <A HREF="002291.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e61cda1fac02a85729510b79299833b97e2f26c8
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2290">[ date ]</a>
+              <a href="thread.html#2290">[ thread ]</a>
+              <a href="subject.html#2290">[ subject ]</a>
+              <a href="author.html#2290">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, KIWI-374-SuSE-11-1-SLE-SP-Devel has been updated
+       via  ab6bf33f5363ac29d7774d134af2d200801c17c2 (commit)
+      from  774961a8c2e2a41d71a3d17bd8d329b2a79677ad (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ab6bf33f5363ac29d7774d134af2d200801c17c2
+Author: Uwe Gansert &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ug at taylor.suse.de</A>&gt;
+Date:   Fri Jun 11 09:51:45 2010 +0200
+
+    - kiwi overwrites /etc/sysconfig/firstboot (bnc#604705)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIConfigure.pm b/modules/KIWIConfigure.pm
+index 7f9d87f..052f2a4 100644
+--- a/modules/KIWIConfigure.pm
++++ b/modules/KIWIConfigure.pm
+@@ -343,22 +343,39 @@ sub setupFirstBootYaST {
+ 		return &quot;failed&quot;;
+ 	}
+ 	close FD;
+-	if ( ! open (FD,&quot;&gt;$root/etc/sysconfig/firstboot&quot;)) {
+-		$kiwi -&gt; failed ();
+-		$kiwi -&gt; error (&quot;Failed to create /etc/sysconfig/firstboot: $!&quot;);
+-		$kiwi -&gt; failed ();
+-		return &quot;failed&quot;;
++
++	#
++	# keep an existing /etc/sysconfig/firstboot or copy the template from yast2-firstboot package
++	# if both don't exist, write a generic one (bnc#604705)
++	#
++	if ( ! -e &quot;$root/etc/sysconfig/firstboot&quot; ) {
++		if ( -e &quot;$root/var/adm/fillup-templates/sysconfig.firstboot&quot; ) {
++			my $data = qxx (&quot;cp $root/var/adm/fillup-templates/sysconfig.firstboot $root/etc/sysconfig/firstboot 2&gt;&amp;1&quot;);
++			my $code = $? &gt;&gt; 8;
++			if ($code != 0) {
++				$kiwi -&gt; failed ();
++				$kiwi -&gt; error  (&quot;Failed to copy the existing firstboot-sysconfig templage: $data&quot;);
++				$kiwi -&gt; failed ();
++				return &quot;failed&quot;;
++			}
++		} elsif ( ! open (FD,&quot;&gt;$root/etc/sysconfig/firstboot&quot;)) {
++			$kiwi -&gt; failed ();
++			$kiwi -&gt; error (&quot;Failed to create /etc/sysconfig/firstboot: $!&quot;);
++			$kiwi -&gt; failed ();
++			return &quot;failed&quot;;
++		} else {
++			print FD &quot;## Description: Firstboot Configuration\n&quot;;
++			print FD &quot;## Default: /usr/share/firstboot/scripts\n&quot;;
++			print FD &quot;SCRIPT_DIR=\&quot;/usr/share/firstboot/scripts\&quot;\n&quot;;
++			print FD &quot;FIRSTBOOT_WELCOME_DIR=\&quot;/usr/share/firstboot\&quot;\n&quot;;
++			print FD &quot;FIRSTBOOT_WELCOME_PATTERNS=\&quot;\&quot;\n&quot;;
++			print FD &quot;FIRSTBOOT_LICENSE_DIR=\&quot;/usr/share/firstboot\&quot;\n&quot;;
++			print FD &quot;FIRSTBOOT_NOVELL_LICENSE_DIR=\&quot;/etc/YaST2\&quot;\n&quot;;
++			print FD &quot;FIRSTBOOT_FINISH_FILE=\&quot;/usr/share/firstboot/congrats.txt\&quot;\n&quot;;
++			print FD &quot;FIRSTBOOT_RELEASE_NOTES_PATH=\&quot;\&quot;\n&quot;;
++			close FD;
++		}
+ 	}
+-	print FD &quot;## Description: Firstboot Configuration\n&quot;;
+-	print FD &quot;## Default: /usr/share/firstboot/scripts\n&quot;;
+-	print FD &quot;SCRIPT_DIR=\&quot;/usr/share/firstboot/scripts\&quot;\n&quot;;
+-	print FD &quot;FIRSTBOOT_WELCOME_DIR=\&quot;/usr/share/firstboot\&quot;\n&quot;;
+-	print FD &quot;FIRSTBOOT_WELCOME_PATTERNS=\&quot;\&quot;\n&quot;;
+-	print FD &quot;FIRSTBOOT_LICENSE_DIR=\&quot;/usr/share/firstboot\&quot;\n&quot;;
+-	print FD &quot;FIRSTBOOT_NOVELL_LICENSE_DIR=\&quot;/etc/YaST2\&quot;\n&quot;;
+-	print FD &quot;FIRSTBOOT_FINISH_FILE=\&quot;/usr/share/firstboot/congrats.txt\&quot;\n&quot;;
+-	print FD &quot;FIRSTBOOT_RELEASE_NOTES_PATH=\&quot;\&quot;\n&quot;;
+-	close FD;
+ 	if (-f &quot;$root/etc/init.d/firstboot&quot;) {
+ 		# /.../
+ 		# old service script based firstboot service. requires some
+@@ -420,3 +437,5 @@ sub quoteshell {
+ }
+ 
+ 1;
++
++# vim: set noexpandtab:
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index a796692..73f42f0 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -1,4 +1,9 @@
+ -------------------------------------------------------------------
++Fri Jun 11 09:50:34 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ug at suse.de</A>
++
++- kiwi overwrites /etc/sysconfig/firstboot (bnc#604705)
++
++-------------------------------------------------------------------
+ Thu Jun 10 10:03:32 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - added oem-dumphalt element which reboots the system after
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002289.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 4cba1368727e66858b3fd9a4f108ebdd13a96759
+</A></li>
+	<LI>Next message: <A HREF="002291.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. e61cda1fac02a85729510b79299833b97e2f26c8
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2290">[ date ]</a>
+              <a href="thread.html#2290">[ thread ]</a>
+              <a href="subject.html#2290">[ subject ]</a>
+              <a href="author.html#2290">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

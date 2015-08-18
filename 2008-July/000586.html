@@ -1,0 +1,242 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1500 - in kiwi-head: modules rpm	system/boot/ppc/netboot/suse-11.0
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-July/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1500%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ppc/netboot/suse-11.0&In-Reply-To=%3C200807301336.m6UDa0Sq020509%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000585.html">
+   <LINK REL="Next"  HREF="000587.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1500 - in kiwi-head: modules rpm	system/boot/ppc/netboot/suse-11.0</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1500%20-%20in%20kiwi-head%3A%20modules%20rpm%0A%09system/boot/ppc/netboot/suse-11.0&In-Reply-To=%3C200807301336.m6UDa0Sq020509%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1500 - in kiwi-head: modules rpm	system/boot/ppc/netboot/suse-11.0">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Wed Jul 30 15:36:00 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000585.html">[Kiwi-devel] r1499 - in kiwi-head: doc doc/LaTex modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000587.html">[Kiwi-devel] r1501 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#586">[ date ]</a>
+              <a href="thread.html#586">[ thread ]</a>
+              <a href="subject.html#586">[ subject ]</a>
+              <a href="author.html#586">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-07-30 15:35:58 +0200 (Wed, 30 Jul 2008)
+New Revision: 1500
+
+Modified:
+   kiwi-head/modules/KIWIConfig.sh
+   kiwi-head/rpm/kiwi.changes
+   kiwi-head/system/boot/ppc/netboot/suse-11.0/images.sh
+Log:
+
+- fixed suseGFXBoot to still allow setting up the splash screen
+  even if gfxboot is missing, these two actions should be independent
+
+
+
+Modified: kiwi-head/modules/KIWIConfig.sh
+===================================================================
+--- kiwi-head/modules/KIWIConfig.sh	2008-07-30 11:50:39 UTC (rev 1499)
++++ kiwi-head/modules/KIWIConfig.sh	2008-07-30 13:35:58 UTC (rev 1500)
+@@ -798,62 +798,63 @@
+ 	#--------------------------------------
+ 	if [ ! -d /usr/share/gfxboot ];then
+ 		echo &quot;gfxboot not installed... skipped&quot;
+-		return
+-	fi
+-	#======================================
+-	# create boot theme
+-	#--------------------------------------
+-	cd /usr/share/gfxboot
+-	# check for new source layout
+-	local newlayout=
+-	[ -f themes/$theme/config ] &amp;&amp; newlayout=1
+-	[ &quot;$newlayout&quot; ] || make -C themes/$theme prep
+-	if [ ! -z &quot;$language&quot; ];then
+-		local l1=`echo $language | cut -f1 -d.`
+-		local l2=`echo $language | cut -f1 -d_`
+-		local found=0
+-		for lang in $l1 $l2;do
+-			if [ -f themes/$theme/po/$lang.po ];then
+-				echo &quot;Found language default: $lang&quot;
+-				make -C themes/$theme DEFAULT_LANG=$lang
+-				found=1
+-				break
++	else
++		#======================================
++		# create boot theme
++		#--------------------------------------
++		cd /usr/share/gfxboot
++		# check for new source layout
++		local newlayout=
++		[ -f themes/$theme/config ] &amp;&amp; newlayout=1
++		[ &quot;$newlayout&quot; ] || make -C themes/$theme prep
++		if [ ! -z &quot;$language&quot; ];then
++			local l1=`echo $language | cut -f1 -d.`
++			local l2=`echo $language | cut -f1 -d_`
++			local found=0
++			for lang in $l1 $l2;do
++				if [ -f themes/$theme/po/$lang.po ];then
++					echo &quot;Found language default: $lang&quot;
++					make -C themes/$theme DEFAULT_LANG=$lang
++					found=1
++					break
++				fi
++			done
++			if [ $found -eq 0 ];then
++				echo &quot;Language $language not found, skipped&quot;
++				make -C themes/$theme
+ 			fi
+-		done
+-		if [ $found -eq 0 ];then
+-			echo &quot;Language $language not found, skipped&quot;
++		else
+ 			make -C themes/$theme
+ 		fi
+-	else
+-		make -C themes/$theme
+-	fi
+-	mkdir /image/loader
+-	local gfximage=
+-	local bootimage=
+-	if [ &quot;$newlayout&quot; ] ; then
+-		gfximage=themes/$theme/bootlogo
+-		bootimage=themes/$theme/message
+-	else
+-		gfximage=themes/$theme/install/bootlogo
+-		bootimage=themes/$theme/boot/message
+-	fi
+-	if [ $loader = &quot;isolinux&quot; ];then
+-		# isolinux boot data...
+-		cp $gfximage /image/loader
+-		if [ -x /usr/sbin/gfxboot ] ; then
+-			gfxboot --archive /image/loader/bootlogo --change-config livecd=1
++		mkdir /image/loader
++		local gfximage=
++		local bootimage=
++		if [ &quot;$newlayout&quot; ] ; then
++			gfximage=themes/$theme/bootlogo
++			bootimage=themes/$theme/message
+ 		else
+-			echo &quot;livecd=1&quot; &gt;&gt; /image/loader/gfxboot.cfg
++			gfximage=themes/$theme/install/bootlogo
++			bootimage=themes/$theme/boot/message
+ 		fi
+-		bin/unpack_bootlogo /image/loader
+-		mv /usr/share/syslinux/isolinux.bin /image/loader
+-		mv /usr/share/syslinux/mboot.c32 /image/loader
+-		mv /boot/memtest.bin /image/loader/memtest
+-	else
+-		# boot loader graphics image file...
+-		mv $bootimage /image/loader
++		if [ $loader = &quot;isolinux&quot; ];then
++			# isolinux boot data...
++			cp $gfximage /image/loader
++			if [ -x /usr/sbin/gfxboot ] ; then
++				gfxboot --archive /image/loader/bootlogo \
++					--change-config livecd=1
++			else
++				echo &quot;livecd=1&quot; &gt;&gt; /image/loader/gfxboot.cfg
++			fi
++			bin/unpack_bootlogo /image/loader
++			mv /usr/share/syslinux/isolinux.bin /image/loader
++			mv /usr/share/syslinux/mboot.c32 /image/loader
++			mv /boot/memtest.bin /image/loader/memtest
++		else
++			# boot loader graphics image file...
++			mv $bootimage /image/loader
++		fi
++		make -C themes/$theme clean
+ 	fi
+-	make -C themes/$theme clean
+ 	#======================================
+ 	# create splash screen
+ 	#--------------------------------------
+@@ -868,7 +869,7 @@
+ 	if [ ! -d /etc/bootsplash/themes/$theme ];then
+ 		theme=&quot;SuSE-$theme&quot;
+ 	fi
+-	mkdir /image/loader/branding
++	mkdir -p /image/loader/branding
+ 	cp /etc/bootsplash/themes/$theme/images/logo.mng  /image/loader/branding
+ 	cp /etc/bootsplash/themes/$theme/images/logov.mng /image/loader/branding
+ 	for cfg in 800x600 1024x768 1280x1024;do
+@@ -879,7 +880,7 @@
+ 		cp /etc/bootsplash/themes/$theme/config/bootsplash-$cfg.cfg \
+ 		/image/loader/branding
+ 	done
+-	mkdir /image/loader/animations
++	mkdir -p /image/loader/animations
+ 	cp /etc/bootsplash/themes/$theme/animations/* \
+ 		/image/loader/animations &amp;&gt;/dev/null
+ 	for cfg in 800x600 1024x768 1280x1024;do
+
+Modified: kiwi-head/rpm/kiwi.changes
+===================================================================
+--- kiwi-head/rpm/kiwi.changes	2008-07-30 11:50:39 UTC (rev 1499)
++++ kiwi-head/rpm/kiwi.changes	2008-07-30 13:35:58 UTC (rev 1500)
+@@ -4,6 +4,8 @@
+ - v2.63
+ - don't use umount -l (bnc #413122)
+ - add arch attribute to &lt;configuration&gt; section (bnc #412869)
++- fixed suseGFXBoot to still allow setting up the splash screen
++  even if gfxboot is missing, these two actions should be independent
+ - fixed automatic boot image building if the type setup
+   is part of a profiled preferences section
+ - fixed KIWITest and KIWITestResult modules which uses
+
+Modified: kiwi-head/system/boot/ppc/netboot/suse-11.0/images.sh
+===================================================================
+--- kiwi-head/system/boot/ppc/netboot/suse-11.0/images.sh	2008-07-30 11:50:39 UTC (rev 1499)
++++ kiwi-head/system/boot/ppc/netboot/suse-11.0/images.sh	2008-07-30 13:35:58 UTC (rev 1500)
+@@ -12,8 +12,7 @@
+ #==========================================
+ # setup gfxboot
+ #------------------------------------------
+-# no gfxboot on ppc
+-# suseGFXBoot openSUSE grub
++suseGFXBoot openSUSE lilo
+ 
+ #==========================================
+ # remove unneeded packages
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000585.html">[Kiwi-devel] r1499 - in kiwi-head: doc doc/LaTex modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000587.html">[Kiwi-devel] r1501 - in kiwi-head: . modules rpm
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#586">[ date ]</a>
+              <a href="thread.html#586">[ thread ]</a>
+              <a href="subject.html#586">[ subject ]</a>
+              <a href="author.html#586">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

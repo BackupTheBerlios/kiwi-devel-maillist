@@ -1,0 +1,129 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] r1737 - in kiwi-branches/KIWI-265-Studio-Alpha1-Devel:	modules rpm
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-November/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1737%20-%20in%20kiwi-branches/KIWI-265-Studio-Alpha1-Devel%3A%0A%09modules%20rpm&In-Reply-To=%3C200811071305.mA7D57Z3004196%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000815.html">
+   <LINK REL="Next"  HREF="000817.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] r1737 - in kiwi-branches/KIWI-265-Studio-Alpha1-Devel:	modules rpm</H1>
+    <B>marcus_schaefer at mail.berlios.de</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20r1737%20-%20in%20kiwi-branches/KIWI-265-Studio-Alpha1-Devel%3A%0A%09modules%20rpm&In-Reply-To=%3C200811071305.mA7D57Z3004196%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] r1737 - in kiwi-branches/KIWI-265-Studio-Alpha1-Devel:	modules rpm">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Nov  7 14:05:07 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000815.html">[Kiwi-devel] r1736 - in kiwi-head: modules rpm
+</A></li>
+        <LI>Next message: <A HREF="000817.html">[Kiwi-devel] r1738 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#816">[ date ]</a>
+              <a href="thread.html#816">[ thread ]</a>
+              <a href="subject.html#816">[ subject ]</a>
+              <a href="author.html#816">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: marcus_schaefer
+Date: 2008-11-07 14:05:05 +0100 (Fri, 07 Nov 2008)
+New Revision: 1737
+
+Modified:
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIBoot.pm
+   kiwi-branches/KIWI-265-Studio-Alpha1-Devel/rpm/kiwi.changes
+Log:
+
+- evaluate value for oem-boot-title in initial bootloader
+  configuration too (bnc #442361)
+
+
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIBoot.pm
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIBoot.pm	2008-11-07 12:56:48 UTC (rev 1736)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/modules/KIWIBoot.pm	2008-11-07 13:05:05 UTC (rev 1737)
+@@ -1536,6 +1536,7 @@
+ 	my $diskname  = $system.&quot;.raw&quot;;
+ 	my @commands  = ();
+ 	my $imgtype   = &quot;vmx&quot;;
++	my $bootfix   = &quot;VMX&quot;;
+ 	my $haveTree  = 0;
+ 	my $haveSplit = 0;
+ 	my $splitfile;
+@@ -1607,6 +1608,15 @@
+ 		}
+ 	}
+ 	#==========================================
++	# build bootfix for the bootloader on oem
++	#------------------------------------------
++	if ($initrd =~ /oemboot/) {
++		my $oemtitle = $xml -&gt; getOEMBootTitle();
++		if ($oemtitle) {
++			$bootfix = $oemtitle;
++		}
++	}
++	#==========================================
+ 	# build disk name and label from xml data
+ 	#------------------------------------------
+ 	$destdir  = dirname ($initrd);
+@@ -1674,7 +1684,7 @@
+ 	#==========================================
+ 	# Create boot loader configuration
+ 	#------------------------------------------
+-	if (! $this -&gt; setupBootLoaderConfiguration (&quot;grub&quot;,&quot;VMX&quot;)) {
++	if (! $this -&gt; setupBootLoaderConfiguration (&quot;grub&quot;,$bootfix)) {
+ 		$this -&gt; cleanTmp ();
+ 		return undef;
+ 	}
+
+Modified: kiwi-branches/KIWI-265-Studio-Alpha1-Devel/rpm/kiwi.changes
+===================================================================
+--- kiwi-branches/KIWI-265-Studio-Alpha1-Devel/rpm/kiwi.changes	2008-11-07 12:56:48 UTC (rev 1736)
++++ kiwi-branches/KIWI-265-Studio-Alpha1-Devel/rpm/kiwi.changes	2008-11-07 13:05:05 UTC (rev 1737)
+@@ -1,4 +1,10 @@
+ -------------------------------------------------------------------
++Fri Nov  7 14:00:45 CET 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
++
++- evaluate value for oem-boot-title in initial bootloader
++  configuration too (bnc #442361)
++
++-------------------------------------------------------------------
+ Wed Oct 15 12:15:34 CEST 2008 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ 
+ - changed grub and fstab setup to use disk ID labels (bnc #434806)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000815.html">[Kiwi-devel] r1736 - in kiwi-head: modules rpm
+</A></li>
+	<LI>Next message: <A HREF="000817.html">[Kiwi-devel] r1738 -	kiwi-branches/KIWI-296-SuSE-11-1-InstSource-Devel/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#816">[ date ]</a>
+              <a href="thread.html#816">[ thread ]</a>
+              <a href="subject.html#816">[ subject ]</a>
+              <a href="author.html#816">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

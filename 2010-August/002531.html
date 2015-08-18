@@ -1,0 +1,259 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b14db108b87c63e1bad3ed176c69857f2d1e80d6
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-August/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b14db108b87c63e1bad3ed176c69857f2d1e80d6&In-Reply-To=%3C20100809135350.98CB64802F3%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002534.html">
+   <LINK REL="Next"  HREF="002532.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b14db108b87c63e1bad3ed176c69857f2d1e80d6</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%20b14db108b87c63e1bad3ed176c69857f2d1e80d6&In-Reply-To=%3C20100809135350.98CB64802F3%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b14db108b87c63e1bad3ed176c69857f2d1e80d6">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Aug  9 15:53:50 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002534.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 95e62cfe7c32e4c4a7b0bcbe3a4776d17a4bf705
+</A></li>
+        <LI>Next message: <A HREF="002532.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c4614bc58cab3830a1102d2976b607b0026f266b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2531">[ date ]</a>
+              <a href="thread.html#2531">[ thread ]</a>
+              <a href="subject.html#2531">[ subject ]</a>
+              <a href="author.html#2531">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  b14db108b87c63e1bad3ed176c69857f2d1e80d6 (commit)
+      from  95e62cfe7c32e4c4a7b0bcbe3a4776d17a4bf705 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b14db108b87c63e1bad3ed176c69857f2d1e80d6
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Aug 9 15:52:43 2010 +0200
+
+    - setup overlay mount method in create mode if the file
+      $Create/kiwi-root.cache exists
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/kiwi.pl b/kiwi.pl
+index 7fd5aa7..c59d70d 100755
+--- a/kiwi.pl
++++ b/kiwi.pl
+@@ -599,6 +599,18 @@ sub main {
+ 			my $code = kiwiExit (1); return $code;
+ 		}
+ 		#==========================================
++		# Check for overlay meta data...
++		#------------------------------------------
++		if (-f &quot;$Create/kiwi-root.cache&quot;) {
++			my $FD; if (! open ($FD,&quot;$Create/kiwi-root.cache&quot;)) {
++				$kiwi -&gt; error  (&quot;Can't open baseroot meta data&quot;);
++				$kiwi -&gt; failed ();
++				my $code = kiwiExit (1); return $code;
++			}
++			$BaseRoot = &lt;$FD&gt;; close $FD; chomp $BaseRoot;
++			$BaseRootMode = &quot;union&quot;;
++		}
++		#==========================================
+ 		# Cleanup the tree according to prev runs
+ 		#------------------------------------------
+ 		if (-f &quot;$Create/rootfs.tar&quot;) {
+diff --git a/modules/KIWIImage.pm b/modules/KIWIImage.pm
+index 0fe5787..e428101 100644
+--- a/modules/KIWIImage.pm
++++ b/modules/KIWIImage.pm
+@@ -680,7 +680,9 @@ sub createImageUSB {
+ 	$main::Survive  = &quot;yes&quot;;
+ 	$main::RootTree = &quot;$tmpdir/kiwi-&quot;.$text.&quot;boot-$$&quot;;
+ 	$main::Prepare  = $boot;
+-	$main::BaseRoot = $type{baseroot};
++	if (defined $type{baseroot}) {
++		$main::BaseRoot = $type{baseroot};
++	}
+ 	if (defined $main::BaseRoot) {
+ 		if (($main::BaseRoot !~ /^\//) &amp;&amp; (! -d $main::BaseRoot)) {
+ 			$main::BaseRoot = $main::System.&quot;/&quot;.$main::BaseRoot;
+@@ -1298,7 +1300,9 @@ sub createImageLiveCD {
+ 	$main::Survive  = &quot;yes&quot;;
+ 	$main::RootTree = &quot;$tmpdir/kiwi-cdboot-$$&quot;;
+ 	$main::Prepare  = $boot;
+-	$main::BaseRoot = $type{baseroot};
++	if (defined $type{baseroot}) {
++		$main::BaseRoot = $type{baseroot};
++	}
+ 	if (defined $main::BaseRoot) {
+ 		if (($main::BaseRoot !~ /^\//) &amp;&amp; (! -d $main::BaseRoot)) {
+ 			$main::BaseRoot = $main::System.&quot;/&quot;.$main::BaseRoot;
+@@ -2460,7 +2464,9 @@ sub createImageSplit {
+ 	$main::Survive  = &quot;yes&quot;;
+ 	$main::RootTree = &quot;$tmpdir/kiwi-splitboot-$$&quot;;
+ 	$main::Prepare  = $boot;
+-	$main::BaseRoot = $type{baseroot};
++	if (defined $type{baseroot}) {
++		$main::BaseRoot = $type{baseroot};
++	}
+ 	if (defined $main::BaseRoot) {
+ 		if (($main::BaseRoot !~ /^\//) &amp;&amp; (! -d $main::BaseRoot)) {
+ 			$main::BaseRoot = $main::System.&quot;/&quot;.$main::BaseRoot;
+diff --git a/modules/KIWIOverlay.pm b/modules/KIWIOverlay.pm
+index 692cd17..44d98e9 100644
+--- a/modules/KIWIOverlay.pm
++++ b/modules/KIWIOverlay.pm
+@@ -156,11 +156,26 @@ sub unionOverlay {
+ 		return undef;
+ 	}
+ 	$this-&gt;{tmpdir} = $tmpdir;
++	#==========================================
++	# loop setup the clicfs file
++	#------------------------------------------
++	$status = qxx (&quot;/sbin/losetup -s -f $baseRO 2&gt;&amp;1&quot;); chomp $status;
++	$result = $? &gt;&gt; 8;
++	if ($result != 0) {
++		$kiwi -&gt; failed ();
++		$kiwi -&gt; error  (&quot;Couldn't loop bind overlay: $status&quot;);
++		return undef;
++	}
++	push @mount,&quot;sleep 1; losetup -d $status&quot;;
++	$this-&gt;{mount} = \@mount;
++	$baseRO = $status;
+ 	$cowdev = &quot;$rootRW/kiwi-root.cow&quot;;
++	$this-&gt;{cowdev} = $cowdev;
+ 	if (! -f $cowdev) {
+ 		#==========================================
+ 		# Create tmp COW file for write operations
+ 		#------------------------------------------
++		$haveCow= 0;
+ 		$status = qxx (&quot;cat &lt; /dev/null &gt; $cowdev 2&gt;&amp;1&quot;);
+ 		$result = $? &gt;&gt; 8;
+ 		if ($result != 0) {
+@@ -168,29 +183,28 @@ sub unionOverlay {
+ 			$kiwi -&gt; error  (&quot;Failed to create overlay COW file: $status&quot;);
+ 			return undef;
+ 		}
++		#==========================================
++		# Fuse mount and resize
++		#------------------------------------------
++		$status = qxx (
++			&quot;clicfs --ignore-cow-errors -m 5000 -c $cowdev $baseRO $tmpdir 2&gt;&amp;1&quot;
++		);
++		$result = $? &gt;&gt; 8;
++		if ($result == 0) {
++			$status = qxx (&quot;resize2fs $tmpdir/fsdata.ext3 2&gt;&amp;1&quot;);
++			$result = $? &gt;&gt; 8;
++		}
+ 	} else {
++		#==========================================
++		# Use existing COW file
++		#------------------------------------------
+ 		$haveCow=1;
+-	}
+-	$this-&gt;{cowdev} = $cowdev;
+-	#==========================================
+-	# Mount the clicfs (free space = 5GB)
+-	#------------------------------------------
+-	$status = qxx (&quot;/sbin/losetup -s -f $baseRO 2&gt;&amp;1&quot;); chomp $status;
+-	$result = $? &gt;&gt; 8;
+-	if ($result != 0) {
+-		$kiwi -&gt; failed ();
+-		$kiwi -&gt; error  (&quot;Couldn't loop bind overlay: $status&quot;);
+-		return undef;
+-	}
+-	push @mount,&quot;sleep 1; losetup -d $status&quot;;
+-	$this-&gt;{mount} = \@mount;
+-	$baseRO = $status;
+-	$status = qxx (
+-		&quot;clicfs --ignore-cow-errors -m 5000 -c $cowdev $baseRO $tmpdir 2&gt;&amp;1&quot;
+-	);
+-	$result = $? &gt;&gt; 8;
+-	if ($result == 0) {
+-		$status = qxx (&quot;resize2fs $tmpdir/fsdata.ext3 2&gt;&amp;1&quot;);
++		#==========================================
++		# Fuse mount operate in RAM
++		#------------------------------------------
++		$status = qxx (
++			&quot;clicfs -m 5000 -c $cowdev $baseRO $tmpdir 2&gt;&amp;1&quot;
++		);
+ 		$result = $? &gt;&gt; 8;
+ 	}
+ 	if ($result != 0) {
+@@ -200,6 +214,9 @@ sub unionOverlay {
+ 	}
+ 	push @mount,&quot;umount $tmpdir&quot;;
+ 	$this-&gt;{mount} = \@mount;
++	#==========================================
++	# loop mount filesystem from fuse mount
++	#------------------------------------------
+ 	my $opts = &quot;loop,noatime,nodiratime,errors=remount-ro,barrier=0&quot;;
+ 	$baseRO = $tmpdir.&quot;/fsdata.ext3&quot;;
+ 	$status = qxx (&quot;mount -o $opts $baseRO $tmpdir 2&gt;&amp;1&quot;);
+@@ -210,6 +227,10 @@ sub unionOverlay {
+ 		return undef;
+ 	}
+ 	push @mount,&quot;umount $tmpdir&quot;;
++	$this-&gt;{mount} = \@mount;
++	#==========================================
++	# create meta data for further operations
++	#------------------------------------------
+ 	if (! $haveCow) {
+ 		qxx (&quot;echo $this-&gt;{baseRO} &gt; $rootRW/kiwi-root.cache&quot;);
+ 		qxx (&quot;mkdir -p $rootRW/image&quot;);
+@@ -232,7 +253,6 @@ sub unionOverlay {
+ 			}
+ 		}
+ 	}
+-	$this-&gt;{mount} = \@mount;
+ 	return $tmpdir;
+ }
+ 
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002534.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 95e62cfe7c32e4c4a7b0bcbe3a4776d17a4bf705
+</A></li>
+	<LI>Next message: <A HREF="002532.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. c4614bc58cab3830a1102d2976b607b0026f266b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2531">[ date ]</a>
+              <a href="thread.html#2531">[ thread ]</a>
+              <a href="subject.html#2531">[ subject ]</a>
+              <a href="author.html#2531">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

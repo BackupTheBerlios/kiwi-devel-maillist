@@ -1,0 +1,139 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8c1a04d6a39be2af9b457ed4cb1bb98aa52afd72
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2011-January/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%208c1a04d6a39be2af9b457ed4cb1bb98aa52afd72&In-Reply-To=%3C20110117102853.4BC6548128D%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002976.html">
+   <LINK REL="Next"  HREF="002980.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8c1a04d6a39be2af9b457ed4cb1bb98aa52afd72</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%208c1a04d6a39be2af9b457ed4cb1bb98aa52afd72&In-Reply-To=%3C20110117102853.4BC6548128D%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 8c1a04d6a39be2af9b457ed4cb1bb98aa52afd72">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Mon Jan 17 11:28:53 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002976.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 3f9c0b8845673e21fecb42523c2047fb38e29293
+</A></li>
+        <LI>Next message: <A HREF="002980.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 552b4c55574241d5bc2277c73cf24f02dd4a9feb
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2978">[ date ]</a>
+              <a href="thread.html#2978">[ thread ]</a>
+              <a href="subject.html#2978">[ subject ]</a>
+              <a href="author.html#2978">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  8c1a04d6a39be2af9b457ed4cb1bb98aa52afd72 (commit)
+      from  f87cf81a64b7ad3e2f5adc969f80d4c3861fe4cc (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 8c1a04d6a39be2af9b457ed4cb1bb98aa52afd72
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Mon Jan 17 11:28:16 2011 +0100
+
+    - added check for the PatternType attribute which may only be
+      used for image and bootstrap packages. Check that this is
+      set appropriately.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIXMLValidator.pm b/modules/KIWIXMLValidator.pm
+index 43cef57..f8deb88 100644
+--- a/modules/KIWIXMLValidator.pm
++++ b/modules/KIWIXMLValidator.pm
+@@ -241,6 +241,34 @@ sub __checkFilesysSpec {
+ }
+ 
+ #==========================================
++# __checkPatternTypeAttrUse
++#------------------------------------------
++sub __checkPatternTypeAttrUse {
++    # ...
++    # The PatternType attribute may only be used for image and bootstrap
++    # packages. Check that this is set appropriately.
++    # ---
++    my $this = shift;
++    my @pkgsNodes = $this-&gt;{systemTree} -&gt; getElementsByTagName(&quot;packages&quot;);
++    my @allowedTypes = qw /bootstrap image/;
++    for my $pkgs (@pkgsNodes) {
++        if ($pkgs -&gt; getAttribute( &quot;patternType&quot; )) {
++            my $type = $pkgs -&gt; getAttribute( &quot;type&quot;);
++            if (! grep /$type/, @allowedTypes) {
++                my $kiwi = $this-&gt;{kiwi};
++                my $msg = 'The patternType atribute may only be used for '
++                  . '&lt;packages&gt; specification of type &quot;bootstrap&quot; and '
++                  . 'type &quot;image&quot;.';
++                $kiwi -&gt; error ( $msg );
++				$kiwi -&gt; failed ();
++                return undef
++            }
++        }
++    }
++    return 1;
++}
++
++#==========================================
+ # __checkPostDumpAction
+ #------------------------------------------
+ sub __checkPostDumpAction {
+@@ -532,6 +560,9 @@ sub __validateConsistency {
+ 	if (! $this -&gt; __checkFilesysSpec()) {
+ 		return undef;
+ 	}
++    if (! $this -&gt; __checkPatternTypeAttrUse()) {
++		return undef;
++	}
+ 	if (! $this -&gt; __checkPostDumpAction()) {
+ 		return undef;
+ 	}
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002976.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch,	KIWI-374-SuSE-11-1-SLE-SP-Devel,	updated. 3f9c0b8845673e21fecb42523c2047fb38e29293
+</A></li>
+	<LI>Next message: <A HREF="002980.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 552b4c55574241d5bc2277c73cf24f02dd4a9feb
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2978">[ date ]</a>
+              <a href="thread.html#2978">[ thread ]</a>
+              <a href="subject.html#2978">[ subject ]</a>
+              <a href="author.html#2978">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

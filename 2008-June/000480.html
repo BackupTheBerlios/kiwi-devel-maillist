@@ -1,0 +1,156 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [SVN:KIWI-Team] r1390 - kiwi-head/modules
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2008-June/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1390%20-%20kiwi-head/modules&In-Reply-To=%3C200806191942.m5JJgMir003049%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000479.html">
+   <LINK REL="Next"  HREF="000481.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [SVN:KIWI-Team] r1390 - kiwi-head/modules</H1>
+    <B>jcborn at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BSVN%3AKIWI-Team%5D%20r1390%20-%20kiwi-head/modules&In-Reply-To=%3C200806191942.m5JJgMir003049%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [SVN:KIWI-Team] r1390 - kiwi-head/modules">jcborn at mail.berlios.de
+       </A><BR>
+    <I>Thu Jun 19 21:42:22 CEST 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000479.html">[Kiwi-devel] [SVN:KIWI-Team] r1389 - kiwi-head
+</A></li>
+        <LI>Next message: <A HREF="000481.html">[Kiwi-devel] [SVN:KIWI-Team] r1391 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#480">[ date ]</a>
+              <a href="thread.html#480">[ thread ]</a>
+              <a href="subject.html#480">[ subject ]</a>
+              <a href="author.html#480">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jcborn
+Date: Thu Jun 19 21:42:21 2008
+New Revision: 1390
+
+Modified:
+   kiwi-head/modules/KIWICollect.pm
+
+Log:
+- Init() is now called from outside the constructor
+- small cosmetic changes
+
+
+Modified: kiwi-head/modules/KIWICollect.pm
+==============================================================================
+--- kiwi-head/modules/KIWICollect.pm	(original)
++++ kiwi-head/modules/KIWICollect.pm	Thu Jun 19 21:42:21 2008
+@@ -110,20 +110,16 @@
+ 
+   # create second logger object to log only the data relevant
+   # for repository creation:
+-  $this-&gt;{m_logger} = new KIWILog(&quot;tiny&quot;);#$this-&gt;{m_kiwi};
++  $this-&gt;{m_logger} = new KIWILog(&quot;tiny&quot;);
+   $this-&gt;{m_logger}-&gt;setLogHumanReadable();
+-  $this-&gt;{m_logger}-&gt;setLogFile(&quot;$this-&gt;{m_basedir}/packages.log&quot;);
+-  $this-&gt;{m_kiwi}-&gt;info(&quot;Logging repository specific data to file $this-&gt;{m_basedir}/packages.log&quot;);
++  $this-&gt;{m_logger}-&gt;setLogFile(&quot;$this-&gt;{m_basedir}/collect.log&quot;);
++  $this-&gt;{m_kiwi}-&gt;info(&quot;Logging repository specific data to file $this-&gt;{m_basedir}/collect.log&quot;);
+ 
+   $this-&gt;{m_util} = new KIWIUtil($this-&gt;{m_logger});
+ 
+   $this-&gt;{m_urlparser} = new KIWIURL($this-&gt;{m_logger});
+ 
+-  $this-&gt;Init();
+-
+-  # create some default directories:
+-  # medium number 1 MUST exist, because it's the default for
+-  # packages that don't specify their own medium number
++  #$this-&gt;Init(); # let the caller do this
+ 
+   return $this;
+ }
+@@ -131,6 +127,9 @@
+ 
+ 
+ 
++#=================
++# access methods:
++#-----------------
+ sub logger
+ {
+   my $this = shift;
+@@ -176,6 +175,20 @@
+ 
+ 
+ 
++sub archlist
++{
++  my $this = shift;
++  if(not ref($this)) {
++    return undef;
++  }
++  return $this-&gt;{m_archlist};
++}
++
++
++
++#=================
++# other methods:
++#-----------------
+ #==========================================
+ # Init
+ #------------------------------------------
+@@ -1460,22 +1473,6 @@
+   my $this = shift;
+ 
+ 
+-  ### step 1: create pattern list (just a simple ls)
+-  ##=============================
+-  #$this-&gt;{m_logger}-&gt;info(&quot;Creating patterns file:&quot;);
+-  #if(!open(PAT, &quot;&gt;&quot;, &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/patterns&quot;)) {
+-  #  die &quot;Cannot create $this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/patterns!&quot;;
+-  #}
+-  #if(!opendir(PATDIR, &quot;$this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/&quot;)) {
+-  #  die &quot;Cannot read $this-&gt;{m_basesubdir}-&gt;{'1'}/suse/setup/descr/!&quot;;
+-  #}
+-  #my @dirent = readdir(PATDIR);
+-  #foreach(@dirent) {
+-  #  next if $_ !~ m{(.*[.]pat|.*[.]pat[.]gz)};
+-  #  print PAT &quot;$_\n&quot;;
+-  #}
+-  #close(PATDIR);	
+-  #close(PAT);	
+   $this-&gt;{m_metacreator}-&gt;loadPlugins(&quot;/usr/share/kiwi/modules/plugins/&quot;);
+   $this-&gt;{m_metacreator}-&gt;mediaName($this-&gt;{m_prodvars}-&gt;{'MEDIUM_NAME'});
+   # testhack: set the plugin ready:
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000479.html">[Kiwi-devel] [SVN:KIWI-Team] r1389 - kiwi-head
+</A></li>
+	<LI>Next message: <A HREF="000481.html">[Kiwi-devel] [SVN:KIWI-Team] r1391 - kiwi-head/modules
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#480">[ date ]</a>
+              <a href="thread.html#480">[ thread ]</a>
+              <a href="subject.html#480">[ subject ]</a>
+              <a href="author.html#480">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>

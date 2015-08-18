@@ -1,0 +1,183 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1fdb1f14615239096fac96ae21b1f9c7dcbc7a09
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/kiwi-devel/2010-April/index.html" >
+   <LINK REL="made" HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%201fdb1f14615239096fac96ae21b1f9c7dcbc7a09&In-Reply-To=%3C201004230744.o3N7ihKT027061%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002121.html">
+   <LINK REL="Next"  HREF="002123.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1fdb1f14615239096fac96ae21b1f9c7dcbc7a09</H1>
+    <B>marcus_schaefer at BerliOS</B> 
+    <A HREF="mailto:kiwi-devel%40lists.berlios.de?Subject=Re%3A%20%5BKiwi-devel%5D%20%5BGit%5DProject%20kiwi%20at%20BerliOS%20branch%2C%20master%2C%0A%09updated.%201fdb1f14615239096fac96ae21b1f9c7dcbc7a09&In-Reply-To=%3C201004230744.o3N7ihKT027061%40sheep.berlios.de%3E"
+       TITLE="[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. 1fdb1f14615239096fac96ae21b1f9c7dcbc7a09">marcus_schaefer at mail.berlios.de
+       </A><BR>
+    <I>Fri Apr 23 09:44:43 CEST 2010</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002121.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. fc31de28db807e6d5d8e8991d077360760fd623e
+</A></li>
+        <LI>Next message: <A HREF="002123.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b26f3e95849a36f9827886b5e3d70e163c00f9b0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2122">[ date ]</a>
+              <a href="thread.html#2122">[ thread ]</a>
+              <a href="subject.html#2122">[ subject ]</a>
+              <a href="author.html#2122">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;Project kiwi at BerliOS&quot;.
+
+The branch, master has been updated
+       via  1fdb1f14615239096fac96ae21b1f9c7dcbc7a09 (commit)
+      from  fc31de28db807e6d5d8e8991d077360760fd623e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 1fdb1f14615239096fac96ae21b1f9c7dcbc7a09
+Author: Marcus Sch&#195;&#164;fer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at novell.com</A>&gt;
+Date:   Fri Apr 23 09:44:23 2010 +0200
+
+    - added alarm timer for HTTP requests. If a URL can't be
+      resolved due to problems on the remote side the request
+      will be canceled after 5 seconds
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+diff --git a/modules/KIWIURL.pm b/modules/KIWIURL.pm
+index 90a33cd..b1569f0 100644
+--- a/modules/KIWIURL.pm
++++ b/modules/KIWIURL.pm
+@@ -439,29 +439,29 @@ sub openSUSEpath {
+ 	#------------------------------------------
+ 	my @responses = ();
+ 	foreach my $url (@urllist) {
+-		my $request = HTTP::Request-&gt;new (GET =&gt; $url);
+-		my $response;
+-		eval {
+-			$response= $browser -&gt; request  ( $request );
+-		};
+-		if ($@) {
+-			return undef;
++		my $response = $this -&gt; urlResponse ( $browser,$url );
++		if (! $response) {
++			next;
+ 		}
+-		my $title   = $response-&gt; title ();
++		my $title = $response-&gt; title ();
+ 		if ((defined $title) &amp;&amp; ($title !~ /not found/i)) {
+ 			my $repourl = $url;
+-			$request = HTTP::Request-&gt;new (GET =&gt; $repourl.&quot;/repodata&quot;);
+-			$response= $browser -&gt; request  ( $request );
+-			$title   = $response-&gt; title ();
++			$response = $this -&gt; urlResponse ( $browser,$repourl.&quot;/repodata&quot; );
++			if (! $response) {
++				next;
++			}
++			$title = $response-&gt; title ();
+ 			if ((defined $title) &amp;&amp; ($title !~ /not found/i)) {
+ 				$this-&gt;{type} = &quot;rpm-md&quot;;
+ 				return $url;
+ 			} else {
+ 				push (@responses,&quot;$repourl/repodata -&gt; $title&quot;);
+ 			}
+-			$request = HTTP::Request-&gt;new (GET =&gt; $repourl.&quot;/media.1&quot;);
+-			$response= $browser -&gt; request  ( $request );
+-			$title   = $response-&gt; title ();
++			$response = $this -&gt; urlResponse ( $browser,$repourl.&quot;/media.1&quot;);
++			if (! $response) {
++				next;
++			}
++			$title = $response-&gt; title ();
+ 			if ((defined $title) &amp;&amp; ($title !~ /not found/i)) {
+ 				$this-&gt;{type} = &quot;yast2&quot;;
+ 				return $url;
+@@ -480,4 +480,30 @@ sub openSUSEpath {
+ 	return undef;
+ }
+ 
++#==========================================
++# urlResponse
++#------------------------------------------
++sub urlResponse {
++	my $this    = shift;
++	my $browser = shift;
++	my $url     = shift;
++	my $timeout = 5;
++	my $request;
++	my $response;
++	eval {
++		local $SIG{ALRM} = sub { die &quot;alarm\n&quot; };
++		alarm $timeout;
++		$request = HTTP::Request-&gt;new (GET =&gt; $url);
++		$response= $browser -&gt; request  ( $request );
++		alarm 0;
++	};
++	if ($@) {
++		# host can't be resolved, network timeout
++		if ($@ eq &quot;alarm\n&quot;) {
++			return undef;
++		}
++	}
++	return $response;
++}
++
+ 1;
+diff --git a/rpm/kiwi.changes b/rpm/kiwi.changes
+index dd993c3..069526f 100644
+--- a/rpm/kiwi.changes
++++ b/rpm/kiwi.changes
+@@ -10,6 +10,9 @@ Tue Apr 20 12:12:44 CEST 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">ms at suse.de</A>
+ - fixed use of type option in mke2fs. The option -t should
+   be used because -T has a different meaning and causes other
+   options to be ignored
++- added alarm timer for HTTP requests. If a URL can't be
++  resolved due to problems on the remote side the request
++  will be canceled after 5 seconds
+ 
+ -------------------------------------------------------------------
+ Sun Apr 18 21:41:20 UTC 2010 - <A HREF="https://lists.berlios.de/mailman/listinfo/kiwi-devel">adrian at suse.de</A>
+
+
+hooks/post-receive
+-- 
+Project kiwi at BerliOS
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002121.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. fc31de28db807e6d5d8e8991d077360760fd623e
+</A></li>
+	<LI>Next message: <A HREF="002123.html">[Kiwi-devel] [Git]Project kiwi at BerliOS branch, master,	updated. b26f3e95849a36f9827886b5e3d70e163c00f9b0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2122">[ date ]</a>
+              <a href="thread.html#2122">[ thread ]</a>
+              <a href="subject.html#2122">[ subject ]</a>
+              <a href="author.html#2122">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/kiwi-devel">More information about the Kiwi-devel
+mailing list</a><br>
+</body></html>
